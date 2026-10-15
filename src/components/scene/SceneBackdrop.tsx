@@ -41,6 +41,12 @@ export function SceneBackdrop() {
           className="scene-image"
           draggable={false}
         />
+        <img
+          src="/lobby/scene-labels.svg"
+          alt=""
+          className="scene-labels"
+          draggable={false}
+        />
         {state.focus === "overview" && <span className="scene-pulse" />}
       </div>
       {state.dim && <div className="scene-dim" />}
