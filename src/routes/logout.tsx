@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { signOutFn } from "@/server/auth"
 
 export const Route = createFileRoute("/logout")({
-  component: () => (
-    <main>
-      <h1>Keluar</h1>
-    </main>
-  ),
+  preload: false,
+  loader: () => signOutFn(),
 })
