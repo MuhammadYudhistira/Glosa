@@ -59,8 +59,9 @@ function WelcomeCardPage() {
       setErrorCode(result.code)
       return
     }
-    await router.invalidate()
-    router.history.push(DEFAULT_MEMBER_PATH)
+    // Navigate once; root beforeLoad re-reads the session, so the now
+    // onboarded member passes the _member guard straight into the lobby.
+    await router.navigate({ href: DEFAULT_MEMBER_PATH })
   }
 
   const blocked =
@@ -101,12 +102,12 @@ function WelcomeCardPage() {
               aria-describedby="username-note"
               className="mt-1 w-full rounded-md border bg-night-950 px-3 py-2 text-foreground outline-none focus:border-mint"
             />
-            <p
+            <output
               id="username-note"
-              className="mt-1 text-xs text-muted-foreground"
+              className="mt-1 block text-xs text-muted-foreground"
             >
               {usernameStatusText(usernameStatus)}
-            </p>
+            </output>
           </div>
         )}
         {errorCode && (

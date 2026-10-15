@@ -49,8 +49,9 @@ function ResetPasswordPage() {
       setErrorCode(result.code)
       return
     }
-    await router.invalidate()
-    router.history.push(DEFAULT_MEMBER_PATH)
+    // Navigate once; root beforeLoad re-reads the session and the _member
+    // guard sends members who have not onboarded yet to /welcome.
+    await router.navigate({ href: DEFAULT_MEMBER_PATH })
   }
 
   return (

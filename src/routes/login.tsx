@@ -63,8 +63,10 @@ function LoginPage() {
       setErrorCode(result.code)
       return
     }
-    await router.invalidate()
-    router.history.push(safeNext(next))
+    // Navigate once; root beforeLoad re-reads the session and the _member
+    // guard sends new members to /welcome. Invalidating first would let this
+    // page's guest guard redirect too, rendering /welcome twice.
+    await router.navigate({ href: safeNext(next) })
   }
 
   return (

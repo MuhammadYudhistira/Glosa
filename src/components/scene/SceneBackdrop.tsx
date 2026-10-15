@@ -1,9 +1,13 @@
-import { useLocation } from "@tanstack/react-router"
+import { useRouterState } from "@tanstack/react-router"
 import { useEffect } from "react"
 import { sceneStateFor } from "./scene-state"
 
 export function SceneBackdrop() {
-  const pathname = useLocation({ select: (location) => location.pathname })
+  // Follow the resolved location, not the pending one: a navigation that a
+  // route guard redirects (e.g. /lobby → /welcome) must not unmount the scene.
+  const pathname = useRouterState({
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
+  })
   const state = sceneStateFor(pathname)
   const hasScene = state !== null
 
