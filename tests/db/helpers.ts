@@ -52,5 +52,15 @@ export async function signedInClient(email: string) {
 
 export async function deleteTestMembers() {
   const admin = adminClient()
-  for (const id of createdIds.splice(0)) await admin.auth.admin.deleteUser(id)
+  const failed: Array<string> = []
+  for (const id of createdIds.splice(0)) {
+    const { error } = await admin.auth.admin.deleteUser(id)
+    if (error) failed.push(id)
+  }
+  createdIds.push(...failed)
+  if (failed.length > 0) {
+    throw new Error(
+      `Failed to delete ${failed.length} test member(s): ${failed.join(", ")}`
+    )
+  }
 }

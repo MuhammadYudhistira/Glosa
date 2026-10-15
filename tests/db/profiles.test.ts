@@ -10,7 +10,7 @@ import {
 const run = Date.now().toString(36)
 const aniEmail = `db-ani-${run}@glosa.test`
 const budiEmail = `budi.santoso.${run}@glosa.test`
-const budiTwinEmail = `Budi.Santoso.${run}@lain.glosa.test`
+const budiTwinEmail = `Budi-Santoso.${run}@glosa.test`
 
 describe("profiles", () => {
   let aniId = ""
