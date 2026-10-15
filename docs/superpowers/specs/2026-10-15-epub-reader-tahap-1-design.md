@@ -1,15 +1,18 @@
-# Velora — Desain Tahap 1: Fondasi Reader
+# Glosa — Desain Tahap 1: Fondasi Reader
 
 - **Tanggal:** 2026-10-15
 - **Status:** Draf, menunggu review
-- **Nama aplikasi:** "Velora" (nama sementara)
+- **Nama aplikasi:** Glosa (domain dan merek dagang belum dicek)
+- **Tagline:** "Baca buku aslinya, pahami setiap katanya."
 - **Mockup:** [mockups/lobi.html](mockups/lobi.html) · [mockups/alur-login.html](mockups/alur-login.html)
 
 ---
 
 ## 1. Ringkasan produk
 
-Velora adalah **EPUB reader berbasis web (PWA) untuk orang Indonesia yang belajar bahasa Inggris lewat buku**. User meng-upload EPUB miliknya sendiri, membacanya dalam suasana "perpustakaan", mengetuk kata yang sulit untuk melihat artinya, lalu melatih kosakata itu lewat flashcard.
+Glosa adalah **EPUB reader berbasis web (PWA) untuk orang Indonesia yang belajar bahasa Inggris lewat buku**. User meng-upload EPUB miliknya sendiri, membacanya dalam suasana "perpustakaan", mengetuk kata yang sulit untuk melihat artinya, lalu melatih kosakata itu lewat flashcard.
+
+**Asal nama:** *glosa* adalah catatan arti kata yang dulu ditulis juru tulis di pinggir halaman buku. Fitur "ketuk kata" adalah versi modernnya. Kata ini juga akar dari *glosarium* / *glossary*.
 
 **Positioning:** "Duolingo untuk membaca buku". Fitur bahasa adalah alasan orang **membayar**, sedangkan gamifikasi adalah alasan orang **kembali setiap hari**.
 
@@ -338,6 +341,6 @@ VPS KVM 2
 
 ## 15. Pertanyaan terbuka
 
-1. **Nama aplikasi dan domain.** "Velora" masih nama sementara.
+1. **Domain dan merek dagang "Glosa":** cek ketersediaan domain (`glosa.app` / `glosa.id` / alternatif), PDKI kelas 9 & 41, nama di Play Store, dan akun media sosial.
 2. **Sumber ilustrasi final:** AI image generator atau ilustrator. Lisensinya harus mengizinkan pemakaian komersial.
 3. **Penyedia SMTP** untuk email konfirmasi dan reset kata sandi (kandidat: Resend).
