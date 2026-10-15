@@ -207,3 +207,51 @@
     animation: none;
   }
 }
+
+/* Librarian speech bubble */
+.librarian-bubble {
+  position: relative;
+  border-radius: 0.75rem;
+  background: #fffaf0;
+  color: var(--color-sepia-ink);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.4);
+}
+.librarian-bubble::after {
+  content: "";
+  position: absolute;
+  left: 1.1rem;
+  bottom: -0.5rem;
+  border: 0.5rem solid transparent;
+  border-top-color: #fffaf0;
+  border-bottom: 0;
+}
+
+/* Guest book: two lined paper pages (one on phones) */
+.guestbook {
+  display: flex;
+  filter: drop-shadow(0 14px 22px rgb(0 0 0 / 0.55));
+}
+.guestbook-page {
+  flex: 1;
+  padding: 1.25rem 1.4rem;
+  color: var(--color-sepia-ink);
+  background-color: var(--color-paper);
+  background-image: repeating-linear-gradient(transparent 0 27px, #e2d4b4 27px 28px);
+}
+.guestbook-left {
+  border-radius: 0.75rem 0 0 0.75rem;
+  box-shadow: inset -14px 0 18px -10px rgb(0 0 0 / 0.35);
+}
+.guestbook-right {
+  border-radius: 0.75rem;
+  background-color: var(--color-paper-2);
+}
+@media (min-width: 768px) {
+  .guestbook-right {
+    border-radius: 0 0.75rem 0.75rem 0;
+    box-shadow: inset 14px 0 18px -10px rgb(0 0 0 / 0.35);
+  }
+}
