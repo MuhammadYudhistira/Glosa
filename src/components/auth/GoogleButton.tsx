@@ -11,10 +11,14 @@ export function GoogleButton({ label }: { label: string }) {
   async function onClick() {
     setPending(true)
     setFailed(false)
-    const result = await startGoogle()
-    if (result.ok) {
-      window.location.assign(result.url)
-      return
+    try {
+      const result = await startGoogle()
+      if (result.ok) {
+        window.location.assign(result.url)
+        return
+      }
+    } catch {
+      // network failure or server error: fall through to the failed state
     }
     setPending(false)
     setFailed(true)

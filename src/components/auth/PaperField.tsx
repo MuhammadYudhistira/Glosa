@@ -32,17 +32,15 @@ export function PaperField({
         className="w-full border-0 border-b-[1.5px] border-[#8b7556] bg-transparent px-0.5 pt-0.5 font-hand text-xl text-pen outline-none placeholder:text-[#b9a983] focus:border-pen"
         {...props}
       />
-      {note && (
-        <p
-          id={noteId}
-          className={cn(
-            "mt-1 text-xs",
-            error ? "text-stamp" : "text-sepia-muted"
-          )}
-        >
-          {note}
-        </p>
-      )}
+      <output
+        id={noteId}
+        className={cn(
+          "mt-1 block text-xs",
+          error ? "text-stamp" : "text-sepia-muted"
+        )}
+      >
+        {note}
+      </output>
     </div>
   )
 }

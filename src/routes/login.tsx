@@ -45,12 +45,19 @@ function LoginPage() {
     const form = new FormData(event.currentTarget)
     setPending(true)
     setErrorCode(null)
-    const result = await signIn({
-      data: {
-        email: String(form.get("email") ?? "").trim(),
-        password: String(form.get("password") ?? ""),
-      },
-    })
+    let result: Awaited<ReturnType<typeof signIn>>
+    try {
+      result = await signIn({
+        data: {
+          email: String(form.get("email") ?? "").trim(),
+          password: String(form.get("password") ?? ""),
+        },
+      })
+    } catch {
+      setPending(false)
+      setErrorCode("unknown")
+      return
+    }
     if (!result.ok) {
       setPending(false)
       setErrorCode(result.code)

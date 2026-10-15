@@ -52,15 +52,22 @@ function RegisterPage() {
     const email = String(form.get("email") ?? "").trim()
     setPending(true)
     setErrorCode(null)
-    const result = await signUp({
-      data: {
-        email,
-        password: String(form.get("password") ?? ""),
-        username,
-        displayName: String(form.get("displayName") ?? ""),
-        acceptedTerms: form.get("acceptedTerms") === "on",
-      },
-    })
+    let result: Awaited<ReturnType<typeof signUp>>
+    try {
+      result = await signUp({
+        data: {
+          email,
+          password: String(form.get("password") ?? ""),
+          username,
+          displayName: String(form.get("displayName") ?? ""),
+          acceptedTerms: form.get("acceptedTerms") === "on",
+        },
+      })
+    } catch {
+      setPending(false)
+      setErrorCode("unknown")
+      return
+    }
     setPending(false)
     if (!result.ok) {
       setErrorCode(result.code)

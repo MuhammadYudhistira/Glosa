@@ -42,4 +42,17 @@ describe("PaperField", () => {
       "Nama pengguna tersedia ✓"
     )
   })
+
+  it("renders the hint inside a live status region", () => {
+    render(<PaperField label="Nama pengguna" name="username" hint="Tersedia" />)
+    expect(screen.getByRole("status")).toHaveTextContent("Tersedia")
+  })
+
+  it("keeps an empty status region when there is no note", () => {
+    render(<PaperField label="Email" name="email" />)
+    expect(screen.getByRole("status")).toBeEmptyDOMElement()
+    expect(screen.getByLabelText("Email")).not.toHaveAttribute(
+      "aria-describedby"
+    )
+  })
 })
