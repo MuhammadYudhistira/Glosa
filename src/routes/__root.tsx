@@ -1,8 +1,14 @@
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
 import type { ReactNode } from "react"
 
+import { SceneBackdrop } from "@/components/scene/SceneBackdrop"
 import appCss from "@/styles.css?url"
 
 export const Route = createRootRoute({
@@ -13,6 +19,7 @@ export const Route = createRootRoute({
         name: "viewport",
         content: "width=device-width, initial-scale=1, viewport-fit=cover",
       },
+      { name: "theme-color", content: "#0b1518" },
       { title: "Glosa" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
@@ -24,7 +31,19 @@ export const Route = createRootRoute({
     </main>
   ),
   shellComponent: RootDocument,
+  component: RootComponent,
 })
+
+function RootComponent() {
+  return (
+    <>
+      <SceneBackdrop />
+      <div className="relative z-10">
+        <Outlet />
+      </div>
+    </>
+  )
+}
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
