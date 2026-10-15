@@ -100,10 +100,10 @@ Hosting aplikasi: VPS (KVM 2) → Docker + Caddy (HTTPS otomatis)
 |---|---|---|
 | Framework | TanStack Start | Aplikasi bersifat client-heavy. Kelebihan RSC/ISR di Next.js tidak terpakai karena perpustakaan bersifat privat. |
 | Render EPUB | foliate-js | Aktif dikembangkan, dipakai Foliate dan Readest, mendukung CFI dan mode halaman/scroll. |
-| Backend | Supabase Cloud | Backup dan keamanan dikelola Supabase. Bisa pindah ke self-host nanti (`pg_dump` + migrasi file). |
+| Backend | Supabase Cloud, dengan **proyek dev dan prod terpisah**, tanpa Supabase lokal/Docker | Backup dan keamanan dikelola Supabase. Development dan test memakai proyek dev. Migrasi di-push dengan `supabase db push`. Bisa pindah ke self-host nanti (`pg_dump` + migrasi file). |
 | Penyimpanan file | Supabase Storage | Paling sederhana karena RLS terintegrasi. Akses dibungkus satu modul supaya bisa pindah ke Cloudflare R2 jika egress mahal. |
-| UI kit | Tailwind CSS + shadcn/ui (dikustomisasi) | Komponen aksesibel yang dibungkus tema perpustakaan. |
-| Font | Atkinson Hyperlegible (UI), Libre Caslon Text (judul), Caveat (tulisan tangan dekoratif), Courier Prime (mesin tik) | Mudah dibaca dan berkarakter perpustakaan. |
+| UI kit | shadcn/ui dari starter `npx shadcn@latest init --preset b1D0dv72 --template start --pointer` (gaya base-mira di atas Base UI, ikon lucide), Tailwind CSS 4, ESLint + Prettier | Komponen aksesibel. Variabel tema shadcn diisi palet Glosa. |
+| Font | Atkinson Hyperlegible (UI), Libre Caslon Text (judul), Caveat (tulisan tangan dekoratif), Courier Prime (mesin tik). **Di-host sendiri via Fontsource**, menggantikan Inter dari preset. | Mudah dibaca dan berkarakter perpustakaan. Self-host supaya tetap tampil saat offline. |
 | Bahasa | UI berbahasa Indonesia, path URL berbahasa Inggris | |
 
 **Prinsip pemisahan:** operasi baca/tulis biasa langsung ke Supabase dari browser dan dilindungi RLS. **Server functions** hanya untuk hal yang tidak boleh dipercayakan ke client: mengeluarkan signed upload URL setelah cek kuota, konfirmasi upload, dan hapus akun.
@@ -345,10 +345,10 @@ Untuk user baru tanpa buku, petugas di Meja Admin menyapa: "Rakmu masih kosong. 
 | Jenis | Alat | Cakupan wajib |
 |---|---|---|
 | Unit | Vitest | Validasi upload, logika kuota, "terbaru menang" pada progres, wrapper metadata EPUB, pembuatan username otomatis, `suggestGenre` (tabel kasus: subjek Standard Ebooks / Gutenberg, subjek kosong, kasus seri) |
-| Database | Supabase CLI (lokal) + pgTAP | **RLS:** user A tidak bisa membaca/mengubah buku, progres, atau objek Storage milik user B. User tidak bisa mengubah `plan` atau `storage_limit_bytes`. Insert `books` dari client ditolak. `save_progress` menolak data yang lebih lama. Kuota menolak upload yang melebihi batas, termasuk dua permintaan bersamaan. |
-| E2E | Playwright | Daftar → konfirmasi email (inbox lokal Supabase) → kartu anggota → lobi. Upload EPUB contoh (Standard Ebooks) → genre tertebak → buku muncul di zona yang benar. Upload tanpa genre → masuk Troli → disusun. Baca → pindah halaman → buka di browser context kedua → muncul tawaran "Lanjutkan". Mode offline: buku tersimpan tetap terbuka. Hapus buku → kuota kembali. |
+| Database | Vitest integration terhadap proyek Supabase **dev** (cloud), memakai supabase-js dengan user uji yang dibuat dan dihapus admin API | **RLS:** user A tidak bisa membaca/mengubah buku, progres, atau objek Storage milik user B. User tidak bisa mengubah `plan` atau `storage_limit_bytes`. Insert `books` dari client ditolak. `save_progress` menolak data yang lebih lama. Kuota menolak upload yang melebihi batas, termasuk dua permintaan bersamaan. |
+| E2E | Playwright terhadap proyek dev. Tautan konfirmasi/atur ulang dibuat dengan admin `generateLink` (tanpa kirim email). Uji kirim email sungguhan (submit formulir daftar & lupa sandi) hanya berjalan jika SMTP kustom aktif. User uji dihapus di global teardown. | Daftar → konfirmasi → kartu anggota → lobi. Upload EPUB contoh (Standard Ebooks) → genre tertebak → buku muncul di zona yang benar. Upload tanpa genre → masuk Troli → disusun. Baca → pindah halaman → buka di browser context kedua → muncul tawaran "Lanjutkan". Mode offline: buku tersimpan tetap terbuka. Hapus buku → kuota kembali. |
 
-CI (GitHub Actions) menjalankan lint, typecheck, unit, pgTAP, dan E2E pada setiap push.
+CI (GitHub Actions) menjalankan lint, typecheck, unit, test integrasi database, dan E2E pada setiap push, memakai secret proyek dev.
 
 ---
 
