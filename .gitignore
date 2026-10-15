@@ -1,5 +1,16 @@
-.superpowers/
 node_modules/
+dist/
+dist-ssr/
+.output/
+.nitro/
+.tanstack/
+.vinxi/
+*.tsbuildinfo
+.DS_Store
+.superpowers/
 .env
 .env.*
 !.env.example
+playwright-report/
+test-results/
+supabase/.temp/
