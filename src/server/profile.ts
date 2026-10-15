@@ -13,19 +13,25 @@ export const checkUsernameFn = createServerFn({ method: "GET" })
     }): Promise<{ available: boolean; problem: UsernameProblem | null }> => {
       const problem = validateUsername(data.username)
       if (problem) return { available: false, problem }
-      const { data: available } = await getSupabaseServerClient().rpc(
+      const { data: available, error } = await getSupabaseServerClient().rpc(
         "username_available",
         {
           candidate: data.username,
         }
       )
+      if (error) {
+        console.error("username_available failed", error)
+        throw new Error("Username check failed")
+      }
       return { available: available === true, problem: null }
     }
   )
 
 export const visitorsTodayFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<number> => {
-    const { data } = await getSupabaseServerClient().rpc("visitors_today")
+    const { data, error } =
+      await getSupabaseServerClient().rpc("visitors_today")
+    if (error) console.error("visitors_today failed", error)
     return data ?? 0
   }
 )
@@ -98,12 +104,16 @@ export const deleteAccountFn = createServerFn({ method: "POST" })
     } = await supabase.auth.getUser()
     if (!user) return { ok: false, code: "not_authenticated" }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("username")
       .eq("id", user.id)
       .single()
-    if (!profile || profile.username !== data.confirmUsername.trim()) {
+    if (profileError) {
+      console.error("profile lookup failed", profileError)
+      return { ok: false, code: "unknown" }
+    }
+    if (profile.username !== data.confirmUsername.trim()) {
       return { ok: false, code: "confirm_mismatch" }
     }
 

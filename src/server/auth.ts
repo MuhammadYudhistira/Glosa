@@ -47,9 +47,14 @@ export const signUpFn = createServerFn({ method: "POST" })
     if (!data.acceptedTerms) return fail("terms_required")
 
     const supabase = getSupabaseServerClient()
-    const { data: available } = await supabase.rpc("username_available", {
-      candidate: data.username,
-    })
+    const { data: available, error: rpcError } = await supabase.rpc(
+      "username_available",
+      { candidate: data.username }
+    )
+    if (rpcError) {
+      console.error("username_available failed", rpcError)
+      return fail("unknown")
+    }
     if (!available) return fail("username_taken")
 
     const { error } = await supabase.auth.signUp({
