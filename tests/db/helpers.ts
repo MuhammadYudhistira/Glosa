@@ -1,0 +1,56 @@
+import { createClient } from "@supabase/supabase-js"
+import type { Database } from "@/server/database.types"
+
+export const TEST_PASSWORD = "rahasia-123"
+const createdIds: Array<string> = []
+
+function requireEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) throw new Error(`Missing ${name} in .env.local`)
+  return value
+}
+
+export function adminClient() {
+  return createClient<Database>(
+    requireEnv("SUPABASE_URL"),
+    requireEnv("SUPABASE_SECRET_KEY"),
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+    }
+  )
+}
+
+export async function createTestMember(opts: {
+  email: string
+  metadata?: Record<string, string>
+}) {
+  const { data, error } = await adminClient().auth.admin.createUser({
+    email: opts.email,
+    password: TEST_PASSWORD,
+    email_confirm: true,
+    user_metadata: opts.metadata ?? {},
+  })
+  if (error) throw error
+  createdIds.push(data.user.id)
+  return data.user
+}
+
+/** A client signed in as the given member (publishable key, RLS applies). */
+export async function signedInClient(email: string) {
+  const client = createClient<Database>(
+    requireEnv("SUPABASE_URL"),
+    requireEnv("SUPABASE_PUBLISHABLE_KEY"),
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  )
+  const { error } = await client.auth.signInWithPassword({
+    email,
+    password: TEST_PASSWORD,
+  })
+  if (error) throw error
+  return client
+}
+
+export async function deleteTestMembers() {
+  const admin = adminClient()
+  for (const id of createdIds.splice(0)) await admin.auth.admin.deleteUser(id)
+}
