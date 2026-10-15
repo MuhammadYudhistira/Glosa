@@ -83,5 +83,5 @@ const FALLBACK: AuthMessage = {
 }
 
 export function authMessage(code: string | null | undefined): AuthMessage {
-  return (code && MESSAGES[code]) || FALLBACK
+  return (code && Object.hasOwn(MESSAGES, code) && MESSAGES[code]) || FALLBACK
 }

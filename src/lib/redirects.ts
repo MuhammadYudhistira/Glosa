@@ -8,11 +8,21 @@ export function safeNext(next: unknown): string {
   if (
     !next.startsWith("/") ||
     next.startsWith("//") ||
-    next.startsWith("/\\")
+    next.startsWith("/\\") ||
+    hasControlOrBackslash(next)
   ) {
     return DEFAULT_MEMBER_PATH
   }
   return next
+}
+
+/** Browsers strip tabs/newlines and treat backslashes as slashes, so reject both. */
+function hasControlOrBackslash(s: string): boolean {
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i)
+    if (code === 0x5c || code < 0x20 || code === 0x7f) return true
+  }
+  return false
 }
 
 /** For guest-only pages (/, /login, /register, /forgot-password). */

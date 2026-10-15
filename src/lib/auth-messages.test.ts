@@ -15,4 +15,12 @@ describe("authMessage", () => {
     )
     expect(authMessage(undefined).field).toBe("Terjadi kesalahan. Coba lagi.")
   })
+
+  it("ignores inherited object keys and falls back", () => {
+    expect(authMessage("constructor").field).toBe(
+      "Terjadi kesalahan. Coba lagi."
+    )
+    expect(authMessage("toString").field).toBe("Terjadi kesalahan. Coba lagi.")
+    expect(authMessage("__proto__").field).toBe("Terjadi kesalahan. Coba lagi.")
+  })
 })
