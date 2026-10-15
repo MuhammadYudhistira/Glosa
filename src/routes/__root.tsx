@@ -8,10 +8,12 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
 import type { ReactNode } from "react"
 
+import { getSessionUserFn } from "@/server/session"
 import { SceneBackdrop } from "@/components/scene/SceneBackdrop"
 import appCss from "@/styles.css?url"
 
 export const Route = createRootRoute({
+  beforeLoad: async () => ({ user: await getSessionUserFn() }),
   head: () => ({
     meta: [
       { charSet: "utf-8" },
