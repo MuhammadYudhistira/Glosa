@@ -38,7 +38,7 @@ Rilis publik dilakukan **setelah semua tahap selesai**. Selama pengembangan, 3�
 | **1** | **Fondasi reader:** auth, upload, kuota, lobi perpustakaan, reader, sinkronisasi, offline | **Dokumen ini** |
 | 2 | Ketuk kata: lematisasi, kamus EN–ID di Postgres, popup arti, simpan kata | Terpisah |
 | 3 | Flashcard (FSRS) + gamifikasi: streak, level, statistik kosakata, % pemahaman | Terpisah |
-| 4 | Sosial: katalog `works` (ISBN / Open Library), review + level kesulitan, feed global, suka, moderasi, pembaca online | Terpisah |
+| 4 | Sosial: katalog `works` (ISBN / Open Library), review + level kesulitan, feed global, suka, moderasi, pembaca online. Subjek dari Open Library juga memperbaiki tebakan genre, tapi tidak pernah menimpa genre yang dipilih user. | Terpisah |
 | 5 | Monetisasi: paket Free/Pro, Midtrans/Xendit, batas harian, AI konteks (LLM) | Terpisah |
 
 Keputusan yang sudah diambil untuk tahap selanjutnya (dicatat supaya desain tahap 1 tidak menutup jalannya):
@@ -56,15 +56,16 @@ Keputusan yang sudah diambil untuk tahap selanjutnya (dicatat supaya desain taha
 2. Alur "datang ke perpustakaan": halaman sambutan → buku tamu (masuk) / formulir anggota (daftar) → kartu anggota.
 3. Lobi perpustakaan isometrik dengan hotspot dan panel kaca (desktop), versi HP dengan bottom sheet.
 4. Rak Saya: daftar buku, pencarian, urutan, upload banyak file, kuota 100 MB.
-5. Reader: foliate-js, mode halaman/scroll, font, ukuran, spasi, margin, tema terang/sepia/gelap, daftar isi.
-6. Sinkronisasi posisi baca antar perangkat.
-7. Offline: app shell, daftar buku, dan buku yang sudah diunduh.
-8. Halaman Pengaturan, Kebijakan Privasi, dan Syarat Layanan.
-9. Testing (unit, RLS, E2E) dan deploy ke VPS.
+5. Genre: tebakan otomatis dari metadata EPUB, dikonfirmasi atau diganti user saat upload, zona genre di lobi yang berfungsi, dan Troli Buku Baru.
+6. Reader: foliate-js, mode halaman/scroll, font, ukuran, spasi, margin, tema terang/sepia/gelap, daftar isi.
+7. Sinkronisasi posisi baca antar perangkat.
+8. Offline: app shell, daftar buku, dan buku yang sudah diunduh.
+9. Halaman Pengaturan, Kebijakan Privasi, dan Syarat Layanan.
+10. Testing (unit, RLS, E2E) dan deploy ke VPS.
 
 ### Tidak termasuk (masuk tahap lain)
 
-Ketuk kata, kosakata, flashcard, streak/level, review, feed, pembaca online, pengelompokan rak per genre, highlight/catatan, pencarian teks di dalam buku, pembayaran, dan AI.
+Ketuk kata, kosakata, flashcard, streak/level, review, feed, pembaca online, tebakan genre via Open Library, highlight/catatan, pencarian teks di dalam buku, pembayaran, dan AI.
 
 Elemen UI untuk fitur-fitur ini **tidak ditampilkan** di tahap 1. Item menu "Kosakata" dan "Papan Ulasan" baru muncul di tahapnya masing-masing. Tidak ada tombol mati atau label "segera hadir".
 
@@ -137,6 +138,9 @@ books
   size_bytes          bigint           (epub + cover)
   sha256              text
   status              text 'pending' | 'ready'
+  genre               text null        lihat §5a; null = Troli Buku Baru
+  genre_source        text null        'auto' | 'user' (tahap 4 tidak menimpa 'user')
+  subjects            text[]           subjek mentah dari metadata EPUB (dc:subject)
   work_id             uuid null        (disiapkan untuk tahap 4, belum dipakai)
   created_at, last_opened_at
   unique (user_id, sha256)
@@ -163,20 +167,46 @@ Pemakaian storage **dihitung, tidak disimpan**: `SUM(size_bytes)` dari `books` m
 
 ## 5. Upload dan kuota
 
-1. **Browser:** foliate-js mem-parsing file. Jika gagal, file ditolak dengan pesan "File EPUB rusak atau tidak didukung". Browser lalu mengambil judul, penulis, bahasa, dan cover, mengecilkan cover menjadi WebP (lebar 400px), serta menghitung SHA-256 lewat Web Crypto.
-2. **Server function `requestUpload({ sha256, sizes, metadata })`:**
+1. **Browser:** foliate-js mem-parsing file. Jika gagal, file ditolak dengan pesan "File EPUB rusak atau tidak didukung". Browser lalu mengambil judul, penulis, bahasa, subjek, dan cover, menebak genre dengan `suggestGenre(subjects)` (§5a), mengecilkan cover menjadi WebP (lebar 400px), serta menghitung SHA-256 lewat Web Crypto.
+2. **Daftar upload:** setiap file tampil sebagai baris dengan pilihan genre yang sudah terisi tebakan (atau "Pilih genre" jika tidak ada tebakan). User bisa mengganti genre per file, atau menekan **"Terima semua"**. File tanpa genre tetap boleh di-upload dan masuk Troli Buku Baru.
+3. **Server function `requestUpload({ sha256, sizes, metadata, genre, genreSource })`:**
    - Wajib login.
    - Ukuran EPUB maks. **50 MB per file**.
    - Duplikat (`user_id` + `sha256` sudah ada) ditolak dengan pesan "Buku ini sudah ada di rakmu".
    - Kuota diperiksa dalam transaksi dengan `SELECT … FOR UPDATE` pada baris `profiles`, dengan syarat `terpakai + ukuran_baru ≤ storage_limit_bytes`.
    - Jika lolos, server meng-insert `books` (`pending`) dan mengembalikan signed upload URL untuk EPUB dan cover.
-3. **Browser** upload langsung ke Supabase Storage dengan progres per file. Bandwidth VPS tidak terpakai.
-4. **Server function `confirmUpload(bookId)`:** membaca metadata objek di Storage. Jika ukuran cocok, status menjadi `ready`. Jika tidak cocok, objek dan baris dihapus lalu error dikembalikan.
-5. **pg_cron** menghapus baris `pending` yang berumur lebih dari 1 jam beserta objeknya.
+4. **Browser** upload langsung ke Supabase Storage dengan progres per file. Bandwidth VPS tidak terpakai.
+5. **Server function `confirmUpload(bookId)`:** membaca metadata objek di Storage. Jika ukuran cocok, status menjadi `ready`. Jika tidak cocok, objek dan baris dihapus lalu error dikembalikan.
+6. **pg_cron** menghapus baris `pending` yang berumur lebih dari 1 jam beserta objeknya.
+
+**Ubah genre:** dari Detail Buku atau panel Troli. Mengisi `genre` dan menetapkan `genre_source = 'user'`.
 
 **Hapus buku:** objek di Storage dan baris di database ikut terhapus, dan kuota langsung kembali. Salinan lokal di IndexedDB juga dihapus.
 
 Akses Storage dibungkus satu modul `bookStorage` (`createUploadUrls`, `getReadUrl`, `remove`, `statObject`) supaya penyedia penyimpanan bisa diganti.
+
+### 5a. Genre
+
+Satu buku memiliki **satu** genre. Nilai `books.genre` (dicek dengan constraint):
+
+| Nilai | Zona di lobi | Kata kunci subjek untuk tebakan otomatis |
+|---|---|---|
+| `fiksi_sastra` | Fiksi & Sastra | fiction, novel, literature, romance, poetry, drama, classics |
+| `fantasi_petualangan` | Fantasi & Petualangan | fantasy, adventure, science fiction, quests |
+| `misteri_thriller` | Misteri & Thriller | mystery, detective, crime, thriller, horror, ghost |
+| `anak_remaja` | Anak & Remaja | juvenile, children, young adult, fairy tales, readers |
+| `sains_teknologi` | Sains & Teknologi | science, technology, nature, mathematics, computers |
+| `sejarah_budaya` | Sejarah & Budaya | history, biography, travel, culture, philosophy, religion |
+| `bisnis_pengembangan_diri` | Bisnis & Pengembangan Diri | business, economics, self-help, psychology, success |
+| `lainnya` | Rak Lainnya | (hanya dipilih manual) |
+| `null` | Troli Buku Baru | (tidak ada tebakan dan user tidak memilih) |
+
+**`suggestGenre(subjects: string[]): Genre | null`** adalah fungsi murni di `src/lib/genre.ts`:
+
+- Subjek di-*lowercase*, lalu setiap kata kunci dicocokkan sebagai kata utuh atau frasa.
+- Skor per genre = jumlah subjek yang cocok. Genre dengan skor tertinggi dipilih. Jika seri, dipakai urutan prioritas dari yang paling spesifik ke yang paling umum: `anak_remaja` → `misteri_thriller` → `fantasi_petualangan` → `sains_teknologi` → `sejarah_budaya` → `bisnis_pengembangan_diri` → `fiksi_sastra`. Contoh: "Juvenile fiction" → `anak_remaja`; "Detective and mystery stories" → `misteri_thriller`.
+- Tidak ada yang cocok → `null`.
+- Daftar kata kunci disimpan dalam satu objek konstanta, sehingga mudah ditambah.
 
 ---
 
@@ -219,8 +249,9 @@ Rujukan visual: [mockups/lobi.html](mockups/lobi.html).
 - Hotspot tahap 1:
   - **Meja Baca** → buka buku terakhir.
   - **Meja Admin** → panel upload.
-  - **Rak (semua zona)** → `/shelf`.
-- Label zona genre (Sains & Teknologi, Fantasi & Petualangan, dll.) di tahap 1 hanya dekorasi yang mengarah ke Rak Saya. Pengelompokan per genre menunggu katalog di tahap 4.
+  - **Setiap zona genre** (7 zona + Rak Lainnya) → `/shelf?genre=<nilai>`. Label zona menampilkan jumlah buku, mis. "Sains & Teknologi · 3". Zona tanpa buku tetap tampil, tapi diredupkan.
+  - **Troli Buku Baru** (di dekat Meja Admin) → panel "Susun buku" untuk memberi genre dengan satu ketukan per buku. Badge menampilkan jumlah buku di troli dan disembunyikan jika troli kosong.
+- Ilustrasi final harus menampung **7 zona genre, Rak Lainnya, dan Troli**. Mockup saat ini baru menampilkan 4 zona.
 - Hotspot dirender sebagai `<button>` HTML di atas gambar, sehingga bisa diakses keyboard dan dibaca screen reader. Gambarnya sendiri dekoratif.
 - Animasi ringan opsional (kilau globe, cahaya lampu) memakai CSS dan dimatikan saat `prefers-reduced-motion`.
 
@@ -230,8 +261,8 @@ Rujukan visual: [mockups/lobi.html](mockups/lobi.html).
 |---|---|
 | Top bar | Logo, jumlah "Buku saya", pencarian (judul/penulis di rak sendiri), avatar + menu |
 | Sidebar | Lobi, Rak Saya, Pengaturan |
-| Peta Perpustakaan | Denah mini dengan penanda Rak, Meja Baca, Meja Admin, dan posisi Anda. Bisa diketuk untuk berpindah. |
-| Detail Buku | Muncul saat buku dipilih: cover, judul, penulis, deskripsi (dari metadata), progres + bab, Lanjutkan Membaca, Simpan offline / Hapus dari perangkat, Hapus buku |
+| Peta Perpustakaan | Denah mini dengan penanda zona genre, Troli, Meja Baca, Meja Admin, dan posisi Anda. Bisa diketuk untuk berpindah. |
+| Detail Buku | Muncul saat buku dipilih: cover, judul, penulis, deskripsi (dari metadata), progres + bab, genre (bisa diganti), Lanjutkan Membaca, Simpan offline / Hapus dari perangkat, Hapus buku |
 | Baru Dibuka | 5 buku terakhir (`last_opened_at`) dengan bar progres |
 | Upload EPUB | Drag & drop / pilih file, bar storage "34 / 100 MB" |
 
@@ -250,6 +281,7 @@ Untuk user baru tanpa buku, petugas di Meja Admin menyapa: "Rakmu masih kosong. 
 
 ## 8. Rak Saya (`/shelf`)
 
+- Filter genre di bagian atas (Semua, 7 zona, Lainnya, Troli) yang terhubung dengan parameter `?genre=`.
 - Grid cover di atas papan rak kayu, dengan bar progres tipis per buku dan penanda "Tersedia offline".
 - Pencarian judul/penulis. Urutan: terakhir dibuka (default), judul, atau tanggal ditambahkan.
 - Upload banyak file sekaligus, dengan progres dan pesan per file: duplikat, kuota penuh, terlalu besar, atau file rusak.
@@ -312,9 +344,9 @@ Untuk user baru tanpa buku, petugas di Meja Admin menyapa: "Rakmu masih kosong. 
 
 | Jenis | Alat | Cakupan wajib |
 |---|---|---|
-| Unit | Vitest | Validasi upload, logika kuota, "terbaru menang" pada progres, wrapper metadata EPUB, pembuatan username otomatis |
+| Unit | Vitest | Validasi upload, logika kuota, "terbaru menang" pada progres, wrapper metadata EPUB, pembuatan username otomatis, `suggestGenre` (tabel kasus: subjek Standard Ebooks / Gutenberg, subjek kosong, kasus seri) |
 | Database | Supabase CLI (lokal) + pgTAP | **RLS:** user A tidak bisa membaca/mengubah buku, progres, atau objek Storage milik user B. User tidak bisa mengubah `plan` atau `storage_limit_bytes`. Insert `books` dari client ditolak. `save_progress` menolak data yang lebih lama. Kuota menolak upload yang melebihi batas, termasuk dua permintaan bersamaan. |
-| E2E | Playwright | Daftar → konfirmasi email (inbox lokal Supabase) → kartu anggota → lobi. Upload EPUB contoh (Standard Ebooks) → baca → pindah halaman → buka di browser context kedua → muncul tawaran "Lanjutkan". Mode offline: buku tersimpan tetap terbuka. Hapus buku → kuota kembali. |
+| E2E | Playwright | Daftar → konfirmasi email (inbox lokal Supabase) → kartu anggota → lobi. Upload EPUB contoh (Standard Ebooks) → genre tertebak → buku muncul di zona yang benar. Upload tanpa genre → masuk Troli → disusun. Baca → pindah halaman → buka di browser context kedua → muncul tawaran "Lanjutkan". Mode offline: buku tersimpan tetap terbuka. Hapus buku → kuota kembali. |
 
 CI (GitHub Actions) menjalankan lint, typecheck, unit, pgTAP, dan E2E pada setiap push.
 
