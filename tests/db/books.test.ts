@@ -16,6 +16,7 @@ const emails = {
   cita: `db-books-cita-${run}@glosa.test`,
   dewi: `db-books-dewi-${run}@glosa.test`,
   eko: `db-books-eko-${run}@glosa.test`,
+  fajar: `db-books-fajar-${run}@glosa.test`,
 }
 const newSha = () => `${randomUUID()}${randomUUID()}`.replaceAll("-", "")
 const uploadedPaths: Array<string> = []
@@ -70,10 +71,17 @@ async function bookOf(id: string) {
 }
 
 describe("books", () => {
-  const ids = { ani: "", budi: "", cita: "", dewi: "", eko: "" }
+  const ids = { ani: "", budi: "", cita: "", dewi: "", eko: "", fajar: "" }
 
   beforeAll(async () => {
-    for (const name of ["ani", "budi", "cita", "dewi", "eko"] as const) {
+    for (const name of [
+      "ani",
+      "budi",
+      "cita",
+      "dewi",
+      "eko",
+      "fajar",
+    ] as const) {
       ids[name] = (
         await createTestMember({
           email: emails[name],
@@ -340,39 +348,85 @@ describe("books", () => {
     expect(denied.error?.code).toBe("42501")
   })
 
-  it("lets members read only their own book files", async () => {
-    const path = `${ids.budi}/${randomUUID()}.epub`
-    const upload = await adminClient()
-      .storage.from("books")
-      .upload(
-        path,
-        new Blob([new Uint8Array(64)], { type: "application/epub+zip" }),
-        {
-          contentType: "application/epub+zip",
-        }
-      )
-    expect(upload.error).toBeNull()
-    uploadedPaths.push(path)
+  it("caps fresh pending reservations", async () => {
+    for (let i = 0; i < 20; i++) {
+      const { error } = await reserve(ids.fajar, { epubBytes: 10 })
+      expect(error).toBeNull()
+    }
+    expect((await reserve(ids.fajar, { epubBytes: 10 })).error?.message).toBe(
+      "too_many_pending"
+    )
+  })
 
-    const ani = await signedInClient(emails.ani)
-    expect(
-      (await ani.storage.from("books").download(path)).error
-    ).not.toBeNull()
+  it("lets members read only the files of their ready books", async () => {
+    const admin = adminClient()
+    const epub = () =>
+      new Blob([new Uint8Array(64)], { type: "application/epub+zip" })
+    const put = async (path: string) => {
+      const { error } = await admin.storage
+        .from("books")
+        .upload(path, epub(), { contentType: "application/epub+zip" })
+      expect(error).toBeNull()
+      uploadedPaths.push(path)
+    }
+    const readyObject = async (userId: string) => {
+      const bookId = randomUUID()
+      const { data, error } = await reserve(userId, { bookId })
+      expect(error).toBeNull()
+      const { error: updateError } = await admin
+        .from("books")
+        .update({ status: "ready" })
+        .eq("id", bookId)
+      expect(updateError).toBeNull()
+      await put(data!.epub_path)
+      return data!.epub_path
+    }
+
+    const budiPath = await readyObject(ids.budi)
+    const aniPath = await readyObject(ids.ani)
 
     const budi = await signedInClient(emails.budi)
-    const own = await budi.storage.from("books").download(path)
+    const own = await budi.storage.from("books").download(budiPath)
     expect(own.error).toBeNull()
     expect(own.data?.size).toBe(64)
 
+    const ani = await signedInClient(emails.ani)
+    expect(
+      (await ani.storage.from("books").download(budiPath)).error
+    ).not.toBeNull()
+
+    // An object without a row is useless to hoard.
+    const orphan = `${ids.budi}/${randomUUID()}.epub`
+    await put(orphan)
+    expect(
+      (await budi.storage.from("books").download(orphan)).error
+    ).not.toBeNull()
+
+    // So is an object of a reservation that was never confirmed.
+    const pendingId = randomUUID()
+    const pending = await reserve(ids.budi, { bookId: pendingId })
+    expect(pending.error).toBeNull()
+    await put(pending.data!.epub_path)
+    expect(
+      (await budi.storage.from("books").download(pending.data!.epub_path)).error
+    ).not.toBeNull()
+
+    // Members cannot remove or overwrite objects.
+    await ani.storage.from("books").remove([budiPath])
+    expect(
+      (await admin.storage.from("books").download(budiPath)).error
+    ).toBeNull()
+    const overwrite = await ani.storage.from("books").upload(aniPath, epub(), {
+      contentType: "application/epub+zip",
+      upsert: true,
+    })
+    expect(overwrite.error).not.toBeNull()
+
     const sneaky = await ani.storage
       .from("books")
-      .upload(
-        `${ids.ani}/${randomUUID()}.epub`,
-        new Blob([new Uint8Array(8)], { type: "application/epub+zip" }),
-        {
-          contentType: "application/epub+zip",
-        }
-      )
+      .upload(`${ids.ani}/${randomUUID()}.epub`, epub(), {
+        contentType: "application/epub+zip",
+      })
     expect(sneaky.error).not.toBeNull()
   })
 })

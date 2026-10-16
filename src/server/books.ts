@@ -21,6 +21,7 @@ const RESERVE_ERRORS = new Set([
   "invalid_cover",
   "duplicate",
   "quota_exceeded",
+  "too_many_pending",
   "not_authenticated",
 ])
 

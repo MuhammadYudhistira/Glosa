@@ -4,6 +4,8 @@ const MESSAGES: Record<string, string> = {
   too_large: "Ukurannya lebih dari 50 MB.",
   duplicate: "Buku ini sudah ada di rakmu.",
   quota_exceeded: "Rakmu penuh. Hapus buku lain dulu untuk memberi tempat.",
+  too_many_pending:
+    "Terlalu banyak unggahan yang belum selesai. Tunggu sebentar, lalu coba lagi.",
   upload_interrupted: "Unggahan terputus. Coba lagi.",
   size_mismatch: "File tidak terunggah utuh. Coba lagi.",
   not_found: "Buku ini tidak ada di rakmu.",

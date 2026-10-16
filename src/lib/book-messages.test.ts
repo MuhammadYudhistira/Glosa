@@ -14,6 +14,9 @@ describe("bookMessage", () => {
     expect(bookMessage("quota_exceeded")).toBe(
       "Rakmu penuh. Hapus buku lain dulu untuk memberi tempat."
     )
+    expect(bookMessage("too_many_pending")).toBe(
+      "Terlalu banyak unggahan yang belum selesai. Tunggu sebentar, lalu coba lagi."
+    )
     expect(bookMessage("upload_interrupted")).toBe(
       "Unggahan terputus. Coba lagi."
     )
