@@ -16,7 +16,7 @@ export function RouteError({ error }: { error: unknown }) {
         <p className="mt-2 text-sm text-muted-foreground">
           Petugas sedang membereskannya. Coba muat ulang halaman ini.
         </p>
-        <div className="mt-6 flex justify-center gap-3 text-sm">
+        <div className="mt-6 grid gap-2.5">
           <button
             type="button"
             className={buttonVariants({ size: "block" })}
