@@ -17,7 +17,12 @@ export function formatMemberSince(iso: string): string {
 export function formatBytes(bytes: number): string {
   const mb = bytes / (1024 * 1024)
   if (mb >= 1024) return `${Number((mb / 1024).toFixed(1))} GB`
+  if (mb > 0 && mb < 10) return `${Number(mb.toFixed(1))} MB`
   return `${Math.round(mb)} MB`
+}
+
+export function formatUsage(usedBytes: number, limitBytes: number): string {
+  return `${formatBytes(usedBytes)} / ${formatBytes(limitBytes)}`
 }
 
 export function planLabel(plan: Plan): string {

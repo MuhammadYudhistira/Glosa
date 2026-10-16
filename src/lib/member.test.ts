@@ -3,6 +3,7 @@ import {
   formatBytes,
   formatMemberNo,
   formatMemberSince,
+  formatUsage,
   planLabel,
 } from "./member"
 
@@ -21,6 +22,18 @@ describe("member formatting", () => {
     expect(formatBytes(104857600)).toBe("100 MB")
     expect(formatBytes(5 * 1024 * 1024 * 1024)).toBe("5 GB")
     expect(formatBytes(1.5 * 1024 * 1024 * 1024)).toBe("1.5 GB")
+  })
+
+  it("shows small sizes with one decimal", () => {
+    expect(formatBytes(0)).toBe("0 MB")
+    expect(formatBytes(409600)).toBe("0.4 MB")
+    expect(formatBytes(742083)).toBe("0.7 MB")
+    expect(formatBytes(3.2 * 1024 * 1024)).toBe("3.2 MB")
+    expect(formatBytes(34 * 1024 * 1024)).toBe("34 MB")
+  })
+
+  it("formats storage usage", () => {
+    expect(formatUsage(409600, 104857600)).toBe("0.4 MB / 100 MB")
   })
 
   it("labels plans", () => {
