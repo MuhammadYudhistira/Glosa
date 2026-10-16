@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import {
   adminClient,
+  anonClient,
   createTestMember,
   deleteTestMembers,
   signedInClient,
@@ -94,7 +95,34 @@ describe("profiles", () => {
       .update({ storage_limit_bytes: 1 })
       .eq("id", aniId)
     expect(quota.error?.code).toBe("42501")
-    expect((await profileOf(aniId)).plan).toBe("free")
+    const memberNo = await asAni
+      .from("profiles")
+      .update({ member_no: 999999 })
+      .eq("id", aniId)
+    expect(memberNo.error?.code).toBe("42501")
+    const after = await profileOf(aniId)
+    expect(after.plan).toBe("free")
+    expect(after.member_no).not.toBe(999999)
+  })
+
+  it("shows nothing to a visitor without a session", async () => {
+    const { data, error } = await anonClient().from("profiles").select("id")
+    // The anon role has no grant at all: refused outright, never any rows.
+    expect(error?.code).toBe("42501")
+    expect(data ?? []).toEqual([])
+  })
+
+  it("does not let a member edit another member's profile", async () => {
+    const before = await profileOf(budiId)
+    const asAni = await signedInClient(aniEmail)
+    const { data, error } = await asAni
+      .from("profiles")
+      .update({ display_name: "Diretas" })
+      .eq("id", budiId)
+      .select()
+    expect(error).toBeNull()
+    expect(data).toEqual([])
+    expect(await profileOf(budiId)).toEqual(before)
   })
 
   it("answers whether a username is available", async () => {

@@ -35,13 +35,18 @@ export async function createTestMember(opts: {
   return data.user
 }
 
-/** A client signed in as the given member (publishable key, RLS applies). */
-export async function signedInClient(email: string) {
-  const client = createClient<Database>(
+/** A client with the publishable key and no session (RLS applies as anon). */
+export function anonClient() {
+  return createClient<Database>(
     requireEnv("SUPABASE_URL"),
     requireEnv("SUPABASE_PUBLISHABLE_KEY"),
     { auth: { persistSession: false, autoRefreshToken: false } }
   )
+}
+
+/** A client signed in as the given member (publishable key, RLS applies). */
+export async function signedInClient(email: string) {
+  const client = anonClient()
   const { error } = await client.auth.signInWithPassword({
     email,
     password: TEST_PASSWORD,
