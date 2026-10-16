@@ -86,6 +86,19 @@ export async function signIn(
   await page.getByRole("button", { name: "Tanda tangan & masuk" }).click()
 }
 
+export async function userIdOf(email: string): Promise<string> {
+  for (let page = 1; ; page++) {
+    const { data, error } = await admin().auth.admin.listUsers({
+      page,
+      perPage: 1000,
+    })
+    if (error) throw error
+    const user = data.users.find((candidate) => candidate.email === email)
+    if (user) return user.id
+    if (data.users.length < 1000) throw new Error(`No user with email ${email}`)
+  }
+}
+
 export async function signInAndOnboard(page: Page, member: TestMember) {
   await signIn(page, member)
   await expect(page).toHaveURL(/\/welcome$/)
