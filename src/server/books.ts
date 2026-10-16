@@ -281,7 +281,7 @@ export const listBooksFn = createServerFn({ method: "GET" }).handler(
       supabase
         .from("books")
         .select(
-          "id, title, author, description, language, genre, genre_source, size_bytes, status, created_at, last_opened_at, cover_path"
+          "id, title, author, description, language, genre, genre_source, size_bytes, status, created_at, last_opened_at, cover_path, reading_progress(percentage)"
         )
         .order("created_at", { ascending: false }),
       supabase
@@ -321,6 +321,8 @@ export const listBooksFn = createServerFn({ method: "GET" }).handler(
         createdAt: row.created_at,
         lastOpenedAt: row.last_opened_at,
         coverUrl: row.cover_path ? (covers.get(row.cover_path) ?? null) : null,
+        // RLS returns only this member's row, so there is at most one.
+        progress: row.reading_progress[0]?.percentage ?? null,
       })),
       usage: {
         usedBytes: usedBytes(

@@ -12,4 +12,5 @@ export const sherlock: ShelfBook = {
   createdAt: "2026-10-15T03:00:00+00:00",
   lastOpenedAt: null,
   coverUrl: null,
+  progress: null,
 }

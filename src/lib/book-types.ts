@@ -14,6 +14,8 @@ export type ShelfBook = {
   lastOpenedAt: string | null
   /** Signed URL valid for one hour, or null when the book has no cover. */
   coverUrl: string | null
+  /** Last percentage read, as stored on the server (0–100), or null when never read. */
+  progress: number | null
 }
 
 export type StorageUsage = { usedBytes: number; limitBytes: number; plan: Plan }

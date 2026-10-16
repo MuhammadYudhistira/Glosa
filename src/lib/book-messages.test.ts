@@ -25,6 +25,25 @@ describe("bookMessage", () => {
     )
   })
 
+  it("explains reading and offline problems", () => {
+    expect(bookMessage("offline_not_saved")).toBe(
+      "Buku ini belum tersimpan di perangkat ini. Sambungkan internet untuk membukanya."
+    )
+    expect(bookMessage("offline_no_shelf")).toBe(
+      "Rakmu belum tersimpan di perangkat ini. Sambungkan internet untuk membukanya."
+    )
+    expect(bookMessage("download_failed")).toBe(
+      "Buku gagal diunduh. Coba lagi."
+    )
+    expect(bookMessage("device_full")).toBe(
+      "Penyimpanan perangkat penuh. Buku ini tetap bisa dibaca, tapi tidak tersimpan untuk offline."
+    )
+    expect(bookMessage("device_full_offline")).toBe(
+      "Penyimpanan perangkat penuh. Buku ini tidak bisa disimpan untuk offline."
+    )
+    expect(bookMessage("offline")).toBe("Butuh internet.")
+  })
+
   it("falls back for unknown codes, including prototype keys", () => {
     const fallback = "Ada yang tidak beres. Coba lagi sebentar lagi."
     expect(bookMessage("unknown")).toBe(fallback)

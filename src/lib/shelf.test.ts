@@ -15,6 +15,7 @@ function book(overrides: Partial<ShelfBook>): ShelfBook {
     createdAt: "2026-10-01T00:00:00+00:00",
     lastOpenedAt: null,
     coverUrl: null,
+    progress: null,
     ...overrides,
   }
 }

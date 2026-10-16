@@ -10,6 +10,15 @@ const MESSAGES: Record<string, string> = {
   size_mismatch: "File tidak terunggah utuh. Coba lagi.",
   not_found: "Buku ini tidak ada di rakmu.",
   not_authenticated: "Sesi masukmu sudah habis. Masuk lagi, ya.",
+  offline_not_saved:
+    "Buku ini belum tersimpan di perangkat ini. Sambungkan internet untuk membukanya.",
+  offline_no_shelf:
+    "Rakmu belum tersimpan di perangkat ini. Sambungkan internet untuk membukanya.",
+  download_failed: "Buku gagal diunduh. Coba lagi.",
+  device_full:
+    "Penyimpanan perangkat penuh. Buku ini tetap bisa dibaca, tapi tidak tersimpan untuk offline.",
+  device_full_offline:
+    "Penyimpanan perangkat penuh. Buku ini tidak bisa disimpan untuk offline.",
   offline: "Butuh internet.",
 }
 
