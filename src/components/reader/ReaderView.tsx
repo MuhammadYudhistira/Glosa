@@ -9,7 +9,12 @@ import {
 } from "@/lib/reader-settings"
 import type { TocItem } from "@/lib/reader-types"
 import { readerFonts } from "./reader-fonts"
-import { type ReaderMove, keyMove, tapAction } from "./reader-input"
+import {
+  type ReaderMove,
+  isTypingTarget,
+  keyMove,
+  tapAction,
+} from "./reader-input"
 
 export type ReaderLocation = {
   fraction: number
@@ -58,20 +63,6 @@ function toLocation(detail: RelocateDetail): ReaderLocation {
   }
 }
 
-/**
- * Keys typed into a field or used inside a dialog never turn pages. Duck-typed:
- * events from the book's iframe carry elements from another window.
- */
-function isTypingTarget(target: EventTarget | null): boolean {
-  const element = target as { closest?: (selector: string) => unknown } | null
-  return (
-    typeof element?.closest === "function" &&
-    element.closest(
-      "input, select, textarea, [contenteditable], [role='dialog']"
-    ) !== null
-  )
-}
-
 /** Renders one EPUB with foliate-js (spec §9). Opens the file once per `file`. */
 export function ReaderView({
   file,
@@ -88,6 +79,7 @@ export function ReaderView({
   const viewRef = useRef<View | null>(null)
   const callbacksRef = useRef(callbacks)
   const settingsRef = useRef(settings)
+  // Read once on purpose: the start position applies only when a file opens.
   const startRef = useRef(start)
 
   useEffect(() => {
@@ -113,9 +105,29 @@ export function ReaderView({
       else await view.next()
     }
 
+    let tornDown = false
+    // Shared by cleanup and the early exits; never throws, so the element and
+    // the book are always released even if the paginator cannot close.
+    const teardown = async () => {
+      if (tornDown) return
+      tornDown = true
+      viewRef.current = null
+      document.removeEventListener("keydown", onKey)
+      host.removeEventListener("pointerdown", interact)
+      host.removeEventListener("wheel", interact)
+      try {
+        view?.close()
+      } catch (error) {
+        console.error(error)
+      }
+      view?.remove()
+      await opened?.close()
+    }
+
     const onKey = (event: KeyboardEvent) => {
       const direction = keyMove(event.key)
       if (!direction || event.defaultPrevented) return
+      if (event.altKey || event.ctrlKey || event.metaKey) return
       if (isTypingTarget(event.target)) return
       event.preventDefault()
       interact()
@@ -166,13 +178,20 @@ export function ReaderView({
         view.addEventListener("load", onSectionLoad)
         host.append(view)
         await view.open(opened.book)
+        if (isCancelled()) {
+          await teardown()
+          return
+        }
         applySettings(view, settingsRef.current)
         viewRef.current = view
         const startAt = startRef.current
         await view.init(
           startAt ? { lastLocation: startAt } : { showTextStart: true }
         )
-        if (isCancelled()) return
+        if (isCancelled()) {
+          await teardown()
+          return
+        }
         const current = view
         call().onReady({
           controls: {
@@ -191,13 +210,7 @@ export function ReaderView({
 
     return () => {
       cancelled = true
-      viewRef.current = null
-      document.removeEventListener("keydown", onKey)
-      host.removeEventListener("pointerdown", interact)
-      host.removeEventListener("wheel", interact)
-      view?.close()
-      view?.remove()
-      void opened?.close()
+      void teardown()
     }
   }, [file])
 

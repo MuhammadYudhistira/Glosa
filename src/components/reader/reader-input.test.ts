@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { keyMove, tapAction } from "./reader-input"
+import { isTypingTarget, keyMove, tapAction } from "./reader-input"
 
 describe("tapAction", () => {
   it("turns pages from the outer 30% and opens the frame from the middle", () => {
@@ -21,5 +21,19 @@ describe("keyMove", () => {
     expect(keyMove("PageUp")).toBe("prev")
     expect(keyMove("PageDown")).toBe("next")
     expect(keyMove("a")).toBeNull()
+  })
+})
+
+describe("isTypingTarget", () => {
+  it("is true when the target sits inside a field or dialog", () => {
+    const target = { closest: (s: string) => (s.includes("input") ? {} : null) }
+    expect(isTypingTarget(target as unknown as EventTarget)).toBe(true)
+  })
+
+  it("is false for other elements, null and objects without closest", () => {
+    const plain = { closest: () => null }
+    expect(isTypingTarget(plain as unknown as EventTarget)).toBe(false)
+    expect(isTypingTarget(null)).toBe(false)
+    expect(isTypingTarget({} as EventTarget)).toBe(false)
   })
 })

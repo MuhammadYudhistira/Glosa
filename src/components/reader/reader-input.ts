@@ -24,3 +24,17 @@ export function keyMove(key: string): ReaderMove | null {
       return null
   }
 }
+
+/**
+ * Keys typed into a field or used inside a dialog never turn pages. Duck-typed:
+ * events from the book's iframe carry elements from another window.
+ */
+export function isTypingTarget(target: EventTarget | null): boolean {
+  const element = target as { closest?: (selector: string) => unknown } | null
+  return (
+    typeof element?.closest === "function" &&
+    element.closest(
+      "input, select, textarea, [contenteditable], [role='dialog']"
+    ) !== null
+  )
+}
