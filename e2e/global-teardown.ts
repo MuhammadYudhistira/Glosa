@@ -17,15 +17,38 @@ export default async function globalTeardown() {
     }
     if (data.users.length < 1000) break
   }
+  const failed: Array<string> = []
   for (const id of stale) {
-    const { data: objects } = await client.storage
-      .from("books")
-      .list(id, { limit: 1000 })
-    if (objects && objects.length > 0) {
-      await client.storage
-        .from("books")
-        .remove(objects.map((object) => `${id}/${object.name}`))
+    if (!(await removeFiles(client, id))) {
+      failed.push(id)
+      continue
     }
-    await client.auth.admin.deleteUser(id)
+    const { error } = await client.auth.admin.deleteUser(id)
+    if (error) failed.push(id)
+  }
+  if (failed.length > 0) {
+    throw new Error(
+      `E2E teardown could not clean up ${failed.length} user(s), retry on the next run: ${failed.join(", ")}`
+    )
+  }
+}
+
+/** Removes every object in the user's folder. Returns false if anything failed. */
+async function removeFiles(
+  client: ReturnType<typeof admin>,
+  id: string
+): Promise<boolean> {
+  const limit = 1000
+  for (;;) {
+    const { data, error } = await client.storage
+      .from("books")
+      .list(id, { limit })
+    if (error) return false
+    if (data.length === 0) return true
+    const { error: removeError } = await client.storage
+      .from("books")
+      .remove(data.map((object) => `${id}/${object.name}`))
+    if (removeError) return false
+    if (data.length < limit) return true
   }
 }
