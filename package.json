@@ -35,7 +35,7 @@
     "@zip.js/zip.js": "^2.23.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
-    "foliate-js": "github:johnfactotum/foliate-js#78914aef4466eb960965702401634c2cb348e9b1",
+    "foliate-js": "https://codeload.github.com/johnfactotum/foliate-js/tar.gz/78914aef4466eb960965702401634c2cb348e9b1",
     "lucide-react": "^1.57.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
