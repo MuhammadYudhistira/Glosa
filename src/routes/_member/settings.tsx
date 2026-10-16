@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Panel } from "@/components/ui/panel"
 import { authMessage } from "@/lib/auth-messages"
+import { clearLocalData } from "@/lib/local/device"
 import { normalizeUsername } from "@/lib/username"
 import { deleteAccountFn, updateProfileFn } from "@/server/profile"
 
@@ -80,6 +81,10 @@ function SettingsPage() {
     }
     // Navigate once; root beforeLoad re-reads the session. Invalidating first
     // would make the _member guard redirect to /login before this navigation.
+    // The account is gone: its copies on this device go too.
+    await clearLocalData().catch((error: unknown) =>
+      console.error("clearing this device failed", error)
+    )
     await router.navigate({ href: "/" })
   }
 

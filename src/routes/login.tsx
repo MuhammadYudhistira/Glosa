@@ -13,6 +13,7 @@ import { GuestBookRules } from "@/components/auth/GuestBookRules"
 import { LibrarianBubble } from "@/components/auth/LibrarianBubble"
 import { PaperField } from "@/components/auth/PaperField"
 import { Button } from "@/components/ui/button"
+import { resolveUser } from "@/lib/current-user"
 import { authMessage } from "@/lib/auth-messages"
 import { guestRedirect, safeNext } from "@/lib/redirects"
 import { signInFn } from "@/server/auth"
@@ -22,8 +23,8 @@ export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): { next?: string } => ({
     next: typeof search.next === "string" ? search.next : undefined,
   }),
-  beforeLoad: ({ context }) => {
-    const target = guestRedirect(context.user)
+  beforeLoad: async ({ context }) => {
+    const target = guestRedirect(await resolveUser(context.user))
     if (target) throw redirect({ href: target })
   },
   loader: () => visitorsTodayFn(),

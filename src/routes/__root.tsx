@@ -6,14 +6,15 @@ import {
 } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
-import type { ReactNode } from "react"
+import { type ReactNode, useEffect } from "react"
 
-import { getSessionUserFn } from "@/server/session"
+import { currentUser } from "@/lib/current-user"
+import { forgetUser, rememberUser } from "@/lib/session-cache"
 import { SceneBackdrop } from "@/components/scene/SceneBackdrop"
 import appCss from "@/styles.css?url"
 
 export const Route = createRootRoute({
-  beforeLoad: async () => ({ user: await getSessionUserFn() }),
+  beforeLoad: async () => ({ user: await currentUser() }),
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -43,9 +44,19 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
+  const { user } = Route.useRouteContext()
+
+  // Keep the last member seen online, so the app can still open offline.
+  useEffect(() => {
+    if (user) rememberUser(user)
+    else if (user === null) forgetUser()
+  }, [user])
+
   return (
     <>
-      <SceneBackdrop />
+      {/* In the offline shell nobody is known yet and the shell was rendered for
+          "/": the scene would not match the page the browser renders. */}
+      {user !== undefined && <SceneBackdrop />}
       <div className="relative z-10">
         <Outlet />
       </div>

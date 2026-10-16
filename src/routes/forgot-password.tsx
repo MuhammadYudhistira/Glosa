@@ -6,13 +6,14 @@ import { GuestBook } from "@/components/auth/GuestBook"
 import { LibrarianBubble } from "@/components/auth/LibrarianBubble"
 import { PaperField } from "@/components/auth/PaperField"
 import { Button } from "@/components/ui/button"
+import { resolveUser } from "@/lib/current-user"
 import { authMessage } from "@/lib/auth-messages"
 import { guestRedirect } from "@/lib/redirects"
 import { requestPasswordResetFn } from "@/server/auth"
 
 export const Route = createFileRoute("/forgot-password")({
-  beforeLoad: ({ context }) => {
-    const target = guestRedirect(context.user)
+  beforeLoad: async ({ context }) => {
+    const target = guestRedirect(await resolveUser(context.user))
     if (target) throw redirect({ href: target })
   },
   head: () => ({ meta: [{ title: "Lupa Kata Sandi — Glosa" }] }),

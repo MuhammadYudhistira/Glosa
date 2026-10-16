@@ -6,14 +6,17 @@ import { GuestBook } from "@/components/auth/GuestBook"
 import { LibrarianBubble } from "@/components/auth/LibrarianBubble"
 import { PaperField } from "@/components/auth/PaperField"
 import { Button } from "@/components/ui/button"
+import { resolveUser } from "@/lib/current-user"
 import { authMessage } from "@/lib/auth-messages"
 import { DEFAULT_MEMBER_PATH } from "@/lib/redirects"
 import { updatePasswordFn } from "@/server/auth"
 
 export const Route = createFileRoute("/reset-password")({
   // Reached through the recovery link, which signs the member in first.
-  beforeLoad: ({ context }) => {
-    if (!context.user) throw redirect({ href: "/forgot-password" })
+  beforeLoad: async ({ context }) => {
+    if (!(await resolveUser(context.user))) {
+      throw redirect({ href: "/forgot-password" })
+    }
   },
   head: () => ({ meta: [{ title: "Kata Sandi Baru — Glosa" }] }),
   component: ResetPasswordPage,

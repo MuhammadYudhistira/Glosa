@@ -10,6 +10,7 @@ import {
   usernameStatusText,
 } from "@/components/auth/useUsernameCheck"
 import { Button } from "@/components/ui/button"
+import { resolveUser } from "@/lib/current-user"
 import { authMessage } from "@/lib/auth-messages"
 import { guestRedirect } from "@/lib/redirects"
 import { normalizeUsername } from "@/lib/username"
@@ -17,8 +18,8 @@ import { signUpFn } from "@/server/auth"
 import { checkUsernameFn } from "@/server/profile"
 
 export const Route = createFileRoute("/register")({
-  beforeLoad: ({ context }) => {
-    const target = guestRedirect(context.user)
+  beforeLoad: async ({ context }) => {
+    const target = guestRedirect(await resolveUser(context.user))
     if (target) throw redirect({ href: target })
   },
   head: () => ({ meta: [{ title: "Formulir Anggota — Glosa" }] }),

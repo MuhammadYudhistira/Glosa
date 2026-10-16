@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react"
 import { saveProgressFn } from "@/server/reading"
+import { clearLocalData } from "./local/device"
 import { localPositionStore } from "./local/positions"
 import {
   type ProgressSync,
@@ -58,4 +59,20 @@ export function useSyncStatus(): SyncStatus {
     () => progressSync().status(),
     () => "synced"
   )
+}
+
+const LEAVE_FLUSH_MS = 3_000
+
+/**
+ * Before signing out: send the positions still waiting (for a few seconds at
+ * most), then wipe this device's copies (plan 1C, decision 6).
+ */
+export async function leaveDevice(): Promise<void> {
+  await Promise.race([
+    progressSync()
+      .flush()
+      .catch(() => undefined),
+    new Promise((resolve) => setTimeout(resolve, LEAVE_FLUSH_MS)),
+  ])
+  await clearLocalData()
 }

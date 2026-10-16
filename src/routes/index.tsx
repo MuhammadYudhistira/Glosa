@@ -2,12 +2,13 @@ import { Link, createFileRoute, redirect } from "@tanstack/react-router"
 import { buttonVariants } from "@/components/ui/button"
 import { Logo } from "@/components/ui/logo"
 import { Panel } from "@/components/ui/panel"
+import { resolveUser } from "@/lib/current-user"
 import { guestRedirect } from "@/lib/redirects"
 import { SITE_TAGLINE } from "@/lib/site"
 
 export const Route = createFileRoute("/")({
-  beforeLoad: ({ context }) => {
-    const target = guestRedirect(context.user)
+  beforeLoad: async ({ context }) => {
+    const target = guestRedirect(await resolveUser(context.user))
     if (target) throw redirect({ href: target })
   },
   head: () => ({
