@@ -53,7 +53,7 @@ test("a Standard Ebooks EPUB lands in its guessed genre and frees its space when
 
   const dialog = await bringBooks(page, SHERLOCK)
   await expect(
-    dialog.getByText("The Adventures of Sherlock Holmes")
+    dialog.getByText("The Adventures of Sherlock Holmes", { exact: true })
   ).toBeVisible()
   await expect(dialog.getByLabel("Genre")).toHaveValue("misteri_thriller")
   await acceptAll(dialog)
@@ -94,7 +94,9 @@ test("a book without subjects waits in the trolley until it gets a genre", async
       subjects: [],
     })
   )
-  await expect(dialog.getByText("Catatan Tanpa Subjek")).toBeVisible()
+  await expect(
+    dialog.getByText("Catatan Tanpa Subjek", { exact: true })
+  ).toBeVisible()
   await expect(dialog.getByLabel("Genre")).toHaveValue("")
   await acceptAll(dialog)
   await dialog.getByRole("button", { name: "Tutup" }).click()
@@ -166,7 +168,9 @@ test("a full shelf refuses new books", async ({ page }) => {
       subjects: [],
     })
   )
-  await expect(dialog.getByText("Buku Kebesaran")).toBeVisible()
+  await expect(
+    dialog.getByText("Buku Kebesaran", { exact: true })
+  ).toBeVisible()
   await dialog.getByRole("button", { name: "Terima semua" }).click()
   await expect(
     dialog.getByText("Rakmu penuh. Hapus buku lain dulu untuk memberi tempat.")
@@ -186,7 +190,7 @@ test("deleting the account removes the member's book files", async ({
       subjects: [],
     })
   )
-  await expect(dialog.getByText("Buku Milikku")).toBeVisible()
+  await expect(dialog.getByText("Buku Milikku", { exact: true })).toBeVisible()
   await acceptAll(dialog)
 
   const files = async () =>
