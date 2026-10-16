@@ -244,7 +244,10 @@
   padding: 1.25rem 1.4rem;
   color: var(--color-sepia-ink);
   background-color: var(--color-paper);
-  background-image: repeating-linear-gradient(transparent 0 27px, #e2d4b4 27px 28px);
+  background-image: repeating-linear-gradient(
+    transparent 0 27px,
+    #e2d4b4 27px 28px
+  );
 }
 .guestbook-left {
   border-radius: 0.75rem 0 0 0.75rem;
@@ -339,6 +342,16 @@
   }
 }
 
+/* shadcn components animate with tw-animate-css classes; list their data-slot
+   here as more components are added. */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="dialog-overlay"],
+  [data-slot="dialog-content"] {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 /* Rak Saya: covers stand on wooden shelf boards (spec §8). */
 /* In the components layer so Tailwind utilities (w-24, ...) can still override. */
 @layer components {
@@ -350,7 +363,7 @@
   .shelf-slot {
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: 0.4rem;
     padding: 0 0.6rem 0.8rem;
     border-bottom: 0.7rem solid #5b3a1f;
@@ -404,5 +417,33 @@
     display: block;
     width: 100%;
     height: 0.5rem;
+    appearance: none;
+    border: 0;
+    border-radius: 9999px;
+    overflow: hidden;
+    background: rgb(255 255 255 / 0.1);
+  }
+  .storage-meter::-webkit-meter-bar {
+    border: 0;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.1);
+  }
+  .storage-meter::-webkit-meter-optimum-value {
+    background: var(--color-mint);
+  }
+  .storage-meter::-webkit-meter-suboptimum-value {
+    background: #f5b942;
+  }
+  .storage-meter::-webkit-meter-even-less-good-value {
+    background: #ef6b6b;
+  }
+  .storage-meter::-moz-meter-bar {
+    background: var(--color-mint);
+  }
+  .storage-meter:-moz-meter-sub-optimum::-moz-meter-bar {
+    background: #f5b942;
+  }
+  .storage-meter:-moz-meter-sub-sub-optimum::-moz-meter-bar {
+    background: #ef6b6b;
   }
 }

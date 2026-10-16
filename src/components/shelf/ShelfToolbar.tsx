@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router"
-import { useEffect, useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { SHELF_SORTS, type ShelfSort } from "@/lib/shelf"
 
@@ -9,11 +9,21 @@ export function ShelfToolbar({ q, sort }: { q: string; sort: ShelfSort }) {
   const searchId = useId()
   const sortId = useId()
 
+  const pushed = useRef(q)
+
+  // A ?q= change we did not push (browser Back/Forward) replaces the input text.
+  useEffect(() => {
+    if (q === pushed.current) return
+    pushed.current = q
+    setText(q)
+  }, [q])
+
   // Debounce typing into the URL (?q=) so results follow without a jump per keystroke.
   useEffect(() => {
     const query = text.trim()
     if (query === q) return
     const timer = setTimeout(() => {
+      pushed.current = query
       void navigate({
         search: (prev) => ({ ...prev, q: query || undefined }),
         replace: true,

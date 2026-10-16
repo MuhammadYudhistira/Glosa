@@ -21,7 +21,7 @@ export function BookGrid({
             className="block w-full rounded-sm text-left outline-offset-4 focus-visible:outline-2 focus-visible:outline-mint"
           >
             <BookCover book={book} />
-            <span className="mt-2 line-clamp-2 text-xs font-bold">
+            <span className="mt-2 line-clamp-2 block min-h-[2lh] text-xs font-bold">
               {book.title}
             </span>
             {book.author && (
