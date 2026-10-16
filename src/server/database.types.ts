@@ -39,6 +39,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      books: {
+        Row: {
+          author: string
+          cover_path: string | null
+          created_at: string
+          description: string | null
+          file_path: string
+          genre: string | null
+          genre_source: string | null
+          id: string
+          language: string | null
+          last_opened_at: string | null
+          sha256: string
+          size_bytes: number
+          status: string
+          subjects: string[]
+          title: string
+          user_id: string
+          work_id: string | null
+        }
+        Insert: {
+          author?: string
+          cover_path?: string | null
+          created_at?: string
+          description?: string | null
+          file_path: string
+          genre?: string | null
+          genre_source?: string | null
+          id?: string
+          language?: string | null
+          last_opened_at?: string | null
+          sha256: string
+          size_bytes: number
+          status?: string
+          subjects?: string[]
+          title: string
+          user_id: string
+          work_id?: string | null
+        }
+        Update: {
+          author?: string
+          cover_path?: string | null
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          genre?: string | null
+          genre_source?: string | null
+          id?: string
+          language?: string | null
+          last_opened_at?: string | null
+          sha256?: string
+          size_bytes?: number
+          status?: string
+          subjects?: string[]
+          title?: string
+          user_id?: string
+          work_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -84,6 +152,27 @@ export type Database = {
     }
     Functions: {
       normalize_username: { Args: { raw: string }; Returns: string }
+      reserve_book_upload: {
+        Args: {
+          p_author: string
+          p_book_id: string
+          p_cover_bytes?: number
+          p_cover_type?: string
+          p_description?: string
+          p_epub_bytes: number
+          p_genre?: string
+          p_genre_source?: string
+          p_language?: string
+          p_sha256: string
+          p_subjects: string[]
+          p_title: string
+          p_user_id: string
+        }
+        Returns: {
+          cover_object_path: string
+          epub_path: string
+        }[]
+      }
       unique_username: { Args: { base: string }; Returns: string }
       username_available: { Args: { candidate: string }; Returns: boolean }
       visitors_today: { Args: never; Returns: number }
