@@ -38,6 +38,17 @@ describe("parseReaderSettings", () => {
       })
     ).toEqual({ ...DEFAULT_READER_SETTINGS, theme: "dark", fontSize: 140 })
   })
+
+  it("replaces values that are off their step with the defaults", () => {
+    expect(parseReaderSettings({ fontSize: 85, lineHeight: 1.55 })).toEqual(
+      DEFAULT_READER_SETTINGS
+    )
+    expect(parseReaderSettings({ fontSize: 150, lineHeight: 1.8 })).toEqual({
+      ...DEFAULT_READER_SETTINGS,
+      fontSize: 150,
+      lineHeight: 1.8,
+    })
+  })
 })
 
 describe("steppers", () => {

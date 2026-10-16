@@ -34,8 +34,17 @@ export const DEFAULT_READER_SETTINGS: ReaderSettings = {
 
 export const ReaderSettingsSchema = z.object({
   font: z.enum(READER_FONTS),
-  fontSize: z.number().int().min(FONT_SIZE.min).max(FONT_SIZE.max),
-  lineHeight: z.number().min(LINE_HEIGHT.min).max(LINE_HEIGHT.max),
+  fontSize: z
+    .number()
+    .int()
+    .min(FONT_SIZE.min)
+    .max(FONT_SIZE.max)
+    .refine((value) => value % FONT_SIZE.step === 0),
+  lineHeight: z
+    .number()
+    .min(LINE_HEIGHT.min)
+    .max(LINE_HEIGHT.max)
+    .refine((value) => Math.abs(value * 10 - Math.round(value * 10)) < 1e-9),
   margin: z.enum(READER_MARGINS),
   theme: z.enum(READER_THEMES),
   flow: z.enum(READER_FLOWS),
@@ -120,7 +129,10 @@ export type FontFace = {
 }
 export type FontSources = Record<ReaderFont, FontFace>
 
-/** The stylesheet foliate puts into every section of the book (spec §9). */
+/**
+ * The stylesheet foliate puts into every section of the book (spec §9).
+ * The font sources are trusted, built in the app (`readerFonts`), and never come from settings.
+ */
 export function readerCss(
   settings: ReaderSettings,
   fonts: FontSources

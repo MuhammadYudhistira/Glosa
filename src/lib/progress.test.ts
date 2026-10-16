@@ -47,6 +47,10 @@ describe("jumpOffer", () => {
     expect(jumpOffer(position(45, earlier), position(45.8, later))).toBeNull()
   })
 
+  it("stays quiet when the positions are exactly one point apart", () => {
+    expect(jumpOffer(position(45, earlier), position(46, later))).toBeNull()
+  })
+
   it("treats a device without a position as 0% from the beginning of time", () => {
     const server = position(3, earlier)
     expect(jumpOffer(null, server)).toBe(server)
@@ -68,6 +72,18 @@ describe("ProgressEntrySchema", () => {
 
   it("accepts a valid entry", () => {
     expect(ProgressEntrySchema.safeParse(entry).success).toBe(true)
+  })
+
+  it("rejects a cfi longer than the maximum", () => {
+    expect(
+      ProgressEntrySchema.safeParse({ ...entry, cfi: "a".repeat(2001) }).success
+    ).toBe(false)
+  })
+
+  it("rejects a negative percentage", () => {
+    expect(
+      ProgressEntrySchema.safeParse({ ...entry, percentage: -1 }).success
+    ).toBe(false)
   })
 
   it("rejects out-of-range or malformed values", () => {
