@@ -1,0 +1,68 @@
+import type { ReactNode } from "react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import type { ShelfBook } from "@/lib/book-types"
+import { formatLongDate } from "@/lib/dates"
+import { genreLabel } from "@/lib/genre"
+import { formatBytes } from "@/lib/member"
+import { BookCover } from "./BookCover"
+
+export function BookDetail({
+  book,
+  onClose,
+  children,
+}: {
+  book: ShelfBook | null
+  onClose: () => void
+  children?: ReactNode
+}) {
+  return (
+    <Dialog
+      open={book !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      {book && (
+        <DialogContent className="sm:max-w-lg">
+          <div className="flex gap-4">
+            <BookCover book={book} className="w-24 shrink-0" />
+            <DialogHeader className="text-left">
+              <DialogTitle className="font-heading text-xl">
+                {book.title}
+              </DialogTitle>
+              {book.author && (
+                <DialogDescription>{book.author}</DialogDescription>
+              )}
+            </DialogHeader>
+          </div>
+          {book.description && (
+            <p className="max-h-48 overflow-y-auto text-sm leading-relaxed text-muted-foreground">
+              {book.description}
+            </p>
+          )}
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+            <dt className="text-muted-foreground">Genre</dt>
+            <dd>{genreLabel(book.genre)}</dd>
+            {book.language && (
+              <>
+                <dt className="text-muted-foreground">Bahasa</dt>
+                <dd>{book.language}</dd>
+              </>
+            )}
+            <dt className="text-muted-foreground">Ukuran</dt>
+            <dd>{formatBytes(book.sizeBytes)}</dd>
+            <dt className="text-muted-foreground">Ditambahkan</dt>
+            <dd>{formatLongDate(new Date(book.createdAt))}</dd>
+          </dl>
+          {children}
+        </DialogContent>
+      )}
+    </Dialog>
+  )
+}

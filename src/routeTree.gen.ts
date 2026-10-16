@@ -20,6 +20,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as MemberLobbyRouteImport } from './routes/_member/lobby'
 import { Route as MemberSettingsRouteImport } from './routes/_member/settings'
+import { Route as MemberShelfRouteImport } from './routes/_member/shelf'
 import { Route as MemberWelcomeRouteImport } from './routes/_member/welcome'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
@@ -78,6 +79,11 @@ const MemberSettingsRoute = MemberSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => MemberRoute,
 } as any)
+const MemberShelfRoute = MemberShelfRouteImport.update({
+  id: '/shelf',
+  path: '/shelf',
+  getParentRoute: () => MemberRoute,
+} as any)
 const MemberWelcomeRoute = MemberWelcomeRouteImport.update({
   id: '/welcome',
   path: '/welcome',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/lobby': typeof MemberLobbyRoute
   '/settings': typeof MemberSettingsRoute
+  '/shelf': typeof MemberShelfRoute
   '/welcome': typeof MemberWelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/lobby': typeof MemberLobbyRoute
   '/settings': typeof MemberSettingsRoute
+  '/shelf': typeof MemberShelfRoute
   '/welcome': typeof MemberWelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/_member/lobby': typeof MemberLobbyRoute
   '/_member/settings': typeof MemberSettingsRoute
+  '/_member/shelf': typeof MemberShelfRoute
   '/_member/welcome': typeof MemberWelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/lobby'
     | '/settings'
+    | '/shelf'
     | '/welcome'
     | '/auth/callback'
     | '/auth/confirm'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/lobby'
     | '/settings'
+    | '/shelf'
     | '/welcome'
     | '/auth/callback'
     | '/auth/confirm'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/_member/lobby'
     | '/_member/settings'
+    | '/_member/shelf'
     | '/_member/welcome'
     | '/auth/callback'
     | '/auth/confirm'
@@ -283,6 +295,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MemberSettingsRouteImport
       parentRoute: typeof MemberRoute
     }
+    '/_member/shelf': {
+      id: '/_member/shelf'
+      path: '/shelf'
+      fullPath: '/shelf'
+      preLoaderRoute: typeof MemberShelfRouteImport
+      parentRoute: typeof MemberRoute
+    }
     '/_member/welcome': {
       id: '/_member/welcome'
       path: '/welcome'
@@ -310,12 +329,14 @@ declare module '@tanstack/react-router' {
 interface MemberRouteChildren {
   MemberLobbyRoute: typeof MemberLobbyRoute
   MemberSettingsRoute: typeof MemberSettingsRoute
+  MemberShelfRoute: typeof MemberShelfRoute
   MemberWelcomeRoute: typeof MemberWelcomeRoute
 }
 
 const MemberRouteChildren: MemberRouteChildren = {
   MemberLobbyRoute: MemberLobbyRoute,
   MemberSettingsRoute: MemberSettingsRoute,
+  MemberShelfRoute: MemberShelfRoute,
   MemberWelcomeRoute: MemberWelcomeRoute,
 }
 

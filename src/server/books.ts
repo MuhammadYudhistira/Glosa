@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import type { ActionResult } from "@/lib/action-result"
@@ -12,6 +13,7 @@ import {
   cleanDescription,
 } from "@/lib/upload-rules"
 import { bookStorage, objectPaths } from "./book-storage"
+import type { Database } from "./database.types"
 import { getSupabaseAdminClient, getSupabaseServerClient } from "./supabase"
 
 const RESERVE_ERRORS = new Set([
@@ -24,7 +26,7 @@ const RESERVE_ERRORS = new Set([
 
 const fail = (code: string) => ({ ok: false as const, code })
 
-type AdminClient = ReturnType<typeof getSupabaseAdminClient>
+type AdminClient = SupabaseClient<Database>
 
 const UploadRequestSchema = z
   .object({
