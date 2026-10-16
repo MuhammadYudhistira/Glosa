@@ -3738,7 +3738,8 @@ export function useUploadQueue() {
           dispatch({
             type: "failed",
             id,
-            code: error instanceof EpubError ? error.code : "epub_invalid",
+            // Not every failure means a broken file (e.g. the file vanished after selection).
+            code: error instanceof EpubError ? error.code : "unknown",
           })
         )
     }
