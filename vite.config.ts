@@ -9,6 +9,11 @@ export default defineConfig(({ mode }) => {
   Object.assign(process.env, loadEnv(mode, process.cwd(), ""))
   return {
     resolve: { tsconfigPaths: true },
-    plugins: [devtools(), tailwindcss(), tanstackStart(), viteReact()],
+    plugins: [
+      devtools({ consolePiping: { enabled: false } }),
+      tailwindcss(),
+      tanstackStart(),
+      viteReact(),
+    ],
   }
 })
