@@ -177,4 +177,67 @@ describe("createProgressSync", () => {
     await sync.record(entry("a", 2))
     expect(listener).toHaveBeenCalledTimes(2)
   })
+
+  it("sends a keepalive flush at once, even while another send is still running", async () => {
+    const { store } = memoryStore()
+    const resolvers: Array<(value: typeof ok) => void> = []
+    const send = vi.fn(
+      () =>
+        new Promise<typeof ok>((resolve) => {
+          resolvers.push(resolve)
+        })
+    )
+    const sync = createProgressSync({ store, send, isOnline: () => true })
+
+    await sync.record(entry("a", 1))
+    const first = sync.flush()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(send).toHaveBeenCalledTimes(1)
+
+    await sync.record(entry("a", 2))
+    const second = sync.flush({ keepalive: true })
+    expect(send).toHaveBeenCalledTimes(2)
+    expect(send).toHaveBeenLastCalledWith([entry("a", 2)], { keepalive: true })
+
+    resolvers[1](ok)
+    resolvers[0](ok)
+    await Promise.all([first, second])
+    expect(sync.status()).toBe("synced")
+  })
+
+  it("survives a storage error: the flush resolves and the status turns failing after three", async () => {
+    const { store } = memoryStore()
+    store.pending = async () => {
+      throw new Error("IndexedDB closed")
+    }
+    const send = vi.fn().mockResolvedValue(ok)
+    const sync = createProgressSync({ store, send, isOnline: () => true })
+
+    await expect(sync.flush()).resolves.toBeUndefined()
+    expect(sync.status()).toBe("pending")
+    await sync.flush()
+    await sync.flush()
+    expect(sync.status()).toBe("failing")
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it("resets the failure count when the queue is empty", async () => {
+    const { store } = memoryStore([entry("a", 1)])
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, code: "unknown" })
+      .mockResolvedValueOnce({ ok: false, code: "unknown" })
+      .mockResolvedValueOnce({ ok: false, code: "unknown" })
+    const sync = createProgressSync({ store, send, isOnline: () => true })
+
+    await sync.flush()
+    await sync.flush()
+    await store.markSynced([entry("a", 1)])
+    await sync.flush()
+    expect(sync.status()).toBe("synced")
+
+    await sync.record(entry("a", 2))
+    await sync.flush()
+    expect(sync.status()).toBe("pending")
+  })
 })

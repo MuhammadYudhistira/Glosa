@@ -40,7 +40,6 @@ export function createProgressSync(options: {
   let timer: ReturnType<typeof setTimeout> | null = null
   let running: Promise<void> | null = null
   let again = false
-  let keepaliveNext = false
 
   function setStatus(next: SyncStatus) {
     if (next === status) return
@@ -49,6 +48,11 @@ export function createProgressSync(options: {
   }
 
   const stuck = () => (failures >= failLimit ? "failing" : "pending")
+
+  function fail() {
+    failures += 1
+    setStatus(stuck())
+  }
 
   async function confirm(batch: Array<ProgressEntry>) {
     await store.markSynced(batch)
@@ -59,19 +63,11 @@ export function createProgressSync(options: {
     }
   }
 
-  async function sendWaiting(keepalive: boolean) {
-    const entries =
-      keepalive && recent.size > 0
-        ? [...recent.values()]
-        : await store.pending()
-    if (entries.length === 0) {
-      setStatus("synced")
-      return
-    }
-    if (!isOnline()) {
-      setStatus("failing")
-      return
-    }
+  /** Sends the entries in batches and confirms each one. False on the first failure. */
+  async function deliver(
+    entries: Array<ProgressEntry>,
+    keepalive: boolean
+  ): Promise<boolean> {
     for (let i = 0; i < entries.length; i += MAX_PROGRESS_BATCH) {
       const batch = entries.slice(i, i + MAX_PROGRESS_BATCH)
       let result: SendResult
@@ -80,15 +76,42 @@ export function createProgressSync(options: {
       } catch {
         result = { ok: false, code: "network" }
       }
-      if (!result.ok) {
-        failures += 1
-        setStatus(stuck())
-        return
-      }
+      if (!result.ok) return false
       await confirm(batch)
     }
+    return true
+  }
+
+  async function settle() {
     failures = 0
     setStatus((await store.pending()).length > 0 ? "pending" : "synced")
+  }
+
+  /** Runs one attempt. A storage error counts as one failure and never rejects. */
+  async function attempt(work: () => Promise<void>) {
+    try {
+      await work()
+    } catch {
+      fail()
+    }
+  }
+
+  async function sendWaiting() {
+    const entries = await store.pending()
+    if (entries.length === 0) {
+      failures = 0
+      setStatus("synced")
+      return
+    }
+    if (!isOnline()) {
+      setStatus("failing")
+      return
+    }
+    if (await deliver(entries, false)) {
+      await settle()
+    } else {
+      fail()
+    }
   }
 
   function flush(flushOptions: { keepalive?: boolean } = {}): Promise<void> {
@@ -96,7 +119,21 @@ export function createProgressSync(options: {
       clearTimeout(timer)
       timer = null
     }
-    keepaliveNext ||= flushOptions.keepalive === true
+    if (flushOptions.keepalive && recent.size > 0) {
+      // Starts in this tick, outside the queue, so it is not held up by a send
+      // that is still running and the request can outlive the page.
+      return attempt(async () => {
+        if (!isOnline()) {
+          setStatus("failing")
+          return
+        }
+        if (await deliver([...recent.values()], true)) {
+          await settle()
+        } else {
+          fail()
+        }
+      })
+    }
     if (running) {
       again = true
       return running
@@ -105,11 +142,8 @@ export function createProgressSync(options: {
       try {
         do {
           again = false
-          const keepalive = keepaliveNext
-          keepaliveNext = false
-          await sendWaiting(keepalive)
-          // `again` is set by a flush() call made while the loop awaits, which
-          // the type checker cannot see; the loop must not be treated as once.
+          await attempt(sendWaiting)
+          // again is set by a flush() made while the loop awaits; TS cannot see it.
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         } while (again)
       } finally {
