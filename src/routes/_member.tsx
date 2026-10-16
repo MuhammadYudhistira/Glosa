@@ -1,5 +1,6 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 import { memberRedirect } from "@/lib/redirects"
+import { useProgressFlush } from "@/lib/progress-sync-client"
 
 export const Route = createFileRoute("/_member")({
   beforeLoad: ({ context, location }) => {
@@ -7,5 +8,10 @@ export const Route = createFileRoute("/_member")({
     if (target || !context.user) throw redirect({ href: target ?? "/login" })
     return { user: context.user }
   },
-  component: Outlet,
+  component: MemberLayout,
 })
+
+function MemberLayout() {
+  useProgressFlush()
+  return <Outlet />
+}
