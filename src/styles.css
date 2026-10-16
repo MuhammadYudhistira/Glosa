@@ -446,4 +446,13 @@
   .storage-meter:-moz-meter-sub-sub-optimum::-moz-meter-bar {
     background: #ef6b6b;
   }
+  .reader-host {
+    position: absolute;
+    inset: 0;
+  }
+  .reader-view {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
 }

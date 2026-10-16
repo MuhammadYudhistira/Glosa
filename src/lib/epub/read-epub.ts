@@ -1,50 +1,17 @@
-import {
-  BlobReader,
-  BlobWriter,
-  TextWriter,
-  ZipReader,
-  configure,
-} from "@zip.js/zip.js"
 import { type Genre, suggestGenre } from "@/lib/genre"
-import { type FileProblem, checkEpubFile } from "@/lib/upload-rules"
+import { checkEpubFile } from "@/lib/upload-rules"
 import { type Cover, shrinkCover } from "./cover"
 import { sha256Hex } from "./hash"
 import { type BookMetadata, normalizeMetadata } from "./metadata"
+import { EpubError, openZip } from "./zip-loader"
+
+export { EpubError }
 
 export type ParsedEpub = {
   metadata: BookMetadata
   cover: Cover | null
   sha256: string
   suggestedGenre: Genre | null
-}
-
-export class EpubError extends Error {
-  constructor(readonly code: FileProblem) {
-    super(code)
-  }
-}
-
-/** The same zip loader foliate-js uses in view.js, without its PDF/MOBI handling. */
-async function openZip(file: Blob) {
-  configure({ useWebWorkers: false })
-  const reader = new ZipReader(new BlobReader(file))
-  const entries = await reader.getEntries()
-  const byName = new Map(entries.map((entry) => [entry.filename, entry]))
-  return {
-    // Directory entries have no getData: zip.js types them as `directory: true`.
-    loadText: (name: string) => {
-      const entry = byName.get(name)
-      return entry && !entry.directory ? entry.getData(new TextWriter()) : null
-    },
-    loadBlob: (name: string, type?: string) => {
-      const entry = byName.get(name)
-      return entry && !entry.directory
-        ? entry.getData(new BlobWriter(type))
-        : null
-    },
-    getSize: (name: string) => byName.get(name)?.uncompressedSize ?? 0,
-    close: () => reader.close(),
-  }
 }
 
 /**
