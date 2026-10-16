@@ -123,7 +123,11 @@ export const verifyOtpFn = createServerFn({ method: "POST" })
 
 export const signOutFn = createServerFn({ method: "POST" }).handler(
   async () => {
-    await getSupabaseServerClient().auth.signOut()
+    // "local" always clears this browser's session cookie, even if revoking fails.
+    const { error } = await getSupabaseServerClient().auth.signOut({
+      scope: "local",
+    })
+    if (error) console.error("signOut failed", error)
     throw redirect({ href: "/" })
   }
 )

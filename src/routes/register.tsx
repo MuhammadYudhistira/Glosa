@@ -34,6 +34,7 @@ function RegisterPage() {
   )
   const [username, setUsername] = useState("")
   const usernameStatus = useUsernameCheck(username, checker)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [pending, setPending] = useState(false)
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
@@ -41,7 +42,11 @@ function RegisterPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (usernameStatus.state === "checking") return
+    // Tell the member instead of silently ignoring a submit mid-check.
+    if (usernameStatus.state === "checking") {
+      setErrorCode("username_checking")
+      return
+    }
     if (usernameStatus.state !== "available") {
       setErrorCode(
         usernameStatus.state === "taken" ? "username_taken" : "username_invalid"
@@ -126,7 +131,9 @@ function RegisterPage() {
                   usernameStatus.state === "taken" ||
                   usernameStatus.state === "invalid"
                     ? usernameStatusText(usernameStatus)
-                    : undefined
+                    : errorCode === "username_checking"
+                      ? message?.field
+                      : undefined
                 }
                 hint={usernameStatusText(usernameStatus)}
               />
@@ -160,6 +167,8 @@ function RegisterPage() {
                 type="checkbox"
                 name="acceptedTerms"
                 required
+                checked={acceptedTerms}
+                onChange={(event) => setAcceptedTerms(event.target.checked)}
                 className="mt-0.5 accent-[#1f5e45]"
               />
               <span>
@@ -184,7 +193,19 @@ function RegisterPage() {
                 {pending ? "Mengirim…" : "Ajukan keanggotaan"}
               </Button>
               <div>
-                <GoogleButton label="Daftar dengan Google" />
+                <GoogleButton
+                  label="Daftar dengan Google"
+                  disabled={!acceptedTerms}
+                  describedBy={acceptedTerms ? undefined : "google-terms-hint"}
+                />
+                {!acceptedTerms && (
+                  <output
+                    id="google-terms-hint"
+                    className="mt-1 block text-xs text-sepia-muted"
+                  >
+                    Centang persetujuan tata tertib dulu.
+                  </output>
+                )}
               </div>
             </div>
           </form>

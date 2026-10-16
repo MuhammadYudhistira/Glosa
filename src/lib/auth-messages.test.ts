@@ -9,6 +9,11 @@ describe("authMessage", () => {
     )
   })
 
+  it("explains a cancelled Google sign-in and a pending username check", () => {
+    expect(authMessage("access_denied").bubble).toContain("dibatalkan")
+    expect(authMessage("username_checking").field).toContain("dicek")
+  })
+
   it("falls back to a generic message", () => {
     expect(authMessage("something_new").field).toBe(
       "Terjadi kesalahan. Coba lagi."

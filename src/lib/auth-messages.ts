@@ -71,6 +71,15 @@ const MESSAGES: Record<string, AuthMessage> = {
     bubble: "Nama pengguna yang kamu ketik belum sama.",
     field: "Ketik nama penggunamu persis.",
   },
+  username_checking: {
+    bubble: "Tunggu sebentar, nama penggunamu sedang dicek.",
+    field: "Tunggu sebentar, nama pengguna sedang dicek.",
+  },
+  access_denied: {
+    bubble:
+      "Masuk dengan Google dibatalkan. Tidak apa-apa, coba lagi kapan saja.",
+    field: "Masuk dengan Google dibatalkan.",
+  },
   not_authenticated: {
     bubble: "Sesimu sudah berakhir. Silakan isi buku tamu lagi.",
     field: "Silakan masuk lagi.",

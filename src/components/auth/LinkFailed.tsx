@@ -1,8 +1,13 @@
 import { Link } from "@tanstack/react-router"
 import { authMessage } from "@/lib/auth-messages"
 
+// Codes from a cancelled OAuth consent rather than an e-mailed link: a new
+// letter would not help, so "Minta surat baru" is not offered for them.
+const OAUTH_CODES = new Set(["access_denied"])
+
 export function LinkFailed({ code }: { code: string }) {
   const message = authMessage(code)
+  const fromEmailLink = !OAUTH_CODES.has(code)
   return (
     <main className="grid min-h-dvh place-items-center p-4">
       <div className="w-full max-w-md rounded-2xl border bg-panel p-6 text-center backdrop-blur-md">
@@ -14,9 +19,11 @@ export function LinkFailed({ code }: { code: string }) {
           <Link to="/login" className="text-mint underline">
             Ke buku tamu
           </Link>
-          <Link to="/forgot-password" className="text-mint underline">
-            Minta surat baru
-          </Link>
+          {fromEmailLink && (
+            <Link to="/forgot-password" className="text-mint underline">
+              Minta surat baru
+            </Link>
+          )}
         </div>
       </div>
     </main>

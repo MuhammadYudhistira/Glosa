@@ -24,4 +24,14 @@ describe("GoogleButton", () => {
     )
     expect(button).toBeEnabled()
   })
+
+  it("stays disabled and does not call the server while disabled", () => {
+    googleSignInFn.mockClear()
+    render(<GoogleButton label="Daftar dengan Google" disabled />)
+    const button = screen.getByRole("button", { name: "Daftar dengan Google" })
+
+    expect(button).toBeDisabled()
+    fireEvent.click(button)
+    expect(googleSignInFn).not.toHaveBeenCalled()
+  })
 })

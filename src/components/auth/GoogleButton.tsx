@@ -3,7 +3,15 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { googleSignInFn } from "@/server/auth"
 
-export function GoogleButton({ label }: { label: string }) {
+export function GoogleButton({
+  label,
+  disabled = false,
+  describedBy,
+}: {
+  label: string
+  disabled?: boolean
+  describedBy?: string
+}) {
   const startGoogle = useServerFn(googleSignInFn)
   const [pending, setPending] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -31,7 +39,8 @@ export function GoogleButton({ label }: { label: string }) {
         variant="paper"
         size="block"
         onClick={onClick}
-        disabled={pending}
+        disabled={pending || disabled}
+        aria-describedby={describedBy}
       >
         <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
           <path
