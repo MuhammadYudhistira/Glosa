@@ -16,7 +16,8 @@
     "test:db": "vitest run --config vitest.db.config.ts",
     "test:e2e": "playwright test",
     "db:push": "supabase db push --linked --yes",
-    "db:types": "supabase gen types --linked > src/server/database.types.ts"
+    "db:types": "supabase gen types --linked > src/server/database.types.ts",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -57,6 +58,7 @@
     "jsdom": "^29.1.1",
     "prettier": "^3.9.9",
     "prettier-plugin-tailwindcss": "^0.8.1",
+    "sharp": "^0.35.5",
     "supabase": "^2.121.0",
     "typescript": "^6.0.2",
     "vite": "^8",

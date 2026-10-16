@@ -27,7 +27,7 @@ function WelcomePage() {
   return (
     <main className="grid min-h-dvh place-items-center p-4">
       <Panel className="w-full max-w-md p-6 text-center sm:p-8">
-        <Logo className="mx-auto size-11" />
+        <Logo className="mx-auto size-14" />
         <h1 className="mt-3 font-heading text-2xl font-bold sm:text-3xl">
           Selamat datang di Glosa
         </h1>
