@@ -53,3 +53,19 @@ describe("clampText", () => {
     expect(clampText("panjang sekali", 8)).toBe("panjang…")
   })
 })
+
+describe("cleanDescription characters", () => {
+  it("drops surrogate and control character references", () => {
+    expect(cleanDescription("&#xD800;a")).toBe("a")
+    expect(cleanDescription("&#1;b")).toBe("b")
+    expect(cleanDescription("x&#9;y")).toBe("x y")
+  })
+})
+
+describe("clampText surrogates", () => {
+  it("never ends on a lone high surrogate", () => {
+    const result = clampText("abc😀def", 5)
+    expect(result).toBe("abc…")
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(result)).toBe(false)
+  })
+})

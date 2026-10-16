@@ -219,7 +219,8 @@ export const confirmUploadFn = createServerFn({ method: "POST" })
       console.error("book lookup failed", error)
       return fail("unknown")
     }
-    if (!book) return fail("not_found")
+    // Usually another tab's retry of the same file replaced the reservation.
+    if (!book) return fail("upload_interrupted")
     if (book.status === "ready") return { ok: true }
 
     const admin = getSupabaseAdminClient()

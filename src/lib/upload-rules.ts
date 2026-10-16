@@ -28,7 +28,11 @@ export function checkEpubFile(file: {
 
 export function clampText(value: string, max: number): string {
   if (value.length <= max) return value
-  return `${value.slice(0, max - 1).trimEnd()}…`
+  let kept = value.slice(0, max - 1)
+  const last = kept.charCodeAt(kept.length - 1)
+  // Do not leave half of a surrogate pair at the cut.
+  if (last >= 0xd800 && last <= 0xdbff) kept = kept.slice(0, -1)
+  return `${kept.trimEnd()}…`
 }
 
 const NAMED_ENTITIES: Record<string, string> = {
@@ -45,7 +49,14 @@ function decodeEntity(match: string, entity: string): string {
     const code = /^#x/i.test(entity)
       ? Number.parseInt(entity.slice(2), 16)
       : Number.parseInt(entity.slice(1), 10)
-    return Number.isInteger(code) && code > 0 && code <= 0x10ffff
+    const isControl =
+      code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d
+    const isSurrogate = code >= 0xd800 && code <= 0xdfff
+    return Number.isInteger(code) &&
+      code > 0 &&
+      code <= 0x10ffff &&
+      !isControl &&
+      !isSurrogate
       ? String.fromCodePoint(code)
       : ""
   }
