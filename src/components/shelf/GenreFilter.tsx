@@ -20,6 +20,7 @@ export function GenreFilter({
                 ...prev,
                 genre: value === "semua" ? undefined : value,
               })}
+              activeOptions={{ explicitUndefined: true }}
               aria-current={active === value ? "page" : undefined}
               className={cn(
                 "genre-chip",
