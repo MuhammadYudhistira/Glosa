@@ -177,6 +177,7 @@ function UploadRow({
           </p>
         )}
         <p
+          role={item.status === "failed" ? "alert" : undefined}
           className={cn(
             "text-xs",
             item.status === "failed" ? "text-stamp" : "text-muted-foreground"
@@ -197,6 +198,10 @@ function UploadRow({
         <div className="flex flex-col gap-1">
           <label htmlFor={selectId} className="text-xs text-muted-foreground">
             Genre
+            <span className="sr-only">
+              {" "}
+              untuk {item.title ?? item.fileName}
+            </span>
           </label>
           <select
             id={selectId}

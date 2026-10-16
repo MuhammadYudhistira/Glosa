@@ -64,7 +64,9 @@ describe("UploadPanel", () => {
     expect(
       await screen.findByText("The Adventures of Sherlock Holmes")
     ).toBeInTheDocument()
-    const genre = screen.getByLabelText("Genre")
+    const genre = screen.getByLabelText(
+      "Genre untuk The Adventures of Sherlock Holmes"
+    )
     expect(genre).toHaveValue("misteri_thriller")
     fireEvent.change(genre, { target: { value: "fiksi_sastra" } })
     fireEvent.click(screen.getByRole("button", { name: "Terima semua" }))
