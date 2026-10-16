@@ -1,6 +1,6 @@
 import { Link, createFileRoute, redirect } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { type FormEvent, useCallback, useState } from "react"
+import { type FormEvent, useCallback, useEffect, useState } from "react"
 import { AdminDesk } from "@/components/auth/AdminDesk"
 import { GoogleButton } from "@/components/auth/GoogleButton"
 import { LibrarianBubble } from "@/components/auth/LibrarianBubble"
@@ -38,6 +38,12 @@ function RegisterPage() {
   const [pending, setPending] = useState(false)
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
+  // The "still checking" notice is only true while the check runs.
+  useEffect(() => {
+    if (usernameStatus.state !== "checking") {
+      setErrorCode((code) => (code === "username_checking" ? null : code))
+    }
+  }, [usernameStatus.state])
   const message = errorCode ? authMessage(errorCode) : null
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -123,9 +129,12 @@ function RegisterPage() {
                 name="username"
                 autoComplete="username"
                 value={username}
-                onChange={(event) =>
+                onChange={(event) => {
                   setUsername(normalizeUsername(event.target.value))
-                }
+                  setErrorCode((code) =>
+                    code === "username_checking" ? null : code
+                  )
+                }}
                 required
                 error={
                   usernameStatus.state === "taken" ||

@@ -22,16 +22,16 @@ test("the camera zoom runs after a click and a second click skips it", async ({
       timeout: 3_000,
     })
     .toBeGreaterThan(0)
-  // A further click while it runs finishes it.
-  await page.mouse.click(5, 5)
-  await expect
-    .poll(
-      () =>
-        canvas.evaluate(
-          (el) =>
-            el.getAnimations().filter((a) => a.playState === "running").length
-        ),
-      { timeout: 3_000 }
-    )
-    .toBe(0)
+  // A further click while the zoom runs finishes it, checked in the same tick
+  // so the zoom ending by itself cannot satisfy the assertion.
+  const result = await canvas.evaluate((el) => {
+    const before = el.getAnimations().filter((a) => a.playState === "running")
+    window.dispatchEvent(new PointerEvent("pointerdown"))
+    return {
+      runningBefore: before.length,
+      allFinished: before.every((a) => a.playState === "finished"),
+    }
+  })
+  expect(result.runningBefore).toBeGreaterThan(0)
+  expect(result.allFinished).toBe(true)
 })
