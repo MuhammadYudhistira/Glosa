@@ -146,6 +146,45 @@ export type Database = {
         }
         Relationships: []
       }
+      reading_progress: {
+        Row: {
+          book_id: string
+          cfi: string
+          percentage: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          cfi: string
+          percentage: number
+          updated_at: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          cfi?: string
+          percentage?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_progress_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reading_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -176,6 +215,15 @@ export type Database = {
           cover_object_path: string
           epub_path: string
         }[]
+      }
+      save_progress: {
+        Args: {
+          p_book_id: string
+          p_cfi: string
+          p_percentage: number
+          p_updated_at: string
+        }
+        Returns: boolean
       }
       unique_username: { Args: { base: string }; Returns: string }
       username_available: { Args: { candidate: string }; Returns: boolean }
