@@ -12,8 +12,8 @@ export function GuestBookRules({ visitors }: { visitors: number }) {
       <h2 className="text-sm font-bold">Tata tertib perpustakaan</h2>
       <ol className="mt-1 list-decimal space-y-1 pl-4 text-[13px] leading-snug">
         <li>Buku yang kamu bawa hanya bisa dibaca olehmu.</li>
-        <li>Bagikan ulasan, bukan file.</li>
-        <li>Ketuk kata yang sulit — kami bantu artikan.</li>
+        <li>Bawa hanya buku EPUB yang memang milikmu.</li>
+        <li>Jaga kata sandimu; petugas tidak akan pernah memintanya.</li>
       </ol>
       <p className="mt-auto pt-6 text-xs text-sepia-muted">
         Pengunjung hari ini: <b>{visitors}</b>
