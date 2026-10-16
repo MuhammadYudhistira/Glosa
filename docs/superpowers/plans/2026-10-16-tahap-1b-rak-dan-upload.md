@@ -46,6 +46,13 @@ Semua keputusan berikut sudah disengaja. Reviewer tidak perlu menganggapnya seba
    - Beberapa bagian dari §8 dan §7 bergantung pada reader dan offline: bar progres baca, penanda "Tersedia offline", tombol "Lanjutkan Membaca", "Simpan offline", dan penghapusan salinan IndexedDB. Semuanya masuk 1C.
    - Sesuai aturan "tanpa tombol mati", elemen-elemen itu **tidak ditampilkan** di 1B.
 
+7. **Hapus buku hanya lewat server, plus penyapuan file yatim** (keputusan pemilik setelah review Task 3).
+   - Jika browser boleh menghapus baris `books`, anggota bisa menghapus baris tanpa filenya. Kuotanya kembali, tetapi file tetap tersimpan dan bisa dibaca.
+   - Signed upload URL berlaku 2 jam, lebih lama dari batas 1 jam baris `pending`. URL lama bisa dipakai setelah barisnya dibersihkan, sehingga meninggalkan file yatim.
+   - Karena itu izin delete dari client dicabut. `deleteBookFn` menghapus objek lalu baris dengan admin client, setelah kepemilikan dibuktikan lewat RLS.
+   - Setiap `requestUploadFn` dan `deleteBookFn` juga menyapu objek di folder anggota yang tidak dirujuk baris mana pun. Dengan begitu penyalahgunaan terbatas sekitar satu putaran kuota.
+   - Sapuan berkala untuk semua anggota ditambahkan di rencana 1D.
+
 ## Global Constraints
 
 - Node.js **≥ 24**. Package manager: **npm**.
@@ -53,7 +60,7 @@ Semua keputusan berikut sudah disengaja. Reviewer tidak perlu menganggapnya seba
 - Teks UI dalam **bahasa Indonesia**, path URL dalam bahasa Inggris.
 - **Secret key Supabase hanya dipakai di server**, di kode test, atau di secret CI. Jangan pernah dipakai di kode client atau diberi prefix `VITE_`.
 - Kolom `plan`, `storage_limit_bytes`, dan `member_no` **tidak boleh** bisa diubah client.
-- `books`: **tidak ada insert dari client**. Insert hanya lewat `reserve_book_upload`, dan fungsi itu hanya bisa dieksekusi `service_role`. Client hanya boleh select dan delete miliknya sendiri, serta update kolom `genre`, `genre_source`, dan `last_opened_at`.
+- `books`: **tidak ada insert dari client**. Insert hanya lewat `reserve_book_upload`, dan fungsi itu hanya bisa dieksekusi `service_role`. Client hanya boleh select miliknya sendiri dan update kolom `genre`, `genre_source`, dan `last_opened_at`. **Tidak ada delete dari client.** Hapus buku hanya lewat `deleteBookFn`, yang menghapus objek Storage lebih dulu (keputusan 7).
 - Bucket Storage `books` **privat**. Anggota hanya bisa membaca objek berprefix `{auth.uid()}/`. Tidak ada policy insert, update, atau delete.
 - Path objek: `{user_id}/{book_id}.epub` dan `{user_id}/{book_id}-cover.webp` (atau `.jpg`).
 - Ukuran EPUB maks. **52428800** byte (50 MB) per file. Cover maks. **2097152** byte (2 MB), lebar **400** px.
@@ -1182,6 +1189,43 @@ git add supabase/migrations/20261016000100_books.sql tests/db/books.test.ts src/
 git commit -m "feat(db): add books with quota-checked reservations and a private storage bucket"
 ```
 
+- [ ] **Step 6 (perbaikan setelah review): cabut delete dari client, tambah test kuota buku lama**
+
+Migrasi `20261016000100_books.sql` sudah diterapkan, jadi jangan diubah. Buat migrasi lanjutan `supabase/migrations/20261016000200_books_server_delete.sql`:
+
+```sql
+-- Members no longer delete book rows themselves: a direct delete would free the
+-- quota while the Storage objects stay readable. Deletion goes through the
+-- server, which removes the objects first (plan 1B, decision 7).
+drop policy books_delete_own on public.books;
+revoke delete on table public.books from authenticated;
+
+-- Keep the bucket private with its intended limits, even if it pre-existed.
+update storage.buckets
+set public = false,
+    file_size_limit = 52428800,
+    allowed_mime_types = array['application/epub+zip', 'image/webp', 'image/jpeg']
+where id = 'books';
+```
+
+Ubah `tests/db/books.test.ts`:
+1. Test "rejects client inserts and deletes of other members' books" diganti namanya menjadi `"rejects client inserts and deletes"`. Hapus baris milik Budi dan baris milik sendiri sama-sama harus gagal dengan `error.code === "42501"`, dan kedua buku tetap ada (cek dengan `bookOf`).
+2. Di test "lets members change only the genre of their own books", tambahkan pengecekan bahwa update `{ last_opened_at: new Date().toISOString() }` pada buku sendiri berhasil (`error` null).
+3. Di test "rejects duplicates, oversized files and inconsistent covers", tambahkan pengecekan bahwa EPUB berukuran tepat `50 * MB` diterima (`error` null).
+4. Tambah member kelima `eko` dan test baru `"keeps counting ready books, however old"`:
+   - Set limit eko 10 MB lewat admin dan periksa `error`.
+   - Lewat admin, insert baris `status: "ready"` berukuran 9 MB dengan `created_at` 2 jam yang lalu.
+   - `reserve(ids.eko, { epubBytes: 6 * MB })` harus menghasilkan `quota_exceeded`.
+5. Periksa `error` pada update limit dewi. Di `afterAll`, lempar error jika `storage.remove(uploadedPaths)` gagal.
+
+Run: `npm run db:push && npm run db:types && npm run test:db`
+Expected: migrasi lanjutan diterapkan dan test DB lulus. Totalnya 21: 10 profiles dan 11 books.
+
+```bash
+git add supabase/migrations/20261016000200_books_server_delete.sql tests/db/books.test.ts src/server/database.types.ts
+git commit -m "fix(db): keep book deletion on the server and test that old books keep counting"
+```
+
 ---
 
 ### Task 4: Modul `bookStorage`, server function buku, dan hapus akun
@@ -1200,7 +1244,7 @@ git commit -m "feat(db): add books with quota-checked reservations and a private
   - `GENRE_VALUES`, `isGenre`, `Genre` (Task 1).
   - `toPlan` (1A).
 - Produces:
-  - `bookStorage(client)` → `{ createUploadUrl(path): Promise<string>; getReadUrls(paths, expiresIn?): Promise<Map<string, string>>; statObject(path): Promise<number | null>; remove(paths): Promise<void> }`
+  - `bookStorage(client)` → `{ createUploadUrl(path): Promise<string>; getReadUrls(paths, expiresIn?): Promise<Map<string, string>>; statObject(path): Promise<number | null>; listFolder(folder): Promise<Array<string>>; remove(paths): Promise<void> }`
   - `objectPaths(row: { file_path: string; cover_path: string | null }): Array<string>`
   - Server function (dipanggil `fn({ data })`):
     - `requestUploadFn(UploadRequest) → UploadTicket`
@@ -1223,11 +1267,13 @@ import { adminClient, createTestMember, deleteTestMembers } from "./helpers"
 const run = Date.now().toString(36)
 
 describe("bookStorage", () => {
+  let folder = ""
   let path = ""
 
   beforeAll(async () => {
     const member = await createTestMember({ email: `db-storage-${run}@glosa.test` })
-    path = `${member.id}/${randomUUID()}.epub`
+    folder = member.id
+    path = `${folder}/${randomUUID()}.epub`
   })
 
   afterAll(async () => {
@@ -1246,6 +1292,7 @@ describe("bookStorage", () => {
     })
     expect(response.ok).toBe(true)
     expect(await storage.statObject(path)).toBe(1234)
+    expect(await storage.listFolder(folder)).toContain(path)
 
     const readUrls = await storage.getReadUrls([path])
     const readUrl = readUrls.get(path)
@@ -1255,6 +1302,7 @@ describe("bookStorage", () => {
 
     await storage.remove([path])
     expect(await storage.statObject(path)).toBeNull()
+    expect(await storage.listFolder(folder)).not.toContain(path)
   })
 
   it("lists a book's objects", () => {
@@ -1282,6 +1330,7 @@ import type { Database } from "./database.types"
 
 export const BOOKS_BUCKET = "books"
 const REMOVE_BATCH = 100
+const LIST_PAGE = 1000
 
 /** Every Storage object that belongs to a book row. */
 export function objectPaths(row: { file_path: string; cover_path: string | null }): Array<string> {
@@ -1318,6 +1367,17 @@ export function bookStorage(client: SupabaseClient<Database>) {
       const { data, error } = await bucket().info(path)
       if (error) return null
       return data.size ?? null
+    },
+
+    /** Paths of every object directly inside a member's folder. */
+    async listFolder(folder: string): Promise<Array<string>> {
+      const paths: Array<string> = []
+      for (let offset = 0; ; offset += LIST_PAGE) {
+        const { data, error } = await bucket().list(folder, { limit: LIST_PAGE, offset })
+        if (error) throw error
+        paths.push(...data.map((object) => `${folder}/${object.name}`))
+        if (data.length < LIST_PAGE) return paths
+      }
     },
 
     async remove(paths: Array<string>): Promise<void> {
@@ -1417,6 +1477,23 @@ async function removeAbandonedUploads(admin: AdminClient, userId: string, sha256
   if (deleteError) throw deleteError
 }
 
+/**
+ * Removes objects in the member's folder that no book row refers to: files
+ * uploaded through a still-valid signed URL after their row was cleaned up.
+ * Runs on every upload request and deletion, which bounds what a member can
+ * keep beyond their quota; plan 1D adds a periodic sweep for everyone.
+ */
+async function removeOrphanedObjects(admin: AdminClient, userId: string) {
+  const storage = bookStorage(admin)
+  const [objects, rowsResult] = await Promise.all([
+    storage.listFolder(userId),
+    admin.from("books").select("file_path, cover_path").eq("user_id", userId),
+  ])
+  if (rowsResult.error) throw rowsResult.error
+  const referenced = new Set(rowsResult.data.flatMap(objectPaths))
+  await storage.remove(objects.filter((path) => !referenced.has(path)))
+}
+
 export const requestUploadFn = createServerFn({ method: "POST" })
   .validator((data: UploadRequest) => UploadRequestSchema.parse(data))
   .handler(async ({ data }): Promise<UploadTicket> => {
@@ -1430,8 +1507,9 @@ export const requestUploadFn = createServerFn({ method: "POST" })
     const admin = getSupabaseAdminClient()
     try {
       await removeAbandonedUploads(admin, user.id, data.sha256)
+      await removeOrphanedObjects(admin, user.id)
     } catch (error) {
-      console.error("abandoned upload cleanup failed", error)
+      console.error("upload cleanup failed", error)
       return fail("unknown")
     }
 
@@ -1501,7 +1579,12 @@ export const confirmUploadFn = createServerFn({ method: "POST" })
     const storage = bookStorage(admin)
     const epubSize = await storage.statObject(book.file_path)
     const coverSize = book.cover_path ? await storage.statObject(book.cover_path) : 0
-    if (epubSize === null || coverSize === null || epubSize + coverSize !== book.size_bytes) {
+    if (
+      epubSize === null ||
+      coverSize === null ||
+      coverSize > MAX_COVER_BYTES ||
+      epubSize + coverSize !== book.size_bytes
+    ) {
       try {
         await storage.remove(objectPaths(book))
       } catch (removeError) {
@@ -1627,16 +1710,28 @@ export const deleteBookFn = createServerFn({ method: "POST" })
     }
     if (!book) return fail("not_found")
 
+    // Members cannot delete rows themselves (decision 7): remove the files first,
+    // then the row with the admin client, scoped to this member.
+    const admin = getSupabaseAdminClient()
     try {
-      await bookStorage(getSupabaseAdminClient()).remove(objectPaths(book))
+      await bookStorage(admin).remove(objectPaths(book))
     } catch (removeError) {
       console.error("removing book files failed", removeError)
       return fail("unknown")
     }
-    const { error: deleteError } = await supabase.from("books").delete().eq("id", book.id)
+    const { error: deleteError } = await admin
+      .from("books")
+      .delete()
+      .eq("id", book.id)
+      .eq("user_id", user.id)
     if (deleteError) {
       console.error("deleting the book failed", deleteError)
       return fail("unknown")
+    }
+    try {
+      await removeOrphanedObjects(admin, user.id)
+    } catch (sweepError) {
+      console.error("orphan sweep failed", sweepError)
     }
     return { ok: true }
   })
@@ -1680,7 +1775,7 @@ Expected: `client bundle clean`.
 - [ ] **Step 8: Typecheck, test, lint, commit**
 
 Run: `npm run typecheck && npm test && npm run lint && npm run check && npm run test:db`
-Expected: semua lulus. Test DB berjumlah 22 (10 + 10 + 2).
+Expected: semua lulus. Test DB berjumlah 23 (10 + 11 + 2).
 
 ```bash
 git add src/server/book-storage.ts src/server/books.ts src/server/profile.ts tests/db/book-storage.test.ts
