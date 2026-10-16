@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import type { ActionResult } from "@/lib/action-result"
 import { type UsernameProblem, validateUsername } from "@/lib/username"
+import { bookStorage, objectPaths } from "./book-storage"
 import { getSupabaseAdminClient, getSupabaseServerClient } from "./supabase"
 
 const UNIQUE_VIOLATION = "23505"
@@ -117,10 +118,25 @@ export const deleteAccountFn = createServerFn({ method: "POST" })
       return { ok: false, code: "confirm_mismatch" }
     }
 
-    // Plan 1B adds: remove the member's Storage objects before deleting the user.
-    const { error } = await getSupabaseAdminClient().auth.admin.deleteUser(
-      user.id
-    )
+    // Book files live in Storage, outside the database cascade: remove them first,
+    // and keep the account if that fails so no files are orphaned.
+    const admin = getSupabaseAdminClient()
+    const { data: books, error: booksError } = await admin
+      .from("books")
+      .select("file_path, cover_path")
+      .eq("user_id", user.id)
+    if (booksError) {
+      console.error("book lookup failed", booksError)
+      return { ok: false, code: "unknown" }
+    }
+    try {
+      await bookStorage(admin).remove(books.flatMap(objectPaths))
+    } catch (removeError) {
+      console.error("removing book files failed", removeError)
+      return { ok: false, code: "unknown" }
+    }
+
+    const { error } = await admin.auth.admin.deleteUser(user.id)
     if (error) return { ok: false, code: "unknown" }
 
     // The user no longer exists server-side; just clear the session cookies.
