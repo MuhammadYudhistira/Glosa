@@ -15,6 +15,7 @@ const emails = {
   budi: `db-books-budi-${run}@glosa.test`,
   cita: `db-books-cita-${run}@glosa.test`,
   dewi: `db-books-dewi-${run}@glosa.test`,
+  eko: `db-books-eko-${run}@glosa.test`,
 }
 const newSha = () => `${randomUUID()}${randomUUID()}`.replaceAll("-", "")
 const uploadedPaths: Array<string> = []
@@ -69,10 +70,10 @@ async function bookOf(id: string) {
 }
 
 describe("books", () => {
-  const ids = { ani: "", budi: "", cita: "", dewi: "" }
+  const ids = { ani: "", budi: "", cita: "", dewi: "", eko: "" }
 
   beforeAll(async () => {
-    for (const name of ["ani", "budi", "cita", "dewi"] as const) {
+    for (const name of ["ani", "budi", "cita", "dewi", "eko"] as const) {
       ids[name] = (
         await createTestMember({
           email: emails[name],
@@ -84,7 +85,10 @@ describe("books", () => {
 
   afterAll(async () => {
     if (uploadedPaths.length > 0) {
-      await adminClient().storage.from("books").remove(uploadedPaths)
+      const { error } = await adminClient()
+        .storage.from("books")
+        .remove(uploadedPaths)
+      if (error) throw error
     }
     await deleteTestMembers()
   })
@@ -135,9 +139,15 @@ describe("books", () => {
       size_bytes: 1000,
       status: "ready",
     })
+
+    const opened = await ani
+      .from("books")
+      .update({ last_opened_at: new Date().toISOString() })
+      .eq("id", aniBook)
+    expect(opened.error).toBeNull()
   })
 
-  it("rejects client inserts and deletes of other members' books", async () => {
+  it("rejects client inserts and deletes", async () => {
     const aniBook = await readyBook(ids.ani)
     const budiBook = await readyBook(ids.budi)
     const ani = await signedInClient(emails.ani)
@@ -156,11 +166,13 @@ describe("books", () => {
       .delete()
       .eq("id", budiBook)
       .select("id")
-    expect(other.data).toEqual([])
-    expect(await bookOf(budiBook)).toBeTruthy()
+    expect(other.error?.code).toBe("42501")
 
     const own = await ani.from("books").delete().eq("id", aniBook).select("id")
-    expect(own.data).toHaveLength(1)
+    expect(own.error?.code).toBe("42501")
+
+    expect(await bookOf(budiBook)).toBeTruthy()
+    expect(await bookOf(aniBook)).toBeTruthy()
   })
 
   it("is refused to anonymous visitors", async () => {
@@ -192,6 +204,7 @@ describe("books", () => {
     expect(
       (await reserve(ids.ani, { epubBytes: 50 * MB + 1 })).error?.message
     ).toBe("too_large")
+    expect((await reserve(ids.ani, { epubBytes: 50 * MB })).error).toBeNull()
     expect((await reserve(ids.ani, { coverBytes: 100 })).error?.message).toBe(
       "invalid_cover"
     )
@@ -221,10 +234,11 @@ describe("books", () => {
   })
 
   it("does not count abandoned pending uploads", async () => {
-    await adminClient()
+    const { error: limitError } = await adminClient()
       .from("profiles")
       .update({ storage_limit_bytes: 10 * MB })
       .eq("id", ids.dewi)
+    expect(limitError).toBeNull()
     const stale = randomUUID()
     const { error } = await adminClient()
       .from("books")
@@ -239,6 +253,31 @@ describe("books", () => {
       })
     expect(error).toBeNull()
     expect((await reserve(ids.dewi, { epubBytes: 6 * MB })).error).toBeNull()
+  })
+
+  it("keeps counting ready books, however old", async () => {
+    const { error: limitError } = await adminClient()
+      .from("profiles")
+      .update({ storage_limit_bytes: 10 * MB })
+      .eq("id", ids.eko)
+    expect(limitError).toBeNull()
+    const old = randomUUID()
+    const { error } = await adminClient()
+      .from("books")
+      .insert({
+        id: old,
+        user_id: ids.eko,
+        title: "Lama",
+        file_path: `${ids.eko}/${old}.epub`,
+        size_bytes: 9 * MB,
+        sha256: newSha(),
+        status: "ready",
+        created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      })
+    expect(error).toBeNull()
+    expect((await reserve(ids.eko, { epubBytes: 6 * MB })).error?.message).toBe(
+      "quota_exceeded"
+    )
   })
 
   it("files the book under the member's folder", async () => {
