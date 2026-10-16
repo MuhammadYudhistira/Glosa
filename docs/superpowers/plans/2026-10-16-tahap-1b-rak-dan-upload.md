@@ -50,8 +50,12 @@ Semua keputusan berikut sudah disengaja. Reviewer tidak perlu menganggapnya seba
    - Jika browser boleh menghapus baris `books`, anggota bisa menghapus baris tanpa filenya. Kuotanya kembali, tetapi file tetap tersimpan dan bisa dibaca.
    - Signed upload URL berlaku 2 jam, lebih lama dari batas 1 jam baris `pending`. URL lama bisa dipakai setelah barisnya dibersihkan, sehingga meninggalkan file yatim.
    - Karena itu izin delete dari client dicabut. `deleteBookFn` menghapus objek lalu baris dengan admin client, setelah kepemilikan dibuktikan lewat RLS.
-   - Setiap `requestUploadFn` dan `deleteBookFn` juga menyapu objek di folder anggota yang tidak dirujuk baris mana pun. Dengan begitu penyalahgunaan terbatas sekitar satu putaran kuota.
-   - Sapuan berkala untuk semua anggota ditambahkan di rencana 1D.
+   - Setiap `requestUploadFn` dan `deleteBookFn` juga menyapu objek di folder anggota yang tidak dirujuk baris mana pun.
+   - **Koreksi setelah review akhir:** sapuan saja tidak membatasi penimbunan. Anggota bisa mengaku ukuran kecil lalu mengunggah 50 MB lewat signed URL, atau mengunggah ulang lewat URL dari buku yang sudah dihapus, lalu tidak pernah mengirim request lagi.
+   - Karena itu ada dua penjaga tambahan (migrasi `20261016000400_books_hoarding_guards.sql`):
+     - policy baca Storage kini hanya mengizinkan objek yang dirujuk buku **ready** milik anggota (`books_objects_select_ready`), sehingga file timbunan tidak bisa dibaca dan tidak berguna;
+     - `reserve_book_upload` menolak permintaan baru jika anggota sudah punya 20 reservasi pending yang masih segar (`too_many_pending`).
+   - Sisa biayanya, yaitu objek timbunan yang tetap memakan storage sampai disapu, ditangani sapuan berkala di rencana 1D. Sapuan itu wajib mencakup: baris pending > 1 jam milik semua anggota beserta objeknya, objek tanpa baris, dan folder milik UID yang sudah tidak ada.
 
 ## Global Constraints
 
