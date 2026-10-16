@@ -43,10 +43,17 @@ export function bookStorage(client: SupabaseClient<Database>) {
       )
     },
 
-    /** Size in bytes, or null when the object does not exist. */
+    /**
+     * Size in bytes, or null when Storage answers that the object does not exist
+     * (StorageApiError with statusCode "404"; its HTTP status is 400). Any other
+     * error is thrown, so a transient failure is never mistaken for a missing file.
+     */
     async statObject(path: string): Promise<number | null> {
       const { data, error } = await bucket().info(path)
-      if (error) return null
+      if (error) {
+        if ((error as { statusCode?: string }).statusCode === "404") return null
+        throw error
+      }
       return data.size ?? null
     },
 

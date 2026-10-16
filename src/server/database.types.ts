@@ -151,6 +151,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      mark_book_ready: {
+        Args: { p_book_id: string; p_user_id: string }
+        Returns: boolean
+      }
       normalize_username: { Args: { raw: string }; Returns: string }
       reserve_book_upload: {
         Args: {

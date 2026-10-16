@@ -9,6 +9,7 @@ import {
   MAX_COVER_BYTES,
   MAX_EPUB_BYTES,
   METADATA_LIMITS,
+  cleanDescription,
 } from "@/lib/upload-rules"
 import { bookStorage, objectPaths } from "./book-storage"
 import { getSupabaseAdminClient, getSupabaseServerClient } from "./supabase"
@@ -37,7 +38,12 @@ const UploadRequestSchema = z
       .nullable(),
     title: z.string().trim().min(1).max(METADATA_LIMITS.title),
     author: z.string().trim().max(METADATA_LIMITS.author),
-    description: z.string().trim().max(METADATA_LIMITS.description).nullable(),
+    description: z
+      .string()
+      .trim()
+      .max(METADATA_LIMITS.description)
+      .nullable()
+      .transform((value) => cleanDescription(value)),
     language: z.string().trim().max(METADATA_LIMITS.language).nullable(),
     subjects: z
       .array(z.string().trim().min(1).max(METADATA_LIMITS.subject))
@@ -71,15 +77,19 @@ async function removeAbandonedUploads(
       isAbandoned({ status: "pending", createdAt: row.created_at })
   )
   if (stale.length === 0) return
-  await bookStorage(admin).remove(stale.flatMap(objectPaths))
-  const { error: deleteError } = await admin
+  // Delete only rows that are still pending: one that another tab confirmed in
+  // the meantime is left alone. Leftover objects fall to the orphan sweep.
+  const { data: deleted, error: deleteError } = await admin
     .from("books")
     .delete()
     .in(
       "id",
       stale.map((row) => row.id)
     )
+    .eq("status", "pending")
+    .select("file_path, cover_path")
   if (deleteError) throw deleteError
+  await bookStorage(admin).remove(deleted.flatMap(objectPaths))
 }
 
 /**
@@ -90,13 +100,36 @@ async function removeAbandonedUploads(
  */
 async function removeOrphanedObjects(admin: AdminClient, userId: string) {
   const storage = bookStorage(admin)
-  const [objects, rowsResult] = await Promise.all([
-    storage.listFolder(userId),
-    admin.from("books").select("file_path, cover_path").eq("user_id", userId),
-  ])
+  // List first, then read the rows: every object present at listing time had its
+  // row inserted before its upload URL was signed, so the rows cannot miss it.
+  const objects = await storage.listFolder(userId)
+  const rowsResult = await admin
+    .from("books")
+    .select("file_path, cover_path")
+    .eq("user_id", userId)
   if (rowsResult.error) throw rowsResult.error
   const referenced = new Set(rowsResult.data.flatMap(objectPaths))
   await storage.remove(objects.filter((path) => !referenced.has(path)))
+}
+
+/** Removes a pending upload's objects, then its row (only while still pending). */
+async function discardUpload(
+  admin: AdminClient,
+  userId: string,
+  book: { id: string; file_path: string; cover_path: string | null }
+) {
+  try {
+    await bookStorage(admin).remove(objectPaths(book))
+  } catch (removeError) {
+    console.error("removing a discarded upload failed", removeError)
+  }
+  const { error } = await admin
+    .from("books")
+    .delete()
+    .eq("id", book.id)
+    .eq("user_id", userId)
+    .eq("status", "pending")
+  if (error) console.error("deleting a discarded reservation failed", error)
 }
 
 export const requestUploadFn = createServerFn({ method: "POST" })
@@ -154,7 +187,13 @@ export const requestUploadFn = createServerFn({ method: "POST" })
       }
     } catch (signError) {
       console.error("signing upload URLs failed", signError)
-      await admin.from("books").delete().eq("id", bookId)
+      const { error: cleanupError } = await admin
+        .from("books")
+        .delete()
+        .eq("id", bookId)
+        .eq("user_id", user.id)
+      if (cleanupError)
+        console.error("removing the reservation failed", cleanupError)
       return fail("unknown")
     }
   })
@@ -170,7 +209,7 @@ export const confirmUploadFn = createServerFn({ method: "POST" })
 
     const { data: book, error } = await supabase
       .from("books")
-      .select("id, file_path, cover_path, size_bytes, status")
+      .select("id, file_path, cover_path, size_bytes, status, created_at")
       .eq("id", data.bookId)
       .maybeSingle()
     if (error) {
@@ -181,33 +220,47 @@ export const confirmUploadFn = createServerFn({ method: "POST" })
     if (book.status === "ready") return { ok: true }
 
     const admin = getSupabaseAdminClient()
+    // An expired reservation no longer counts toward the quota, so it cannot be
+    // promoted: confirming it late would let the member exceed their quota.
+    if (isAbandoned({ status: "pending", createdAt: book.created_at })) {
+      await discardUpload(admin, user.id, book)
+      return fail("upload_interrupted")
+    }
+
     const storage = bookStorage(admin)
-    const epubSize = await storage.statObject(book.file_path)
-    const coverSize = book.cover_path
-      ? await storage.statObject(book.cover_path)
-      : 0
+    let epubSize: number | null
+    let coverSize: number | null
+    try {
+      epubSize = await storage.statObject(book.file_path)
+      coverSize = book.cover_path
+        ? await storage.statObject(book.cover_path)
+        : 0
+    } catch (statError) {
+      // Not proof that the upload is broken: keep it so the member can retry.
+      console.error("checking the uploaded files failed", statError)
+      return fail("unknown")
+    }
     if (
       epubSize === null ||
       coverSize === null ||
       coverSize > MAX_COVER_BYTES ||
       epubSize + coverSize !== book.size_bytes
     ) {
-      try {
-        await storage.remove(objectPaths(book))
-      } catch (removeError) {
-        console.error("removing a broken upload failed", removeError)
-      }
-      await admin.from("books").delete().eq("id", book.id)
+      await discardUpload(admin, user.id, book)
       return fail("size_mismatch")
     }
 
-    const { error: updateError } = await admin
-      .from("books")
-      .update({ status: "ready" })
-      .eq("id", book.id)
-    if (updateError) {
-      console.error("marking the book ready failed", updateError)
+    const { data: marked, error: markError } = await admin.rpc(
+      "mark_book_ready",
+      { p_user_id: user.id, p_book_id: book.id }
+    )
+    if (markError) {
+      console.error("marking the book ready failed", markError)
       return fail("unknown")
+    }
+    if (!marked) {
+      await discardUpload(admin, user.id, book)
+      return fail("upload_interrupted")
     }
     return { ok: true }
   })
@@ -225,7 +278,8 @@ export const listBooksFn = createServerFn({ method: "GET" }).handler(
         .from("books")
         .select(
           "id, title, author, description, language, genre, genre_source, size_bytes, status, created_at, last_opened_at, cover_path"
-        ),
+        )
+        .order("created_at", { ascending: false }),
       supabase
         .from("profiles")
         .select("plan, storage_limit_bytes")

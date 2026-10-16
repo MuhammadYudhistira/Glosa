@@ -130,7 +130,14 @@ export const deleteAccountFn = createServerFn({ method: "POST" })
       return { ok: false, code: "unknown" }
     }
     try {
-      await bookStorage(admin).remove(books.flatMap(objectPaths))
+      // Also sweep the whole folder: objects without a row (a late upload) would
+      // never be swept later, because this member will not make another request.
+      const storage = bookStorage(admin)
+      const paths = new Set([
+        ...books.flatMap(objectPaths),
+        ...(await storage.listFolder(user.id)),
+      ])
+      await storage.remove([...paths])
     } catch (removeError) {
       console.error("removing book files failed", removeError)
       return { ok: false, code: "unknown" }

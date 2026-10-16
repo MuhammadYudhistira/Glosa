@@ -295,6 +295,51 @@ describe("books", () => {
     expect((await bookOf(bookId)).size_bytes).toBe(1500)
   })
 
+  it("marks only fresh pending uploads of the member ready", async () => {
+    const admin = adminClient()
+    const markReady = (userId: string, bookId: string) =>
+      admin.rpc("mark_book_ready", { p_user_id: userId, p_book_id: bookId })
+
+    const fresh = randomUUID()
+    expect((await reserve(ids.ani, { bookId: fresh })).error).toBeNull()
+    const wrongOwner = await markReady(ids.budi, fresh)
+    expect(wrongOwner.error).toBeNull()
+    expect(wrongOwner.data).toBe(false)
+    expect((await bookOf(fresh)).status).toBe("pending")
+
+    const first = await markReady(ids.ani, fresh)
+    expect(first.error).toBeNull()
+    expect(first.data).toBe(true)
+    expect((await bookOf(fresh)).status).toBe("ready")
+
+    const again = await markReady(ids.ani, fresh)
+    expect(again.error).toBeNull()
+    expect(again.data).toBe(false)
+
+    const stale = randomUUID()
+    const { error } = await admin.from("books").insert({
+      id: stale,
+      user_id: ids.ani,
+      title: "Kedaluwarsa",
+      file_path: `${ids.ani}/${stale}.epub`,
+      size_bytes: 1000,
+      sha256: newSha(),
+      created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    })
+    expect(error).toBeNull()
+    const expired = await markReady(ids.ani, stale)
+    expect(expired.error).toBeNull()
+    expect(expired.data).toBe(false)
+    expect((await bookOf(stale)).status).toBe("pending")
+
+    const ani = await signedInClient(emails.ani)
+    const denied = await ani.rpc("mark_book_ready", {
+      p_user_id: ids.ani,
+      p_book_id: fresh,
+    })
+    expect(denied.error?.code).toBe("42501")
+  })
+
   it("lets members read only their own book files", async () => {
     const path = `${ids.budi}/${randomUUID()}.epub`
     const upload = await adminClient()
