@@ -95,6 +95,7 @@ function SettingsPage() {
       <Panel className="flex flex-col items-center gap-6 p-6 sm:flex-row sm:items-start">
         <MembershipCard member={user} className="shrink-0" />
         <form
+          method="post"
           onSubmit={onSaveProfile}
           className="w-full min-w-0 space-y-3 text-sm sm:flex-1"
         >
@@ -153,7 +154,7 @@ function SettingsPage() {
         <p className="mt-1 text-muted-foreground">
           Semua data milikmu akan dihapus permanen dan tidak bisa dikembalikan.
         </p>
-        <form onSubmit={onDelete} className="mt-4 space-y-3">
+        <form method="post" onSubmit={onDelete} className="mt-4 space-y-3">
           <div className="space-y-1">
             <Label htmlFor="confirmUsername">
               Ketik nama penggunamu untuk konfirmasi ({user.username})

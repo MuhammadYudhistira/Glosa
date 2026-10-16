@@ -69,7 +69,7 @@ function ForgotPasswordPage() {
             Cek kotak masuk emailmu, ya.
           </p>
         ) : (
-          <form onSubmit={onSubmit}>
+          <form method="post" onSubmit={onSubmit}>
             <PaperField
               label="Email"
               name="email"

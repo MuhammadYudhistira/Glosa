@@ -66,7 +66,7 @@ function ResetPasswordPage() {
         <h1 className="mb-3 font-hand text-3xl font-bold text-maroon">
           Kata Sandi Baru
         </h1>
-        <form onSubmit={onSubmit}>
+        <form method="post" onSubmit={onSubmit}>
           <PaperField
             label="Kata sandi baru"
             name="password"

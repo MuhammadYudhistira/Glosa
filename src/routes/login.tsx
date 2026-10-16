@@ -83,7 +83,7 @@ function LoginPage() {
         <h1 className="mb-3 font-hand text-3xl font-bold text-maroon md:hidden">
           Buku Tamu
         </h1>
-        <form onSubmit={onSubmit}>
+        <form method="post" onSubmit={onSubmit}>
           <PaperField
             label="Email"
             name="email"

@@ -99,7 +99,7 @@ function RegisterPage() {
             Kami kirim surat konfirmasi ke {sentTo}. Sampai jumpa di meja admin!
           </p>
         ) : (
-          <form onSubmit={onSubmit}>
+          <form method="post" onSubmit={onSubmit}>
             <div className="grid gap-x-5 sm:grid-cols-2">
               <PaperField
                 label="Nama lengkap"
