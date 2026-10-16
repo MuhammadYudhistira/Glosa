@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/dialog"
 import type { ShelfBook } from "@/lib/book-types"
 import { formatLongDate } from "@/lib/dates"
-import { genreLabel } from "@/lib/genre"
 import { formatBytes } from "@/lib/member"
 import { BookCover } from "./BookCover"
 
@@ -47,8 +46,6 @@ export function BookDetail({
             </p>
           )}
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-            <dt className="text-muted-foreground">Genre</dt>
-            <dd>{genreLabel(book.genre)}</dd>
             {book.language && (
               <>
                 <dt className="text-muted-foreground">Bahasa</dt>

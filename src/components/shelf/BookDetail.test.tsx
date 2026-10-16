@@ -9,7 +9,7 @@ describe("BookDetail", () => {
     const dialog = await screen.findByRole("dialog", { name: sherlock.title })
     expect(dialog).toHaveTextContent("Arthur Conan Doyle")
     expect(dialog).toHaveTextContent("Twelve cases.")
-    expect(dialog).toHaveTextContent("Misteri & Thriller")
+    expect(dialog).not.toHaveTextContent("Misteri & Thriller")
     expect(dialog).toHaveTextContent("0.7 MB")
     expect(dialog).toHaveTextContent("Kamis, 15 Oktober 2026")
   })
