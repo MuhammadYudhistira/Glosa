@@ -49,7 +49,9 @@ export function UploadPanel({
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-w-2xl">
+      {/* The footer's "Tutup" is the only close button: it stays disabled while
+          an upload runs (Escape goes through the same guard in close()). */}
+      <DialogContent className="sm:max-w-2xl" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="font-heading text-xl">
             Bawa buku ke rak
