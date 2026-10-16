@@ -25,27 +25,37 @@ function SettingsPage() {
   const [profileState, setProfileState] = useState<
     { kind: "idle" } | { kind: "saved" } | { kind: "error"; code: string }
   >({ kind: "idle" })
+  const [saving, setSaving] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   async function onSaveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
-    let result: Awaited<ReturnType<typeof updateProfile>>
+    setSaving(true)
+    setProfileState({ kind: "idle" })
     try {
-      result = await updateProfile({
-        data: { displayName: String(form.get("displayName") ?? ""), username },
-      })
-    } catch {
-      setProfileState({ kind: "error", code: "unknown" })
-      return
+      let result: Awaited<ReturnType<typeof updateProfile>>
+      try {
+        result = await updateProfile({
+          data: {
+            displayName: String(form.get("displayName") ?? ""),
+            username,
+          },
+        })
+      } catch {
+        setProfileState({ kind: "error", code: "unknown" })
+        return
+      }
+      if (!result.ok) {
+        setProfileState({ kind: "error", code: result.code })
+        return
+      }
+      setProfileState({ kind: "saved" })
+      await router.invalidate()
+    } finally {
+      setSaving(false)
     }
-    if (!result.ok) {
-      setProfileState({ kind: "error", code: result.code })
-      return
-    }
-    setProfileState({ kind: "saved" })
-    await router.invalidate()
   }
 
   async function onDelete(event: FormEvent<HTMLFormElement>) {
@@ -83,8 +93,11 @@ function SettingsPage() {
       </div>
 
       <Panel className="flex flex-col items-center gap-6 p-6 sm:flex-row sm:items-start">
-        <MembershipCard member={user} />
-        <form onSubmit={onSaveProfile} className="w-full space-y-3 text-sm">
+        <MembershipCard member={user} className="shrink-0" />
+        <form
+          onSubmit={onSaveProfile}
+          className="w-full min-w-0 space-y-3 text-sm sm:flex-1"
+        >
           <h2 className="font-bold">Profil</h2>
           <div className="space-y-1">
             <Label htmlFor="displayName">Nama</Label>
@@ -120,8 +133,8 @@ function SettingsPage() {
               Profil tersimpan.
             </output>
           )}
-          <Button type="submit" size="lg">
-            Simpan profil
+          <Button type="submit" size="lg" disabled={saving}>
+            {saving ? "Menyimpan…" : "Simpan profil"}
           </Button>
         </form>
       </Panel>
