@@ -189,4 +189,19 @@ describe("loadReader", () => {
     expect(mocks.removeLocalBook).toHaveBeenCalledWith(BOOK_ID)
     expect(mocks.removeLocalPosition).toHaveBeenCalledWith(BOOK_ID)
   })
+
+  it("reports a network failure during the download as a load error", async () => {
+    mocks.getLocalBook.mockResolvedValue(null)
+    mocks.readingStateFn.mockResolvedValue(state)
+    mocks.bookFileUrlFn.mockResolvedValue({
+      ok: true,
+      url: "https://storage/a",
+    })
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"))
+
+    await expect(loadReader(BOOK_ID, "u1")).rejects.toEqual(
+      new BookLoadError("download_failed")
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
 })

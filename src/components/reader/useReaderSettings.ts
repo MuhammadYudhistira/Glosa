@@ -19,12 +19,15 @@ export function useReaderSettings(initial: ReaderSettings, online: boolean) {
   const saveSettings = useServerFn(saveReaderSettingsFn)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const waiting = useRef<ReaderSettings | null>(null)
+  // Bumped by every change. A save only marks the device clean if no change
+  // came after it, so a late reply never overwrites newer settings.
+  const version = useRef(0)
 
   const push = useCallback(
-    async (next: ReaderSettings) => {
+    async (next: ReaderSettings, sentVersion: number) => {
       try {
         const result = await saveSettings({ data: next })
-        if (result.ok && waiting.current === null) {
+        if (result.ok && sentVersion === version.current) {
           cacheReaderSettings(next, false)
         }
       } catch {
@@ -36,7 +39,7 @@ export function useReaderSettings(initial: ReaderSettings, online: boolean) {
 
   useEffect(() => {
     const cached = cachedReaderSettings()
-    if (online && cached?.dirty) void push(cached.settings)
+    if (online && cached?.dirty) void push(cached.settings, version.current)
   }, [online, push])
 
   // Leaving the reader sends a change that is still waiting for its pause.
@@ -45,7 +48,7 @@ export function useReaderSettings(initial: ReaderSettings, online: boolean) {
       if (timer.current) clearTimeout(timer.current)
       const next = waiting.current
       waiting.current = null
-      if (next) void push(next)
+      if (next) void push(next, version.current)
     },
     [push]
   )
@@ -55,12 +58,14 @@ export function useReaderSettings(initial: ReaderSettings, online: boolean) {
       setSettings((current) => ({ ...current, ...patch }))
       const next = { ...(waiting.current ?? settings), ...patch }
       waiting.current = next
+      version.current += 1
+      const sentVersion = version.current
       cacheReaderSettings(next, true)
       if (timer.current) clearTimeout(timer.current)
       timer.current = setTimeout(() => {
         timer.current = null
         waiting.current = null
-        void push(next)
+        void push(next, sentVersion)
       }, SAVE_DELAY_MS)
     },
     [push, settings]

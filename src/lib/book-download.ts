@@ -17,7 +17,13 @@ export async function downloadBook(bookId: string): Promise<Blob> {
   for (let attempt = 0; attempt < 2; attempt++) {
     const ticket = await bookFileUrlFn({ data: { bookId } })
     if (!ticket.ok) throw new BookLoadError(ticket.code)
-    const response = await fetch(ticket.url)
+    let response: Response
+    try {
+      response = await fetch(ticket.url)
+    } catch {
+      // A network failure is not a refused URL: no retry, and no raw error.
+      throw new BookLoadError("download_failed")
+    }
     if (response.ok) return await response.blob()
   }
   throw new BookLoadError("download_failed")
