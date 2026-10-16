@@ -11,23 +11,27 @@ export function SceneBackdrop() {
   const state = sceneStateFor(pathname)
   const hasScene = state !== null
 
-  // Clicking anywhere skips running scene animations for a moment (spec §6).
+  // Clicking anywhere (or pressing Escape) jumps the animations that are
+  // running right now to their end (spec §6). Animations that start after the
+  // click, such as the camera zoom of the navigation it triggers, still play.
+  // Infinite ones (the pulse) are left alone: finish() throws for them.
   useEffect(() => {
     if (!hasScene) return
-    const root = document.documentElement
-    let timer: ReturnType<typeof setTimeout> | undefined
     const skip = () => {
-      root.dataset.skipAnim = "true"
-      clearTimeout(timer)
-      timer = setTimeout(() => {
-        delete root.dataset.skipAnim
-      }, 1200)
+      for (const animation of document.getAnimations()) {
+        if (animation.effect?.getComputedTiming().iterations !== Infinity) {
+          animation.finish()
+        }
+      }
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") skip()
     }
     window.addEventListener("pointerdown", skip)
+    window.addEventListener("keydown", onKeyDown)
     return () => {
       window.removeEventListener("pointerdown", skip)
-      clearTimeout(timer)
-      delete root.dataset.skipAnim
+      window.removeEventListener("keydown", onKeyDown)
     }
   }, [hasScene])
 

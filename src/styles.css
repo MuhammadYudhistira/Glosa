@@ -203,15 +203,6 @@
   background: linear-gradient(rgb(5 12 14 / 0.35), rgb(5 12 14 / 0.7));
 }
 
-/* Clicking anywhere skips running animations (spec §6). */
-:root[data-skip-anim] *,
-:root[data-skip-anim] *::before,
-:root[data-skip-anim] *::after {
-  animation-duration: 0s !important;
-  animation-delay: 0s !important;
-  transition-duration: 0s !important;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .scene-canvas,
   .scene-labels {
