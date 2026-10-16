@@ -3,6 +3,7 @@ import {
   type UploadAction,
   type UploadItem,
   canRetry,
+  isCleared,
   queueSummary,
   readyItems,
   uploadQueueReducer,
@@ -127,6 +128,19 @@ describe("uploadQueueReducer", () => {
       { type: "cleared" },
     ])
     expect(items.map((item) => item.id)).toEqual(["b"])
+  })
+
+  it("also clears failures that cannot be retried, but keeps retryable ones", () => {
+    const items = run([
+      added,
+      { type: "read", id: "a", title: "S", author: "", suggestedGenre: null },
+      { type: "failed", id: "a", code: "upload_interrupted" },
+      { type: "failed", id: "b", code: "epub_invalid" },
+    ])
+    expect(items.filter(isCleared).map((item) => item.id)).toEqual(["b"])
+    expect(
+      uploadQueueReducer(items, { type: "cleared" }).map((item) => item.id)
+    ).toEqual(["a"])
   })
 })
 

@@ -6,7 +6,7 @@ import { EpubError, type ParsedEpub, readEpub } from "@/lib/epub/read-epub"
 import type { Genre } from "@/lib/genre"
 import { confirmUploadFn, requestUploadFn } from "@/server/books"
 import { uploadBook } from "./upload-book"
-import { type UploadItem, uploadQueueReducer } from "./upload-queue"
+import { type UploadItem, isCleared, uploadQueueReducer } from "./upload-queue"
 
 type Entry = { file: File; parsed: ParsedEpub | null }
 
@@ -58,10 +58,12 @@ export function useUploadQueue() {
     async (targets: ReadonlyArray<UploadItem>) => {
       if (targets.length === 0) return
       setRunning(true)
+      let attempted = false
       try {
         for (const item of targets) {
           const entry = entries.current.get(item.id)
           if (!entry?.parsed) continue
+          attempted = true
           dispatch({ type: "started", id: item.id })
           let result: ActionResult
           try {
@@ -76,15 +78,22 @@ export function useUploadQueue() {
           } catch {
             result = { ok: false, code: "unknown" }
           }
-          dispatch(
-            result.ok
-              ? { type: "finished", id: item.id }
-              : { type: "failed", id: item.id, code: result.code }
-          )
+          if (result.ok) {
+            entries.current.delete(item.id)
+            dispatch({ type: "finished", id: item.id })
+          } else {
+            dispatch({ type: "failed", id: item.id, code: result.code })
+          }
         }
       } finally {
         setRunning(false)
-        await router.invalidate()
+        if (attempted) {
+          try {
+            await router.invalidate()
+          } catch (error) {
+            console.error("Failed to refresh the shelf after upload", error)
+          }
+        }
       }
     },
     [requestUpload, confirmUpload, router]
@@ -103,8 +112,10 @@ export function useUploadQueue() {
   }, [])
 
   const clearDone = useCallback(() => {
+    for (const item of items)
+      if (isCleared(item)) entries.current.delete(item.id)
     dispatch({ type: "cleared" })
-  }, [])
+  }, [items])
 
   return { items, running, addFiles, chooseGenre, retry, uploadAll, clearDone }
 }

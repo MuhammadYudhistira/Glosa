@@ -49,6 +49,11 @@ export function canRetry(item: UploadItem): boolean {
   )
 }
 
+/** Done uploads and failures a new attempt cannot fix are dropped by "cleared". */
+export function isCleared(item: UploadItem): boolean {
+  return item.status === "done" || (item.status === "failed" && !canRetry(item))
+}
+
 export function readyItems(
   items: ReadonlyArray<UploadItem>
 ): Array<UploadItem> {
@@ -144,7 +149,7 @@ export function uploadQueueReducer(
           : item
       )
     case "cleared":
-      return items.filter((item) => item.status !== "done")
+      return items.filter((item) => !isCleared(item))
   }
 }
 

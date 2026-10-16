@@ -1,4 +1,4 @@
-import { type DragEvent, useId, useState } from "react"
+import { type DragEvent, useEffect, useId, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -35,6 +35,18 @@ export function UploadPanel({
   const [dragging, setDragging] = useState(false)
   const ready = readyItems(queue.items)
 
+  // Keep the browser from opening a file that is dropped outside the zone.
+  useEffect(() => {
+    if (!open) return
+    const prevent = (event: Event) => event.preventDefault()
+    window.addEventListener("dragover", prevent)
+    window.addEventListener("drop", prevent)
+    return () => {
+      window.removeEventListener("dragover", prevent)
+      window.removeEventListener("drop", prevent)
+    }
+  }, [open])
+
   function close(next: boolean) {
     if (next || queue.running) return
     queue.clearDone()
@@ -69,10 +81,16 @@ export function UploadPanel({
             event.preventDefault()
             setDragging(true)
           }}
-          onDragLeave={() => setDragging(false)}
+          onDragLeave={(event) => {
+            if (
+              event.currentTarget.contains(event.relatedTarget as Node | null)
+            )
+              return
+            setDragging(false)
+          }}
           onDrop={onDrop}
           className={cn(
-            "flex cursor-pointer flex-col items-center gap-1 rounded-lg border-2 border-dashed p-6 text-center text-sm",
+            "flex cursor-pointer flex-col items-center gap-1 rounded-lg border-2 border-dashed p-6 text-center text-sm outline-none has-[:focus-visible]:border-ring has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring/30",
             dragging && "border-mint bg-mint/10",
             !online && "cursor-not-allowed opacity-60"
           )}
@@ -100,6 +118,7 @@ export function UploadPanel({
                 key={item.id}
                 item={item}
                 disabled={queue.running}
+                online={online}
                 onGenre={queue.chooseGenre}
                 onRetry={queue.retry}
               />
@@ -134,11 +153,13 @@ export function UploadPanel({
 function UploadRow({
   item,
   disabled,
+  online,
   onGenre,
   onRetry,
 }: {
   item: UploadItem
   disabled: boolean
+  online: boolean
   onGenre: (id: string, genre: Genre | null) => void
   onRetry: (item: UploadItem) => void
 }) {
@@ -202,7 +223,7 @@ function UploadRow({
         <Button
           size="sm"
           variant="outline"
-          disabled={disabled}
+          disabled={disabled || !online}
           onClick={() => onRetry(item)}
         >
           Coba lagi
