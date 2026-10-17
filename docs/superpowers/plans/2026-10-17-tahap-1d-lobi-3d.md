@@ -43,7 +43,7 @@ Semua keputusan berikut disengaja. Reviewer tidak perlu menganggapnya sebagai ca
    - Kamera bayangan memanggil `updateProjectionMatrix()`. Di prototipe ini terlewat, sehingga bayangan hanya jatuh di area 10 × 10 m.
    - `EffectComposer` diberi render target yang punya stencil buffer, supaya pemandangan luar benar-benar hanya tergambar di area kaca (spec §3.1).
    - Hasilnya bisa sedikit berbeda dari prototipe. Task 5 membandingkan keduanya secara visual.
-3. **Ukuran peta bayangan dipilih sekali saat lobi dibuka:** 2048 untuk tingkat tinggi, 1024 untuk rendah. Jika kualitas turun saat berjalan, yang berubah hanya DPR, bloom, dan jumlah pejalan kaki. Peta bayangan tidak dibuat ulang.
+3. **Ukuran peta bayangan mengikuti tingkat kualitas:** 2048 untuk tingkat tinggi, 1024 untuk rendah. Jika kualitas turun saat berjalan, peta bayangan juga turun ke 1024: peta lama dilepas dan three membuatnya ulang pada ukuran baru, bersama perubahan DPR, bloom, dan jumlah pejalan kaki (keputusan pemilik setelah review akhir).
 4. **Tingkat "diam" memakai tampilan tingkat rendah** (DPR 1, tanpa bloom) tanpa loop animasi. Gambar diam dirender dengan mode `still`: tampilan tingkat tinggi, satu frame, DPR 1.
 5. **Zoom 1–2,6×**, mengikuti spec. Prototipe memakai 3×.
 6. **Kerangka navigasi (`MemberShell`) juga tidak tampil di `/welcome`.** Halaman kartu anggota muncul sebelum anggota resmi masuk, sehingga tautan Lobi/Rak di sana hanya akan mengembalikannya ke kartu.

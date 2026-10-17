@@ -55,6 +55,9 @@ export default defineConfig({
       name: "lobby-3d",
       // SwiftShader is CPU-heavy: in parallel it would starve the other projects.
       dependencies: ["desktop", "mobile", "offline"],
+      // One camera-bounds run can take up to 25 min: a retry could pass the
+      // CI job's 50-min limit.
+      retries: 0,
       use: { ...devices["Desktop Chrome"], launchOptions: SWIFTSHADER },
       testMatch: /lobby-3d\.spec\.ts/,
     },
