@@ -58,7 +58,7 @@ Diambil bersama pemilik proyek selama brainstorming 2026-10-17:
   | File | Isi |
   |---|---|
   | `layout.ts` | Koordinat dunia: ukuran atrium, posisi zona, meja, troli, jalur pejalan kaki, titik "Anda". Data murni. |
-  | `projection.ts` | Proyeksi isometrik ortografis murni (dunia → % layar) untuk hotspot dan gambar diam, tanpa three.js. |
+  | `projection.ts` | Proyeksi isometrik ortografis murni (dunia → % layar) untuk hotspot dan gambar diam, serta `clampView` untuk batas kamera; tanpa three.js. |
   | `room.ts` | Lantai, dinding rak, balkon, kotak rak melayang, tangga tribun. |
   | `shelves.ts` | Kotak rak menyala; buku dan sekat sebagai `InstancedMesh`. |
   | `skyline.ts` | Dinding kaca dengan stencil, latar gedung yang dilukis, awan, burung, lampu suar. |
@@ -71,8 +71,14 @@ Diambil bersama pemilik proyek selama brainstorming 2026-10-17:
 - **Kamera.**
   - `OrthographicCamera` dengan arah isometrik (1, 1, 1).
   - Geser dengan drag atau satu jari, zoom dengan roda atau dua jari (zoom 1–2,6×), tanpa rotasi.
-  - Target kamera dibatasi di atas lantai atrium.
   - Desktop membuka seluruh atrium. HP membuka di sekitar Meja Baca.
+- **Batas kamera: layar tidak pernah keluar dari peta.**
+  - Di layar, peta berbentuk segi enam: puncak kedua dinding belakang di atas, ujung dinding di kiri dan kanan, dan tepi depan lantai di bawah. Lantai sampai 6 m di depan ruangan dihitung sebagai bagian peta, supaya Meja Baca, Meja Admin, dan Troli bisa digulir sampai terlihat penuh.
+  - **Seluruh persegi panjang layar harus selalu berada di dalam segi enam itu**, dengan jarak aman 0,25 m dari tepi. Latar di luar atrium tidak pernah terlihat.
+  - **Zoom keluar** berhenti pada tampilan terluas yang masih muat di dalam segi enam. Batas ini dihitung dari rasio layar.
+  - **Geser** berhenti di tepi segi enam, pada sumbu horizontal dan vertikal layar. Geser ke samping juga berhenti di titik di mana tinggi layar tidak lagi muat di antara puncak dinding dan tepi lantai; tanpa aturan ini, atas dan bawah layar sama-sama bocor.
+  - Batas diterapkan ulang setiap kali kamera bergeser, setiap kali zoom berubah, saat resize, saat orientasi HP berubah, dan saat hotspot atau peta menggeser kamera.
+  - Rumusnya ada di `projection.ts` sebagai fungsi murni `clampView(view, viewport)`.
 - **Kualitas, dipilih otomatis:**
 
   | Tingkat | Kapan | Isi |
@@ -99,7 +105,10 @@ Loader lobi memakai `loadShelf(userId)` dari 1C, sehingga lobi juga tampil dari 
 
 ## 4. Isi atrium
 
-Mengikuti prototipe `lobi-starfield.html`:
+Mengikuti prototipe `lobi-starfield.html`. Ukuran atrium 34 × 34 m dengan tinggi 13,5 m.
+
+- Meja Admin, Troli, dan Meja Baca berjarak minimal ±6 m dari tepi depan lantai, sehingga kamera masih bisa menggulir ke bawah dan area itu tidak terasa sempit.
+- Area depan diisi dua sudut duduk santai.
 
 - **Dinding kiri:** rak penuh setinggi atrium, dengan dua lantai balkon.
 - **Dinding kanan:** rak hingga dinding kaca. Dinding kaca setinggi atrium menampilkan kota senja.
@@ -108,7 +117,7 @@ Mengikuti prototipe `lobi-starfield.html`:
 - **Meja Baca:** meja panjang dengan lampu dan pembaca yang membalik halaman.
 - **Meja Admin:** pustakawan mengetik di depan monitor.
 - **Troli Buku Baru** di dekat Meja Admin.
-- **Sudut duduk santai** di area depan.
+- **Dua sudut duduk santai** di area depan (karpet, sofa berhadapan, meja bundar, lampu bola), dengan pengunjung yang duduk membaca.
 - Dekorasi: meja pajang menyala, lampu bola bertiang, tanaman, dan bola seni yang tergantung.
 
 **Animasi** (hanya di tingkat tinggi/rendah):
@@ -189,9 +198,10 @@ Test E2E offline (1C) ditambah satu pemeriksaan: `document.fonts` di iframe buku
 
 | Jenis | Cakupan |
 |---|---|
-| Unit | `projection.ts` (titik dunia → %, termasuk zoom dan geser); `layout.ts` (setiap genre punya zona, id unik, jalur pejalan kaki di dalam lantai dan tidak menembus menara); pemilihan tingkat kualitas; pemilihan buku terakhir; ringkasan data lobi (jumlah per zona, troli, 5 terakhir) |
+| Unit | `projection.ts` (titik dunia → %, termasuk zoom dan geser); `clampView`: untuk ribuan kombinasi acak posisi, zoom, dan rasio layar (dari 9:20 sampai 21:9), keempat sudut layar setelah dibatasi selalu berada di dalam segi enam atrium, dan posisi yang sudah sah tidak berubah; `layout.ts` (setiap genre punya zona, id unik, jalur pejalan kaki di dalam lantai dan tidak menembus menara); pemilihan tingkat kualitas; pemilihan buku terakhir; ringkasan data lobi (jumlah per zona, troli, 5 terakhir) |
 | Komponen | `data-quality` pada wilayah adegan mengikuti tingkat kualitas; hotspot (nama aksesibel, redup, badge troli); gelembung Meja Baca; empty state; `MemberShell` (sidebar/tab bar, tautan aktif); fallback gambar diam saat WebGL tidak tersedia |
 | E2E (desktop + HP) | Jumlah di zona benar, dan klik zona membuka Rak Saya terfilter; Meja Baca membuka buku terakhir; Troli dapat "susun buku"; Meja Admin membuka upload; empty state; di HP tab bar dan "Lanjutkan membaca" berfungsi; dengan emulasi reduced-motion, wilayah adegan ber-`data-quality="diam"`; test auth (kartu anggota → lobi) disesuaikan |
+| E2E batas kamera | Dengan latar adegan diwarnai mencolok (mode uji), zoom keluar maksimal lalu drag ke semua arah dan sudut, di desktop, layar sangat lebar, dan HP: tidak ada satu piksel latar pun di tangkapan layar. |
 | Offline (proyek `offline`) | Lobi tampil dari salinan rak; font reader termuat offline |
 | Manual | Profil performa Chrome dengan CPU 4× lebih lambat: tingkat rendah ≥ 40 fps. Tangkapan layar desktop dan 390 px. Satu HP Android sungguhan setelah deploy HTTPS di 1E. |
 

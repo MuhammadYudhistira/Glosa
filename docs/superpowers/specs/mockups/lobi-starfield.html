@@ -40,13 +40,15 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js"
 
 // Metres. X runs along the glass/shelf wall (Z = 0), Z along the left shelf
 // wall (X = 0), Y up. The camera looks from +X +Z, like the SVG lobby.
-const SIZE = 30
+const SIZE = 34
 const HEIGHT = 13.5
-const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches
+// ?debugbg is a light test mode: static scene, no bloom or shadows.
+const testMode = location.search.includes("debugbg")
+const reduced = testMode || matchMedia("(prefers-reduced-motion: reduce)").matches
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true })
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
-renderer.shadowMap.enabled = true
+renderer.shadowMap.enabled = !testMode
 renderer.shadowMap.type = THREE.PCFSoftShadowMap
 renderer.outputColorSpace = THREE.SRGBColorSpace
 renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -54,7 +56,8 @@ renderer.toneMappingExposure = 0.82
 document.body.prepend(renderer.domElement)
 
 const scene = new THREE.Scene()
-scene.background = new THREE.Color("#1b120c")
+// ?debugbg paints the void magenta, to check that the view never shows it.
+scene.background = new THREE.Color(location.search.includes("debugbg") ? "#ff00ff" : "#1b120c")
 const pmrem = new THREE.PMREMGenerator(renderer)
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
 scene.environmentIntensity = 0.18
@@ -67,7 +70,7 @@ camera.lookAt(target)
 const composer = new EffectComposer(renderer)
 composer.addPass(new RenderPass(scene, camera))
 const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.35, 0.45, 0.9)
-composer.addPass(bloom)
+if (!testMode) composer.addPass(bloom)
 composer.addPass(new OutputPass())
 
 // Lights: warm atrium light, a soft key light for shadows.
@@ -453,7 +456,35 @@ displayTable(22, 5.5)
 displayTable(26.5, 9.5, 2.2, 1.2)
 displayTable(9.5, 11.6, 2.2, 1.2)
 for (const [x, z] of [[11.2, 9.6], [10.8, 3.2], [16.5, 9.5], [27.5, 13.5], [2.2, 12.5]]) lampPost(x, z, 0, 2.6)
-for (const [x, z, s] of [[16.2, 3.2, 1.3], [28.6, 5, 1.2], [2.4, 22, 1.1], [27.8, 24.5, 1.2], [10.8, 22.5, 1]]) plant(x, z, s)
+for (const [x, z, s] of [[16.2, 3.2, 1.3], [28.6, 5, 1.2], [2.4, 22, 1.1], [27.8, 24.5, 1.2], [10.8, 22.5, 1], [2.4, 31.5, 1.2], [32, 20, 1.2]]) plant(x, z, s)
+// Lounges at the front of the atrium.
+const loungeSitters = []
+function sofa(cx, cz, facing, color) {
+  const g = new THREE.Group()
+  g.position.set(cx, 0, cz)
+  g.rotation.y = facing
+  scene.add(g)
+  block(2.3, 0.4, 0.95, shadeHex(color, 0.85), 0, 0, 0, { parent: g, r: 0.1 })
+  block(2.1, 0.14, 0.75, shadeHex(color, 1.15), 0, 0.4, 0.06, { parent: g, r: 0.07 })
+  block(2.3, 0.62, 0.24, color, 0, 0.34, -0.36, { parent: g, r: 0.1 })
+  for (const dx of [-1.06, 1.06]) block(0.2, 0.36, 0.95, color, dx, 0.34, 0, { parent: g, r: 0.08 })
+  return g
+}
+function shadeHex(hex, f) {
+  return "#" + new THREE.Color(hex).multiplyScalar(f).getHexString()
+}
+function lounge(cx, cz, color) {
+  block(5.4, 0.02, 4.2, "#7a4a32", cx, 0, cz, { r: 0.01, cast: false })
+  sofa(cx, cz - 1.45, 0, color)
+  sofa(cx, cz + 1.45, Math.PI, color)
+  mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.06, 32), WOOD, cx, 0.42, cz)
+  mesh(new THREE.CylinderGeometry(0.06, 0.12, 0.4, 12), "#3a2a22", cx, 0.2, cz)
+  for (let i = 0; i < 3; i++) block(0.3, 0.05, 0.22, pick(BOOK_COLORS), cx - 0.15 + i * 0.05, 0.45 + i * 0.05, cz, { r: 0.01 })
+  lampPost(cx + 2.4, cz - 1.6, 0, 2.2)
+  for (const [dx, dz, ry] of [[-0.5, -1.45, 0], [0.6, 1.45, Math.PI]]) loungeSitters.push([cx + dx, cz + dz, ry])
+}
+lounge(16.5, 31, "#d9c2a3")
+lounge(27.5, 30.2, "#9c6b5a")
 const arts = [
   hangingArt(14.5, 10.6, 9, 1.1, ["#f6e7d0", "#2f6fb0", "#e94f37", "#f2c14e", "#3a3a3a"]),
   hangingArt(22, 11.4, 4.5, 1.4, ["#fbe3e8", "#d1495b", "#edae49", "#00798c", "#30638e"]),
@@ -520,6 +551,15 @@ const readers = [[18.4, 25.0, 0], [21.2, 27.0, Math.PI], [16.6, 27.0, Math.PI]].
   for (const a of p.arms) a.rotation.x = -1.1
   return p
 })
+// People relaxing on the lounge sofas.
+for (const [x, z, ry] of loungeSitters) {
+  const p = person({ seat: true })
+  p.root.position.set(x, 0.48, z)
+  p.root.rotation.y = ry
+  for (const a of p.arms) a.rotation.x = -0.8
+  p.phase = x
+  sitters.push(p)
+}
 const librarian = person({ shirt: "#f2f0ea", hair: "#d8d4cf", seat: true })
 librarian.root.position.set(4.9, 0.5, 24.7)
 // Walkers move along loops between the towers.
@@ -540,7 +580,7 @@ const walkers = [
   walker([[10, 16, 1.5], [16.3, 16, 0], [16.3, 22, 2], [10, 22, 0]], 0.75),
   walker([[21.5, 2.2, 3], [28, 2.2, 0], [28, 11.5, 2], [21.5, 11.5, 0]], 0.7),
   walker([[3, 12, 0], [3, 23, 2], [9.8, 23, 0], [9.8, 12.5, 1.5]], 0.8),
-  walker([[26.5, 15, 0], [26.5, 28, 2.5], [14, 28.2, 0], [14, 23.5, 1], [26.5, 23.2, 0]], 0.85),
+  walker([[26.5, 15, 0], [26.5, 28, 2.5], [21.5, 28.2, 0], [21.5, 33, 2], [12, 33, 0], [12, 23.5, 1], [26.5, 23.2, 0]], 0.85),
 ]
 
 // "Anda": a ring on the floor with the member standing in it.
@@ -549,7 +589,7 @@ const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.52, 40), new THREE.Me
 ring.rotation.x = -Math.PI / 2
 ring.position.y = 0.02
 anda.root.add(ring)
-const andaFrom = new THREE.Vector3(14.5, 0, 28.5)
+const andaFrom = new THREE.Vector3(11.5, 0, 29.5)
 const andaTo = andaFrom.clone()
 let andaT = 1
 anda.root.position.copy(andaFrom)
@@ -618,14 +658,50 @@ controls.screenSpacePanning = true
 controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
 controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN }
 controls.minZoom = 1
-controls.maxZoom = 2.6
+controls.maxZoom = 3
 controls.enableDamping = !reduced
 controls.update()
+// The view never leaves the library. On screen the atrium is a hexagon: the
+// tops of the two back walls above, the ends of the walls at the sides, and the
+// front edges of the floor below. The whole screen rectangle must stay inside
+// it, so zooming out stops where the atrium fills the screen, and panning stops
+// at its edges. u/v are screen-right/screen-up distances in metres. The floor
+// in front of the room counts as part of the map for FRONT metres, so the
+// reading table and the admin desk can be scrolled well into view.
+const SCREEN_RIGHT = new THREE.Vector3(1, 0, -1).normalize()
+const SCREEN_UP = new THREE.Vector3(-1, 2, -1).normalize()
+const EDGE = 0.25
+const FRONT = 6
+const FLOOR_EXT = SIZE + FRONT
+const R2 = Math.SQRT2
+const R3 = Math.sqrt(3)
+const R6 = Math.sqrt(6)
+function clampView() {
+  const hw = camera.right / camera.zoom
+  const hh = camera.top / camera.zoom
+  const t = controls.target
+  const u0 = SCREEN_RIGHT.dot(t)
+  const v0 = SCREEN_UP.dot(t)
+  // Sideways, the view must stay within the wall ends, and also where the
+  // space between the wall tops and the floor edge is still tall enough.
+  const fitV = (HEIGHT + FLOOR_EXT - 2 * EDGE) / R6
+  const umax = Math.max(0, Math.min((SIZE - EDGE) / R2 - hw, R3 * (fitV - hh) - hw))
+  const u = Math.min(umax, Math.max(-umax, u0))
+  const slope = (Math.abs(u) + hw) / R3
+  const vmax = (2 * (HEIGHT - EDGE)) / R6 - slope - hh
+  const vmin = (-2 * (FLOOR_EXT - EDGE)) / R6 + slope + hh
+  const v = vmin > vmax ? (vmin + vmax) / 2 : Math.min(vmax, Math.max(vmin, v0))
+  if (u === u0 && v === v0) return
+  const delta = SCREEN_RIGHT.clone().multiplyScalar(u - u0).addScaledVector(SCREEN_UP, v - v0)
+  t.add(delta)
+  camera.position.add(delta)
+}
 function resize() {
   const aspect = innerWidth / innerHeight
-  // Show about 25 m across on wide screens and ~13 m tall on phones.
-  const halfW = aspect >= 1 ? 18.5 : 8
-  const halfH = halfW / aspect
+  // Zoom 1 is the widest view that still fits inside the atrium hexagon.
+  const fit = Math.min((HEIGHT + FLOOR_EXT - 2 * EDGE) / R6 / (1 + aspect / R3), (SIZE - EDGE) / R2 / aspect)
+  const halfH = fit * 0.96
+  const halfW = halfH * aspect
   Object.assign(camera, { left: -halfW, right: halfW, top: halfH, bottom: -halfH })
   camera.updateProjectionMatrix()
   renderer.setSize(innerWidth, innerHeight)
@@ -635,8 +711,11 @@ function resize() {
     // Phones open at the reading table.
     controls.target.set(17, 3, 19)
     camera.position.copy(controls.target).add(new THREE.Vector3(40, 40, 40))
+    camera.zoom = 1.6
+    camera.updateProjectionMatrix()
     controls.update()
   }
+  clampView()
   placeLabels()
 }
 addEventListener("resize", () => {
@@ -644,14 +723,8 @@ addEventListener("resize", () => {
   requestRender()
 })
 resize()
-// Keep the view inside the library: the target stays over the floor.
 controls.addEventListener("change", () => {
-  const t = controls.target
-  const clamped = new THREE.Vector3(Math.min(24, Math.max(9, t.x)), t.y, Math.min(24, Math.max(9, t.z)))
-  if (!clamped.equals(t)) {
-    camera.position.add(clamped.clone().sub(t))
-    t.copy(clamped)
-  }
+  clampView()
   placeLabels()
   requestRender()
 })
