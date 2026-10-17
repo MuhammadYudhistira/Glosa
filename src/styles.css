@@ -682,6 +682,11 @@
     height: max(100cqh, 56.25cqw);
     translate: -50% -50%;
   }
+  .lobby-live-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
   .lobby-still-frame > picture {
     display: contents;
   }

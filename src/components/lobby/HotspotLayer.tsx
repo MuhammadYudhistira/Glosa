@@ -3,6 +3,15 @@ import type { HotspotModel } from "./lobby-data"
 import { type HotspotId, spotOf } from "./scene/layout"
 import { type View, type Viewport, project } from "./scene/projection"
 
+/** True when focus came from the keyboard (not from a mouse or touch press). */
+function isKeyboardFocus(element: HTMLElement): boolean {
+  try {
+    return element.matches(":focus-visible")
+  } catch {
+    return false
+  }
+}
+
 /**
  * The lobby's places as HTML buttons over the scene (spec 1D §5.1), placed by
  * projecting their 3D spot with the camera's current view.
@@ -39,7 +48,12 @@ export function HotspotLayer({
               className="lobby-hotspot"
               data-empty={hotspot.dim ? "" : undefined}
               onClick={() => onActivate(hotspot.id)}
-              onFocus={() => onFocusSpot?.(hotspot.id)}
+              onFocus={(event) => {
+                // A press must not move the button before the click lands.
+                if (isKeyboardFocus(event.currentTarget)) {
+                  onFocusSpot?.(hotspot.id)
+                }
+              }}
             >
               <span>{hotspot.label}</span>
               {hotspot.count !== null && (

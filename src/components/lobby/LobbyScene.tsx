@@ -98,6 +98,8 @@ export function LobbyScene({
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
     const step = PAN_KEYS[event.key]
     if (event.target !== event.currentTarget || !step) return
+    // Without a live camera the arrow keys keep scrolling the page.
+    if (!cameraRef.current || !stageRef.current) return
     event.preventDefault()
     moveCamera((current) =>
       panBy(current.view, step[0], step[1], current.viewport)
@@ -144,36 +146,27 @@ export function LobbyScene({
           }}
         />
       )}
-      {live ? (
-        <>
-          <HotspotLayer
-            hotspots={hotspots}
-            view={camera.view}
-            viewport={camera.viewport}
-            bubbles={bubbles}
-            onActivate={onActivate}
-            onFocusSpot={reveal}
-          />
-          <Button
-            variant="secondary"
-            size="sm"
-            className="lobby-center lobby-overlay"
-            onClick={() => moveCamera((current) => startView(current.viewport))}
-          >
-            Pusatkan
-          </Button>
-        </>
-      ) : (
-        <div className="lobby-still-frame">
-          <LobbyStill className="lobby-still" />
-          <HotspotLayer
-            hotspots={hotspots}
-            view={STILL_VIEW}
-            viewport={STILL_SIZE}
-            bubbles={bubbles}
-            onActivate={onActivate}
-          />
-        </div>
+      {/* One tree position for the hotspots in every mode, so focus survives a switch. */}
+      <div className={live ? "lobby-live-layer" : "lobby-still-frame"}>
+        {!live && <LobbyStill className="lobby-still" />}
+        <HotspotLayer
+          hotspots={hotspots}
+          view={live ? camera.view : STILL_VIEW}
+          viewport={live ? camera.viewport : STILL_SIZE}
+          bubbles={bubbles}
+          onActivate={onActivate}
+          onFocusSpot={live ? reveal : undefined}
+        />
+      </div>
+      {live && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="lobby-center lobby-overlay"
+          onClick={() => moveCamera((current) => startView(current.viewport))}
+        >
+          Pusatkan
+        </Button>
       )}
     </section>
   )
