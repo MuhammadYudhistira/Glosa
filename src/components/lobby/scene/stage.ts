@@ -139,7 +139,8 @@ export function createStage(options: StageOptions): Stage {
   )
   bloom.enabled = fancy && quality === "tinggi"
   composer.addPass(bloom)
-  composer.addPass(new OutputPass())
+  const output = new OutputPass()
+  composer.addPass(output)
 
   const kit = createKit(scene)
   const { stairSeats } = buildRoom(kit)
@@ -267,7 +268,13 @@ export function createStage(options: StageOptions): Stage {
   /** After every pan or zoom: keep the view inside the map (spec 1D §3.1). */
   function onControlsChange() {
     const { x, y, z } = controls.target
-    view = clampView({ target: [x, y, z], zoom: camera.zoom }, viewport)
+    const next = clampView({ target: [x, y, z], zoom: camera.zoom }, viewport)
+    const same =
+      Math.abs(next.zoom - view.zoom) < 1e-9 &&
+      next.target.every((value, i) => Math.abs(value - view.target[i]) < 1e-9)
+    // OrbitControls fires "change" on every update of an orthographic camera.
+    if (same && next.zoom === camera.zoom) return
+    view = next
     if (view.zoom !== camera.zoom) {
       camera.zoom = view.zoom
       camera.updateProjectionMatrix()
@@ -285,7 +292,6 @@ export function createStage(options: StageOptions): Stage {
     renderer.setSize(width, height)
     composer.setPixelRatio(renderer.getPixelRatio())
     composer.setSize(width, height)
-    bloom.resolution.set(width / 2, height / 2)
     view = clampView(view, viewport)
     frameCamera()
     options.onView(view, viewport)
@@ -334,8 +340,10 @@ export function createStage(options: StageOptions): Stage {
       disposeTree(scene)
       environment.dispose()
       bloom.dispose()
+      output.dispose()
       composer.dispose()
       renderer.dispose()
+      renderer.forceContextLoss()
       canvas.remove()
     },
   }

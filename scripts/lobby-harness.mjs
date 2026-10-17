@@ -27,7 +27,13 @@ async function render(viewport) {
     const errors = []
     page.on("pageerror", (error) => errors.push(error.message))
     await page.goto(`${PAGE}?mode=still`, { timeout: 120_000 })
-    await page.waitForSelector("body[data-ready]", { timeout: 300_000 })
+    const failed = new Promise((resolve) => page.once("pageerror", resolve))
+    const ready = page
+      .waitForSelector("body[data-ready]", { timeout: 300_000 })
+      .then(() => null)
+    ready.catch(() => {}) // no unhandled rejection once the browser closes
+    const early = await Promise.race([ready, failed])
+    if (early) throw new Error(early.message)
     if (errors.length > 0) throw new Error(errors.join("\n"))
     const books = await page.evaluate(() => document.body.dataset.books)
     console.log(`books on the shelves: ${books}`)
