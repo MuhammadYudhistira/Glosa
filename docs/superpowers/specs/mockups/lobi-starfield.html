@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Glosa — Prototipe lobi Starfield (3D)</title>
+<!-- Prototipe rencana 1D: lobi penuh bertema Starfield Library, dirender 3D
+     dengan Three.js (butuh internet untuk CDN). Bukan kode aplikasi. -->
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Libre+Caslon+Text:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root{--panel:rgba(10,28,33,.88);--line:rgba(120,210,195,.22);--ink:#e8f2f0;--muted:#8fb0ab;--teal2:#2fe0b8}
+  html,body{margin:0;height:100%;background:#1b120c;color:var(--ink);font-family:'Atkinson Hyperlegible',system-ui,sans-serif;overflow:hidden;touch-action:none}
+  canvas{display:block}
+  #labels{position:fixed;inset:0;pointer-events:none}
+  .hs{position:absolute;left:0;top:0;display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:9px;background:var(--panel);border:1px solid var(--line);color:var(--ink);font:700 14px 'Atkinson Hyperlegible',sans-serif;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.35);pointer-events:auto;cursor:pointer;will-change:transform}
+  .hs .count{color:var(--muted);font-weight:400}
+  .hs .badge{min-width:20px;height:20px;border-radius:10px;background:#e8a33b;color:#1b1206;font-size:12px;display:grid;place-items:center;padding:0 5px}
+  .hs.empty{opacity:.6}
+  .hs:hover,.hs:focus-visible{border-color:var(--teal2);outline:none}
+  .tag{position:fixed;left:14px;top:14px;padding:10px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:14px;max-width:320px}
+  .tag b{font:700 17px 'Libre Caslon Text',Georgia,serif}
+  .tag p{margin:4px 0 0;color:var(--muted)}
+  .fps{position:fixed;right:14px;top:14px;padding:6px 10px;border-radius:8px;background:var(--panel);border:1px solid var(--line);font-size:12px}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);padding:10px 16px;border-radius:10px;background:var(--panel);border:1px solid var(--teal2);font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  @media (max-width:700px){.hs{font-size:12px;padding:5px 9px}.tag{right:14px;max-width:none;font-size:13px}.fps{top:auto;bottom:14px}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head><body>
+<div class="tag"><b>Lobi Starfield — prototipe 3D</b><p>Geser dengan drag, zoom dengan roda/dua jari. Klik label untuk berpindah.</p></div>
+<div class="fps" id="fps">… fps</div>
+<div id="labels"></div>
+<output class="toast" id="toast"></output>
+<script type="module">
+import * as THREE from "three"
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js"
+import { OrbitControls } from "three/addons/controls/OrbitControls.js"
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js"
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js"
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js"
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js"
+
+// Metres. X runs along the glass/shelf wall (Z = 0), Z along the left shelf
+// wall (X = 0), Y up. The camera looks from +X +Z, like the SVG lobby.
+const SIZE = 30
+const HEIGHT = 13.5
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true })
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
+renderer.outputColorSpace = THREE.SRGBColorSpace
+renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMappingExposure = 0.82
+document.body.prepend(renderer.domElement)
+
+const scene = new THREE.Scene()
+scene.background = new THREE.Color("#1b120c")
+const pmrem = new THREE.PMREMGenerator(renderer)
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+scene.environmentIntensity = 0.18
+
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200)
+const target = new THREE.Vector3(14, 4, 14)
+camera.position.copy(target).add(new THREE.Vector3(40, 40, 40))
+camera.lookAt(target)
+
+const composer = new EffectComposer(renderer)
+composer.addPass(new RenderPass(scene, camera))
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.35, 0.45, 0.9)
+composer.addPass(bloom)
+composer.addPass(new OutputPass())
+
+// Lights: warm atrium light, a soft key light for shadows.
+scene.add(new THREE.HemisphereLight("#ffe9cc", "#4a2e18", 0.55))
+const key = new THREE.DirectionalLight("#ffe6c4", 1.25)
+key.position.set(22, 30, 34)
+key.target.position.set(14, 0, 14)
+key.castShadow = true
+key.shadow.mapSize.set(2048, 2048)
+Object.assign(key.shadow.camera, { left: -24, right: 24, top: 24, bottom: -24, far: 100 })
+key.shadow.radius = 5
+key.shadow.bias = -0.0005
+scene.add(key, key.target)
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+const mats = new Map()
+const mat = (color, extra = {}) => {
+  const k = color + JSON.stringify(extra)
+  if (!mats.has(k)) mats.set(k, new THREE.MeshStandardMaterial({ color, roughness: 0.75, ...extra }))
+  return mats.get(k)
+}
+function mesh(geo, material, x, y, z, opts = {}) {
+  const m = new THREE.Mesh(geo, typeof material === "string" ? mat(material) : material)
+  m.position.set(x, y, z)
+  m.castShadow = opts.cast ?? true
+  m.receiveShadow = opts.receive ?? true
+  ;(opts.parent ?? scene).add(m)
+  return m
+}
+const rbox = (w, h, d, r = 0.04) => new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2.01, h / 2.01, d / 2.01))
+/** Rounded box with its base at y. */
+const block = (w, h, d, material, x, y, z, opts = {}) => mesh(rbox(w, h, d, opts.r), material, x, y + h / 2, z, opts)
+let seed = 7
+const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+const pick = (list) => list[Math.floor(rand() * list.length)]
+function canvasTexture(w, h, draw, repeat) {
+  const c = document.createElement("canvas")
+  c.width = w
+  c.height = h
+  draw(c.getContext("2d"), w, h)
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.anisotropy = 8
+  if (repeat) {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping
+    t.repeat.set(...repeat)
+  }
+  return t
+}
+
+// ── Floor: polished wood ──────────────────────────────────────────────────
+const floorTex = canvasTexture(1024, 1024, (g) => {
+  for (let i = 0; i < 16; i++) {
+    for (let j = 0; j < 5; j++) {
+      const tone = 112 + Math.floor(rand() * 22)
+      g.fillStyle = `rgb(${tone + 34},${tone - 8},${tone - 52})`
+      g.fillRect(j * 256 + (i % 2) * 128 - 128, i * 64, 256, 64)
+      g.fillStyle = "rgba(40,20,8,.35)"
+      g.fillRect(j * 256 + (i % 2) * 128 - 128, i * 64, 2, 64)
+    }
+    g.fillStyle = "rgba(40,20,8,.4)"
+    g.fillRect(0, i * 64 + 62, 1024, 2)
+  }
+}, [3, 3])
+// The floor runs on past the open front of the room, so the screen is always full.
+floorTex.repeat.set(6, 6)
+mesh(new THREE.BoxGeometry(SIZE * 2, 0.2, SIZE * 2), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.32, metalness: 0.05 }), SIZE, -0.1, SIZE, { cast: false })
+
+// ── Shelf walls with glowing cubbies ──────────────────────────────────────
+const CELL_W = 0.9
+const CELL_H = 0.72
+const DEPTH = 0.42
+const glowTex = canvasTexture(128, 128, (g) => {
+  const grad = g.createRadialGradient(64, 54, 6, 64, 64, 84)
+  grad.addColorStop(0, "#ffe2a8")
+  grad.addColorStop(0.5, "#e8913f")
+  grad.addColorStop(1, "#3a1e0c")
+  g.fillStyle = grad
+  g.fillRect(0, 0, 128, 128)
+})
+const BOOK_COLORS = ["#f4efe6", "#e9e2d4", "#d9cdb8", "#3d5a80", "#98c1d9", "#ee6c4d", "#f4a6a0", "#7a9e7e", "#2f3e46", "#c9a35b", "#b56576", "#ffffff"]
+const books = []
+const dividers = []
+/**
+ * A wall of cubbies. `o` is the bottom-left corner on the wall surface, `u` the
+ * direction along the wall, `n` the direction into the room.
+ */
+function shelfFace(o, u, n, width, height, opts = {}) {
+  const cols = Math.round(width / CELL_W)
+  const rows = Math.round(height / CELL_H)
+  const cw = width / cols
+  const ch = height / rows
+  const up = new THREE.Vector3(0, 1, 0)
+  const at = (a, b, c) => o.clone().addScaledVector(u, a).addScaledVector(up, b).addScaledVector(n, c)
+  // Back panel that glows.
+  const tex = glowTex.clone()
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.repeat.set(cols, rows)
+  tex.needsUpdate = true
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(width, height), new THREE.MeshStandardMaterial({ color: "#6b4426", emissive: "#ffffff", emissiveMap: tex, emissiveIntensity: opts.glow ?? 0.8, roughness: 0.9 }))
+  back.position.copy(at(width / 2, height / 2, 0.01))
+  back.lookAt(back.position.clone().add(n))
+  back.receiveShadow = true
+  scene.add(back)
+  // Dividers (one long board per grid line).
+  const rot = Math.atan2(u.x, u.z) - Math.PI / 2
+  for (let c = 0; c <= cols; c++) dividers.push({ p: at(c * cw, height / 2, DEPTH / 2), s: [0.05, height, DEPTH], rot })
+  for (let r = 0; r <= rows; r++) dividers.push({ p: at(width / 2, r * ch, DEPTH / 2), s: [width, 0.05, DEPTH], rot })
+  // Books.
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      if (rand() < 0.08) continue
+      let a = c * cw + 0.06
+      const lean = rand() < 0.2
+      const end = (c + 1) * cw - (lean ? 0.25 : 0.08)
+      while (a < end) {
+        const bw = 0.045 + rand() * 0.05
+        const bh = ch * (0.5 + rand() * 0.32)
+        books.push({ p: at(a + bw / 2, r * ch + 0.025 + bh / 2, 0.06 + 0.13), s: [bw, bh, 0.26], rot, color: pick(BOOK_COLORS) })
+        a += bw + 0.004
+      }
+    }
+  }
+}
+const X = new THREE.Vector3(1, 0, 0)
+const Z = new THREE.Vector3(0, 0, 1)
+// Left wall (X = 0): cubbies the whole way.
+shelfFace(new THREE.Vector3(0.0, 0, SIZE), Z.clone().negate(), X, SIZE, HEIGHT)
+// Right wall (Z = 0): cubbies up to the glass curtain wall.
+const GLASS = { x0: 17, x1: SIZE, y0: 0.4, y1: HEIGHT - 0.4 }
+shelfFace(new THREE.Vector3(0, 0, 0), X, Z, GLASS.x0 - 0.4, HEIGHT)
+// Wall shells behind the shelves and around the glass.
+block(0.4, HEIGHT, SIZE, "#3a2516", -0.2, 0, SIZE / 2, { r: 0.02 })
+block(GLASS.x0, HEIGHT, 0.4, "#3a2516", GLASS.x0 / 2, 0, -0.2, { r: 0.02 })
+
+// ── Glass curtain wall with a skyline outside ─────────────────────────────
+const glassMask = new THREE.Mesh(
+  new THREE.PlaneGeometry(GLASS.x1 - GLASS.x0, GLASS.y1 - GLASS.y0),
+  new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, stencilWrite: true, stencilRef: 1, stencilFunc: THREE.AlwaysStencilFunc, stencilZPass: THREE.ReplaceStencilOp })
+)
+glassMask.position.set((GLASS.x0 + GLASS.x1) / 2, (GLASS.y0 + GLASS.y1) / 2, -0.05)
+glassMask.renderOrder = -1
+scene.add(glassMask)
+const OUTSIDE = { stencilWrite: true, stencilRef: 1, stencilFunc: THREE.EqualStencilFunc, stencilZPass: THREE.KeepStencilOp }
+// Skyline painted on a backdrop just behind the glass (the camera looks down,
+// so real distance would only show the street). Tower tops are remembered so
+// their beacons can blink.
+const SKY = { x0: GLASS.x0 - 4, x1: SIZE + 2, y0: -4, y1: HEIGHT + 1, z: -2.2 }
+const beaconSpots = []
+const skyTex = canvasTexture(2048, 2048, (g, w, h) => {
+  const sky = g.createLinearGradient(0, 0, 0, h)
+  sky.addColorStop(0, "#2b3a67")
+  sky.addColorStop(0.45, "#6c5b9e")
+  sky.addColorStop(0.72, "#e7909a")
+  sky.addColorStop(0.88, "#ffc58a")
+  g.fillStyle = sky
+  g.fillRect(0, 0, w, h)
+  const layer = (count, minH, maxH, base, color, lit) => {
+    let x = -20
+    while (x < w) {
+      const bw = 60 + rand() * 120
+      const bh = minH + rand() * (maxH - minH)
+      const top = base - bh
+      g.fillStyle = color
+      g.fillRect(x, top, bw, h - top)
+      if (rand() < 0.3) g.fillRect(x + bw * 0.4, top - 40, bw * 0.2, 40)
+      if (lit) {
+        for (let wy = top + 12; wy < h - 10; wy += 22) {
+          for (let wx = x + 8; wx < x + bw - 10; wx += 16) {
+            if (rand() < 0.38) {
+              g.fillStyle = rand() < 0.8 ? "rgba(255,214,150,.85)" : "rgba(180,220,255,.8)"
+              g.fillRect(wx, wy, 8, 11)
+            }
+          }
+        }
+      }
+      if (lit && bh > maxH * 0.75) beaconSpots.push([x + bw / 2, top - (rand() < 0.3 ? 40 : 0)])
+      x += bw + 6 + rand() * 30
+    }
+  }
+  layer(0, 500, 900, h * 0.92, "#5d4f7d", false)
+  layer(0, 700, 1300, h * 0.95, "#3c3557", true)
+  layer(0, 400, 1000, h * 1.0, "#272338", true)
+})
+const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(SKY.x1 - SKY.x0, SKY.y1 - SKY.y0), new THREE.MeshBasicMaterial({ map: skyTex, ...OUTSIDE }))
+backdrop.position.set((SKY.x0 + SKY.x1) / 2, (SKY.y0 + SKY.y1) / 2, SKY.z)
+scene.add(backdrop)
+const toWorld = ([px, py]) => new THREE.Vector3(SKY.x0 + (px / 2048) * (SKY.x1 - SKY.x0), SKY.y1 - (py / 2048) * (SKY.y1 - SKY.y0), SKY.z + 0.05)
+const beacons = beaconSpots.slice(0, 7).map((spot, i) => {
+  const b = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), new THREE.MeshBasicMaterial({ color: "#ff3b3b", ...OUTSIDE }))
+  b.position.copy(toWorld(spot))
+  b.userData.phase = i * 0.37
+  scene.add(b)
+  return b
+})
+const cloudMat = new THREE.MeshStandardMaterial({ color: "#fff4f0", emissive: "#ffd9d0", emissiveIntensity: 0.55, roughness: 1, ...OUTSIDE })
+const clouds = Array.from({ length: 5 }, (_, i) => {
+  const g = new THREE.Group()
+  for (const [dx, dy, r] of [[0, 0, 0.7], [0.8, -0.1, 0.5], [-0.8, -0.12, 0.5], [0.3, 0.38, 0.5]]) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 12), cloudMat)
+    m.position.set(dx, dy, 0)
+    g.add(m)
+  }
+  g.scale.set(1 + (i % 3) * 0.4, 0.55, 0.2)
+  g.position.set(GLASS.x0 + i * 3.5, 8.5 + (i % 3) * 1.4, -1.6)
+  g.userData.speed = 0.25 + (i % 3) * 0.08
+  scene.add(g)
+  return g
+})
+const birdMat = new THREE.MeshBasicMaterial({ color: "#2a2433", side: THREE.DoubleSide, ...OUTSIDE })
+const birds = Array.from({ length: 4 }, (_, i) => {
+  const g = new THREE.Group()
+  const wing = new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, 0.34, 0, 0, 0.17, 0.08, 0], 3))
+  const l = new THREE.Mesh(wing, birdMat)
+  const r = new THREE.Mesh(wing, birdMat)
+  r.rotation.y = Math.PI
+  g.add(l, r)
+  g.position.set(SIZE - i * 0.7, 9.5 + (i % 2) * 0.4 - i * 0.2, -0.9)
+  g.userData = { l, r, speed: 1.1 + i * 0.1, phase: i * 1.3 }
+  scene.add(g)
+  return g
+})
+// Mullions and a faint pane.
+for (let x = GLASS.x0; x <= GLASS.x1 + 0.01; x += 2.6) block(0.14, HEIGHT, 0.22, "#d8d2c8", Math.min(x, GLASS.x1 - 0.07), 0, -0.05)
+for (const y of [0, 4.5, 9, HEIGHT - 0.25]) block(GLASS.x1 - GLASS.x0, 0.22, 0.24, "#d8d2c8", (GLASS.x0 + GLASS.x1) / 2, y, -0.05)
+const pane = new THREE.Mesh(new THREE.PlaneGeometry(GLASS.x1 - GLASS.x0, GLASS.y1 - GLASS.y0), new THREE.MeshBasicMaterial({ color: "#bcd6ff", transparent: true, opacity: 0.06, depthWrite: false }))
+pane.position.copy(glassMask.position).setZ(0.02)
+scene.add(pane)
+
+// ── Mezzanines, floating shelf box and the grand stairs ───────────────────
+const WHITE = "#ddd6cb"
+const glassRail = new THREE.MeshStandardMaterial({ color: "#d7f0ff", transparent: true, opacity: 0.18, roughness: 0.1, depthWrite: false })
+function balcony(x0, x1, z0, z1, y) {
+  block(x1 - x0, 0.42, z1 - z0, WHITE, (x0 + x1) / 2, y - 0.42, (z0 + z1) / 2, { r: 0.1 })
+  block(x1 - x0, 0.06, z1 - z0, "#b07b4a", (x0 + x1) / 2, y, (z0 + z1) / 2, { r: 0.02, cast: false })
+  // Warm strip of light under the edge.
+  if (z1 < SIZE) block(x1 - x0 - 0.2, 0.05, 0.05, new THREE.MeshBasicMaterial({ color: "#ffd9a0" }), (x0 + x1) / 2, y - 0.45, z1 - 0.06, { cast: false })
+  if (x1 < SIZE) block(0.05, 0.05, z1 - z0 - 0.2, new THREE.MeshBasicMaterial({ color: "#ffd9a0" }), x1 - 0.06, y - 0.45, (z0 + z1) / 2, { cast: false })
+  // Glass railings on the open sides.
+  if (x1 < SIZE) mesh(new THREE.BoxGeometry(0.03, 1, z1 - z0), glassRail, x1 - 0.05, y + 0.5, (z0 + z1) / 2, { cast: false })
+  if (z1 < SIZE) mesh(new THREE.BoxGeometry(x1 - x0, 1, 0.03), glassRail, (x0 + x1) / 2, y + 0.5, z1 - 0.05, { cast: false })
+}
+balcony(0, 3.2, 10, SIZE, 4.6)
+balcony(0, 3.2, 10, SIZE, 9.2)
+balcony(10.5, GLASS.x0 - 0.4, 0, 3.2, 4.6)
+balcony(10.5, GLASS.x0 - 0.4, 0, 3.2, 9.2)
+// The floating box of shelves above the stairs.
+const BOX = { x0: 1.5, x1: 9.5, z0: 1.5, z1: 9.5, y0: 8.4, y1: HEIGHT - 0.6 }
+block(BOX.x1 - BOX.x0, BOX.y1 - BOX.y0, BOX.z1 - BOX.z0, "#8a5a33", (BOX.x0 + BOX.x1) / 2, BOX.y0, (BOX.z0 + BOX.z1) / 2, { r: 0.05 })
+block(BOX.x1 - BOX.x0 + 0.3, 0.3, BOX.z1 - BOX.z0 + 0.3, "#c9945f", (BOX.x0 + BOX.x1) / 2, BOX.y0 - 0.3, (BOX.z0 + BOX.z1) / 2, { r: 0.05 })
+shelfFace(new THREE.Vector3(BOX.x1, BOX.y0, BOX.z1), Z.clone().negate(), X, BOX.z1 - BOX.z0, BOX.y1 - BOX.y0, { glow: 0.9 })
+shelfFace(new THREE.Vector3(BOX.x0, BOX.y0, BOX.z1), X, Z, BOX.x1 - BOX.x0, BOX.y1 - BOX.y0, { glow: 0.9 })
+// Bleacher stairs rising toward the right wall, with seats, LEDs and shelves.
+const STAIRS = { x0: 1.5, x1: 9.5, z1: 10.2, steps: 10, rise: 0.46, run: 0.92 }
+const led = new THREE.MeshBasicMaterial({ color: "#fff2d6" })
+const seated = []
+for (let k = 0; k < STAIRS.steps; k++) {
+  const zFront = STAIRS.z1 - k * STAIRS.run
+  const top = (k + 1) * STAIRS.rise
+  block(STAIRS.x1 - STAIRS.x0, top, zFront, WHITE, (STAIRS.x0 + STAIRS.x1) / 2, 0, zFront / 2, { r: 0.03 })
+  block(STAIRS.x1 - STAIRS.x0 - 0.2, 0.03, 0.03, led, (STAIRS.x0 + STAIRS.x1) / 2, top - 0.1, zFront + 0.01, { cast: false })
+  if (k % 3 === 1) {
+    // A small shelf set into the step.
+    block(1.6, STAIRS.rise - 0.08, 0.05, "#5a3a22", 3 + (k % 2) * 3, top - STAIRS.rise + 0.02, zFront + 0.02, { r: 0.01 })
+    for (let i = 0; i < 18; i++) block(0.06, 0.24 + rand() * 0.1, 0.18, pick(BOOK_COLORS), 2.3 + (k % 2) * 3 + i * 0.08, top - STAIRS.rise + 0.06, zFront - 0.06, { r: 0.005 })
+  }
+  if (k > 0 && k < STAIRS.steps - 1) for (let s = 0; s < 2; s++) if (rand() < 0.55) seated.push([STAIRS.x0 + 1 + rand() * 6, top, zFront - 0.45])
+}
+// Steps continue to the mezzanine as a white landing.
+block(STAIRS.x1 - STAIRS.x0, 4.6, 0.6, WHITE, (STAIRS.x0 + STAIRS.x1) / 2, 0, 0.3, { r: 0.03 })
+
+// ── Furniture ─────────────────────────────────────────────────────────────
+const WOOD = "#c98d55"
+function towerShelf(cx, cz, h = 5.4, w = 2.4) {
+  block(w, h, w, "#6b4426", cx, 0, cz, { r: 0.04 })
+  shelfFace(new THREE.Vector3(cx + w / 2, 0.1, cz + w / 2), Z.clone().negate(), X, w, h - 0.2, { glow: 0.9 })
+  shelfFace(new THREE.Vector3(cx - w / 2, 0.1, cz + w / 2), X, Z, w, h - 0.2, { glow: 0.9 })
+  block(w + 0.12, 0.14, w + 0.12, "#b9824c", cx, h, cz, { r: 0.04 })
+}
+function displayTable(cx, cz, w = 2.6, d = 1.4) {
+  block(w, 0.85, d, WOOD, cx, 0, cz, { r: 0.05 })
+  const glowSide = new THREE.MeshStandardMaterial({ color: "#5a3a22", emissive: "#ffffff", emissiveMap: glowTex, emissiveIntensity: 0.9 })
+  for (let i = 0; i < Math.floor(w / 0.8); i++) {
+    const p = mesh(new THREE.PlaneGeometry(0.62, 0.55), glowSide, cx - w / 2 + 0.45 + i * 0.82, 0.45, cz + d / 2 + 0.01, { cast: false })
+    p.rotation.y = 0
+  }
+  for (let i = 0; i < 6; i++) block(0.32, 0.03, 0.42, pick(["#3d5a80", "#ee6c4d", "#f4efe6", "#7a9e7e"]), cx - w / 2 + 0.3 + i * 0.42, 0.85, cz + (i % 2 ? 0.2 : -0.2), { r: 0.01 })
+  lampPost(cx + w / 2 - 0.3, cz - d / 2 + 0.3, 0.85, 0.5)
+}
+function lampPost(x, z, base = 0, h = 2.2) {
+  mesh(new THREE.CylinderGeometry(0.02, 0.02, h, 8), "#b9935a", x, base + h / 2, z)
+  mesh(new THREE.SphereGeometry(0.22, 20, 16), new THREE.MeshBasicMaterial({ color: "#fff6e0" }), x, base + h + 0.18, z, { cast: false })
+}
+function plant(x, z, s = 1) {
+  mesh(new THREE.CylinderGeometry(0.32 * s, 0.26 * s, 0.6 * s, 20), "#e7e1d8", x, 0.3 * s, z)
+  mesh(new THREE.CylinderGeometry(0.04 * s, 0.05 * s, 1.4 * s, 8), "#6b4a2e", x, 1.2 * s, z)
+  for (const [dx, dy, dz, r] of [[0, 2, 0, 0.5], [0.3, 1.75, 0.15, 0.36], [-0.28, 1.8, -0.1, 0.38]]) mesh(new THREE.SphereGeometry(r * s, 16, 12), "#4f7f4f", x + dx * s, dy * s, z + dz * s)
+}
+const pagePivots = []
+function readingTable(cx, cz) {
+  block(6, 0.08, 1.5, "#d9a66b", cx, 0.76, cz, { r: 0.03 })
+  for (const dx of [-2.7, 2.7]) for (const dz of [-0.55, 0.55]) block(0.08, 0.76, 0.08, "#3a2a22", cx + dx, 0, cz + dz, { r: 0.02 })
+  for (let i = 0; i < 4; i++) {
+    const x = cx - 2.1 + i * 1.4
+    lampSmall(x, cz, 0.84)
+    for (const side of [-1, 1]) {
+      block(0.46, 0.08, 0.46, "#efe3cf", x + 0.35, 0.44, cz + side * 1.1, { r: 0.03 })
+      block(0.46, 0.5, 0.06, "#efe3cf", x + 0.35, 0.52, cz + side * 1.33, { r: 0.03 })
+      for (const lx of [-0.18, 0.18]) for (const lz of [-0.18, 0.18]) block(0.03, 0.44, 0.03, "#3a2a22", x + 0.35 + lx, 0, cz + side * 1.1 + lz, { r: 0.01 })
+    }
+  }
+}
+function lampSmall(x, z, y) {
+  mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8), "#3a2a22", x, y + 0.15, z)
+  mesh(new THREE.SphereGeometry(0.1, 14, 10), new THREE.MeshBasicMaterial({ color: "#fff1d0" }), x, y + 0.36, z, { cast: false })
+}
+function openBook(x, y, z) {
+  const base = new THREE.Group()
+  base.position.set(x, y, z)
+  scene.add(base)
+  block(0.22, 0.012, 0.3, "#f7f2e6", -0.11, 0, 0, { parent: base, r: 0.004 })
+  block(0.22, 0.012, 0.3, "#ece3cf", 0.11, 0, 0, { parent: base, r: 0.004 })
+  const pivot = new THREE.Group()
+  base.add(pivot)
+  block(0.22, 0.006, 0.29, "#fffaf0", 0.11, 0.013, 0, { parent: pivot, r: 0.003 })
+  pagePivots.push(pivot)
+}
+function adminDesk(cx, cz) {
+  block(3.2, 1.0, 1.0, "#e9e3da", cx, 0, cz, { r: 0.12 })
+  block(3.0, 0.05, 0.05, new THREE.MeshBasicMaterial({ color: "#ffd9a0" }), cx, 0.15, cz + 0.52, { cast: false })
+  block(3.3, 0.06, 1.1, WOOD, cx, 1.0, cz, { r: 0.03 })
+  const screenMat = new THREE.MeshStandardMaterial({ color: "#20242a", emissive: "#4a86d6", emissiveIntensity: 0.8 })
+  const mon = block(0.6, 0.38, 0.05, screenMat, cx + 0.6, 1.24, cz - 0.15, { r: 0.02 })
+  mon.rotation.y = 0.35
+  block(0.06, 0.2, 0.06, "#3a3a40", cx + 0.6, 1.06, cz - 0.2, { r: 0.01 })
+  lampSmall(cx - 1.2, cz - 0.2, 1.06)
+}
+function trolley(cx, cz) {
+  block(1.1, 0.06, 0.6, "#9aa0a6", cx, 0.35, cz, { r: 0.02 })
+  block(1.1, 0.06, 0.6, "#9aa0a6", cx, 0.85, cz, { r: 0.02 })
+  for (const dx of [-0.5, 0.5]) for (const dz of [-0.25, 0.25]) {
+    block(0.03, 0.85, 0.03, "#7a8086", cx + dx, 0.08, cz + dz, { r: 0.01 })
+    mesh(new THREE.SphereGeometry(0.06, 10, 8), "#222", cx + dx, 0.06, cz + dz)
+  }
+  for (let i = 0; i < 9; i++) block(0.07, 0.26 + rand() * 0.08, 0.2, pick(BOOK_COLORS), cx - 0.45 + i * 0.1, 0.91, cz, { r: 0.006 })
+}
+function hangingArt(x, y, z, r, colors) {
+  mesh(new THREE.CylinderGeometry(0.01, 0.01, HEIGHT + 2 - y, 4), "#c9c4bd", x, (HEIGHT + 2 + y) / 2, z, { cast: false })
+  const tex = canvasTexture(512, 256, (g, w, h) => {
+    g.fillStyle = colors[0]
+    g.fillRect(0, 0, w, h)
+    for (let i = 0; i < 40; i++) {
+      g.strokeStyle = pick(colors)
+      g.lineWidth = 6 + rand() * 18
+      g.beginPath()
+      g.moveTo(rand() * w, rand() * h)
+      g.bezierCurveTo(rand() * w, rand() * h, rand() * w, rand() * h, rand() * w, rand() * h)
+      g.stroke()
+    }
+  })
+  return mesh(new THREE.SphereGeometry(r, 32, 24), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 }), x, y, z)
+}
+
+// ── Layout ────────────────────────────────────────────────────────────────
+const ZONES = [
+  { id: "fiksi_sastra", label: "Fiksi & Sastra", count: 5, at: [13, 6.5] },
+  { id: "misteri_thriller", label: "Misteri & Thriller", count: 4, at: [13, 12.5] },
+  { id: "fantasi_petualangan", label: "Fantasi & Petualangan", count: 3, at: [6.5, 14.5] },
+  { id: "anak_remaja", label: "Anak & Remaja", count: 0, at: [6.5, 20] },
+  { id: "sains_teknologi", label: "Sains & Teknologi", count: 2, at: [13, 18.5] },
+  { id: "sejarah_budaya", label: "Sejarah & Budaya", count: 0, at: [19.5, 14] },
+  { id: "bisnis_pengembangan_diri", label: "Bisnis & Pengembangan Diri", count: 1, at: [24.5, 18] },
+  { id: "lainnya", label: "Rak Lainnya", count: 1, at: [19.5, 20.5] },
+]
+for (const z of ZONES) towerShelf(z.at[0], z.at[1])
+readingTable(19.5, 26)
+const READ = [19.5, 26]
+openBook(18.4, 0.85, 25.7)
+openBook(21.2, 0.85, 26.3)
+adminDesk(5.5, 25.5)
+trolley(9, 26.8)
+displayTable(22, 5.5)
+displayTable(26.5, 9.5, 2.2, 1.2)
+displayTable(9.5, 11.6, 2.2, 1.2)
+for (const [x, z] of [[11.2, 9.6], [10.8, 3.2], [16.5, 9.5], [27.5, 13.5], [2.2, 12.5]]) lampPost(x, z, 0, 2.6)
+for (const [x, z, s] of [[16.2, 3.2, 1.3], [28.6, 5, 1.2], [2.4, 22, 1.1], [27.8, 24.5, 1.2], [10.8, 22.5, 1]]) plant(x, z, s)
+const arts = [
+  hangingArt(14.5, 10.6, 9, 1.1, ["#f6e7d0", "#2f6fb0", "#e94f37", "#f2c14e", "#3a3a3a"]),
+  hangingArt(22, 11.4, 4.5, 1.4, ["#fbe3e8", "#d1495b", "#edae49", "#00798c", "#30638e"]),
+  hangingArt(11.5, 12.2, 17, 0.8, ["#e8f1f2", "#13293d", "#006494", "#e94f37"]),
+]
+
+// ── People ────────────────────────────────────────────────────────────────
+const SKIN = ["#e8b48e", "#c68e63", "#8a5a3c", "#f0c8a0"]
+const HAIR = ["#2b1d16", "#1d1d1d", "#6b4a2b", "#d8d4cf", "#a8742f"]
+const SHIRT = ["#f2f0ea", "#2f3e46", "#ee6c4d", "#98c1d9", "#7a9e7e", "#b56576", "#e0c068", "#3d5a80", "#1f1f24"]
+function person({ shirt = pick(SHIRT), pants = pick(["#2b2420", "#3d5a80", "#4a4a4a", "#d9cdb8"]), skin = pick(SKIN), hair = pick(HAIR), seat = false } = {}) {
+  const root = new THREE.Group()
+  const capsule = (r, len) => new THREE.CapsuleGeometry(r, len, 5, 10)
+  const hipY = seat ? 0.0 : 0.86
+  const legs = []
+  for (const side of [-1, 1]) {
+    const hip = new THREE.Group()
+    hip.position.set(side * 0.09, hipY, 0)
+    root.add(hip)
+    mesh(capsule(0.075, 0.32), pants, 0, -0.22, 0, { parent: hip })
+    const knee = new THREE.Group()
+    knee.position.set(0, -0.42, 0)
+    hip.add(knee)
+    mesh(capsule(0.065, 0.3), pants, 0, -0.2, 0, { parent: knee })
+    block(0.11, 0.07, 0.2, "#2b1d16", 0, -0.42, 0.04, { parent: knee, r: 0.03 })
+    legs.push({ hip, knee })
+  }
+  mesh(capsule(0.19, 0.3), shirt, 0, hipY + 0.32, 0, { parent: root })
+  const arms = []
+  for (const side of [-1, 1]) {
+    const sh = new THREE.Group()
+    sh.position.set(side * 0.25, hipY + 0.5, 0)
+    root.add(sh)
+    mesh(capsule(0.06, 0.4), shirt, 0, -0.25, 0, { parent: sh })
+    mesh(new THREE.SphereGeometry(0.065, 10, 8), skin, 0, -0.5, 0, { parent: sh })
+    arms.push(sh)
+  }
+  const head = new THREE.Group()
+  head.position.y = hipY + 0.8
+  root.add(head)
+  mesh(new THREE.SphereGeometry(0.16, 20, 16), skin, 0, 0, 0, { parent: head })
+  const cap = mesh(new THREE.SphereGeometry(0.17, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), hair, 0, 0.01, -0.01, { parent: head })
+  cap.rotation.x = -0.25
+  if (seat) for (const { hip, knee } of legs) {
+    hip.rotation.x = -Math.PI / 2
+    knee.rotation.x = Math.PI / 2
+  }
+  scene.add(root)
+  return { root, legs, arms, head }
+}
+// People sitting on the stairs, some reading or on their phone.
+const sitters = seated.slice(0, 12).map(([x, y, z], i) => {
+  const p = person({ seat: true })
+  p.root.position.set(x, y + 0.02, z)
+  for (const a of p.arms) a.rotation.x = -0.9 - (i % 3) * 0.2
+  p.phase = i * 0.9
+  return p
+})
+// Readers at the long table.
+const readers = [[18.4, 25.0, 0], [21.2, 27.0, Math.PI], [16.6, 27.0, Math.PI]].map(([x, z, ry]) => {
+  const p = person({ seat: true })
+  p.root.position.set(x, 0.48, z)
+  p.root.rotation.y = ry
+  for (const a of p.arms) a.rotation.x = -1.1
+  return p
+})
+const librarian = person({ shirt: "#f2f0ea", hair: "#d8d4cf", seat: true })
+librarian.root.position.set(4.9, 0.5, 24.7)
+// Walkers move along loops between the towers.
+function walker(points, speed) {
+  const p = person()
+  const segs = []
+  let total = 0
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i], b = points[(i + 1) % points.length]
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+    segs.push({ a, b, len, pause: a[2] ?? 0 })
+    total += len / speed + (a[2] ?? 0)
+  }
+  return Object.assign(p, { segs, total, speed })
+}
+const walkers = [
+  walker([[16, 9.5, 2], [16, 23, 0], [23, 23, 2.5], [23, 9.5, 0]], 0.9),
+  walker([[10, 16, 1.5], [16.3, 16, 0], [16.3, 22, 2], [10, 22, 0]], 0.75),
+  walker([[21.5, 2.2, 3], [28, 2.2, 0], [28, 11.5, 2], [21.5, 11.5, 0]], 0.7),
+  walker([[3, 12, 0], [3, 23, 2], [9.8, 23, 0], [9.8, 12.5, 1.5]], 0.8),
+  walker([[26.5, 15, 0], [26.5, 28, 2.5], [14, 28.2, 0], [14, 23.5, 1], [26.5, 23.2, 0]], 0.85),
+]
+
+// "Anda": a ring on the floor with the member standing in it.
+const anda = person({ shirt: "#1fa58a", hair: "#2b1d16", skin: "#c68e63" })
+const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.52, 40), new THREE.MeshBasicMaterial({ color: "#4fd8ff", transparent: true, opacity: 0.9 }))
+ring.rotation.x = -Math.PI / 2
+ring.position.y = 0.02
+anda.root.add(ring)
+const andaFrom = new THREE.Vector3(14.5, 0, 28.5)
+const andaTo = andaFrom.clone()
+let andaT = 1
+anda.root.position.copy(andaFrom)
+
+// ── Books and dividers as instances ───────────────────────────────────────
+function instances(list, material) {
+  const geo = new THREE.BoxGeometry(1, 1, 1)
+  const inst = new THREE.InstancedMesh(geo, material, list.length)
+  const m4 = new THREE.Matrix4()
+  const q = new THREE.Quaternion()
+  list.forEach((b, i) => {
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), b.rot)
+    m4.compose(b.p, q, new THREE.Vector3(...b.s))
+    inst.setMatrixAt(i, m4)
+    if (b.color) inst.setColorAt(i, new THREE.Color(b.color))
+  })
+  inst.castShadow = false
+  inst.receiveShadow = true
+  scene.add(inst)
+}
+instances(books, new THREE.MeshStandardMaterial({ roughness: 0.65 }))
+instances(dividers, new THREE.MeshStandardMaterial({ color: "#a8703f", roughness: 0.55 }))
+
+// ── Labels and moving "Anda" ──────────────────────────────────────────────
+const HOTSPOTS = [
+  ...ZONES.map((z) => ({ id: z.id, html: `<span>${z.label}</span><span class="count">· ${z.count}</span>`, name: `${z.label}, ${z.count} buku`, pos: [z.at[0], 6.1, z.at[1]], spot: [z.at[0] + 1.9, z.at[1] + 1.9], empty: z.count === 0, action: `Rak Saya → ${z.label}` })),
+  { id: "meja-baca", html: "<span>Meja Baca</span>", name: "Meja Baca", pos: [READ[0], 2.2, READ[1]], spot: [READ[0], READ[1] + 2.2], action: "Membuka “The Adventures of Sherlock Holmes” di 46%" },
+  { id: "meja-admin", html: "<span>Meja Admin</span>", name: "Meja Admin", pos: [5.5, 2.8, 25.5], spot: [7.5, 27.8], action: "Membuka panel upload" },
+  { id: "troli", html: `<span>Troli Buku Baru</span><span class="badge">2</span>`, name: "Troli Buku Baru, 2 buku", pos: [9, 1.9, 26.8], spot: [10.5, 28.3], action: "Membuka panel “Susun buku”" },
+]
+const toast = document.getElementById("toast")
+let hideToast
+const labels = HOTSPOTS.map((h) => {
+  const el = document.createElement("button")
+  el.className = "hs" + (h.empty ? " empty" : "")
+  el.innerHTML = h.html
+  el.setAttribute("aria-label", h.name)
+  el.addEventListener("click", () => {
+    andaFrom.copy(anda.root.position)
+    andaTo.set(h.spot[0], 0, h.spot[1])
+    andaT = reduced ? 1 : 0
+    if (reduced) anda.root.position.copy(andaTo)
+    toast.textContent = h.action
+    toast.classList.add("show")
+    clearTimeout(hideToast)
+    hideToast = setTimeout(() => toast.classList.remove("show"), 2200)
+    requestRender()
+  })
+  document.getElementById("labels").append(el)
+  return { el, pos: new THREE.Vector3(...h.pos) }
+})
+const v = new THREE.Vector3()
+function placeLabels() {
+  camera.updateMatrixWorld()
+  for (const l of labels) {
+    v.copy(l.pos).project(camera)
+    l.el.style.transform = `translate(${((v.x + 1) / 2) * innerWidth}px,${((1 - v.y) / 2) * innerHeight}px) translate(-50%,-100%)`
+  }
+}
+
+// ── Camera: fill the screen, pan and zoom ─────────────────────────────────
+const controls = new OrbitControls(camera, renderer.domElement)
+controls.target.copy(target)
+controls.enableRotate = false
+controls.screenSpacePanning = true
+controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
+controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN }
+controls.minZoom = 1
+controls.maxZoom = 2.6
+controls.enableDamping = !reduced
+controls.update()
+function resize() {
+  const aspect = innerWidth / innerHeight
+  // Show about 25 m across on wide screens and ~13 m tall on phones.
+  const halfW = aspect >= 1 ? 18.5 : 8
+  const halfH = halfW / aspect
+  Object.assign(camera, { left: -halfW, right: halfW, top: halfH, bottom: -halfH })
+  camera.updateProjectionMatrix()
+  renderer.setSize(innerWidth, innerHeight)
+  composer.setSize(innerWidth, innerHeight)
+  bloom.resolution.set(innerWidth / 2, innerHeight / 2)
+  if (aspect < 1) {
+    // Phones open at the reading table.
+    controls.target.set(17, 3, 19)
+    camera.position.copy(controls.target).add(new THREE.Vector3(40, 40, 40))
+    controls.update()
+  }
+  placeLabels()
+}
+addEventListener("resize", () => {
+  resize()
+  requestRender()
+})
+resize()
+// Keep the view inside the library: the target stays over the floor.
+controls.addEventListener("change", () => {
+  const t = controls.target
+  const clamped = new THREE.Vector3(Math.min(24, Math.max(9, t.x)), t.y, Math.min(24, Math.max(9, t.z)))
+  if (!clamped.equals(t)) {
+    camera.position.add(clamped.clone().sub(t))
+    t.copy(clamped)
+  }
+  placeLabels()
+  requestRender()
+})
+
+// ── Animation ─────────────────────────────────────────────────────────────
+function animate(t, dt) {
+  for (const w of walkers) {
+    let time = t % w.total
+    for (const s of w.segs) {
+      const walkT = s.len / w.speed
+      if (time > s.pause + walkT) {
+        time -= s.pause + walkT
+        continue
+      }
+      const moving = time > s.pause
+      const f = moving ? (time - s.pause) / walkT : 0
+      w.root.position.set(s.a[0] + (s.b[0] - s.a[0]) * f, 0, s.a[1] + (s.b[1] - s.a[1]) * f)
+      w.root.rotation.y = Math.atan2(s.b[0] - s.a[0], s.b[1] - s.a[1])
+      const swing = moving ? Math.sin(t * 6.5) * 0.42 : 0
+      w.legs[0].hip.rotation.x = swing
+      w.legs[1].hip.rotation.x = -swing
+      w.legs[0].knee.rotation.x = Math.max(0, -swing) * 0.8
+      w.legs[1].knee.rotation.x = Math.max(0, swing) * 0.8
+      w.arms[0].rotation.x = -swing * 0.7
+      w.arms[1].rotation.x = swing * 0.7
+      w.head.rotation.y = moving ? 0 : Math.sin(t * 0.8) * 0.5
+      break
+    }
+  }
+  for (const s of sitters) {
+    s.head.rotation.x = Math.sin(t * 0.6 + s.phase) * 0.12 + 0.15
+    s.head.rotation.y = Math.sin(t * 0.3 + s.phase) * 0.25
+  }
+  const k = (t % 7) / 7
+  for (const [i, p] of pagePivots.entries()) {
+    const kk = (k + i * 0.45) % 1
+    p.rotation.z = kk < 0.6 ? 0 : kk < 0.8 ? ((kk - 0.6) / 0.2) * Math.PI : Math.PI
+    p.visible = kk < 0.82
+  }
+  librarian.arms[0].rotation.x = -1.2 + Math.sin(t * 14) * 0.06
+  librarian.arms[1].rotation.x = -1.2 + Math.cos(t * 14) * 0.06
+  for (const [i, a] of arts.entries()) a.rotation.y = t * (0.08 + i * 0.03)
+  for (const c of clouds) {
+    c.position.x += dt * c.userData.speed
+    if (c.position.x > SIZE + 2) c.position.x = GLASS.x0 - 3
+  }
+  for (const b of birds) {
+    b.position.x -= dt * b.userData.speed
+    if (b.position.x < GLASS.x0 - 2) b.position.x = SIZE + 1
+    const flap = Math.sin(t * 9 + b.userData.phase) * 0.8
+    b.userData.l.rotation.x = flap
+    b.userData.r.rotation.x = -flap
+  }
+  for (const b of beacons) b.visible = (t * 0.8 + b.userData.phase) % 1 < 0.45
+  // "Anda" walks to the chosen spot.
+  if (andaT < 1) {
+    andaT = Math.min(1, andaT + dt / 0.9)
+    const e = 1 - Math.pow(1 - andaT, 3)
+    anda.root.position.lerpVectors(andaFrom, andaTo, e)
+    anda.root.rotation.y = Math.atan2(andaTo.x - andaFrom.x, andaTo.z - andaFrom.z)
+    const swing = andaT < 1 ? Math.sin(t * 9) * 0.45 : 0
+    anda.legs[0].hip.rotation.x = swing
+    anda.legs[1].hip.rotation.x = -swing
+  }
+  ring.material.opacity = 0.55 + Math.sin(t * 2.6) * 0.35
+}
+
+const fpsEl = document.getElementById("fps")
+let frames = 0
+let lastFps = performance.now()
+let last = performance.now()
+let needsRender = true
+function requestRender() {
+  needsRender = true
+}
+function loop(now) {
+  requestAnimationFrame(loop)
+  if (document.hidden) return
+  const dt = Math.min(0.05, (now - last) / 1000)
+  last = now
+  if (!reduced) {
+    animate(now / 1000, dt)
+    controls.update()
+    needsRender = true
+  } else if (controls.update()) needsRender = true
+  if (!needsRender) return
+  composer.render()
+  needsRender = false
+  frames++
+  if (now - lastFps > 1000) {
+    fpsEl.textContent = reduced ? "gerak dikurangi: statis" : `${frames} fps`
+    frames = 0
+    lastFps = now
+  }
+}
+if (reduced) animate(0, 0)
+requestAnimationFrame(loop)
+</script>
+</body></html>
