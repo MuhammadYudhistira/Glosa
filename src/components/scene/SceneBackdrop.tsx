@@ -1,6 +1,20 @@
 import { useRouterState } from "@tanstack/react-router"
-import { useEffect } from "react"
+import { type CSSProperties, useEffect } from "react"
+import {
+  LobbyStill,
+  STILL_SIZE,
+  STILL_VIEW,
+} from "@/components/lobby/LobbyStill"
+import { ADMIN_DESK } from "@/components/lobby/scene/layout"
+import { project } from "@/components/lobby/scene/projection"
 import { sceneStateFor } from "./scene-state"
+
+// Where the admin desk sits in the still image; the CSS camera zooms in on it.
+const desk = project([ADMIN_DESK[0], 1, ADMIN_DESK[1]], STILL_VIEW, STILL_SIZE)
+const DESK_POSITION = {
+  "--desk-x": `${desk.x}%`,
+  "--desk-y": `${desk.y}%`,
+} as CSSProperties
 
 export function SceneBackdrop() {
   // Follow the resolved location, not the pending one: a navigation that a
@@ -42,19 +56,10 @@ export function SceneBackdrop() {
         className="scene-canvas"
         data-focus={state.focus}
         data-blur={state.blur}
+        style={DESK_POSITION}
       >
-        <img
-          src="/lobby/scene.svg"
-          alt=""
-          className="scene-image"
-          draggable={false}
-        />
-        <img
-          src="/lobby/scene-labels.svg"
-          alt=""
-          className="scene-labels"
-          draggable={false}
-        />
+        {/* Zoomed in up to 3×: ask for the large image. */}
+        <LobbyStill className="scene-image" sizes="300vw" />
         {state.focus === "overview" && <span className="scene-pulse" />}
       </div>
       {state.dim && <div className="scene-dim" />}
