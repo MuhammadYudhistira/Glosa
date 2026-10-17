@@ -364,6 +364,120 @@
 /* Rak Saya: covers stand on wooden shelf boards (spec §8). */
 /* In the components layer so Tailwind utilities (w-24, ...) can still override. */
 @layer components {
+  /* Lobby panels (plan 1D, Task 9). */
+  .lobby-panel {
+    padding: 0.9rem 1rem;
+  }
+  .lobby-panel-title {
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .lobby-map {
+    position: relative;
+    aspect-ratio: 2 / 1;
+  }
+  .lobby-map::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    background: rgb(201 141 85 / 0.28);
+  }
+  .lobby-map-spot {
+    position: absolute;
+    width: 0.9rem;
+    height: 0.9rem;
+    translate: -50% -50%;
+    border: 2px solid var(--background);
+    border-radius: 9999px;
+    background: #c98d55;
+  }
+  .lobby-map-spot[data-kind="place"] {
+    background: #e9e3da;
+  }
+  .lobby-map-spot:hover,
+  .lobby-map-spot:focus-visible {
+    outline: 2px solid var(--color-mint);
+    outline-offset: 2px;
+  }
+  .lobby-map-anda {
+    position: absolute;
+    width: 0.7rem;
+    height: 0.7rem;
+    translate: -50% -50%;
+    border-radius: 9999px;
+    background: #4fd8ff;
+    box-shadow: 0 0 0 4px rgb(79 216 255 / 0.3);
+  }
+  .lobby-search-results {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(100% + 0.35rem);
+    z-index: 20;
+    max-height: 18rem;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--popover);
+    padding: 0.25rem;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+  }
+  .lobby-search-results button {
+    display: block;
+    width: 100%;
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    text-align: left;
+  }
+  .lobby-search-results button:hover,
+  .lobby-search-results button:focus-visible {
+    background: var(--muted);
+  }
+  .lobby-account {
+    position: relative;
+  }
+  .lobby-avatar {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9999px;
+    background: var(--primary);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--primary-foreground);
+    list-style: none;
+    cursor: pointer;
+  }
+  .lobby-avatar::-webkit-details-marker {
+    display: none;
+  }
+  .lobby-account-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.4rem);
+    z-index: 20;
+    display: grid;
+    gap: 0.15rem;
+    min-width: 12rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--popover);
+    padding: 0.4rem;
+  }
+  .lobby-account-menu a {
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.875rem;
+  }
+  .lobby-account-menu a:hover {
+    background: var(--muted);
+  }
+
   .shelf-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
