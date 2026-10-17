@@ -36,6 +36,8 @@ test("the place read on one device is offered on another", async ({
   page,
   browser,
 }) => {
+  // Two devices, two book opens and the sync pause do not fit in the default 30 s.
+  test.setTimeout(90_000)
   const { member, bookId } = await memberWithBook(page)
 
   await page.goto("/shelf")

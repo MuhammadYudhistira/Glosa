@@ -27,6 +27,8 @@ export default defineConfig({
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   // Dev-mode SSR + cloud round-trips are slow when 4 workers hit a cold dev server.
   expect: { timeout: 15_000 },
+  // Some steps wait up to 30 s (uploads, opening a book), so a whole test needs more than the 30 s default.
+  timeout: 60_000,
   globalTeardown: "./e2e/global-teardown.ts",
   use: { baseURL: "http://localhost:3000", trace: "retain-on-failure" },
   projects: [
@@ -51,6 +53,8 @@ export default defineConfig({
     },
     {
       name: "lobby-3d",
+      // SwiftShader is CPU-heavy: in parallel it would starve the other projects.
+      dependencies: ["desktop", "mobile", "offline"],
       use: { ...devices["Desktop Chrome"], launchOptions: SWIFTSHADER },
       testMatch: /lobby-3d\.spec\.ts/,
     },
