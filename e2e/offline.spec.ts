@@ -81,5 +81,17 @@ test("a book saved for offline reading opens without a connection", async ({
     .poll(() => readerFontLoaded(page), { timeout: 15_000 })
     .toBe(true)
 
+  // The lobby opens offline too, from the same saved shelf (spec 1D §7).
+  await page.goto("/lobby")
+  await expect(
+    page.getByText(
+      "Kamu sedang offline. Rak ditampilkan dari salinan terakhir di perangkat ini."
+    )
+  ).toBeVisible()
+  await expect(
+    page
+      .getByRole("region", { name: "Adegan lobi" })
+      .getByRole("button", { name: "Troli Buku Baru · 1 buku" })
+  ).toBeAttached()
   expect(errors).toEqual([])
 })

@@ -1,26 +1,23 @@
-import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
-import { useEffect, useMemo, useState } from "react"
-import { RouteError } from "@/components/RouteError"
+import { createFileRoute, useRouter } from "@tanstack/react-router"
+import { useMemo, useState } from "react"
 import { BookActions } from "@/components/shelf/BookActions"
 import { BookDetail } from "@/components/shelf/BookDetail"
 import { BookGrid } from "@/components/shelf/BookGrid"
 import { EmptyShelf } from "@/components/shelf/EmptyShelf"
 import { GenreFilter } from "@/components/shelf/GenreFilter"
 import { ReadLink } from "@/components/shelf/ReadLink"
+import { ShelfLoadError } from "@/components/shelf/ShelfLoadError"
 import { ShelfHeader } from "@/components/shelf/ShelfHeader"
 import { ShelfToolbar } from "@/components/shelf/ShelfToolbar"
 import { TrolleyGenrePicker } from "@/components/shelf/TrolleyGenrePicker"
 import { UploadPanel } from "@/components/shelf/UploadPanel"
+import { useShelfSnapshot } from "@/components/shelf/useShelfSnapshot"
 import {
   shelfPercentage,
   useLocalShelf,
 } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
-import { Panel } from "@/components/ui/panel"
-import { BookLoadError } from "@/lib/book-download"
-import { bookMessage } from "@/lib/book-messages"
 import { genreLabel } from "@/lib/genre"
-import { saveShelfSnapshot } from "@/lib/local/shelf-snapshot"
 import { countBooks, parseShelfSearch, shelfBooks } from "@/lib/shelf"
 import { loadShelf } from "@/lib/shelf-loader"
 
@@ -30,25 +27,9 @@ export const Route = createFileRoute("/_member/shelf")({
   // Filtering happens in the browser; reload only on invalidate or after a minute.
   staleTime: 60_000,
   head: () => ({ meta: [{ title: "Rak Saya — Glosa" }] }),
-  errorComponent: ShelfError,
+  errorComponent: ShelfLoadError,
   component: ShelfPage,
 })
-
-function ShelfError({ error }: { error: unknown }) {
-  if (!(error instanceof BookLoadError)) return <RouteError error={error} />
-  return (
-    <main className="grid min-h-dvh place-items-center p-4">
-      <Panel className="w-full max-w-md space-y-4 p-6 text-center">
-        <p role="alert" className="text-sm">
-          {bookMessage(error.code)}
-        </p>
-        <Link to="/lobby" className="text-sm text-mint underline">
-          ← Lobi
-        </Link>
-      </Panel>
-    </main>
-  )
-}
 
 function ShelfPage() {
   const { books, usage, offline } = Route.useLoaderData()
@@ -67,13 +48,7 @@ function ShelfPage() {
     <Button onClick={() => setUploading(true)}>Bawa buku</Button>
   )
 
-  // What this shelf looked like online is what offline visits show.
-  useEffect(() => {
-    if (offline) return
-    saveShelfSnapshot(user.id, { books, usage }).catch((error: unknown) =>
-      console.error("saving the shelf snapshot failed", error)
-    )
-  }, [books, usage, offline, user.id])
+  useShelfSnapshot(user.id, books, usage, offline)
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-5 p-4 sm:p-8">

@@ -933,4 +933,76 @@
     color: var(--color-mint);
     text-decoration: underline;
   }
+
+  /* Lobby page layout (plan 1D, Task 11): the scene fills the page and the
+     panels float over it. */
+  .lobby-page {
+    position: relative;
+    height: calc(100dvh - var(--tabbar-h));
+    overflow: hidden;
+  }
+  .lobby-topbar {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    right: 21.5rem;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: var(--color-panel);
+    padding: 0.5rem 0.75rem;
+    backdrop-filter: blur(8px);
+  }
+  .lobby-side {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    z-index: 10;
+    display: none;
+    width: 20rem;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+  }
+  .lobby-notices {
+    position: absolute;
+    top: 0.75rem;
+    left: 50%;
+    z-index: 11;
+    display: grid;
+    gap: 0.5rem;
+    width: min(28rem, calc(100% - 8rem));
+    translate: -50% 0;
+    pointer-events: none;
+  }
+  .lobby-notice {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--color-panel);
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+  }
+  .lobby-add {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 10;
+  }
+  @media (min-width: 1024px) {
+    .lobby-page {
+      height: 100dvh;
+    }
+    .lobby-side {
+      display: flex;
+    }
+    .lobby-notices {
+      top: 4.75rem;
+      left: calc(50% - 10.75rem);
+    }
+  }
 }

@@ -6,6 +6,20 @@ if (existsSync(".env.local")) process.loadEnvFile(".env.local")
 // The service worker exists only in the production build (plan 1C, Task 11).
 const PREVIEW_URL = "http://localhost:4173"
 
+// The lobby draws its 3D scene only in the "lobby-3d" project; elsewhere it
+// shows the still image, so every test that passes through /lobby stays fast
+// (plan 1D, decision 7).
+const NO_WEBGL = { args: ["--disable-3d-apis"] }
+// Chromium without a GPU draws WebGL with SwiftShader, on the CPU.
+const SWIFTSHADER = {
+  args: [
+    "--use-gl=angle",
+    "--use-angle=swiftshader",
+    "--enable-unsafe-swiftshader",
+  ],
+}
+const OWN_PROJECT = /(offline|lobby-3d)\.spec\.ts/
+
 export default defineConfig({
   testDir: "e2e",
   fullyParallel: true,
@@ -18,18 +32,27 @@ export default defineConfig({
   projects: [
     {
       name: "desktop",
-      use: { ...devices["Desktop Chrome"] },
-      testIgnore: /offline\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], launchOptions: NO_WEBGL },
+      testIgnore: OWN_PROJECT,
     },
     {
       name: "mobile",
-      use: { ...devices["Pixel 7"] },
-      testIgnore: /offline\.spec\.ts/,
+      use: { ...devices["Pixel 7"], launchOptions: NO_WEBGL },
+      testIgnore: OWN_PROJECT,
     },
     {
       name: "offline",
-      use: { ...devices["Desktop Chrome"], baseURL: PREVIEW_URL },
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: PREVIEW_URL,
+        launchOptions: NO_WEBGL,
+      },
       testMatch: /offline\.spec\.ts/,
+    },
+    {
+      name: "lobby-3d",
+      use: { ...devices["Desktop Chrome"], launchOptions: SWIFTSHADER },
+      testMatch: /lobby-3d\.spec\.ts/,
     },
   ],
   webServer: [

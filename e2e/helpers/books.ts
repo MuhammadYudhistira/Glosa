@@ -65,3 +65,20 @@ export async function readerSettingsOf(userId: string): Promise<unknown> {
   if (error) throw error
   return data.reader_settings
 }
+
+export async function setGenre(bookId: string, genre: string): Promise<void> {
+  const { error } = await admin()
+    .from("books")
+    .update({ genre, genre_source: "user" })
+    .eq("id", bookId)
+  if (error) throw error
+}
+
+/** Marks the book as opened just now, as the reader does online. */
+export async function markOpened(bookId: string): Promise<void> {
+  const { error } = await admin()
+    .from("books")
+    .update({ last_opened_at: new Date().toISOString() })
+    .eq("id", bookId)
+  if (error) throw error
+}
