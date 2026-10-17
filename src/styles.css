@@ -650,4 +650,119 @@
       display: none;
     }
   }
+
+  /* Lobby scene (plan 1D, Task 8). */
+  .lobby-scene {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    container-type: size;
+    background: #1b120c;
+  }
+  .lobby-scene:focus-visible {
+    outline: 3px solid var(--color-mint);
+    outline-offset: -3px;
+  }
+  .lobby-canvas-host {
+    position: absolute;
+    inset: 0;
+  }
+  .lobby-canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    touch-action: none;
+  }
+  /* The still image covers the scene like the canvas would, at 16:9. */
+  .lobby-still-frame {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100cqw, 177.78cqh);
+    height: max(100cqh, 56.25cqw);
+    translate: -50% -50%;
+  }
+  .lobby-still-frame > picture {
+    display: contents;
+  }
+  .lobby-still {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    user-select: none;
+  }
+  .lobby-hotspots {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .lobby-hotspot-anchor {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    translate: -50% -100%;
+  }
+  .lobby-hotspot-anchor > * {
+    pointer-events: auto;
+  }
+  .lobby-hotspot {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    background: var(--color-panel);
+    padding: 0.4rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--foreground);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  }
+  .lobby-hotspot:hover,
+  .lobby-hotspot:focus-visible {
+    border-color: var(--color-mint);
+    outline: none;
+  }
+  /* Dimmed by colour, not opacity, so the label keeps AA contrast. */
+  .lobby-hotspot[data-empty] {
+    border-style: dashed;
+    color: var(--muted-foreground);
+  }
+  .lobby-hotspot-count {
+    font-weight: 400;
+    color: var(--muted-foreground);
+  }
+  .lobby-hotspot-badge {
+    display: grid;
+    place-items: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 9999px;
+    background: #e8a33b;
+    padding: 0 0.3rem;
+    font-size: 0.75rem;
+    color: #1b1206;
+  }
+  .lobby-center {
+    position: absolute;
+    left: 1rem;
+    top: 1rem;
+    z-index: 5;
+  }
+  @media (max-width: 1023px) {
+    .lobby-hotspot {
+      padding: 0.3rem 0.55rem;
+      font-size: 0.75rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .lobby-center {
+      top: auto;
+      bottom: 1rem;
+    }
+  }
 }
