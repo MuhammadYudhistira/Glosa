@@ -272,14 +272,15 @@ export function createStage(options: StageOptions): Stage {
     const same =
       Math.abs(next.zoom - view.zoom) < 1e-9 &&
       next.target.every((value, i) => Math.abs(value - view.target[i]) < 1e-9)
-    // OrbitControls fires "change" on every update of an orthographic camera.
-    if (same && next.zoom === camera.zoom) return
-    view = next
-    if (view.zoom !== camera.zoom) {
-      camera.zoom = view.zoom
+    if (next.zoom !== camera.zoom) {
+      camera.zoom = next.zoom
       camera.updateProjectionMatrix()
     }
+    view = next
     placeCamera()
+    // OrbitControls fires "change" on every update of an orthographic camera;
+    // an unchanged view is already on screen.
+    if (same) return
     options.onView(view, viewport)
     requestRender()
   }

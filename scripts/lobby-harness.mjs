@@ -26,8 +26,8 @@ async function render(viewport) {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 1 })
     const errors = []
     page.on("pageerror", (error) => errors.push(error.message))
-    await page.goto(`${PAGE}?mode=still`, { timeout: 120_000 })
     const failed = new Promise((resolve) => page.once("pageerror", resolve))
+    await page.goto(`${PAGE}?mode=still`, { timeout: 120_000 })
     const ready = page
       .waitForSelector("body[data-ready]", { timeout: 300_000 })
       .then(() => null)
