@@ -14,8 +14,7 @@ const sceneOf = (page: Page) =>
   page.getByRole("region", { name: "Adegan lobi" })
 
 /** Pixels of the magenta void the test mode paints outside the map. */
-async function voidPixels(page: Page): Promise<number> {
-  const png = await page.screenshot({ timeout: 120_000 })
+async function voidPixels(png: Buffer): Promise<number> {
   const { data, info } = await sharp(png)
     .raw()
     .toBuffer({ resolveWithObject: true })
@@ -39,6 +38,19 @@ async function drag(page: Page, dx: number, dy: number) {
   await page.mouse.up()
 }
 
+/** Drags the 8 directions; checks for void each time and whether the view changed. */
+async function sweep(page: Page, label: string): Promise<{ moved: boolean }> {
+  const baseline = await page.screenshot({ timeout: 120_000 })
+  let moved = false
+  for (const [direction, dx, dy] of DIRECTIONS) {
+    for (let k = 0; k < 3; k++) await drag(page, dx, dy)
+    const png = await page.screenshot({ timeout: 120_000 })
+    expect(await voidPixels(png), `${label}, geser ke ${direction}`).toBe(0)
+    if (!png.equals(baseline)) moved = true
+  }
+  return { moved }
+}
+
 const DIRECTIONS = [
   ["kiri", 1, 0],
   ["kanan", -1, 0],
@@ -51,7 +63,7 @@ const DIRECTIONS = [
 ] as const
 
 test("the camera never shows anything outside the map", async ({ page }) => {
-  test.setTimeout(900_000)
+  test.setTimeout(1_500_000)
   await page.addInitScript(() =>
     Object.assign(window, { __GLOSA_LOBBY_TEST__: true })
   )
@@ -76,19 +88,19 @@ test("the camera never shows anything outside the map", async ({ page }) => {
     const box = await scene.boundingBox()
     if (!box) throw new Error("the lobby scene has no box")
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
-    // Zoom out as far as it goes. At very wide or later sizes the zoomed-out
-    // view can be fixed (nothing left to pan), so the sanity check that the
-    // input reaches the camera only runs on the first size.
-    const before = await page.screenshot({ timeout: 120_000 })
+    // Zoom out as far as it goes. At very wide sizes that view can be fixed
+    // (nothing left to pan), so only the sizes that can pan must move.
     for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 1500)
-    for (const [direction, dx, dy] of DIRECTIONS) {
-      for (let k = 0; k < 3; k++) await drag(page, dx, dy)
-      expect(await voidPixels(page), `${size}, geser ke ${direction}`).toBe(0)
+    const out = await sweep(page, `${size}, zoomed out`)
+    if (viewport.width !== 1680) {
+      expect(out.moved, `${size}: zoomed out, no drag moved the camera`).toBe(
+        true
+      )
     }
-    if (viewport.width === 1440) {
-      const after = await page.screenshot({ timeout: 120_000 })
-      expect(after.equals(before), `${size}: the camera moved`).toBe(false)
-    }
+    // Zoomed in part of the way every size can pan.
+    for (let i = 0; i < 3; i++) await page.mouse.wheel(0, -500)
+    const inn = await sweep(page, `${size}, zoomed in`)
+    expect(inn.moved, `${size}: zoomed in, no drag moved the camera`).toBe(true)
   }
 })
 
