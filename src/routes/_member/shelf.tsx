@@ -1,32 +1,61 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useMemo, useState } from "react"
+import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
+import { useEffect, useMemo, useState } from "react"
+import { RouteError } from "@/components/RouteError"
 import { BookActions } from "@/components/shelf/BookActions"
 import { BookDetail } from "@/components/shelf/BookDetail"
 import { BookGrid } from "@/components/shelf/BookGrid"
 import { EmptyShelf } from "@/components/shelf/EmptyShelf"
 import { GenreFilter } from "@/components/shelf/GenreFilter"
+import { ReadLink } from "@/components/shelf/ReadLink"
 import { ShelfHeader } from "@/components/shelf/ShelfHeader"
 import { ShelfToolbar } from "@/components/shelf/ShelfToolbar"
 import { TrolleyGenrePicker } from "@/components/shelf/TrolleyGenrePicker"
 import { UploadPanel } from "@/components/shelf/UploadPanel"
+import {
+  shelfPercentage,
+  useLocalShelf,
+} from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
+import { Panel } from "@/components/ui/panel"
+import { BookLoadError } from "@/lib/book-download"
+import { bookMessage } from "@/lib/book-messages"
 import { genreLabel } from "@/lib/genre"
+import { saveShelfSnapshot } from "@/lib/local/shelf-snapshot"
 import { countBooks, parseShelfSearch, shelfBooks } from "@/lib/shelf"
-import { listBooksFn } from "@/server/books"
+import { loadShelf } from "@/lib/shelf-loader"
 
 export const Route = createFileRoute("/_member/shelf")({
   validateSearch: parseShelfSearch,
-  loader: () => listBooksFn(),
+  loader: ({ context }) => loadShelf(context.user.id),
   // Filtering happens in the browser; reload only on invalidate or after a minute.
   staleTime: 60_000,
   head: () => ({ meta: [{ title: "Rak Saya — Glosa" }] }),
+  errorComponent: ShelfError,
   component: ShelfPage,
 })
 
+function ShelfError({ error }: { error: unknown }) {
+  if (!(error instanceof BookLoadError)) return <RouteError error={error} />
+  return (
+    <main className="grid min-h-dvh place-items-center p-4">
+      <Panel className="w-full max-w-md space-y-4 p-6 text-center">
+        <p role="alert" className="text-sm">
+          {bookMessage(error.code)}
+        </p>
+        <Link to="/lobby" className="text-sm text-mint underline">
+          ← Lobi
+        </Link>
+      </Panel>
+    </main>
+  )
+}
+
 function ShelfPage() {
-  const { books, usage } = Route.useLoaderData()
+  const { books, usage, offline } = Route.useLoaderData()
+  const { user } = Route.useRouteContext()
   const search = Route.useSearch()
   const router = useRouter()
+  const local = useLocalShelf()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [notice, setNotice] = useState("")
@@ -38,12 +67,26 @@ function ShelfPage() {
     <Button onClick={() => setUploading(true)}>Bawa buku</Button>
   )
 
+  // What this shelf looked like online is what offline visits show.
+  useEffect(() => {
+    if (offline) return
+    saveShelfSnapshot(user.id, { books, usage }).catch((error: unknown) =>
+      console.error("saving the shelf snapshot failed", error)
+    )
+  }, [books, usage, offline, user.id])
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-5 p-4 sm:p-8">
       <ShelfHeader
         usage={usage}
         actions={books.length > 0 ? bringButton : undefined}
       />
+      {offline && (
+        <output className="block rounded-lg border bg-panel px-4 py-2 text-sm">
+          Kamu sedang offline. Rak ditampilkan dari salinan terakhir di
+          perangkat ini.
+        </output>
+      )}
       <output className="block min-h-5 text-sm text-mint">{notice}</output>
       {books.length === 0 ? (
         <EmptyShelf action={bringButton} />
@@ -60,6 +103,7 @@ function ShelfPage() {
           ) : (
             <BookGrid
               books={visible}
+              local={local}
               onOpen={(book) => setSelectedId(book.id)}
               footer={
                 inTrolley
@@ -78,18 +122,29 @@ function ShelfPage() {
           )}
         </>
       )}
-      <BookDetail book={selected} onClose={() => setSelectedId(null)}>
+      <BookDetail
+        book={selected}
+        percentage={selected ? shelfPercentage(selected, local) : 0}
+        onClose={() => setSelectedId(null)}
+      >
         {selected && (
-          <BookActions
-            key={selected.id}
-            book={selected}
-            onGenreSaved={() => void router.invalidate()}
-            onDeleted={(book) => {
-              setSelectedId(null)
-              setNotice(`“${book.title}” dihapus dari rak.`)
-              void router.invalidate()
-            }}
-          />
+          <>
+            <ReadLink
+              bookId={selected.id}
+              percentage={shelfPercentage(selected, local)}
+            />
+            <BookActions
+              key={selected.id}
+              book={selected}
+              saved={local.saved.has(selected.id)}
+              onGenreSaved={() => void router.invalidate()}
+              onDeleted={(book) => {
+                setSelectedId(null)
+                setNotice(`“${book.title}” dihapus dari rak.`)
+                void router.invalidate()
+              }}
+            />
+          </>
         )}
       </BookDetail>
       <UploadPanel open={uploading} onOpenChange={setUploading} usage={usage} />

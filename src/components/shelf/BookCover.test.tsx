@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { BookCover, coverHue } from "./BookCover"
 
@@ -26,5 +26,16 @@ describe("BookCover", () => {
     expect(coverHue("Sherlock")).toBe(coverHue("Sherlock"))
     expect(coverHue("Sherlock")).toBeGreaterThanOrEqual(0)
     expect(coverHue("Sherlock")).toBeLessThan(360)
+  })
+
+  it("falls back to the titled spine when the cover fails to load", () => {
+    const { container } = render(
+      <BookCover
+        book={{ title: "Sherlock", coverUrl: "https://storage/old.webp" }}
+      />
+    )
+    fireEvent.error(container.querySelector("img")!)
+    expect(container.querySelector("img")).toBeNull()
+    expect(screen.getByText("Sherlock")).toBeInTheDocument()
   })
 })

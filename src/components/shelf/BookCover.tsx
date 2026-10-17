@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react"
+import { type CSSProperties, useState } from "react"
 import type { ShelfBook } from "@/lib/book-types"
 import { cn } from "@/lib/utils"
 
@@ -15,13 +15,18 @@ export function BookCover({
   book: Pick<ShelfBook, "title" | "coverUrl">
   className?: string
 }) {
-  if (book.coverUrl) {
+  // Signed cover URLs expire after an hour (spec §12): a cover that fails to
+  // load gets the titled spine instead of a broken image.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  if (book.coverUrl && book.coverUrl !== failedUrl) {
+    const url = book.coverUrl
     return (
       <img
-        src={book.coverUrl}
+        src={url}
         alt=""
         loading="lazy"
         draggable={false}
+        onError={() => setFailedUrl(url)}
         className={cn("book-cover", className)}
       />
     )

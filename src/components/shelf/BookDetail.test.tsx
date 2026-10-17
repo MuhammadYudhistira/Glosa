@@ -18,4 +18,12 @@ describe("BookDetail", () => {
     render(<BookDetail book={null} onClose={() => undefined} />)
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
+
+  it("shows how far the book has been read", async () => {
+    render(
+      <BookDetail book={sherlock} percentage={45.6} onClose={() => undefined} />
+    )
+    const dialog = await screen.findByRole("dialog", { name: sherlock.title })
+    expect(dialog).toHaveTextContent("Dibaca45%")
+  })
 })

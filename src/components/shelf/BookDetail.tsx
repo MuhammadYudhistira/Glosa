@@ -9,14 +9,17 @@ import {
 import type { ShelfBook } from "@/lib/book-types"
 import { formatLongDate } from "@/lib/dates"
 import { formatBytes } from "@/lib/member"
+import { formatPercent } from "@/lib/progress"
 import { BookCover } from "./BookCover"
 
 export function BookDetail({
   book,
+  percentage = 0,
   onClose,
   children,
 }: {
   book: ShelfBook | null
+  percentage?: number
   onClose: () => void
   children?: ReactNode
 }) {
@@ -28,7 +31,7 @@ export function BookDetail({
       }}
     >
       {book && (
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <div className="flex gap-4">
             <BookCover book={book} className="w-24 shrink-0" />
             <DialogHeader className="text-left">
@@ -50,6 +53,12 @@ export function BookDetail({
               <>
                 <dt className="text-muted-foreground">Bahasa</dt>
                 <dd>{book.language}</dd>
+              </>
+            )}
+            {percentage > 0 && (
+              <>
+                <dt className="text-muted-foreground">Dibaca</dt>
+                <dd>{formatPercent(percentage)}</dd>
               </>
             )}
             <dt className="text-muted-foreground">Ukuran</dt>
