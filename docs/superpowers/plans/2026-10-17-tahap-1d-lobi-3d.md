@@ -90,7 +90,7 @@ Semua keputusan berikut disengaja. Reviewer tidak perlu menganggapnya sebagai ca
   - chunk dinamis `stage-*.js` ≤ **250 kB gzip**;
   - total precache < **4 MB**;
   - gambar diam AVIF ≤ **250 kB** per ukuran;
-  - buku sebagai instance ≤ **12.000**;
+  - buku sebagai instance ≤ **15.000**;
   - satu lampu berbayangan.
 - Breakpoint desktop/HP: **1024 px** (`lg:` di Tailwind).
 - Kunci dan penanda (persis): `sessionStorage` `glosa:lobby-anda`; `window.__GLOSA_LOBBY_TEST__`; class `lobby-overlay` pada semua lapisan HTML di atas kanvas.
@@ -1416,14 +1416,14 @@ function random(seed = 7) {
 }
 
 describe("shelfFaceInstances", () => {
-  it("fills every wall with at most 12,000 books in all (spec 1D §10)", () => {
+  it("fills every wall with at most 15,000 books in all (spec 1D §10)", () => {
     const next = random()
     const books = SHELF_FACES.reduce(
       (sum, face) => sum + shelfFaceInstances(face, next).books.length,
       0
     )
     expect(books).toBeGreaterThan(6000)
-    expect(books).toBeLessThanOrEqual(12000)
+    expect(books).toBeLessThanOrEqual(15000)
   })
 
   it("keeps the books of the left wall inside it", () => {
@@ -1635,7 +1635,7 @@ export function buildShelves(
 - [ ] **Step 6: Jalankan test rak dan pastikan lulus**
 
 Run: `npx vitest run src/components/lobby/scene/shelves.test.ts`
-Expected: PASS (2 test). Perkiraan jumlah buku sekitar 10.000.
+Expected: PASS (2 test). Jumlah buku sekitar 14.100.
 
 - [ ] **Step 7: Tulis `room.ts`**
 
@@ -2813,7 +2813,7 @@ export type StageOptions = {
 }
 
 export type Stage = {
-  /** How many books stand on the shelves (budget: 12,000). */
+  /** How many books stand on the shelves (budget: 15,000). */
   books: number
   /** Moves the camera; the view is kept inside the map. */
   setView: (view: View) => void
@@ -3284,7 +3284,7 @@ if (command === "serve") {
 
 Run: `node scripts/lobby-harness.mjs shot test-results/lobby-task5.png` (folder `test-results/` diabaikan git).
 Expected:
-- output memuat `books on the shelves: N`, dengan N ≤ 12000;
+- output memuat `books on the shelves: N`, dengan N ≤ 15000;
 - PNG tertulis tanpa error halaman;
 - render dengan SwiftShader bisa memakan beberapa menit.
 

@@ -211,5 +211,5 @@ E2E berinteraksi lewat tombol HTML, jadi tidak bergantung pada piksel kanvas. We
 
 - Chunk `lobby-3d` (three + adegan): ≤ 250 kB gzip. Total precache tetap < 4 MB.
 - Gambar diam: ≤ 250 kB (AVIF) per ukuran.
-- Adegan: ≤ 12.000 instans buku, satu lampu berbayangan, tanpa `PointLight` berbayangan.
+- Adegan: ≤ 15.000 instans buku (prototipe yang disetujui berisi ±14.100), satu lampu berbayangan, tanpa `PointLight` berbayangan.
 - Animasi tidak menyebabkan long task > 50 ms.
