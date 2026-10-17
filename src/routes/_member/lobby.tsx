@@ -139,12 +139,14 @@ function LobbyPage() {
           </output>
         )}
       </div>
+      {/* Each panel has its own corner, like mockups/lobi.html. */}
       <aside aria-label="Panel lobi" className="lobby-side lobby-overlay">
         <LibraryMap
           hotspots={hotspots}
           anda={anda}
           interactive={sceneLive}
           onSelect={(id) => sceneRef.current?.showSpot(id)}
+          className="lobby-at-map"
         />
         {selected && (
           <BookDetailPanel
@@ -153,10 +155,20 @@ function LobbyPage() {
             onClose={closeDetail}
             onChanged={refresh}
             onDeleted={onDeleted}
+            className="lobby-at-detail"
           />
         )}
-        <RecentBooks books={summary.recent} local={local} onSelect={select} />
-        <AdminDeskCard usage={usage} onUpload={() => setUploading(true)} />
+        <RecentBooks
+          books={summary.recent}
+          local={local}
+          onSelect={select}
+          className="lobby-at-recent"
+        />
+        <AdminDeskCard
+          usage={usage}
+          onUpload={() => setUploading(true)}
+          className="lobby-at-admin"
+        />
       </aside>
       <ContinueSheet
         key={summary.lastRead?.id}

@@ -34,7 +34,8 @@ describe("LobbyTopBar", () => {
         onSelect={onSelect}
       />
     )
-    expect(await screen.findByText("2 buku")).toBeInTheDocument()
+    expect(await screen.findByRole("term")).toHaveTextContent("Buku saya")
+    expect(screen.getByRole("definition")).toHaveTextContent("2")
     const search = screen.getByLabelText("Cari di rakmu")
     fireEvent.change(search, { target: { value: "sherlock" } })
     fireEvent.click(screen.getByRole("button", { name: /Sherlock Holmes/ }))

@@ -33,14 +33,21 @@ export function MemberShell({ children }: { children: ReactNode }) {
     select: (state) => (state.resolvedLocation ?? state.location).pathname,
   })
   const shown = hasShell(pathname)
+  // Over the lobby's scene the menu floats as a card, like the top bar and
+  // the panels there (owner's choice after the 1D review).
+  const floating = shown && isCurrent(pathname, "/lobby") ? "" : undefined
 
   // The wrapper around children is always there, so showing or hiding the
   // navigation never remounts the page (e.g. the WebGL lobby on its way out).
   return (
     <>
       {shown && (
-        <nav aria-label="Navigasi anggota" className="member-sidebar">
-          <Logo className="mb-6 size-10" />
+        <nav
+          aria-label="Navigasi anggota"
+          className="member-sidebar"
+          data-floating={floating}
+        >
+          {floating === undefined && <Logo className="mb-6 size-10" />}
           {LINKS.map(({ to, label, Icon }) => (
             <Link
               key={to}
@@ -54,7 +61,11 @@ export function MemberShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
       )}
-      <div className="member-main" data-shell={shown ? "" : undefined}>
+      <div
+        className="member-main"
+        data-shell={shown ? "" : undefined}
+        data-floating={floating}
+      >
         {children}
       </div>
       {shown && (

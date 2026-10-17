@@ -110,6 +110,10 @@
   /* Member navigation (plan 1D, Task 7). */
   --tabbar-h: calc(3.5rem + env(safe-area-inset-bottom));
   --sidebar-w: 13rem;
+  /* Lobby on desktop: the top band and the floating menu (after the 1D review). */
+  --lobby-bar-h: 4.25rem;
+  --float-menu-w: 10.5rem;
+  --admin-card-w: 18.75rem;
 }
 
 @layer base {
@@ -369,12 +373,25 @@
     padding: 0.9rem 1rem;
   }
   .lobby-panel-title {
-    margin-bottom: 0.5rem;
-    font-size: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.15rem 0.75rem;
+    margin-bottom: 0.6rem;
+    font-size: 0.875rem;
     font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+  }
+  .lobby-panel-title > h2 {
+    white-space: nowrap;
+  }
+  .lobby-panel-hint {
+    font-size: 0.72rem;
+    font-weight: 400;
     color: var(--muted-foreground);
+  }
+  a.lobby-panel-hint:hover {
+    color: var(--color-mint);
   }
   .lobby-map {
     position: relative;
@@ -393,11 +410,51 @@
     height: 0.9rem;
     translate: -50% -50%;
     border: 2px solid var(--background);
-    border-radius: 9999px;
-    background: #c98d55;
+    border-radius: 0.2rem;
   }
-  .lobby-map-spot[data-kind="place"] {
-    background: #e9e3da;
+  /* The map's marks, shared with its legend. */
+  .lobby-map-spot,
+  .lobby-map-mark {
+    background: #3e7f9a;
+  }
+  .lobby-map-spot:not([data-kind="zone"]),
+  .lobby-map-mark:not([data-kind="zone"], [data-kind="anda"]) {
+    rotate: 45deg;
+  }
+  .lobby-map-spot[data-kind="meja-baca"],
+  .lobby-map-mark[data-kind="meja-baca"] {
+    background: #2fe0b8;
+  }
+  .lobby-map-spot[data-kind="meja-admin"],
+  .lobby-map-mark[data-kind="meja-admin"] {
+    background: #f0a33a;
+  }
+  .lobby-map-spot[data-kind="troli"],
+  .lobby-map-mark[data-kind="troli"] {
+    background: #c58af0;
+  }
+  .lobby-legend {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+  .lobby-legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .lobby-map-mark {
+    width: 0.6rem;
+    height: 0.6rem;
+    flex: none;
+    border-radius: 0.1rem;
+  }
+  .lobby-map-mark[data-kind="anda"] {
+    border-radius: 9999px;
+    background: #4fd8ff;
+    box-shadow: 0 0 0 3px rgb(79 216 255 / 0.3);
   }
   .lobby-map-spot:disabled {
     cursor: default;
@@ -444,8 +501,20 @@
   .lobby-account {
     position: relative;
   }
+  .lobby-me {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    max-width: 14rem;
+    list-style: none;
+    cursor: pointer;
+  }
+  .lobby-me::-webkit-details-marker {
+    display: none;
+  }
   .lobby-avatar {
     display: grid;
+    flex: none;
     place-items: center;
     width: 2.25rem;
     height: 2.25rem;
@@ -454,11 +523,6 @@
     font-size: 0.8rem;
     font-weight: 700;
     color: var(--primary-foreground);
-    list-style: none;
-    cursor: pointer;
-  }
-  .lobby-avatar::-webkit-details-marker {
-    display: none;
   }
   .lobby-account-menu {
     position: absolute;
@@ -765,6 +829,20 @@
       padding-bottom: 0;
       padding-left: var(--sidebar-w);
     }
+    /* Over the lobby the menu is a card below the top band. */
+    .member-sidebar[data-floating] {
+      inset-block: auto;
+      top: calc(var(--lobby-bar-h) + 0.75rem);
+      left: 0.75rem;
+      width: var(--float-menu-w);
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+    }
+    .member-main[data-shell][data-floating] {
+      padding-left: 0;
+    }
     .member-tabbar {
       display: none;
     }
@@ -887,9 +965,10 @@
     }
   }
   @media (min-width: 1024px) {
+    /* Beside the floating menu, below the top band. */
     .lobby-center {
-      top: auto;
-      bottom: 1rem;
+      top: calc(var(--lobby-bar-h) + 0.75rem);
+      left: calc(var(--float-menu-w) + 1.5rem);
     }
   }
 
@@ -951,30 +1030,114 @@
   }
   .lobby-topbar {
     position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
-    right: 21.5rem;
+    inset-inline: 0;
+    top: 0;
     z-index: 10;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 1rem;
+    gap: 1.5rem;
+    height: var(--lobby-bar-h);
+    border-bottom: 1px solid var(--border);
     background: var(--color-panel);
-    padding: 0.5rem 0.75rem;
+    padding: 0 1.25rem;
     backdrop-filter: blur(8px);
   }
+  .lobby-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .lobby-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    border-left: 1px solid var(--border);
+    padding-left: 1.5rem;
+    font-size: 0.72rem;
+    color: var(--muted-foreground);
+  }
+  .lobby-stat dd {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--foreground);
+  }
+  /* The panels sit in the corners around the scene, like mockups/lobi.html.
+     The layer itself lets taps through to the scene. */
   .lobby-side {
     position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    bottom: 0.75rem;
+    inset: 0;
     z-index: 10;
     display: none;
-    width: 20rem;
-    flex-direction: column;
-    gap: 0.75rem;
+    pointer-events: none;
+  }
+  .lobby-side > * {
+    position: absolute;
+    pointer-events: auto;
+  }
+  .lobby-at-map {
+    top: calc(var(--lobby-bar-h) + 0.75rem);
+    right: 0.75rem;
+    width: 16rem;
+  }
+  /* Below the floating menu, at most. */
+  .lobby-at-detail {
+    left: 0.75rem;
+    bottom: 0.75rem;
+    width: 22.5rem;
+    max-height: calc(100% - var(--lobby-bar-h) - 13rem);
     overflow-y: auto;
+  }
+  /* From 45% of the width: the reading table's label stays clear (it sits
+     near 37% at every desktop size). */
+  .lobby-at-recent {
+    left: 45%;
+    right: calc(0.75rem + var(--admin-card-w) + 0.75rem);
+    bottom: 0.75rem;
+    width: fit-content;
+    margin-left: auto;
+  }
+  .lobby-at-admin {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    width: var(--admin-card-w);
+  }
+  /* Small covers in the lobby panels: the titled spine shrinks with them. */
+  .lobby-panel .book-cover-blank {
+    padding: 0.3rem;
+    font-size: 0.5rem;
+    line-height: 1.15;
+  }
+  .lobby-recent-row {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+  }
+  .lobby-recent-book {
+    width: 6rem;
+    border-radius: 0.5rem;
+    padding: 0.25rem;
+    text-align: center;
+  }
+  .lobby-recent-book:hover {
+    background: var(--muted);
+  }
+  .lobby-drop {
+    width: 100%;
+    border: 1.5px dashed rgb(120 210 195 / 0.4);
+    border-radius: 0.6rem;
+    padding: 0.75rem 0.6rem;
+    color: var(--color-mint);
+  }
+  .lobby-drop:hover:not(:disabled) {
+    border-color: var(--color-mint);
+    background: rgb(47 224 184 / 0.06);
+  }
+  .lobby-drop:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .lobby-drop > span:not(:last-child) {
+    color: var(--foreground);
   }
   .lobby-notices {
     position: absolute;
@@ -1006,11 +1169,10 @@
       height: 100dvh;
     }
     .lobby-side {
-      display: flex;
+      display: block;
     }
     .lobby-notices {
-      top: 4.75rem;
-      left: calc(50% - 10.75rem);
+      top: calc(var(--lobby-bar-h) + 0.75rem);
     }
   }
 }

@@ -66,7 +66,7 @@ Semua keputusan berikut disengaja. Reviewer tidak perlu menganggapnya sebagai ca
 13. **Lobi juga menyimpan salinan rak** (seperti Rak Saya), sehingga lobi bisa tampil offline walau anggota belum pernah membuka Rak Saya. Kode penyimpanan dan komponen error dipakai bersama lewat `useShelfSnapshot` dan `ShelfLoadError`.
 14. **Posisi "Anda" disimpan** di `sessionStorage` dengan kunci `glosa:lobby-anda`.
 15. **Ukuran adegan diukur dari elemen wilayah adegan** (`ResizeObserver`), bukan dari `window`, karena sidebar desktop memakan lebar layar.
-16. **Panel desktop ada di satu kolom kanan:** Peta, Detail Buku (hanya saat ada buku dipilih lewat pencarian atau Baru Dibuka), Baru Dibuka, dan Meja Admin. Top bar ada di atas adegan, di kiri kolom itu.
+16. **Panel desktop ada di sudut-sudut adegan, seperti `mockups/lobi.html`** (keputusan pemilik setelah review akhir; sebelumnya satu kolom kanan). Top bar menjadi pita selebar layar. Menu anggota menjadi kartu mengambang di kiri atas, hanya di lobi. Peta dan legendanya ada di kanan atas, Detail Buku di kiri bawah (hanya saat ada buku dipilih), Meja Admin di kanan bawah, dan Baru Dibuka dengan sampul di sebelah kirinya. Baru Dibuka tidak melewati 45% lebar layar dari kiri, supaya label Meja Baca (sekitar 37%) tetap terlihat.
 17. **Di HP, sheet "Lanjutkan membaca" juga memuat sapaan pustakawan saat rak kosong**, karena Meja Admin berada di luar layar pada tampilan awal HP.
 18. **Panel "Susun buku" saat offline** menampilkan "Butuh internet." dan tidak menampilkan pilihan genre.
 19. **Font reader diambil sekali per sesi lalu diubah menjadi `blob:` URL.** Jika ada file yang gagal diambil, hasilnya tidak di-cache dan panggilan berikutnya mencoba lagi.

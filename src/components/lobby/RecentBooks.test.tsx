@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { sherlock } from "@/components/shelf/fixtures"
+import { renderWithRouter } from "@/test/router"
 import { RecentBooks } from "./RecentBooks"
 
 const local = {
@@ -9,11 +10,13 @@ const local = {
 }
 
 describe("RecentBooks", () => {
-  it("lists the books opened last with their progress", () => {
+  it("lists the books opened last with their progress", async () => {
     const onSelect = vi.fn()
-    render(<RecentBooks books={[sherlock]} local={local} onSelect={onSelect} />)
+    renderWithRouter(
+      <RecentBooks books={[sherlock]} local={local} onSelect={onSelect} />
+    )
     expect(
-      screen.getByRole("heading", { name: "Baru Dibuka" })
+      await screen.findByRole("heading", { name: "Baru Dibuka" })
     ).toBeInTheDocument()
     expect(
       screen.getByRole("progressbar", { name: `Progres ${sherlock.title}` })
@@ -22,10 +25,21 @@ describe("RecentBooks", () => {
     expect(onSelect).toHaveBeenCalledWith(sherlock)
   })
 
-  it("shows nothing before any book was opened", () => {
-    const { container } = render(
+  it("leads to the whole shelf", async () => {
+    renderWithRouter(
+      <RecentBooks books={[sherlock]} local={local} onSelect={vi.fn()} />
+    )
+    expect(
+      await screen.findByRole("link", { name: "Lihat semua di Rak Saya →" })
+    ).toHaveAttribute("href", "/shelf")
+  })
+
+  it("shows nothing before any book was opened", async () => {
+    const { container } = renderWithRouter(
       <RecentBooks books={[]} local={local} onSelect={vi.fn()} />
     )
-    expect(container).toBeEmptyDOMElement()
+    await Promise.resolve()
+    expect(container.querySelector(".lobby-panel")).toBeNull()
+    expect(screen.queryByText("Baru Dibuka")).toBeNull()
   })
 })

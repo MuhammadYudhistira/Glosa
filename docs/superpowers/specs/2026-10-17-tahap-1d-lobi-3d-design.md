@@ -145,12 +145,12 @@ Setiap ketukan menjalankan aksinya langsung. Tokoh "Anda" (cincin mint di lantai
 
 ### 5.2 Panel
 
-**Desktop (≥ 1024 px):**
+**Desktop (≥ 1024 px):** panel ada di sudut-sudut adegan seperti [`mockups/lobi.html`](mockups/lobi.html). Top bar menjadi pita di atas, menu anggota menjadi kartu mengambang di kiri atas, Peta di kanan atas, Detail Buku di kiri bawah, Baru Dibuka di tengah bawah, dan Meja Admin di kanan bawah.
 - **Top bar:** logo, jumlah buku, pencarian di rak sendiri (hasilnya membuka Detail Buku), dan avatar dengan menu (Pengaturan, Keluar).
-- **Peta Perpustakaan:** denah mini dengan zona, Meja Baca, Meja Admin, Troli, dan posisi "Anda". Mengetuk titik di peta menggeser kamera ke area itu.
+- **Peta Perpustakaan:** denah mini dengan zona, Meja Baca, Meja Admin, Troli, dan posisi "Anda", beserta legendanya. Mengetuk titik di peta menggeser kamera ke area itu.
 - **Detail Buku:** isinya dipakai bersama dengan dialog di Rak Saya (`BookDetail`, `ReadLink`, `BookActions`).
-- **Baru Dibuka:** 5 buku dengan bar progres.
-- **Kartu Meja Admin:** upload dan bar penyimpanan.
+- **Baru Dibuka:** 5 buku dengan sampul, bar progres, dan tautan ke Rak Saya.
+- **Kartu Meja Admin:** kotak upload dan bar penyimpanan.
 
 **HP (< 1024 px):**
 - Adegan bisa digeser dan di-zoom.

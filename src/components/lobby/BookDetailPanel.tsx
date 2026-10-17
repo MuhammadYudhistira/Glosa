@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Panel } from "@/components/ui/panel"
 import type { ShelfBook } from "@/lib/book-types"
+import { cn } from "@/lib/utils"
 
 /** The book picked from the search or "Baru Dibuka", beside the scene. */
 export function BookDetailPanel({
@@ -19,12 +20,14 @@ export function BookDetailPanel({
   onClose,
   onChanged,
   onDeleted,
+  className,
 }: {
   book: ShelfBook
   local: LocalShelf
   onClose: () => void
   onChanged: () => void
   onDeleted: (book: ShelfBook) => void
+  className?: string
 }) {
   const titleId = useId()
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -37,7 +40,7 @@ export function BookDetailPanel({
     <Panel
       role="region"
       aria-labelledby={titleId}
-      className="lobby-panel space-y-3"
+      className={cn("lobby-panel space-y-3", className)}
     >
       <div className="flex items-start gap-3">
         <BookCover book={book} className="w-16 shrink-0" />

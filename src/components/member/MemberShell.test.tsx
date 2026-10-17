@@ -59,6 +59,28 @@ describe("MemberShell", () => {
     expect(screen.getByText("Isi halaman")).toBeInTheDocument()
   })
 
+  it("floats the menu over the lobby only", async () => {
+    const { container } = renderAt("/lobby")
+    const [sidebar] = await screen.findAllByRole("navigation", {
+      name: "Navigasi anggota",
+    })
+    expect(sidebar).toHaveAttribute("data-floating")
+    expect(container.querySelector(".member-main")).toHaveAttribute(
+      "data-floating"
+    )
+  })
+
+  it("keeps the sidebar fixed beside other pages", async () => {
+    const { container } = renderAt("/settings")
+    const [sidebar] = await screen.findAllByRole("navigation", {
+      name: "Navigasi anggota",
+    })
+    expect(sidebar).not.toHaveAttribute("data-floating")
+    expect(container.querySelector(".member-main")).not.toHaveAttribute(
+      "data-floating"
+    )
+  })
+
   it.each(["/read/abc", "/welcome"])(
     "leaves %s without navigation",
     async (url) => {

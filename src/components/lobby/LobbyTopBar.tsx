@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router"
+import { LibraryIcon } from "lucide-react"
 import { type RefObject, useId, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Logo } from "@/components/ui/logo"
@@ -17,7 +18,10 @@ const initials = (name: string) =>
     .map((part) => part[0].toUpperCase())
     .join("") || "?"
 
-/** Logo, book count, search in the member's own shelf, account menu (spec 1D §5.2). */
+/**
+ * Logo, book count, search in the member's own shelf, account menu (spec 1D
+ * §5.2), as a band across the top like mockups/lobi.html.
+ */
 export function LobbyTopBar({
   user,
   books,
@@ -41,11 +45,26 @@ export function LobbyTopBar({
 
   return (
     <header className={cn("lobby-topbar lobby-overlay", className)}>
-      <Logo className="size-8" />
-      <span className="font-heading text-lg font-bold">Glosa</span>
-      <span className="text-sm text-muted-foreground">{books.length} buku</span>
+      <div className="lobby-brand">
+        <Logo className="size-9" />
+        <div>
+          <span className="block font-heading text-xl leading-tight font-bold">
+            Glosa
+          </span>
+          <span className="block text-xs text-muted-foreground">
+            Baca aslinya, pahami katanya
+          </span>
+        </div>
+      </div>
+      <dl className="lobby-stat">
+        <LibraryIcon aria-hidden="true" className="size-5" />
+        <div>
+          <dt>Buku saya</dt>
+          <dd>{books.length}</dd>
+        </div>
+      </dl>
       <div
-        className="relative ml-auto w-72"
+        className="relative ml-auto w-72 xl:w-96"
         onKeyDown={(event) => {
           // Escape closes the results, from the input or from a result.
           if (event.key !== "Escape" || !query) return
@@ -98,8 +117,14 @@ export function LobbyTopBar({
         )}
       </div>
       <details className="lobby-account">
-        <summary aria-label="Menu akun" className="lobby-avatar">
-          {initials(user.displayName)}
+        <summary aria-label="Menu akun" className="lobby-me">
+          <span className="lobby-avatar">{initials(user.displayName)}</span>
+          <span className="hidden min-w-0 xl:block">
+            <b className="block truncate text-sm">{user.displayName}</b>
+            <span className="block truncate text-xs text-muted-foreground">
+              @{user.username}
+            </span>
+          </span>
         </summary>
         <div className="lobby-account-menu">
           <p className="px-3 py-1 text-sm">
