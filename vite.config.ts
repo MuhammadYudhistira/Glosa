@@ -34,7 +34,7 @@ function foliateEpubOnly(): Plugin {
   }
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   // Make .env / .env.local values visible to server code through process.env.
   Object.assign(process.env, loadEnv(mode, process.cwd(), ""))
   return {
@@ -44,7 +44,11 @@ export default defineConfig(({ mode }) => {
       foliateEpubOnly(),
       devtools({ consolePiping: { enabled: false } }),
       tailwindcss(),
-      tanstackStart(),
+      // Also prerender the app shell (dist/client/_shell.html): the service
+      // worker serves it for navigations while offline (plan 1C, decision 4).
+      // Build only: with it on, the dev server stops rendering pages on the
+      // server, unlike production.
+      tanstackStart({ spa: { enabled: command === "build" } }),
       viteReact(),
     ],
   }

@@ -9,6 +9,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools"
 import { type ReactNode, useEffect } from "react"
 
 import { currentUser } from "@/lib/current-user"
+import { registerServiceWorker } from "@/lib/pwa"
 import { forgetUser, rememberUser } from "@/lib/session-cache"
 import { SceneBackdrop } from "@/components/scene/SceneBackdrop"
 import appCss from "@/styles.css?url"
@@ -51,6 +52,10 @@ function RootComponent() {
     if (user) rememberUser(user)
     else if (user === null) forgetUser()
   }, [user])
+
+  useEffect(() => {
+    registerServiceWorker()
+  }, [])
 
   return (
     <>

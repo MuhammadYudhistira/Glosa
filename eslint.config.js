@@ -23,6 +23,7 @@ export default [
       "src/server/database.types.ts",
       "docs/**",
       "public/**",
+      "pwa/**",
       "dist/**",
       "playwright-report/**",
       "test-results/**",

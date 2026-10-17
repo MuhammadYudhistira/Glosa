@@ -3,6 +3,9 @@ import { defineConfig, devices } from "@playwright/test"
 
 if (existsSync(".env.local")) process.loadEnvFile(".env.local")
 
+// The service worker exists only in the production build (plan 1C, Task 11).
+const PREVIEW_URL = "http://localhost:4173"
+
 export default defineConfig({
   testDir: "e2e",
   fullyParallel: true,
@@ -13,13 +16,34 @@ export default defineConfig({
   globalTeardown: "./e2e/global-teardown.ts",
   use: { baseURL: "http://localhost:3000", trace: "retain-on-failure" },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile", use: { ...devices["Pixel 7"] } },
+    {
+      name: "desktop",
+      use: { ...devices["Desktop Chrome"] },
+      testIgnore: /offline\.spec\.ts/,
+    },
+    {
+      name: "mobile",
+      use: { ...devices["Pixel 7"] },
+      testIgnore: /offline\.spec\.ts/,
+    },
+    {
+      name: "offline",
+      use: { ...devices["Desktop Chrome"], baseURL: PREVIEW_URL },
+      testMatch: /offline\.spec\.ts/,
+    },
   ],
-  webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: "npm run dev",
+      url: "http://localhost:3000",
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
+      command: "npm run build && npm run preview -- --port 4173 --strictPort",
+      url: PREVIEW_URL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 300_000,
+    },
+  ],
 })
