@@ -399,6 +399,10 @@
   .lobby-map-spot[data-kind="place"] {
     background: #e9e3da;
   }
+  .lobby-map-spot:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
   .lobby-map-spot:hover,
   .lobby-map-spot:focus-visible {
     outline: 2px solid var(--color-mint);
@@ -845,7 +849,10 @@
   .lobby-hotspot:hover,
   .lobby-hotspot:focus-visible {
     border-color: var(--color-mint);
-    outline: none;
+  }
+  .lobby-hotspot:focus-visible {
+    outline: 2px solid var(--color-mint);
+    outline-offset: 2px;
   }
   /* Dimmed by colour, not opacity, so the label keeps AA contrast. */
   .lobby-hotspot[data-empty] {

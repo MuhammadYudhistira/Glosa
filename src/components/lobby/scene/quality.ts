@@ -38,7 +38,10 @@ export function walkerShare(quality: Quality): number {
 function webglAvailable(): boolean {
   try {
     const canvas = document.createElement("canvas")
-    return (canvas.getContext("webgl2") ?? canvas.getContext("webgl")) !== null
+    const context = canvas.getContext("webgl2") ?? canvas.getContext("webgl")
+    // Browsers cap live contexts; the probe gives its own back at once.
+    context?.getExtension("WEBGL_lose_context")?.loseContext()
+    return context !== null
   } catch {
     return false
   }

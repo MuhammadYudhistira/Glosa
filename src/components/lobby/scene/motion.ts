@@ -66,6 +66,8 @@ export type Motion = {
   update: (t: number, dt: number) => void
   /** Sends "Anda" to a spot, walking or at once. */
   walkTo: (spot: Point2, instant: boolean) => void
+  /** Ends a walk under way at its spot (the loop is about to stop). */
+  finishWalk: () => void
   /** Shows a share of the walkers (the low tier shows half). */
   showWalkers: (share: number) => void
 }
@@ -147,6 +149,13 @@ export function createMotion(
     progress = 0
   }
 
+  function finishWalk() {
+    if (progress >= 1) return
+    people.anda.root.position.copy(to)
+    progress = 1
+    stride(people.anda, 0)
+  }
+
   function showWalkers(share: number) {
     shown = Math.ceil(people.walkers.length * share)
     people.walkers.forEach((walker, i) => {
@@ -154,5 +163,5 @@ export function createMotion(
     })
   }
 
-  return { update, walkTo, showWalkers }
+  return { update, walkTo, finishWalk, showWalkers }
 }

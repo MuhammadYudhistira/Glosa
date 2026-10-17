@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { useId, useState } from "react"
+import { type RefObject, useId, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Logo } from "@/components/ui/logo"
 import type { ShelfBook } from "@/lib/book-types"
@@ -22,14 +22,19 @@ export function LobbyTopBar({
   user,
   books,
   onSelect,
+  searchRef,
   className,
 }: {
   user: SessionUser
   books: ReadonlyArray<ShelfBook>
   onSelect: (book: ShelfBook) => void
+  /** The search input, where the lobby returns focus. */
+  searchRef?: RefObject<HTMLInputElement | null>
   className?: string
 }) {
   const searchId = useId()
+  const ownRef = useRef<HTMLInputElement>(null)
+  const inputRef = searchRef ?? ownRef
   const [query, setQuery] = useState("")
   const q = query.trim().slice(0, MAX_QUERY_LENGTH)
   const results = q ? shelfBooks(books, { q }).slice(0, MAX_RESULTS) : []
@@ -39,11 +44,21 @@ export function LobbyTopBar({
       <Logo className="size-8" />
       <span className="font-heading text-lg font-bold">Glosa</span>
       <span className="text-sm text-muted-foreground">{books.length} buku</span>
-      <div className="relative ml-auto w-72">
+      <div
+        className="relative ml-auto w-72"
+        onKeyDown={(event) => {
+          // Escape closes the results, from the input or from a result.
+          if (event.key !== "Escape" || !query) return
+          event.preventDefault()
+          setQuery("")
+          inputRef.current?.focus()
+        }}
+      >
         <label htmlFor={searchId} className="sr-only">
           Cari di rakmu
         </label>
         <Input
+          ref={inputRef}
           id={searchId}
           type="search"
           placeholder="Cari di rakmu"

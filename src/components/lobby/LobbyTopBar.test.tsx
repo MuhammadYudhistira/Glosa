@@ -42,6 +42,27 @@ describe("LobbyTopBar", () => {
     expect(search).toHaveValue("")
   })
 
+  it("closes the results on Escape and keeps the focus in the search", async () => {
+    renderWithRouter(
+      <LobbyTopBar user={member} books={[sherlock]} onSelect={vi.fn()} />
+    )
+    const search = await screen.findByLabelText("Cari di rakmu")
+    fireEvent.change(search, { target: { value: "sherlock" } })
+    search.focus()
+    fireEvent.keyDown(search, { key: "Escape" })
+    expect(search).toHaveValue("")
+    expect(screen.queryByRole("list", { name: "Hasil pencarian" })).toBeNull()
+    expect(search).toHaveFocus()
+
+    // From a result too: the focus goes back to the search, not the page.
+    fireEvent.change(search, { target: { value: "sherlock" } })
+    const result = screen.getByRole("button", { name: /Sherlock Holmes/ })
+    result.focus()
+    fireEvent.keyDown(result, { key: "Escape" })
+    expect(screen.queryByRole("list", { name: "Hasil pencarian" })).toBeNull()
+    expect(search).toHaveFocus()
+  })
+
   it("says when nothing matches", async () => {
     renderWithRouter(
       <LobbyTopBar user={member} books={[sherlock]} onSelect={vi.fn()} />

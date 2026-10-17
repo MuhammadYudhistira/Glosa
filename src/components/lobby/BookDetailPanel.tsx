@@ -1,5 +1,5 @@
 import { XIcon } from "lucide-react"
-import { useId } from "react"
+import { useEffect, useId, useRef } from "react"
 import { BookActions } from "@/components/shelf/BookActions"
 import { BookCover } from "@/components/shelf/BookCover"
 import { BookFacts } from "@/components/shelf/BookDetail"
@@ -27,6 +27,11 @@ export function BookDetailPanel({
   onDeleted: (book: ShelfBook) => void
 }) {
   const titleId = useId()
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  // A picked book takes the focus, so the keyboard lands on its details.
+  useEffect(() => {
+    titleRef.current?.focus()
+  }, [book.id])
   const percentage = shelfPercentage(book, local)
   return (
     <Panel
@@ -37,7 +42,12 @@ export function BookDetailPanel({
       <div className="flex items-start gap-3">
         <BookCover book={book} className="w-16 shrink-0" />
         <div className="min-w-0 flex-1">
-          <h2 id={titleId} className="font-heading text-lg leading-tight">
+          <h2
+            ref={titleRef}
+            id={titleId}
+            tabIndex={-1}
+            className="font-heading text-lg leading-tight outline-none"
+          >
             {book.title}
           </h2>
           {book.author && (

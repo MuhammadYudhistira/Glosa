@@ -17,6 +17,26 @@ describe("LibraryMap", () => {
     expect(onSelect).toHaveBeenCalledWith("meja-baca")
   })
 
+  it("turns its spots off while no 3D camera can move", () => {
+    const onSelect = vi.fn()
+    render(
+      <LibraryMap
+        hotspots={hotspots}
+        anda={[17, 17]}
+        onSelect={onSelect}
+        interactive={false}
+      />
+    )
+    for (const button of screen.getAllByRole("button")) {
+      expect(button).toBeDisabled()
+    }
+    expect(
+      screen.getByText("Peta aktif saat adegan 3D tampil.")
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Meja Baca di peta" }))
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
   it("marks where 'Anda' stands", () => {
     render(
       <LibraryMap hotspots={hotspots} anda={[17, 17]} onSelect={vi.fn()} />

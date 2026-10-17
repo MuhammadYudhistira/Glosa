@@ -49,14 +49,33 @@ function LobbyPage() {
   const hotspots = useMemo(() => lobbyHotspots(summary.counts), [summary])
   const [anda, moveAnda] = useAndaSpot()
   const sceneRef = useRef<LobbySceneHandle>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+  // What had the focus when a book was picked; "Tutup detail" returns there.
+  const openerRef = useRef<HTMLElement | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [sorting, setSorting] = useState(false)
   const [readingHint, setReadingHint] = useState(false)
+  const [sceneLive, setSceneLive] = useState(false)
   const selected = books.find((book) => book.id === selectedId) ?? null
   const refresh = () => void router.invalidate()
+  const select = (book: ShelfBook) => {
+    const active = document.activeElement
+    openerRef.current = active instanceof HTMLElement ? active : null
+    setSelectedId(book.id)
+  }
+  // A search result is gone once picked: then the focus goes to the search.
+  const closeDetail = () => {
+    setSelectedId(null)
+    const opener = openerRef.current
+    if (opener?.isConnected && opener !== document.body) opener.focus()
+    else searchRef.current?.focus()
+  }
   const onDeleted = (book: ShelfBook) => {
-    if (book.id === selectedId) setSelectedId(null)
+    if (book.id === selectedId) {
+      setSelectedId(null)
+      searchRef.current?.focus()
+    }
     refresh()
   }
 
@@ -98,11 +117,13 @@ function LobbyPage() {
         anda={anda}
         bubbles={bubbles}
         onActivate={activate}
+        onLiveChange={setSceneLive}
       />
       <LobbyTopBar
         user={user}
         books={books}
-        onSelect={(book) => setSelectedId(book.id)}
+        onSelect={select}
+        searchRef={searchRef}
         className="hidden lg:flex"
       />
       <div className="lobby-notices lobby-overlay">
@@ -122,25 +143,23 @@ function LobbyPage() {
         <LibraryMap
           hotspots={hotspots}
           anda={anda}
+          interactive={sceneLive}
           onSelect={(id) => sceneRef.current?.showSpot(id)}
         />
         {selected && (
           <BookDetailPanel
             book={selected}
             local={local}
-            onClose={() => setSelectedId(null)}
+            onClose={closeDetail}
             onChanged={refresh}
             onDeleted={onDeleted}
           />
         )}
-        <RecentBooks
-          books={summary.recent}
-          local={local}
-          onSelect={(book) => setSelectedId(book.id)}
-        />
+        <RecentBooks books={summary.recent} local={local} onSelect={select} />
         <AdminDeskCard usage={usage} onUpload={() => setUploading(true)} />
       </aside>
       <ContinueSheet
+        key={summary.lastRead?.id}
         book={summary.lastRead}
         empty={books.length === 0}
         local={local}

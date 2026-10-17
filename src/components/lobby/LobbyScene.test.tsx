@@ -44,6 +44,7 @@ const viewport = { width: 1280, height: 720 }
 function renderScene(environment: Environment) {
   vi.mocked(detectEnvironment).mockReturnValue(environment)
   const onActivate = vi.fn()
+  const onLiveChange = vi.fn()
   const ref = createRef<LobbySceneHandle>()
   render(
     <LobbyScene
@@ -51,10 +52,11 @@ function renderScene(environment: Environment) {
       hotspots={hotspots}
       anda={ANDA_START}
       onActivate={onActivate}
+      onLiveChange={onLiveChange}
     />
   )
   const scene = screen.getByRole("region", { name: "Adegan lobi" })
-  return { scene, onActivate, ref }
+  return { scene, onActivate, onLiveChange, ref }
 }
 
 describe("LobbyScene", () => {
@@ -96,6 +98,16 @@ describe("LobbyScene", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: "Meja Admin" }))
     expect(onActivate).toHaveBeenCalledWith("meja-admin")
+  })
+
+  it("fills the frame's width with the still image, not just the screen's", async () => {
+    const { scene } = renderScene({ ...desktop, webgl: false })
+    await vi.waitFor(() =>
+      expect(scene).toHaveAttribute("data-quality", "diam")
+    )
+    for (const source of scene.querySelectorAll("source")) {
+      expect(source).toHaveAttribute("sizes", "max(100vw, 178vh)")
+    }
   })
 
   it("stays still in the camera-bounds test mode", async () => {
@@ -195,6 +207,13 @@ describe("LobbyScene", () => {
       expect(screen.getByRole("button", { name: "Pusatkan" })).toBeVisible()
       expect(screen.getByRole("button", { name: "Meja Admin" })).toBe(button)
       expect(document.activeElement).toBe(button)
+    })
+
+    it("says when its camera is live, for the map", async () => {
+      const { onLiveChange } = await goLive()
+      expect(onLiveChange).toHaveBeenLastCalledWith(true)
+      act(() => canvas.props?.onFail())
+      expect(onLiveChange).toHaveBeenLastCalledWith(false)
     })
 
     it("falls back to the still image when the scene fails", async () => {

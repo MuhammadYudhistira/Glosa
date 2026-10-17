@@ -61,12 +61,15 @@ export function LobbyScene({
   anda,
   bubbles,
   onActivate,
+  onLiveChange,
   ref,
 }: {
   hotspots: ReadonlyArray<HotspotModel>
   anda: Point2
   bubbles?: Partial<Record<HotspotId, ReactNode>>
   onActivate: (id: HotspotId) => void
+  /** Whether a live 3D camera is on screen, so showSpot can move it. */
+  onLiveChange?: (live: boolean) => void
   ref?: Ref<LobbySceneHandle>
 }) {
   const [quality, setQuality] = useState<Quality | null>(null)
@@ -117,6 +120,10 @@ export function LobbyScene({
   }
 
   const live = mode === "3d" && camera !== null
+  useEffect(() => {
+    onLiveChange?.(live)
+  }, [live, onLiveChange])
+
   return (
     <section
       aria-label="Adegan lobi"
@@ -148,7 +155,10 @@ export function LobbyScene({
       )}
       {/* One tree position for the hotspots in every mode, so focus survives a switch. */}
       <div className={live ? "lobby-live-layer" : "lobby-still-frame"}>
-        {!live && <LobbyStill className="lobby-still" />}
+        {/* The frame covers the scene: as wide as 16:9 at its full height. */}
+        {!live && (
+          <LobbyStill className="lobby-still" sizes="max(100vw, 178vh)" />
+        )}
         <HotspotLayer
           hotspots={hotspots}
           view={live ? camera.view : STILL_VIEW}

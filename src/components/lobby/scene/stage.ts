@@ -78,7 +78,7 @@ function disposeTree(root: THREE.Object3D) {
 /** The 3D lobby (spec 1D §3.1). Throws when WebGL cannot be created. */
 export function createStage(options: StageOptions): Stage {
   const { host, mode } = options
-  let quality: Quality = mode === "test" ? "diam" : options.quality
+  const quality: Quality = mode === "test" ? "diam" : options.quality
   const fancy = mode !== "test"
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true })
@@ -92,6 +92,27 @@ export function createStage(options: StageOptions): Stage {
   canvas.className = "lobby-canvas"
   canvas.setAttribute("aria-hidden", "true")
   host.append(canvas)
+
+  // A build that fails part-way must not leave the canvas and context behind.
+  try {
+    return buildStage(options, renderer, quality)
+  } catch (error) {
+    renderer.dispose()
+    renderer.forceContextLoss()
+    canvas.remove()
+    throw error
+  }
+}
+
+function buildStage(
+  options: StageOptions,
+  renderer: THREE.WebGLRenderer,
+  initial: Quality
+): Stage {
+  const { host, mode } = options
+  let quality = initial
+  const fancy = mode !== "test"
+  const canvas = renderer.domElement
 
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(mode === "test" ? "#ff00ff" : "#1b120c")
@@ -228,6 +249,15 @@ export function createStage(options: StageOptions): Stage {
     bloom.enabled = fancy && next === "tinggi"
     controls.enableDamping = animates()
     motion.showWalkers(walkerShare(next))
+    // The low tier's 1024 map also after a step-down (spec 1D §3.1); three
+    // creates a new map at the new size when it is null.
+    if (next !== "tinggi" && key.shadow.mapSize.x !== 1024) {
+      key.shadow.mapSize.set(1024, 1024)
+      key.shadow.map?.dispose()
+      key.shadow.map = null
+    }
+    // The loop stops at "diam": "Anda" must not stay frozen mid-walk.
+    if (next === "diam") motion.finishWalk()
     resize()
     options.onQuality(next)
   }
@@ -310,13 +340,14 @@ export function createStage(options: StageOptions): Stage {
     options.onLost()
   }
 
+  frameCamera()
+  resize()
+  // Listeners last, so a build that throws leaves none behind.
   controls.addEventListener("change", onControlsChange)
   const observer = new ResizeObserver(resize)
   observer.observe(host)
   document.addEventListener("visibilitychange", onVisibility)
   canvas.addEventListener("webglcontextlost", onContextLost)
-  frameCamera()
-  resize()
 
   return {
     books,

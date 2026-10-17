@@ -24,10 +24,13 @@ export function LibraryMap({
   hotspots,
   anda,
   onSelect,
+  interactive = true,
 }: {
   hotspots: ReadonlyArray<HotspotModel>
   anda: Point2
   onSelect: (id: HotspotId) => void
+  /** False without a live 3D camera: the spots would have nothing to move. */
+  interactive?: boolean
 }) {
   return (
     <Panel className="lobby-panel">
@@ -42,6 +45,7 @@ export function LibraryMap({
             style={onMap(floorOf(id))}
             aria-label={`${label} di peta`}
             title={label}
+            disabled={!interactive}
             onClick={() => onSelect(id)}
           />
         ))}
@@ -49,6 +53,11 @@ export function LibraryMap({
           <span className="sr-only">Anda</span>
         </span>
       </div>
+      {!interactive && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Peta aktif saat adegan 3D tampil.
+        </p>
+      )}
     </Panel>
   )
 }
