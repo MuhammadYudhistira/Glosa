@@ -884,4 +884,53 @@
       bottom: 1rem;
     }
   }
+
+  /* Lobby: phone sheet and speech bubbles (plan 1D, Task 10). */
+  .lobby-sheet {
+    position: absolute;
+    inset-inline: 0.5rem;
+    bottom: 0.5rem;
+    z-index: 10;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: var(--color-panel);
+    padding: 0.75rem 0.9rem;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+    backdrop-filter: blur(8px);
+  }
+  @media (min-width: 1024px) {
+    .lobby-sheet {
+      display: none;
+    }
+  }
+  .lobby-bubble {
+    display: block;
+    max-width: 15rem;
+    border-radius: 0.75rem;
+    background: #fffaf0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--color-sepia-ink);
+    box-shadow: 0 6px 16px rgb(0 0 0 / 0.4);
+  }
+  .lobby-bubble a {
+    color: var(--color-maroon);
+  }
+  .lobby-bubble-stack {
+    display: grid;
+    gap: 0.5rem;
+    width: min(18rem, 70vw);
+  }
+  .lobby-note {
+    border-radius: 0.6rem;
+    background: var(--color-panel);
+    padding: 0.5rem 0.7rem;
+    font-size: 0.8rem;
+    color: var(--muted-foreground);
+  }
+  .lobby-note a {
+    color: var(--color-mint);
+    text-decoration: underline;
+  }
 }
