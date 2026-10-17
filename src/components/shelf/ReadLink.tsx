@@ -13,6 +13,9 @@ export function ReadLink({
     <Link
       to="/read/$bookId"
       params={{ bookId }}
+      // Preloading would download the whole EPUB on hover, and the reader would
+      // reopen the book when the navigation loads it a second time.
+      preload={false}
       className={buttonVariants({ size: "block" })}
     >
       {percentage > 0

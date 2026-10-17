@@ -33,6 +33,9 @@ declare module "foliate-js/view.js" {
   /** foliate-paginator (reflowable) or foliate-fxl (fixed layout, no setStyles). */
   export interface FoliateRenderer extends HTMLElement {
     setStyles?: (styles: string) => void
+    /** Lays the current section out again (the paginator calls it on resize). */
+    render?: () => void
+    getContents?: () => Array<{ doc: Document | null }>
   }
 
   /** The <foliate-view> element; importing the module defines it. */

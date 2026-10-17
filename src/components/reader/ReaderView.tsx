@@ -1,4 +1,4 @@
-import type { RelocateDetail, View } from "foliate-js/view.js"
+import type { FoliateRenderer, RelocateDetail, View } from "foliate-js/view.js"
 import { useEffect, useRef } from "react"
 import { type OpenedBook, openBookFile } from "@/lib/epub/open-book"
 import {
@@ -51,6 +51,24 @@ function applySettings(view: View, settings: ReaderSettings) {
   renderer.setAttribute("margin", BAR_SPACE)
   renderer.setAttribute("max-inline-size", MAX_LINE_LENGTH)
   renderer.setStyles?.(readerCss(settings, readerFonts()))
+}
+
+/**
+ * foliate's paginator lays its section out again whenever its box resizes,
+ * even while the section's document is still loading and has no root element
+ * yet, and then throws. It lays the section out itself once it has loaded, so
+ * a resize during loading can wait for that.
+ */
+function skipLayoutWhileLoading(renderer: FoliateRenderer) {
+  const render = renderer.render?.bind(renderer)
+  const getContents = renderer.getContents?.bind(renderer)
+  if (!render || !getContents) return
+  renderer.render = () => {
+    const loading = getContents().some(
+      ({ doc }) => doc?.readyState === "loading"
+    )
+    if (!loading) render()
+  }
 }
 
 function toLocation(detail: RelocateDetail): ReaderLocation {
@@ -182,6 +200,7 @@ export function ReaderView({
           await teardown()
           return
         }
+        skipLayoutWhileLoading(view.renderer)
         applySettings(view, settingsRef.current)
         viewRef.current = view
         const startAt = startRef.current
