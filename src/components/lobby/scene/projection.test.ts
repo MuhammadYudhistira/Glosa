@@ -130,6 +130,44 @@ describe("clampView", () => {
       }
     }
   })
+
+  it("leaves a view strictly inside the map exactly where it is", () => {
+    const { size, height, front, edge } = ATRIUM
+    // The hexagon from insideMap, as its limits on u and on the v band.
+    const sideLimit = (size - edge) / R2
+    const top = (2 * (height - edge)) / R6
+    const bottom = (2 * (size + front - edge)) / R6
+    const midV = (top + bottom) / 2
+    const next = random(7)
+    for (let i = 0; i < 2000; i++) {
+      const aspect = 9 / 20 + next() * (21 / 9 - 9 / 20)
+      const viewport: Viewport = { width: 1000 * aspect, height: 1000 }
+      const zoom = MIN_ZOOM + next() * (MAX_ZOOM - MIN_ZOOM)
+      const { halfWidth, halfHeight } = halfExtents(zoom, viewport)
+      // The widest u whose corners stay inside, then a point well within it.
+      const uLimit = Math.min(sideLimit, R3 * (midV - halfHeight)) - halfWidth
+      const u = (2 * next() - 1) * 0.5 * uLimit
+      // The v band the corners allow at this u, and a point in its middle.
+      const reach = (Math.abs(u) + halfWidth) / R3 + halfHeight
+      const low = -bottom + reach
+      const high = top - reach
+      const v = (low + high) / 2 + (2 * next() - 1) * 0.5 * ((high - low) / 2)
+      const target: Point3 = [
+        u * SCREEN_RIGHT[0] + v * SCREEN_UP[0],
+        u * SCREEN_RIGHT[1] + v * SCREEN_UP[1],
+        u * SCREEN_RIGHT[2] + v * SCREEN_UP[2],
+      ]
+      const view: View = { target, zoom }
+      for (const [cu, cv] of screenCorners(view, viewport)) {
+        expect(insideMap(cu, cv), `view ${i} precondition`).toBe(true)
+      }
+      const clamped = clampView(view, viewport)
+      expect(clamped.zoom, `view ${i}`).toBe(view.zoom)
+      for (let k = 0; k < 3; k++) {
+        expect(clamped.target[k], `view ${i}`).toBeCloseTo(target[k], 9)
+      }
+    }
+  })
 })
 
 describe("startView", () => {

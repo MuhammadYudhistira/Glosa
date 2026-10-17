@@ -43,6 +43,7 @@ const FIT_V = (HEIGHT + FLOOR - 2 * EDGE) / R6
 
 /** Half the view's height in metres at zoom 1: the widest view that fits the map. */
 export function baseHalfHeight(aspect: number): number {
+  // The 0.96 is a margin so that zoom 1 always fits inside the map at every screen aspect.
   return Math.min(FIT_V / (1 + aspect / R3), (SIZE - EDGE) / R2 / aspect) * 0.96
 }
 
