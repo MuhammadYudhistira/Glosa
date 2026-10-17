@@ -16,6 +16,10 @@ async function openShelf(page: Page) {
   await signInAndOnboard(page, member)
   await page.getByRole("link", { name: "Rak Saya" }).click()
   await expect(page).toHaveURL(/\/shelf$/)
+  // The URL changes before the shelf's loader ends; the lobby stays until then.
+  await expect(
+    page.getByRole("heading", { name: "Rak Saya", level: 1 })
+  ).toBeVisible()
   await hydrated(page)
   return member
 }
