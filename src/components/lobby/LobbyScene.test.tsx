@@ -58,6 +58,10 @@ function renderScene(environment: Environment) {
 }
 
 describe("LobbyScene", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   beforeEach(() => {
     canvas.props = null
     Reflect.deleteProperty(window, "__GLOSA_LOBBY_TEST__")
@@ -119,10 +123,6 @@ describe("LobbyScene", () => {
       return { ...rendered, stage, view }
     }
 
-    afterEach(() => {
-      vi.restoreAllMocks()
-    })
-
     it("pans with the arrow keys while the scene has focus", async () => {
       const { scene, stage, view } = await goLive()
       fireEvent.keyDown(scene, { key: "ArrowRight" })
@@ -162,11 +162,14 @@ describe("LobbyScene", () => {
         name: new RegExp(`^${hidden?.label}`),
       })
 
+      // jsdom's own :focus-visible depends on earlier events, so say it outright.
+      const focusVisible = vi.spyOn(HTMLElement.prototype, "matches")
+      focusVisible.mockImplementation(() => false)
       act(() => button.focus())
       expect(stage.setView).not.toHaveBeenCalled()
 
       act(() => button.blur())
-      vi.spyOn(HTMLElement.prototype, "matches").mockImplementation(
+      focusVisible.mockImplementation(
         (selector) => selector === ":focus-visible"
       )
       act(() => button.focus())
@@ -189,6 +192,7 @@ describe("LobbyScene", () => {
           dispose: vi.fn(),
         })
       })
+      expect(screen.getByRole("button", { name: "Pusatkan" })).toBeVisible()
       expect(screen.getByRole("button", { name: "Meja Admin" })).toBe(button)
       expect(document.activeElement).toBe(button)
     })
