@@ -24,6 +24,7 @@ import { Route as MemberShelfRouteImport } from './routes/_member/shelf'
 import { Route as MemberWelcomeRouteImport } from './routes/_member/welcome'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
+import { Route as MemberReadBookIdRouteImport } from './routes/_member/read.$bookId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -99,6 +100,11 @@ const AuthConfirmRoute = AuthConfirmRouteImport.update({
   path: '/auth/confirm',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MemberReadBookIdRoute = MemberReadBookIdRouteImport.update({
+  id: '/read/$bookId',
+  path: '/read/$bookId',
+  getParentRoute: () => MemberRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/welcome': typeof MemberWelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/read/$bookId': typeof MemberReadBookIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/welcome': typeof MemberWelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/read/$bookId': typeof MemberReadBookIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/_member/welcome': typeof MemberWelcomeRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/_member/read/$bookId': typeof MemberReadBookIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/auth/callback'
     | '/auth/confirm'
+    | '/read/$bookId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/auth/callback'
     | '/auth/confirm'
+    | '/read/$bookId'
   id:
     | '__root__'
     | '/'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/_member/welcome'
     | '/auth/callback'
     | '/auth/confirm'
+    | '/_member/read/$bookId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -323,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthConfirmRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_member/read/$bookId': {
+      id: '/_member/read/$bookId'
+      path: '/read/$bookId'
+      fullPath: '/read/$bookId'
+      preLoaderRoute: typeof MemberReadBookIdRouteImport
+      parentRoute: typeof MemberRoute
+    }
   }
 }
 
@@ -331,6 +350,7 @@ interface MemberRouteChildren {
   MemberSettingsRoute: typeof MemberSettingsRoute
   MemberShelfRoute: typeof MemberShelfRoute
   MemberWelcomeRoute: typeof MemberWelcomeRoute
+  MemberReadBookIdRoute: typeof MemberReadBookIdRoute
 }
 
 const MemberRouteChildren: MemberRouteChildren = {
@@ -338,6 +358,7 @@ const MemberRouteChildren: MemberRouteChildren = {
   MemberSettingsRoute: MemberSettingsRoute,
   MemberShelfRoute: MemberShelfRoute,
   MemberWelcomeRoute: MemberWelcomeRoute,
+  MemberReadBookIdRoute: MemberReadBookIdRoute,
 }
 
 const MemberRouteWithChildren =
