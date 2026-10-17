@@ -1,11 +1,13 @@
-import { render, screen, within } from "@testing-library/react"
+import { act, render, screen, within } from "@testing-library/react"
 import {
+  Outlet,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from "@tanstack/react-router"
+import { useEffect } from "react"
 import { describe, expect, it } from "vitest"
 import { MemberShell } from "./MemberShell"
 
@@ -65,4 +67,65 @@ describe("MemberShell", () => {
       expect(screen.queryByRole("navigation")).not.toBeInTheDocument()
     }
   )
+
+  it("keeps the page it leaves mounted while the next route loads", async () => {
+    let mounts = 0
+    function Lobby() {
+      useEffect(() => {
+        mounts += 1
+      }, [])
+      return <p>Lobi 3D</p>
+    }
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const rootRoute = createRootRoute({
+      component: () => (
+        <MemberShell>
+          <Outlet />
+        </MemberShell>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path: "/lobby",
+          component: Lobby,
+        }),
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path: "/read/$bookId",
+          beforeLoad: () => held,
+          component: () => <p>Pembaca</p>,
+        }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ["/lobby"] }),
+    })
+    render(<RouterProvider router={router} />)
+    expect(await screen.findByText("Lobi 3D")).toBeInTheDocument()
+    expect(mounts).toBe(1)
+
+    let navigation: Promise<void> = Promise.resolve()
+    await act(async () => {
+      navigation = router.navigate({
+        to: "/read/$bookId",
+        params: { bookId: "abc" },
+      })
+    })
+    // The reader's beforeLoad is still running: the lobby and its shell stay.
+    expect(router.state.location.pathname).toBe("/read/abc")
+    expect(screen.getByText("Lobi 3D")).toBeInTheDocument()
+    expect(screen.getAllByRole("navigation")).toHaveLength(2)
+    expect(mounts).toBe(1)
+
+    await act(async () => {
+      release()
+      await navigation
+    })
+    expect(await screen.findByText("Pembaca")).toBeInTheDocument()
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument()
+    expect(mounts).toBe(1)
+  })
 })

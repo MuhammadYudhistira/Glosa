@@ -701,7 +701,8 @@
   .member-sidebar {
     display: none;
   }
-  .member-main {
+  /* Only beside the navigation: the reader and the card page are full screen. */
+  .member-main[data-shell] {
     padding-bottom: var(--tabbar-h);
   }
   .member-tabbar {
@@ -756,7 +757,7 @@
       background: var(--color-panel);
       backdrop-filter: blur(8px);
     }
-    .member-main {
+    .member-main[data-shell] {
       padding-bottom: 0;
       padding-left: var(--sidebar-w);
     }
@@ -1004,5 +1005,19 @@
       top: 4.75rem;
       left: calc(50% - 10.75rem);
     }
+  }
+}
+
+/*
+ * A member page fills exactly the space beside the navigation, so pages that
+ * ask for min-h-dvh do not scroll by the tab bar's height. Unlayered, so it
+ * wins over the min-h-dvh utility.
+ */
+.member-main[data-shell] > main {
+  min-height: calc(100dvh - var(--tabbar-h));
+}
+@media (min-width: 1024px) {
+  .member-main[data-shell] > main {
+    min-height: 100dvh;
   }
 }

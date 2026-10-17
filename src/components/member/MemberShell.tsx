@@ -27,42 +27,52 @@ const isCurrent = (pathname: string, to: string) =>
 
 /** Sidebar from 1024 px, tab bar below (spec 1D §5.3). */
 export function MemberShell({ children }: { children: ReactNode }) {
+  // Follow the resolved location, not the pending one: the page being left
+  // still renders while the next route's beforeLoad and loaders run.
   const pathname = useRouterState({
-    select: (state) => state.location.pathname,
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
   })
-  if (!hasShell(pathname)) return children
+  const shown = hasShell(pathname)
 
+  // The wrapper around children is always there, so showing or hiding the
+  // navigation never remounts the page (e.g. the WebGL lobby on its way out).
   return (
     <>
-      <nav aria-label="Navigasi anggota" className="member-sidebar">
-        <Logo className="mb-6 size-10" />
-        {LINKS.map(({ to, label, Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            className="member-nav-link"
-            aria-current={isCurrent(pathname, to) ? "page" : undefined}
-          >
-            <Icon aria-hidden="true" className="size-4" />
-            {label}
-          </Link>
-        ))}
-      </nav>
-      <div className="member-main">{children}</div>
-      <nav aria-label="Navigasi anggota" className="member-tabbar">
-        {LINKS.map(({ to, label, short, Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            className="member-tab"
-            aria-label={short === label ? undefined : label}
-            aria-current={isCurrent(pathname, to) ? "page" : undefined}
-          >
-            <Icon aria-hidden="true" className="size-5" />
-            <span>{short}</span>
-          </Link>
-        ))}
-      </nav>
+      {shown && (
+        <nav aria-label="Navigasi anggota" className="member-sidebar">
+          <Logo className="mb-6 size-10" />
+          {LINKS.map(({ to, label, Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              className="member-nav-link"
+              aria-current={isCurrent(pathname, to) ? "page" : undefined}
+            >
+              <Icon aria-hidden="true" className="size-4" />
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
+      <div className="member-main" data-shell={shown ? "" : undefined}>
+        {children}
+      </div>
+      {shown && (
+        <nav aria-label="Navigasi anggota" className="member-tabbar">
+          {LINKS.map(({ to, label, short, Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              className="member-tab"
+              aria-label={short === label ? undefined : label}
+              aria-current={isCurrent(pathname, to) ? "page" : undefined}
+            >
+              <Icon aria-hidden="true" className="size-5" />
+              <span>{short}</span>
+            </Link>
+          ))}
+        </nav>
+      )}
     </>
   )
 }
