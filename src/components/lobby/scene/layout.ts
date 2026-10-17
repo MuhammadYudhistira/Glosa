@@ -13,7 +13,7 @@ export type Point3 = readonly [number, number, number]
  * map. `edge`: how far the screen stays from the map's edges.
  */
 export const ATRIUM = { size: 34, height: 13.5, front: 6, edge: 0.25 } as const
-export const GLASS = { x0: 17, x1: 34, y0: 0.4, y1: 13.1 } as const
+export const GLASS = { x0: 17, x1: 34, y0: 0, y1: ATRIUM.height } as const
 /** The box of shelves floating above the stairs. */
 export const BOX = {
   x0: 1.5,

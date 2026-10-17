@@ -28,15 +28,15 @@ function floor(kit: Kit) {
     [6, 6]
   )
   kit.mesh(
-    new THREE.BoxGeometry(SIZE * 2, 0.2, SIZE * 2),
+    new THREE.BoxGeometry(SIZE * 2 + 2, 0.2, SIZE * 2 + 2),
     new THREE.MeshStandardMaterial({
       map: texture,
       roughness: 0.32,
       metalness: 0.05,
     }),
-    SIZE,
+    SIZE - 1,
     -0.1,
-    SIZE,
+    SIZE - 1,
     { cast: false }
   )
 }
