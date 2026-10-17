@@ -2,13 +2,14 @@ import type { FoliateRenderer, RelocateDetail, View } from "foliate-js/view.js"
 import { useEffect, useRef } from "react"
 import { type OpenedBook, openBookFile } from "@/lib/epub/open-book"
 import {
+  type FontSources,
   MARGIN_GAP,
   type ReaderSettings,
   THEME_COLORS,
   readerCss,
 } from "@/lib/reader-settings"
 import type { TocItem } from "@/lib/reader-types"
-import { readerFonts } from "./reader-fonts"
+import { loadReaderFonts } from "./reader-fonts"
 import {
   type ReaderMove,
   isTypingTarget,
@@ -44,13 +45,17 @@ type Callbacks = {
 const BAR_SPACE = "64px"
 const MAX_LINE_LENGTH = "720px"
 
-function applySettings(view: View, settings: ReaderSettings) {
+function applySettings(
+  view: View,
+  settings: ReaderSettings,
+  fonts: FontSources
+) {
   const renderer = view.renderer
   renderer.setAttribute("flow", settings.flow)
   renderer.setAttribute("gap", MARGIN_GAP[settings.margin])
   renderer.setAttribute("margin", BAR_SPACE)
   renderer.setAttribute("max-inline-size", MAX_LINE_LENGTH)
-  renderer.setStyles?.(readerCss(settings, readerFonts()))
+  renderer.setStyles?.(readerCss(settings, fonts))
 }
 
 /**
@@ -97,6 +102,7 @@ export function ReaderView({
   const viewRef = useRef<View | null>(null)
   const callbacksRef = useRef(callbacks)
   const settingsRef = useRef(settings)
+  const fontsRef = useRef<FontSources | null>(null)
   // Read once on purpose: the start position applies only when a file opens.
   const startRef = useRef(start)
 
@@ -184,6 +190,8 @@ export function ReaderView({
 
     void (async () => {
       try {
+        // Fetched while the book opens; never rejects (absolute URLs as fallback).
+        const fontsLoading = loadReaderFonts()
         await import("foliate-js/view.js")
         opened = await openBookFile(file)
         if (cancelled) {
@@ -201,7 +209,13 @@ export function ReaderView({
           return
         }
         skipLayoutWhileLoading(view.renderer)
-        applySettings(view, settingsRef.current)
+        const fonts = await fontsLoading
+        if (isCancelled()) {
+          await teardown()
+          return
+        }
+        fontsRef.current = fonts
+        applySettings(view, settingsRef.current, fonts)
         viewRef.current = view
         const startAt = startRef.current
         await view.init(
@@ -235,7 +249,8 @@ export function ReaderView({
 
   useEffect(() => {
     const view = viewRef.current
-    if (view) applySettings(view, settings)
+    const fonts = fontsRef.current
+    if (view && fonts) applySettings(view, settings, fonts)
   }, [settings])
 
   return (
