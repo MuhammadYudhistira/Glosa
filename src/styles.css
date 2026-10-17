@@ -107,6 +107,9 @@
   --sidebar-accent-foreground: #e8f2f0;
   --sidebar-border: rgb(120 210 195 / 0.2);
   --sidebar-ring: #2fe0b8;
+  /* Member navigation (plan 1D, Task 7). */
+  --tabbar-h: calc(3.5rem + env(safe-area-inset-bottom));
+  --sidebar-w: 13rem;
 }
 
 @layer base {
@@ -580,5 +583,71 @@
   .choice-chip:has(:focus-visible) {
     outline: 2px solid var(--color-mint);
     outline-offset: 2px;
+  }
+  .member-sidebar {
+    display: none;
+  }
+  .member-main {
+    padding-bottom: var(--tabbar-h);
+  }
+  .member-tabbar {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    height: var(--tabbar-h);
+    padding-bottom: env(safe-area-inset-bottom);
+    border-top: 1px solid var(--border);
+    background: var(--color-panel);
+    backdrop-filter: blur(8px);
+  }
+  .member-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    font-size: 0.7rem;
+    color: var(--muted-foreground);
+  }
+  .member-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    border-radius: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.9rem;
+  }
+  .member-nav-link:hover {
+    background: var(--muted);
+  }
+  .member-tab[aria-current="page"],
+  .member-nav-link[aria-current="page"] {
+    color: var(--color-mint);
+  }
+  @media (min-width: 1024px) {
+    .member-sidebar {
+      position: fixed;
+      inset-block: 0;
+      left: 0;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      width: var(--sidebar-w);
+      padding: 1.25rem 0.75rem;
+      border-right: 1px solid var(--border);
+      background: var(--color-panel);
+      backdrop-filter: blur(8px);
+    }
+    .member-main {
+      padding-bottom: 0;
+      padding-left: var(--sidebar-w);
+    }
+    .member-tabbar {
+      display: none;
+    }
   }
 }

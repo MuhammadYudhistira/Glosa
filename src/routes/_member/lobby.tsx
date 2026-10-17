@@ -28,12 +28,6 @@ function LobbyPage() {
       <Panel className="flex flex-col items-center gap-6 p-6 sm:flex-row sm:items-start">
         <MembershipCard member={user} />
         <div className="flex w-full flex-col gap-2.5 sm:max-w-48">
-          <Link to="/shelf" className={buttonVariants({ size: "block" })}>
-            Rak Saya
-          </Link>
-          <Link to="/settings" className={linkClass}>
-            Pengaturan
-          </Link>
           <Link to="/logout" className={linkClass}>
             Keluar
           </Link>

@@ -1,5 +1,6 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 import { useEffect } from "react"
+import { MemberShell } from "@/components/member/MemberShell"
 import { resolveUser } from "@/lib/current-user"
 import { claimLocalData } from "@/lib/local/device"
 import { useProgressFlush } from "@/lib/progress-sync-client"
@@ -26,5 +27,9 @@ function MemberLayout() {
   }, [user.id])
   useProgressFlush()
 
-  return <Outlet />
+  return (
+    <MemberShell>
+      <Outlet />
+    </MemberShell>
+  )
 }
