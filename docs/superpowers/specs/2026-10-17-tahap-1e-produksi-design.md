@@ -1,5 +1,7 @@
 # Glosa Tahap 1E — Produksi: Desain
 
+> **Diperbarui 2026-10-20** ([rencana deploy dev](../plans/2026-10-20-deploy-dev.md)): `glosa.nuvrastudio.space` kini situs **dev** dengan proyek Supabase dev, dideploy otomatis tanpa *Approve*. Prod menyusul di domain lain pada VPS yang sama (`/opt/glosa-prod`). Bagian spec ini tentang alamat, stack VPS, dan pipeline deploy digantikan rencana itu; panduannya kini `docs/ops/deploy.md`.
+
 Tanggal: 2026-10-17
 Spec induk: [`2026-10-15-epub-reader-tahap-1-design.md`](2026-10-15-epub-reader-tahap-1-design.md) §11 (offline), §12 (error), §14 (deploy)
 Spec sebelumnya: [`2026-10-17-tahap-1d-lobi-3d-design.md`](2026-10-17-tahap-1d-lobi-3d-design.md) (tabel rencana 1D/1E)
