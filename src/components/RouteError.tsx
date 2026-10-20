@@ -1,10 +1,12 @@
 import { Link } from "@tanstack/react-router"
 import { useEffect } from "react"
 import { buttonVariants } from "@/components/ui/button"
+import { reportError } from "@/lib/sentry-client"
 
 export function RouteError({ error }: { error: unknown }) {
   useEffect(() => {
     console.error(error)
+    reportError(error)
   }, [error])
 
   return (

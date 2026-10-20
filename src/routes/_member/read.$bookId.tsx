@@ -22,6 +22,7 @@ import { jumpOffer, toPercentage } from "@/lib/progress"
 import { progressSync, useSyncStatus } from "@/lib/progress-sync-client"
 import { THEME_COLORS } from "@/lib/reader-settings"
 import type { Position, TocItem } from "@/lib/reader-types"
+import { reportError } from "@/lib/sentry-client"
 import { markBookOpenedFn } from "@/server/reading"
 
 export const Route = createFileRoute("/_member/read/$bookId")({
@@ -52,6 +53,11 @@ function ReaderPending() {
 
 function ReaderError({ error }: { error: unknown }) {
   const router = useRouter()
+  // A missing or broken book already has its own message (spec 1E §7).
+  useEffect(() => {
+    if (!(error instanceof BookLoadError) && !(error instanceof EpubError))
+      reportError(error)
+  }, [error])
   return (
     <ReaderProblem
       message={bookMessage(error instanceof BookLoadError ? error.code : null)}

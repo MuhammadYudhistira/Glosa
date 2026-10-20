@@ -40,6 +40,9 @@ export default defineConfig(({ command, mode }) => {
   return {
     resolve: { tsconfigPaths: true },
     optimizeDeps: { exclude: ["foliate-js"] },
+    // Maps for Sentry only: no sourceMappingURL in the files; the image build
+    // uploads them, then deletes them (spec 1E §5).
+    build: { sourcemap: "hidden" },
     plugins: [
       foliateEpubOnly(),
       devtools({ consolePiping: { enabled: false } }),
