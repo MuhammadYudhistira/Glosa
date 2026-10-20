@@ -1,10 +1,14 @@
 name: Deploy
 
-# Called by CI after the image is pushed (with migrations), or run by hand from
-# the Actions tab with an older tag to roll back (migrations skipped).
+# Called by CI for every green main (dev, no migrations), or run by hand from
+# the Actions tab with an older tag to roll back (migrations skipped). The
+# GitHub environment of the same name holds the VPS secrets and APP_URL.
 on:
   workflow_call:
     inputs:
+      environment:
+        type: string
+        required: true
       tag:
         type: string
         required: true
@@ -13,40 +17,47 @@ on:
         required: true
   workflow_dispatch:
     inputs:
+      environment:
+        description: "Where to deploy"
+        type: choice
+        options: [dev, prod]
+        required: true
       tag:
         description: "Full commit SHA of the image to run. Migrations are skipped."
         type: string
         required: true
 
-env:
-  APP_URL: https://glosa.nuvrastudio.space
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    environment: production
+    environment: ${{ inputs.environment }}
     concurrency:
-      group: production
+      group: deploy-${{ inputs.environment }}
       cancel-in-progress: false
     env:
+      DEPLOY_ENV: ${{ inputs.environment }}
       TAG: ${{ inputs.tag }}
     steps:
-      - name: Check the tag
+      - name: Check the inputs
+        env:
+          APP_URL: ${{ vars.APP_URL }}
         run: |
+          [[ "$DEPLOY_ENV" =~ ^(dev|prod)$ ]] || { echo "environment must be dev or prod"; exit 1; }
           [[ "$TAG" =~ ^[0-9a-f]{40}$ ]] || { echo "tag must be a full commit SHA"; exit 1; }
+          [ -n "$APP_URL" ] || { echo "Set the APP_URL variable in the $DEPLOY_ENV environment"; exit 1; }
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         if: inputs.migrate
         with:
           version: 2.121.0
-      - name: Apply database migrations to production
+      - name: Apply database migrations
         if: inputs.migrate
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.PROD_SUPABASE_DB_PASSWORD }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          supabase link --project-ref "${{ secrets.PROD_SUPABASE_PROJECT_REF }}"
+          supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
           supabase db push --yes
       - name: Prepare SSH
         env:
@@ -61,10 +72,12 @@ jobs:
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
-          scp deploy/compose.yml deploy/glosa.caddy "deploy@$VPS_HOST:/opt/glosa/"
-          # TAG was checked to be a commit SHA, so it is safe on the remote shell.
-          ssh "deploy@$VPS_HOST" bash -s -- "$TAG" < deploy/release.sh
+          scp deploy/compose.yml "deploy/sites/glosa-$DEPLOY_ENV.caddy" "deploy@$VPS_HOST:/opt/glosa-$DEPLOY_ENV/"
+          # Both values were checked above, so they are safe on the remote shell.
+          ssh "deploy@$VPS_HOST" bash -s -- "$DEPLOY_ENV" "$TAG" < deploy/release.sh
       - name: Smoke check
+        env:
+          APP_URL: ${{ vars.APP_URL }}
         run: |
           for _ in $(seq 1 24); do
             version=$(curl -fsS "$APP_URL/api/health" | jq -r .version) \

@@ -14,7 +14,7 @@ jobs:
     environment: dev
     timeout-minutes: 50
     # Integration and E2E tests share the Supabase dev project; avoid overlapping
-    # runs. Job-level, so a deploy waiting for approval never holds other runs.
+    # runs. Job-level, so a running deploy never holds other runs.
     concurrency:
       group: supabase-dev
       cancel-in-progress: false
@@ -39,12 +39,15 @@ jobs:
           shellcheck scripts/vps-setup.sh deploy/release.sh
           docker run --rm \
             -v "$PWD/deploy/proxy/Caddyfile:/etc/caddy/Caddyfile:ro" \
-            -v "$PWD/deploy/glosa.caddy:/etc/caddy/sites/glosa.caddy:ro" \
+            -v "$PWD/deploy/sites:/etc/caddy/sites:ro" \
             caddy:2 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
           docker compose -f deploy/proxy/compose.yml config --quiet
           : > deploy/.env
-          GLOSA_TAG=ci docker compose -f deploy/compose.yml config --quiet
+          GLOSA_ENV=ci GLOSA_TAG=ci docker compose -f deploy/compose.yml config --quiet
           rm deploy/.env
+          # release.sh must refuse a wrong environment or tag before touching anything.
+          if bash deploy/release.sh staging "$GITHUB_SHA"; then exit 1; fi
+          if bash deploy/release.sh dev not-a-sha; then exit 1; fi
       - name: Write .env.local from secrets
         run: |
           {
@@ -110,12 +113,14 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
           docker push "$IMAGE:$GITHUB_SHA"
 
-  # Waits for the owner's Approve in the "production" environment.
-  deploy:
+  # Every green main goes to the dev site, without approval or migrations
+  # (migrations reach the dev project during development: npm run db:push).
+  deploy-dev:
     needs: image
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEV_DEPLOY_ENABLED == 'true'
     uses: ./.github/workflows/deploy.yml
     with:
+      environment: dev
       tag: ${{ github.sha }}
-      migrate: true
+      migrate: false
     secrets: inherit
