@@ -10,6 +10,9 @@ import { type ReactNode, useEffect } from "react"
 
 import { currentUser } from "@/lib/current-user"
 import { registerServiceWorker } from "@/lib/pwa"
+import { sentryConfig } from "@/lib/sentry-config"
+import { setReportedUser, startBrowserSentry } from "@/lib/sentry-client"
+import { sentryHeadScripts } from "@/lib/sentry-env"
 import { forgetUser, rememberUser } from "@/lib/session-cache"
 import { SceneBackdrop } from "@/components/scene/SceneBackdrop"
 import appCss from "@/styles.css?url"
@@ -33,6 +36,7 @@ export const Route = createRootRoute({
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       { rel: "manifest", href: "/manifest.json" },
     ],
+    scripts: sentryHeadScripts(sentryConfig()),
   }),
   notFoundComponent: () => (
     <main className="container mx-auto p-4 pt-16">
@@ -47,15 +51,18 @@ export const Route = createRootRoute({
 function RootComponent() {
   const { user } = Route.useRouteContext()
 
+  // First, so Sentry exists by the time the member effect below tags it.
+  useEffect(() => {
+    registerServiceWorker()
+    startBrowserSentry(sentryConfig())
+  }, [])
+
   // Keep the last member seen online, so the app can still open offline.
   useEffect(() => {
     if (user) rememberUser(user)
     else if (user === null) forgetUser()
+    if (user !== undefined) setReportedUser(user?.id ?? null)
   }, [user])
-
-  useEffect(() => {
-    registerServiceWorker()
-  }, [])
 
   return (
     <>

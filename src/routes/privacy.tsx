@@ -9,7 +9,7 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyPage() {
   return (
-    <LegalPage title="Kebijakan Privasi" updated="15 Oktober 2026">
+    <LegalPage title="Kebijakan Privasi" updated="20 Oktober 2026">
       <p>
         Glosa menghormati privasimu. Halaman ini menjelaskan data apa yang kami
         kumpulkan, untuk apa, dan apa hakmu sesuai Undang-Undang Pelindungan
@@ -29,7 +29,7 @@ function PrivacyPage() {
         </li>
         <li>
           Data teknis: waktu masuk terakhir dan laporan error untuk memperbaiki
-          aplikasi.
+          aplikasi. Laporan error hanya memuat ID akunmu, tanpa email atau nama.
         </li>
       </ul>
       <h2>Untuk apa data dipakai</h2>
@@ -53,7 +53,9 @@ function PrivacyPage() {
       </p>
       <h2>Tempat penyimpanan</h2>
       <p>
-        Data disimpan di layanan Supabase dan server aplikasi kami. Penyedia
+        Akun, data membaca, dan file bukumu disimpan di Supabase, di pusat data
+        Singapura. Aplikasi berjalan di server sewaan (VPS) kami. Email akun
+        dikirim lewat Resend, dan laporan error disimpan di Sentry. Penyedia
         layanan tersebut hanya memproses data atas instruksi kami.
       </p>
       <h2>Hakmu</h2>

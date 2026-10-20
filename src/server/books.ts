@@ -14,6 +14,7 @@ import {
 } from "@/lib/upload-rules"
 import { bookStorage, objectPaths } from "./book-storage"
 import type { Database } from "./database.types"
+import { logServerError } from "./monitoring"
 import { getSupabaseAdminClient, getSupabaseServerClient } from "./supabase"
 
 const RESERVE_ERRORS = new Set([
@@ -124,7 +125,7 @@ async function discardUpload(
   try {
     await bookStorage(admin).remove(objectPaths(book))
   } catch (removeError) {
-    console.error("removing a discarded upload failed", removeError)
+    logServerError("removing a discarded upload failed", removeError)
   }
   const { error } = await admin
     .from("books")
@@ -132,7 +133,7 @@ async function discardUpload(
     .eq("id", book.id)
     .eq("user_id", userId)
     .eq("status", "pending")
-  if (error) console.error("deleting a discarded reservation failed", error)
+  if (error) logServerError("deleting a discarded reservation failed", error)
 }
 
 export const requestUploadFn = createServerFn({ method: "POST" })
@@ -150,7 +151,7 @@ export const requestUploadFn = createServerFn({ method: "POST" })
       await removeAbandonedUploads(admin, user.id, data.sha256)
       await removeOrphanedObjects(admin, user.id)
     } catch (error) {
-      console.error("upload cleanup failed", error)
+      logServerError("upload cleanup failed", error)
       return fail("unknown")
     }
 
@@ -174,7 +175,7 @@ export const requestUploadFn = createServerFn({ method: "POST" })
       .single()
     if (error) {
       if (RESERVE_ERRORS.has(error.message)) return fail(error.message)
-      console.error("reserve_book_upload failed", error)
+      logServerError("reserve_book_upload failed", error)
       return fail("unknown")
     }
 
@@ -189,14 +190,14 @@ export const requestUploadFn = createServerFn({ method: "POST" })
           : null,
       }
     } catch (signError) {
-      console.error("signing upload URLs failed", signError)
+      logServerError("signing upload URLs failed", signError)
       const { error: cleanupError } = await admin
         .from("books")
         .delete()
         .eq("id", bookId)
         .eq("user_id", user.id)
       if (cleanupError)
-        console.error("removing the reservation failed", cleanupError)
+        logServerError("removing the reservation failed", cleanupError)
       return fail("unknown")
     }
   })
@@ -216,7 +217,7 @@ export const confirmUploadFn = createServerFn({ method: "POST" })
       .eq("id", data.bookId)
       .maybeSingle()
     if (error) {
-      console.error("book lookup failed", error)
+      logServerError("book lookup failed", error)
       return fail("unknown")
     }
     // Usually another tab's retry of the same file replaced the reservation.
@@ -241,7 +242,7 @@ export const confirmUploadFn = createServerFn({ method: "POST" })
         : 0
     } catch (statError) {
       // Not proof that the upload is broken: keep it so the member can retry.
-      console.error("checking the uploaded files failed", statError)
+      logServerError("checking the uploaded files failed", statError)
       return fail("unknown")
     }
     if (
@@ -259,7 +260,7 @@ export const confirmUploadFn = createServerFn({ method: "POST" })
       { p_user_id: user.id, p_book_id: book.id }
     )
     if (markError) {
-      console.error("marking the book ready failed", markError)
+      logServerError("marking the book ready failed", markError)
       return fail("unknown")
     }
     if (!marked) {
@@ -302,7 +303,7 @@ export const listBooksFn = createServerFn({ method: "GET" }).handler(
         ready.flatMap((row) => (row.cover_path ? [row.cover_path] : []))
       )
     } catch (error) {
-      console.error("signing cover URLs failed", error)
+      logServerError("signing cover URLs failed", error)
     }
 
     return {
@@ -356,7 +357,7 @@ export const updateBookGenreFn = createServerFn({ method: "POST" })
       .eq("id", data.bookId)
       .select("id")
     if (error) {
-      console.error("updating the genre failed", error)
+      logServerError("updating the genre failed", error)
       return fail("unknown")
     }
     return rows.length > 0 ? { ok: true } : fail("not_found")
@@ -378,7 +379,7 @@ export const deleteBookFn = createServerFn({ method: "POST" })
       .eq("id", data.bookId)
       .maybeSingle()
     if (error) {
-      console.error("book lookup failed", error)
+      logServerError("book lookup failed", error)
       return fail("unknown")
     }
     if (!book) return fail("not_found")
@@ -389,7 +390,7 @@ export const deleteBookFn = createServerFn({ method: "POST" })
     try {
       await bookStorage(admin).remove(objectPaths(book))
     } catch (removeError) {
-      console.error("removing book files failed", removeError)
+      logServerError("removing book files failed", removeError)
       return fail("unknown")
     }
     const { error: deleteError } = await admin
@@ -398,13 +399,13 @@ export const deleteBookFn = createServerFn({ method: "POST" })
       .eq("id", book.id)
       .eq("user_id", user.id)
     if (deleteError) {
-      console.error("deleting the book failed", deleteError)
+      logServerError("deleting the book failed", deleteError)
       return fail("unknown")
     }
     try {
       await removeOrphanedObjects(admin, user.id)
     } catch (sweepError) {
-      console.error("orphan sweep failed", sweepError)
+      logServerError("orphan sweep failed", sweepError)
     }
     return { ok: true }
   })

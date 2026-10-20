@@ -84,6 +84,11 @@ const MESSAGES: Record<string, AuthMessage> = {
     bubble: "Sesimu sudah berakhir. Silakan isi buku tamu lagi.",
     field: "Silakan masuk lagi.",
   },
+  signups_closed: {
+    bubble:
+      "Glosa sedang dalam uji coba tertutup. Pendaftaran baru dibuka untuk umum segera.",
+    field: "Pendaftaran masih tertutup.",
+  },
 }
 
 const FALLBACK: AuthMessage = {
@@ -93,4 +98,27 @@ const FALLBACK: AuthMessage = {
 
 export function authMessage(code: string | null | undefined): AuthMessage {
   return (code && Object.hasOwn(MESSAGES, code) && MESSAGES[code]) || FALLBACK
+}
+
+// The "Before User Created" hook (spec 1E §4) refuses with its own message and
+// no dedicated error code, so it is recognised by that message.
+const SIGNUPS_CLOSED_MARK = "uji coba tertutup"
+
+/** The message code for a Supabase Auth error, recognising the closed trial. */
+export function authErrorCode(
+  error: { code?: string; message?: string } | null | undefined
+): string {
+  if (error?.message?.includes(SIGNUPS_CLOSED_MARK)) return "signups_closed"
+  return error?.code || "unknown"
+}
+
+/**
+ * The error code in an OAuth callback's query (?error=…&error_code=…&
+ * error_description=…), or "" when the provider sent none.
+ */
+export function oauthCallbackError(search: Record<string, unknown>): string {
+  const text = (value: unknown) => (typeof value === "string" ? value : "")
+  const code = text(search.error_code) || text(search.error)
+  if (!code) return ""
+  return authErrorCode({ code, message: text(search.error_description) })
 }

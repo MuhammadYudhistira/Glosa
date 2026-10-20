@@ -1,0 +1,75 @@
+name: Deploy
+
+# Called by CI after the image is pushed (with migrations), or run by hand from
+# the Actions tab with an older tag to roll back (migrations skipped).
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+      migrate:
+        type: boolean
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Full commit SHA of the image to run. Migrations are skipped."
+        type: string
+        required: true
+
+env:
+  APP_URL: https://glosa.nuvrastudio.space
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    env:
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Check the tag
+        run: |
+          [[ "$TAG" =~ ^[0-9a-f]{40}$ ]] || { echo "tag must be a full commit SHA"; exit 1; }
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        if: inputs.migrate
+        with:
+          version: 2.121.0
+      - name: Apply database migrations to production
+        if: inputs.migrate
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.PROD_SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "${{ secrets.PROD_SUPABASE_PROJECT_REF }}"
+          supabase db push --yes
+      - name: Prepare SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Release on the VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          scp deploy/compose.yml deploy/glosa.caddy "deploy@$VPS_HOST:/opt/glosa/"
+          # TAG was checked to be a commit SHA, so it is safe on the remote shell.
+          ssh "deploy@$VPS_HOST" bash -s -- "$TAG" < deploy/release.sh
+      - name: Smoke check
+        run: |
+          for _ in $(seq 1 24); do
+            version=$(curl -fsS "$APP_URL/api/health" | jq -r .version) \
+              && [ "$version" = "$TAG" ] && exit 0
+            sleep 5
+          done
+          echo "$APP_URL/api/health never reported $TAG"
+          exit 1

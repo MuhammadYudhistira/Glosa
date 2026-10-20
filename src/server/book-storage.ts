@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "./database.types"
+import type { StoredObject } from "./sweep/plan-sweep"
 
 export const BOOKS_BUCKET = "books"
 const REMOVE_BATCH = 100
@@ -11,6 +12,22 @@ export function objectPaths(row: {
   cover_path: string | null
 }): Array<string> {
   return row.cover_path ? [row.file_path, row.cover_path] : [row.file_path]
+}
+
+type Bucket = ReturnType<SupabaseClient<Database>["storage"]["from"]>
+
+/** Every entry directly under a prefix, page by page. */
+async function listAll(bucket: Bucket, prefix: string) {
+  const entries = []
+  for (let offset = 0; ; offset += LIST_PAGE) {
+    const { data, error } = await bucket.list(prefix, {
+      limit: LIST_PAGE,
+      offset,
+    })
+    if (error) throw error
+    entries.push(...data)
+    if (data.length < LIST_PAGE) return entries
+  }
 }
 
 /**
@@ -59,16 +76,27 @@ export function bookStorage(client: SupabaseClient<Database>) {
 
     /** Paths of every object directly inside a member's folder. */
     async listFolder(folder: string): Promise<Array<string>> {
-      const paths: Array<string> = []
-      for (let offset = 0; ; offset += LIST_PAGE) {
-        const { data, error } = await bucket().list(folder, {
-          limit: LIST_PAGE,
-          offset,
-        })
-        if (error) throw error
-        paths.push(...data.map((object) => `${folder}/${object.name}`))
-        if (data.length < LIST_PAGE) return paths
-      }
+      const entries = await listAll(bucket(), folder)
+      return entries.map((object) => `${folder}/${object.name}`)
+    },
+
+    /** Top-level folders: one per member who ever uploaded (Storage lists folders with a null id). */
+    async listFolders(): Promise<Array<string>> {
+      const entries = await listAll(bucket(), "")
+      return entries
+        .filter((entry) => entry.id === null)
+        .map((entry) => entry.name)
+    },
+
+    /** Files directly inside a folder, with their upload time. */
+    async listFiles(folder: string): Promise<Array<StoredObject>> {
+      const entries = await listAll(bucket(), folder)
+      return entries
+        .filter((entry) => entry.id !== null)
+        .map((entry) => ({
+          path: `${folder}/${entry.name}`,
+          createdAt: entry.created_at ?? null,
+        }))
     },
 
     async remove(paths: Array<string>): Promise<void> {

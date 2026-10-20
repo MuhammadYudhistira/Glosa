@@ -1,0 +1,9 @@
+# Shared Caddy for every site on this VPS (spec 1E §3). Only shared hosts live
+# here; each site keeps its own block in sites/<name>.caddy.
+
+status.nuvrastudio.space {
+	encode zstd gzip
+	reverse_proxy uptime-kuma:3001
+}
+
+import /etc/caddy/sites/*.caddy

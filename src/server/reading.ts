@@ -13,6 +13,7 @@ import type {
   ReadingState,
 } from "@/lib/reader-types"
 import { bookStorage } from "./book-storage"
+import { logServerError } from "./monitoring"
 import { getSupabaseServerClient } from "./supabase"
 
 const fail = (code: string) => ({ ok: false as const, code })
@@ -53,7 +54,7 @@ export const readingStateFn = createServerFn({ method: "GET" })
     const error =
       bookResult.error ?? progressResult.error ?? profileResult.error
     if (error) {
-      console.error("reading state lookup failed", error)
+      logServerError("reading state lookup failed", error)
       return fail("unknown")
     }
     if (!bookResult.data) return fail("not_found")
@@ -90,7 +91,7 @@ export const bookFileUrlFn = createServerFn({ method: "GET" })
       .eq("status", "ready")
       .maybeSingle()
     if (error) {
-      console.error("book lookup failed", error)
+      logServerError("book lookup failed", error)
       return fail("unknown")
     }
     if (!book) return fail("not_found")
@@ -100,7 +101,7 @@ export const bookFileUrlFn = createServerFn({ method: "GET" })
       const url = urls.get(book.file_path)
       return url ? { ok: true, url } : fail("not_found")
     } catch (signError) {
-      console.error("signing the book URL failed", signError)
+      logServerError("signing the book URL failed", signError)
       return fail("unknown")
     }
   })
@@ -121,7 +122,7 @@ export const markBookOpenedFn = createServerFn({ method: "POST" })
       .eq("id", data.bookId)
       .select("id")
     if (error) {
-      console.error("marking the book opened failed", error)
+      logServerError("marking the book opened failed", error)
       return fail("unknown")
     }
     return rows.length > 0 ? { ok: true } : fail("not_found")
@@ -151,7 +152,7 @@ export const saveProgressFn = createServerFn({ method: "POST" })
         p_updated_at: entry.updatedAt,
       })
       if (error && error.message !== "not_found") {
-        console.error("save_progress failed", error)
+        logServerError("save_progress failed", error)
         return fail(
           error.message === "not_authenticated"
             ? "not_authenticated"
@@ -176,7 +177,7 @@ export const saveReaderSettingsFn = createServerFn({ method: "POST" })
       .update({ reader_settings: data })
       .eq("id", user.id)
     if (error) {
-      console.error("saving reader settings failed", error)
+      logServerError("saving reader settings failed", error)
       return fail("unknown")
     }
     return { ok: true }

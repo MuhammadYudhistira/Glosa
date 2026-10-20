@@ -35,6 +35,12 @@ export async function createTestMember(opts: {
   return data.user
 }
 
+/** For a member a test already deleted, so the clean-up does not retry it. */
+export function forgetTestMember(id: string) {
+  const index = createdIds.indexOf(id)
+  if (index >= 0) createdIds.splice(index, 1)
+}
+
 /** A client with the publishable key and no session (RLS applies as anon). */
 export function anonClient() {
   return createClient<Database>(

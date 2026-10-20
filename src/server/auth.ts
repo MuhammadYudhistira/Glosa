@@ -2,7 +2,9 @@ import { redirect } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import type { ActionResult } from "@/lib/action-result"
+import { authErrorCode } from "@/lib/auth-messages"
 import { validateUsername } from "@/lib/username"
+import { logServerError } from "./monitoring"
 import { getSupabaseServerClient, siteUrl } from "./supabase"
 
 export type ConfirmType = "email" | "signup" | "magiclink" | "recovery"
@@ -52,7 +54,7 @@ export const signUpFn = createServerFn({ method: "POST" })
       { candidate: data.username }
     )
     if (rpcError) {
-      console.error("username_available failed", rpcError)
+      logServerError("username_available failed", rpcError)
       return fail("unknown")
     }
     if (!available) return fail("username_taken")
@@ -62,7 +64,7 @@ export const signUpFn = createServerFn({ method: "POST" })
       password: data.password,
       options: { data: { username: data.username, display_name: displayName } },
     })
-    return error ? fail(error.code) : { ok: true }
+    return error ? fail(authErrorCode(error)) : { ok: true }
   })
 
 export const googleSignInFn = createServerFn({ method: "POST" }).handler(
@@ -127,7 +129,7 @@ export const signOutFn = createServerFn({ method: "POST" }).handler(
     const { error } = await getSupabaseServerClient().auth.signOut({
       scope: "local",
     })
-    if (error) console.error("signOut failed", error)
+    if (error) logServerError("signOut failed", error)
     throw redirect({ href: "/" })
   }
 )

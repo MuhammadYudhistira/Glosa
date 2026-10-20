@@ -39,6 +39,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          id: boolean
+          signups_open: boolean
+        }
+        Insert: {
+          id?: boolean
+          signups_open?: boolean
+        }
+        Update: {
+          id?: boolean
+          signups_open?: boolean
+        }
+        Relationships: []
+      }
       books: {
         Row: {
           author: string
@@ -185,11 +200,30 @@ export type Database = {
           },
         ]
       }
+      signup_invites: {
+        Row: {
+          created_at: string
+          email: string
+          note: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          note?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      before_user_created: { Args: { event: Json }; Returns: Json }
       mark_book_ready: {
         Args: { p_book_id: string; p_user_id: string }
         Returns: boolean

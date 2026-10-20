@@ -29,34 +29,47 @@ Diambil bersama pemilik proyek selama brainstorming 2026-10-17:
    - email dikirim dari `no-reply@glosa.nuvrastudio.space`.
 
    Domain utama tetap bebas untuk situs studio.
-2. **VPS kosong** (Ubuntu baru) dipegang penuh oleh Glosa: Caddy memakai port 80/443 sendiri.
+2. **VPS kosong** (Ubuntu baru) disiapkan untuk **banyak web**, Glosa yang pertama (diputuskan 2026-10-20). Caddy dan Uptime Kuma menjadi stack bersama di `/opt/proxy`, terpisah dari Glosa. Setiap web punya stack sendiri dan bergabung lewat satu jaringan Docker bersama. Tanpa Kubernetes dan tanpa dashboard PaaS: satu VPS belum butuh orkestrasi, dan pemilik ingin belajar dan memegang setiap langkah deploy sendiri.
 3. **Uji coba tertutup dulu.** Pendaftaran dibatasi daftar undangan lewat *Before User Created hook* Supabase, sehingga berlaku untuk daftar lewat email maupun Google. Dibuka dengan `signups_open = true`, tanpa deploy ulang.
 4. **SMTP: Resend**, dengan domain `glosa.nuvrastudio.space` diverifikasi. (Sebelum domain ada, pilihannya "tunggu domain"; domain kini tersedia.)
 5. **Supabase prod paket gratis** selama uji coba. Risiko jeda 7 hari ditekan oleh cek Uptime Kuma tiap 5 menit. Naik ke Pro sebelum dibuka untuk umum (§10).
 6. **Deploy otomatis dengan persetujuan:** lolos CI di `main`, lalu menunggu *Approve* di environment GitHub `production`, lalu migrasi prod dan deploy.
 7. **Sapuan Storage** berjalan sebagai container cron di VPS, memakai image aplikasi yang sama.
 8. **Pemantauan uptime:** Uptime Kuma di VPS untuk detail, ditambah satu cek luar gratis (UptimeRobot) untuk kasus VPS mati total.
+9. **`docs/ops/produksi.md` adalah panduan belajar**, bukan sekadar daftar perintah. Setiap langkah menjelaskan apa yang dikerjakan dan kenapa, dan langkah di VPS dijalankan pemilik sendiri.
 
 ## 3. Susunan di VPS
 
 ```
-Internet ──443/80──▶ caddy ──(jaringan internal)──▶ app:3000
-                       │                          ▶ uptime-kuma:3001
-                       │
-                     sweep (cron tiap jam) ──▶ Supabase prod (Storage API, Admin API)
-                                           ──▶ Kuma (push heartbeat)
+                 /opt/proxy (stack bersama)          /opt/glosa (stack Glosa)
+Internet ─443/80─▶ caddy ──(jaringan "web")──▶ glosa-app:3000   (app)
+                     │                      ──▶ web lain nanti
+                     └──▶ uptime-kuma:3001
+                                                    sweep (cron tiap jam) ──▶ Supabase prod
+                                                                          ──▶ Kuma (push, lewat URL publik)
 ```
 
-Satu berkas `deploy/compose.yml` dengan empat layanan:
+**Stack bersama `/opt/proxy`.** Berkasnya ada di repo ini di `deploy/proxy/` sampai web kedua datang; saat itu dipindah ke repo infra sendiri.
 
 | Layanan | Image | Isi |
 |---|---|---|
-| `caddy` | `caddy:2` | HTTPS otomatis (Let's Encrypt) untuk kedua host, reverse proxy, kompresi zstd/gzip, header cache (di bawah) |
-| `app` | `ghcr.io/<pemilik>/glosa:<sha>` | Hasil `npm run build` dijalankan dengan `srvx` di Node 24: SSR, server functions, dan file statis `dist/client`. Port 3000 hanya di jaringan internal. Ada healthcheck ke `/api/health`. |
-| `sweep` | image yang sama | Menjalankan sapuan (§6) tiap jam |
-| `uptime-kuma` | `louislam/uptime-kuma:1` | Data di volume `kuma-data` |
+| `caddy` | `caddy:2` | Satu-satunya yang memakai port 80/443. HTTPS otomatis (Let's Encrypt), reverse proxy, kompresi zstd/gzip. |
+| `uptime-kuma` | `louislam/uptime-kuma:1` | Data di volume `kuma-data`. Host `status.nuvrastudio.space`. |
 
-**Header cache dari Caddy:**
+`deploy/proxy/Caddyfile` hanya berisi opsi global (email ACME), blok `status.nuvrastudio.space`, dan `import /etc/caddy/sites/*.caddy`. Folder `/opt/proxy/sites` di-mount ke container itu. **Setiap web memiliki satu berkas di folder itu**, sehingga menambah atau mengubah web tidak menyentuh berkas web lain.
+
+**Jaringan `web`:** jaringan Docker bersama yang dibuat `vps-setup.sh` (`docker network create web`). Setiap stack mendeklarasikannya sebagai `external: true`. Nama layanan seperti `app` bisa bentrok antar-stack, jadi setiap web memakai alias jaringan berawalan nama web (`glosa-app`) dan Caddy menuju alias itu.
+
+**Stack Glosa `/opt/glosa`:** berkas `deploy/compose.yml` dengan dua layanan.
+
+| Layanan | Image | Isi |
+|---|---|---|
+| `app` | `ghcr.io/<pemilik>/glosa:<sha>` | Hasil `npm run build` dijalankan dengan `srvx` di Node 24: SSR, server functions, dan file statis `dist/client`. Bergabung ke jaringan `web` dengan alias `glosa-app`; port 3000 tidak dibuka ke host. Ada healthcheck ke `/api/health`. |
+| `sweep` | image yang sama | Menjalankan sapuan (§6) tiap jam. Tidak bergabung ke `web`, karena hanya butuh akses keluar. |
+
+**Blok situs Glosa:** `deploy/glosa.caddy` menuju `glosa-app:3000` dan berisi header cache di bawah. Workflow deploy menyalinnya ke `/opt/proxy/sites/glosa.caddy` (§5). Nama host ditulis langsung di berkas ini dan versinya ikut repo; pindah domain berarti mengubah berkas ini dan `SITE_URL`.
+
+**Header cache dari blok situs Glosa:**
 
 | Path | `Cache-Control` | Alasan |
 |---|---|---|
@@ -73,8 +86,9 @@ Satu berkas `deploy/compose.yml` dengan empat layanan:
 | `SENTRY_DSN`, `SENTRY_ENVIRONMENT` | app, sweep | Kosong berarti Sentry mati |
 | `KUMA_PUSH_URL` | sweep | URL push monitor sapuan |
 | `SWEEP_DRY_RUN` | sweep | `1` berarti hanya mencatat rencana |
-| `APP_HOST`, `STATUS_HOST` | caddy | Nama host; pindah domain cukup mengganti nilai ini |
 | `GLOSA_TAG` | compose | SHA image yang berjalan. Ditulis workflow deploy ke `/opt/glosa/release.env` (terpisah dari `.env` milik pemilik); compose dijalankan dengan `--env-file .env --env-file release.env`. |
+
+Stack proxy tidak butuh rahasia; nama host ada di berkas Caddy.
 
 SHA versi dibakar ke image sebagai build arg `APP_VERSION`, karena versi memang milik image.
 
@@ -86,9 +100,10 @@ SHA versi dibakar ke image sebagai build arg `APP_VERSION`, karena versi memang 
 - Firewall `ufw`: hanya 22, 80, dan 443.
 - SSH tanpa login sandi dan tanpa login root.
 - Swap 2 GB dan `unattended-upgrades`.
-- Folder `/opt/glosa`.
+- Jaringan Docker `web`.
+- Folder `/opt/proxy`, `/opt/proxy/sites`, dan `/opt/glosa`, milik user `deploy`.
 
-Skrip ini aman dijalankan ulang.
+Skrip ini aman dijalankan ulang. Skrip ini tidak menjalankan stack apa pun: pemilik menyalin `deploy/proxy/` ke `/opt/proxy` dan menyalakannya sendiri dengan `docker compose up -d`, sebagai langkah belajar yang dijelaskan di `docs/ops/produksi.md`.
 
 ## 4. Supabase prod, undangan, dan email
 
@@ -136,7 +151,8 @@ push ke main
  └─ test        (sudah ada) lint, check, typecheck, unit, build, test DB, E2E ke proyek dev
                 + cek kebocoran: build gagal kalau nilai SUPABASE_SECRET_KEY
                   atau pola "sb_secret_" ada di dist/client
-                + caddy validate untuk deploy/Caddyfile
+                + caddy validate untuk deploy/proxy/Caddyfile bersama
+                  deploy/glosa.caddy (diimpor seperti di VPS)
  └─ image       (needs test, hanya push ke main)
                 docker build --build-arg APP_VERSION=<sha>
                 unggah source map ke Sentry, lalu hapus .map dari image
@@ -144,10 +160,17 @@ push ke main
                 push ghcr.io/<pemilik>/glosa:<sha>
  └─ deploy      (needs image, environment: production → menunggu Approve)
                 supabase link + supabase db push ke proyek prod
-                scp deploy/compose.yml dan deploy/Caddyfile ke /opt/glosa
+                scp deploy/compose.yml ke /opt/glosa
                 ssh: tulis GLOSA_TAG=<sha> ke release.env, docker compose pull && up -d
+                scp deploy/glosa.caddy ke /opt/proxy/sites/glosa.caddy
+                ssh: caddy validate lalu caddy reload di container caddy
                 smoke check: https://glosa.nuvrastudio.space/api/health menjawab <sha> (ulang ≤ 2 menit)
 ```
+
+**Urutan dan blok situs:**
+- Container baru naik dulu, baru Caddy dimuat ulang, supaya alias `glosa-app` sudah ada saat blok situs dibaca.
+- `caddy reload` bersifat atomik: kalau konfigurasi baru gagal, Caddy tetap memakai yang lama dan web lain tidak terganggu. Langkah ini gagal kalau `validate` gagal, dan deploy dianggap gagal.
+- Workflow Glosa hanya menulis `sites/glosa.caddy`. Berkas stack proxy (`compose.yml`, `Caddyfile`) diubah pemilik sendiri, tidak lewat pipeline web mana pun.
 
 **Secret di environment `production`:**
 - `SUPABASE_ACCESS_TOKEN`, `PROD_SUPABASE_PROJECT_REF`, `PROD_SUPABASE_DB_PASSWORD`;
@@ -207,7 +230,7 @@ Skrip `src/server/sweep/` dibangun menjadi `dist/sweep.mjs` saat build. Layanan 
 |---|---|
 | Unit (Vitest) | `plan-sweep`: setiap jenis sapuan, batas usia 1 jam, batas aman, dan objek milik buku `ready` yang tidak pernah disentuh. `/api/health`. Pemetaan pesan galat undangan. Penyuntikan DSN: tanpa `SENTRY_DSN` tidak ada skrip. |
 | Database (`test:db`, proyek dev) | Hook undangan: ditolak saat tertutup tanpa undangan, diizinkan dengan undangan, diizinkan saat terbuka (memanggil fungsinya langsung dengan event JSON). `run-sweep` dibatasi ke UID uji: baris pending tua dan objeknya hilang, objek yatim hilang, folder UID tanpa profil hilang, akun tanpa profil hilang, buku `ready` utuh. |
-| CI | Cek kebocoran kunci, `caddy validate`, dan container image dinyalakan sekali dengan `/api/health` dicek sebelum push. |
+| CI | Cek kebocoran kunci, `caddy validate` (Caddyfile bersama dengan `glosa.caddy` diimpor), dan container image dinyalakan sekali dengan `/api/health` dicek sebelum push. |
 | E2E | Tetap ke proyek dev. Dua test email sungguhan kini berjalan karena SMTP dev memakai Resend. |
 | Manual setelah deploy pertama | HP Android sungguhan: pasang PWA, daftar dengan email undangan, simpan buku, baca offline. `curl -I` untuk header `sw.js`, `_shell.html`, dan `/assets/*`. Email konfirmasi dan reset sampai dari `no-reply@glosa.nuvrastudio.space`. Email di luar undangan ditolak dengan pesan uji coba tertutup. Uji manual 1D di build produksi: profil performa dengan CPU 4×, keyboard, reduced motion, serta `/` dan `/login`. Satu error uji muncul di Sentry dengan release yang benar. Kuma dan UptimeRobot mengabari saat `app` dihentikan sebentar. |
 
@@ -216,7 +239,11 @@ Skrip `src/server/sweep/` dibangun menjadi `dist/sweep.mjs` saat build. Layanan 
 Hal yang butuh akun atau akses pemilik, ditulis berurutan di `docs/ops/produksi.md`:
 
 1. **DNS `nuvrastudio.space`:** record A `glosa` dan `status` ke IP VPS, ditambah record Resend.
-2. **VPS:** jalankan `scripts/vps-setup.sh`, isi `/opt/glosa/.env`, lalu `docker login ghcr.io` dengan token `read:packages`.
+2. **VPS:**
+   - jalankan `scripts/vps-setup.sh`;
+   - salin `deploy/proxy/` ke `/opt/proxy` lalu `docker compose up -d` di sana, dan pastikan `status.nuvrastudio.space` sudah HTTPS;
+   - isi `/opt/glosa/.env`;
+   - `docker login ghcr.io` dengan token `read:packages`.
 3. **Supabase:** buat proyek prod (Singapura), lalu buat access token pribadi.
 4. **Resend:** buat akun, tambahkan domain, dan buat kunci API (prod dan dev) dan SMTP.
 5. **Sentry:** buat akun dan proyek, lalu ambil DSN dan auth token.
@@ -240,3 +267,5 @@ Bukan bagian 1E; dicatat di `docs/ops/produksi.md`:
 - Backup mandiri (`pg_dump`) selama paket gratis.
 - Penskalaan ke lebih dari satu VPS.
 - Situs studio di domain utama.
+- Repo infra terpisah untuk stack proxy (saat web kedua datang).
+- Kubernetes. Kalau nanti dibutuhkan atau ingin dipelajari: coba k3s di VPS terpisah atau di laptop (k3d/kind) dengan image GHCR yang sama, tanpa menyentuh produksi.

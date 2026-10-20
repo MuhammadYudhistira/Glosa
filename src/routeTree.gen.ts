@@ -22,6 +22,7 @@ import { Route as MemberLobbyRouteImport } from './routes/_member/lobby'
 import { Route as MemberSettingsRouteImport } from './routes/_member/settings'
 import { Route as MemberShelfRouteImport } from './routes/_member/shelf'
 import { Route as MemberWelcomeRouteImport } from './routes/_member/welcome'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
 import { Route as MemberReadBookIdRouteImport } from './routes/_member/read.$bookId'
@@ -90,6 +91,11 @@ const MemberWelcomeRoute = MemberWelcomeRouteImport.update({
   path: '/welcome',
   getParentRoute: () => MemberRoute,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof MemberSettingsRoute
   '/shelf': typeof MemberShelfRoute
   '/welcome': typeof MemberWelcomeRoute
+  '/api/health': typeof ApiHealthRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/read/$bookId': typeof MemberReadBookIdRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/settings': typeof MemberSettingsRoute
   '/shelf': typeof MemberShelfRoute
   '/welcome': typeof MemberWelcomeRoute
+  '/api/health': typeof ApiHealthRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/read/$bookId': typeof MemberReadBookIdRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/_member/settings': typeof MemberSettingsRoute
   '/_member/shelf': typeof MemberShelfRoute
   '/_member/welcome': typeof MemberWelcomeRoute
+  '/api/health': typeof ApiHealthRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/_member/read/$bookId': typeof MemberReadBookIdRoute
@@ -174,6 +183,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shelf'
     | '/welcome'
+    | '/api/health'
     | '/auth/callback'
     | '/auth/confirm'
     | '/read/$bookId'
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/shelf'
     | '/welcome'
+    | '/api/health'
     | '/auth/callback'
     | '/auth/confirm'
     | '/read/$bookId'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/_member/settings'
     | '/_member/shelf'
     | '/_member/welcome'
+    | '/api/health'
     | '/auth/callback'
     | '/auth/confirm'
     | '/_member/read/$bookId'
@@ -224,6 +236,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TermsRoute: typeof TermsRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthConfirmRoute: typeof AuthConfirmRoute
 }
@@ -321,6 +334,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MemberWelcomeRouteImport
       parentRoute: typeof MemberRoute
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
@@ -374,6 +394,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TermsRoute: TermsRoute,
+  ApiHealthRoute: ApiHealthRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthConfirmRoute: AuthConfirmRoute,
 }
@@ -382,10 +403,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }
