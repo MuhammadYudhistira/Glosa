@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start"
 import type { ActionResult } from "@/lib/action-result"
 import { type UsernameProblem, validateUsername } from "@/lib/username"
 import { bookStorage, objectPaths } from "./book-storage"
+import { logServerError } from "./monitoring"
 import { getSupabaseAdminClient, getSupabaseServerClient } from "./supabase"
 
 const UNIQUE_VIOLATION = "23505"
@@ -21,7 +22,7 @@ export const checkUsernameFn = createServerFn({ method: "GET" })
         }
       )
       if (error) {
-        console.error("username_available failed", error)
+        logServerError("username_available failed", error)
         throw new Error("Username check failed")
       }
       return { available: available === true, problem: null }
@@ -32,7 +33,7 @@ export const visitorsTodayFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<number> => {
     const { data, error } =
       await getSupabaseServerClient().rpc("visitors_today")
-    if (error) console.error("visitors_today failed", error)
+    if (error) logServerError("visitors_today failed", error)
     return data ?? 0
   }
 )
@@ -111,7 +112,7 @@ export const deleteAccountFn = createServerFn({ method: "POST" })
       .eq("id", user.id)
       .single()
     if (profileError) {
-      console.error("profile lookup failed", profileError)
+      logServerError("profile lookup failed", profileError)
       return { ok: false, code: "unknown" }
     }
     if (profile.username !== data.confirmUsername.trim()) {
@@ -126,7 +127,7 @@ export const deleteAccountFn = createServerFn({ method: "POST" })
       .select("file_path, cover_path")
       .eq("user_id", user.id)
     if (booksError) {
-      console.error("book lookup failed", booksError)
+      logServerError("book lookup failed", booksError)
       return { ok: false, code: "unknown" }
     }
     try {
@@ -139,7 +140,7 @@ export const deleteAccountFn = createServerFn({ method: "POST" })
       ])
       await storage.remove([...paths])
     } catch (removeError) {
-      console.error("removing book files failed", removeError)
+      logServerError("removing book files failed", removeError)
       return { ok: false, code: "unknown" }
     }
 
