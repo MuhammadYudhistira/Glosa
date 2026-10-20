@@ -1,8 +1,8 @@
-# Glosa's stack on the VPS (/opt/glosa, spec 1E §3). Caddy and Uptime Kuma live
-# in the shared stack /opt/proxy; the app joins the shared "web" network, where
-# Caddy reaches it as glosa-app:3000.
+# Glosa's stack on the VPS, one per environment: /opt/glosa-dev now,
+# /opt/glosa-prod later. The folder names the compose project (glosa-dev);
+# release.env sets GLOSA_ENV and GLOSA_TAG. Caddy and Uptime Kuma live in the
+# shared stack /opt/proxy and reach the app as glosa-<env>-app:3000.
 # Run: docker compose --env-file .env --env-file release.env up -d
-name: glosa
 
 x-logging: &logging
   driver: json-file
@@ -18,7 +18,7 @@ services:
     env_file: .env
     networks:
       web:
-        aliases: [glosa-app]
+        aliases: ["glosa-${GLOSA_ENV:?GLOSA_ENV is not set}-app"]
     logging: *logging
 
   sweep:
@@ -27,7 +27,8 @@ services:
     init: true
     env_file: .env
     # One round when the container starts, then one every hour (spec 1E §6).
-    command: ["sh", "-c", "while true; do node dist/sweep.mjs; sleep 3600; done"]
+    command:
+      ["sh", "-c", "while true; do node dist/sweep.mjs; sleep 3600; done"]
     # The image's healthcheck is for the web server.
     healthcheck:
       disable: true

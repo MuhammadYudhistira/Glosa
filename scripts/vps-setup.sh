@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-time preparation of a fresh Ubuntu VPS for Glosa and the sites that come
 # after it (spec 1E §3). Safe to run again. It starts no stack: the owner does
-# that by hand (docs/ops/produksi.md).
+# that by hand (docs/ops/deploy.md).
 #
 # Usage, from your own sudo user (not root):
 #   sudo bash vps-setup.sh "ssh-ed25519 AAAA... github-actions-glosa"
@@ -84,6 +84,6 @@ EOF
 
 echo "==> Shared Docker network and folders"
 docker network inspect web >/dev/null 2>&1 || docker network create web
-install -d -o deploy -g deploy /opt/proxy /opt/proxy/sites /opt/glosa
+install -d -o deploy -g deploy /opt/proxy /opt/proxy/sites /opt/glosa-dev /opt/glosa-prod
 
-echo "Done. Next: docs/ops/produksi.md, section 4.3."
+echo "Done. Next: docs/ops/deploy.md, section 3.4."

@@ -1,14 +1,29 @@
 #!/usr/bin/env bash
-# Runs on the VPS as user "deploy" (spec 1E §5): switches Glosa to the image
-# tag given as $1, then hands Glosa's site block to the shared Caddy.
-# The workflow copies compose.yml and glosa.caddy into /opt/glosa first.
+# Runs on the VPS as user "deploy": switches Glosa's environment $1 (dev or
+# prod) to the image tag $2, then hands its site block to the shared Caddy.
+# The workflow first copies compose.yml and glosa-<env>.caddy into
+# /opt/glosa-<env>.
 set -euo pipefail
 
-tag="${1:?usage: release.sh <image tag>}"
-site=/opt/proxy/sites/glosa.caddy
+usage() {
+  echo "usage: release.sh <dev|prod> <full commit sha>" >&2
+  exit 2
+}
 
-cd /opt/glosa
-printf 'GLOSA_TAG=%s\n' "$tag" > release.env
+env="${1:-}"
+tag="${2:-}"
+case "$env" in
+  dev | prod) ;;
+  *) usage ;;
+esac
+[[ "$tag" =~ ^[0-9a-f]{40}$ ]] || usage
+
+block="glosa-$env.caddy"
+site="/opt/proxy/sites/$block"
+
+# The folder names the compose project: /opt/glosa-dev runs as "glosa-dev".
+cd "/opt/glosa-$env"
+printf 'GLOSA_ENV=%s\nGLOSA_TAG=%s\n' "$env" "$tag" > release.env
 docker compose --env-file .env --env-file release.env pull
 docker compose --env-file .env --env-file release.env up -d --remove-orphans
 
@@ -20,9 +35,9 @@ if [ -f "$site" ]; then
   backup="$(mktemp)"
   cp "$site" "$backup"
 fi
-cp glosa.caddy "$site"
+cp "$block" "$site"
 if ! proxy exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile; then
-  echo "Caddy rejected glosa.caddy; the previous site block is back." >&2
+  echo "Caddy rejected $block; the previous site block is back." >&2
   if [ -n "$backup" ]; then cp "$backup" "$site"; else rm -f "$site"; fi
   exit 1
 fi
