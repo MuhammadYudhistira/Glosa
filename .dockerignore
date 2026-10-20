@@ -1,0 +1,15 @@
+.git
+.github
+node_modules
+dist
+.env
+.env.*
+!.env.example
+deploy
+docs
+e2e
+tests
+playwright-report
+test-results
+supabase/.temp
+*.log

@@ -1,0 +1,42 @@
+# Shared stack on the VPS (/opt/proxy, spec 1E §3): the only service holding
+# ports 80/443. Each site drops one file into ./sites and Caddy imports them.
+# After editing ./Caddyfile itself, run: docker compose restart caddy
+name: proxy
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [web]
+    logging: *logging
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    volumes:
+      - kuma-data:/app/data
+    networks: [web]
+    logging: *logging
+
+volumes:
+  caddy-data:
+  caddy-config:
+  kuma-data:
+
+networks:
+  web:
+    external: true

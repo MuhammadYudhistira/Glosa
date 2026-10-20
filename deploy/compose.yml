@@ -1,0 +1,38 @@
+# Glosa's stack on the VPS (/opt/glosa, spec 1E §3). Caddy and Uptime Kuma live
+# in the shared stack /opt/proxy; the app joins the shared "web" network, where
+# Caddy reaches it as glosa-app:3000.
+# Run: docker compose --env-file .env --env-file release.env up -d
+name: glosa
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  app:
+    image: ghcr.io/muhammadyudhistira/glosa:${GLOSA_TAG:?GLOSA_TAG is not set}
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    networks:
+      web:
+        aliases: [glosa-app]
+    logging: *logging
+
+  sweep:
+    image: ghcr.io/muhammadyudhistira/glosa:${GLOSA_TAG:?GLOSA_TAG is not set}
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    # One round when the container starts, then one every hour (spec 1E §6).
+    command: ["sh", "-c", "while true; do node dist/sweep.mjs; sleep 3600; done"]
+    # The image's healthcheck is for the web server.
+    healthcheck:
+      disable: true
+    logging: *logging
+
+networks:
+  web:
+    external: true

@@ -43,6 +43,9 @@ export default defineConfig(({ command, mode }) => {
     // Maps for Sentry only: no sourceMappingURL in the files; the image build
     // uploads them, then deletes them (spec 1E §5).
     build: { sourcemap: "hidden" },
+    // The shell prerender fetches the preview server at 127.0.0.1; in Docker,
+    // "localhost" resolves to ::1 first and the server would listen there.
+    preview: { host: "127.0.0.1" },
     plugins: [
       foliateEpubOnly(),
       devtools({ consolePiping: { enabled: false } }),

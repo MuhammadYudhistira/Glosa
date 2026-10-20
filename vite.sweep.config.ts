@@ -4,6 +4,8 @@ import { defineConfig } from "vite"
 // external: the image ships the app's production node_modules.
 export default defineConfig({
   resolve: { tsconfigPaths: true },
+  // public/ already went to dist/client with the app build.
+  publicDir: false,
   build: {
     ssr: "src/server/sweep/main.ts",
     outDir: "dist",
