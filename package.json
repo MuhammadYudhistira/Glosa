@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
-    "build": "vite build && node scripts/build-sw.mjs",
+    "build": "vite build && vite build --config vite.sweep.config.ts && node scripts/build-sw.mjs",
     "preview": "vite preview",
     "start": "srvx serve --prod --entry dist/server/server.js --static ../client --port 3000",
     "lint": "eslint",
