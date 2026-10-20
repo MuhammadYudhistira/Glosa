@@ -25,4 +25,13 @@ describe("LinkFailed", () => {
     ).toBeInTheDocument()
     expect(screen.getByText("Minta surat baru")).toBeInTheDocument()
   })
+
+  it("says signups are closed, without a new-letter link", () => {
+    render(<LinkFailed code="signups_closed" />)
+    expect(
+      screen.getByRole("heading", { name: "Pendaftaran masih tertutup" })
+    ).toBeInTheDocument()
+    expect(screen.getByText(/uji coba tertutup/)).toBeInTheDocument()
+    expect(screen.queryByText("Minta surat baru")).toBeNull()
+  })
 })

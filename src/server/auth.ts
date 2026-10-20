@@ -2,6 +2,7 @@ import { redirect } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import type { ActionResult } from "@/lib/action-result"
+import { authErrorCode } from "@/lib/auth-messages"
 import { validateUsername } from "@/lib/username"
 import { getSupabaseServerClient, siteUrl } from "./supabase"
 
@@ -62,7 +63,7 @@ export const signUpFn = createServerFn({ method: "POST" })
       password: data.password,
       options: { data: { username: data.username, display_name: displayName } },
     })
-    return error ? fail(error.code) : { ok: true }
+    return error ? fail(authErrorCode(error)) : { ok: true }
   })
 
 export const googleSignInFn = createServerFn({ method: "POST" }).handler(
