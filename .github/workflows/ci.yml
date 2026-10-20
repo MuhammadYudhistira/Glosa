@@ -11,6 +11,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    environment: dev
     timeout-minutes: 50
     # Integration and E2E tests share the Supabase dev project; avoid overlapping
     # runs. Job-level, so a deploy waiting for approval never holds other runs.
