@@ -1166,6 +1166,64 @@
     right: 0.75rem;
     z-index: 10;
   }
+  /* Rak Saya and Pengaturan (spec 1F §4, §5): a page on phones, a glass panel
+     over the lobby on desktop. */
+  .lobby-popup {
+    width: 100%;
+    margin-inline: auto;
+    padding: 1rem;
+  }
+  .lobby-popup-backdrop,
+  .lobby-popup-close {
+    display: none;
+  }
+  @media (min-width: 640px) {
+    .lobby-popup {
+      padding: 2rem;
+    }
+  }
+  @media (max-width: 1023px) {
+    /* On phones the page stands alone; the lobby waits hidden behind it. */
+    .lobby-page[data-popup] {
+      display: none;
+    }
+  }
+  @media (min-width: 1024px) {
+    .lobby-popup-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 14;
+      display: block;
+      background: rgb(12 8 5 / 0.55);
+      backdrop-filter: blur(3px);
+    }
+    /* Between the floating menu and the right edge, centred up to its max width. */
+    .lobby-popup {
+      position: fixed;
+      top: calc(var(--lobby-bar-h) + 0.75rem);
+      left: calc(var(--float-menu-w) + 1.5rem);
+      right: 0.75rem;
+      z-index: 15;
+      width: auto;
+      max-height: calc(100dvh - var(--lobby-bar-h) - 1.5rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      background: var(--color-panel);
+      box-shadow: 0 20px 50px rgb(0 0 0 / 0.5);
+      backdrop-filter: blur(12px);
+    }
+    /* Stays in the corner while the panel scrolls. */
+    .lobby-popup-close {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      float: right;
+      display: inline-flex;
+      margin: -1.25rem -1.25rem 0 0;
+    }
+  }
   @media (min-width: 1024px) {
     .lobby-page {
       height: 100dvh;
@@ -1190,5 +1248,9 @@
 @media (min-width: 1024px) {
   .member-main[data-shell] > main {
     min-height: 100dvh;
+  }
+  /* The popup is as tall as its content, up to the screen. */
+  .member-main[data-shell] > main.lobby-popup {
+    min-height: 0;
   }
 }

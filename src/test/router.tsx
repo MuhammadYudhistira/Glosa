@@ -25,5 +25,5 @@ export function renderWithRouter(ui: ReactNode, url = "/lobby") {
     ),
     history: createMemoryHistory({ initialEntries: [url] }),
   })
-  return render(<RouterProvider router={router} />)
+  return { ...render(<RouterProvider router={router} />), router }
 }
