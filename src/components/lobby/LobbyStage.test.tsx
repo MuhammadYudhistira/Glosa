@@ -1,11 +1,13 @@
 import "fake-indexeddb/auto"
 import { act, fireEvent, screen } from "@testing-library/react"
+import { useRouterState } from "@tanstack/react-router"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { sherlock } from "@/components/shelf/fixtures"
 import type { StorageUsage } from "@/lib/book-types"
 import type { SessionUser } from "@/lib/session-types"
 import { stubWideScreen, unstubWideScreen } from "@/test/media"
 import { renderWithRouter } from "@/test/router"
+import { isPopupPath } from "./LobbyPopup"
 import { LobbyStage } from "./LobbyStage"
 
 // The real scene starts three.js; here it only shows what it was given.
@@ -48,6 +50,33 @@ function renderStage(popup: boolean, url = popup ? "/shelf" : "/lobby") {
     />,
     url
   )
+}
+
+/** Like the _lobi layout: the popup follows the route. */
+function RoutedStage() {
+  const popup = useRouterState({
+    select: (state) => isPopupPath(state.location.pathname),
+  })
+  return (
+    <LobbyStage
+      user={member}
+      books={[sherlock]}
+      usage={usage}
+      offline={false}
+      popup={popup}
+    />
+  )
+}
+
+async function pickFromSearch() {
+  fireEvent.change(await screen.findByLabelText("Cari di rakmu"), {
+    target: { value: "sherlock" },
+  })
+  await act(async () => {
+    fireEvent.click(
+      screen.getByRole("button", { name: new RegExp(sherlock.title) })
+    )
+  })
 }
 
 describe("LobbyStage", () => {
@@ -104,5 +133,31 @@ describe("LobbyStage", () => {
     await vi.waitFor(() =>
       expect(router.state.location.pathname).toBe("/lobby")
     )
+  })
+
+  it("forgets the open book once a popup opens, so it does not come back after", async () => {
+    stubWideScreen(true)
+    const { router } = renderWithRouter(<RoutedStage />, "/lobby")
+    await pickFromSearch()
+    expect(
+      screen.getByRole("region", { name: sherlock.title })
+    ).toBeInTheDocument()
+
+    await act(() => router.navigate({ to: "/shelf" }))
+    await act(() => router.navigate({ to: "/lobby" }))
+    expect(await screen.findByRole("main")).toHaveClass("lobby-page")
+    expect(screen.queryByRole("region", { name: sherlock.title })).toBeNull()
+  })
+
+  it("still shows a book picked from the search over a popup", async () => {
+    stubWideScreen(true)
+    const { router } = renderWithRouter(<RoutedStage />, "/shelf")
+    await pickFromSearch()
+    await vi.waitFor(() =>
+      expect(router.state.location.pathname).toBe("/lobby")
+    )
+    expect(
+      await screen.findByRole("region", { name: sherlock.title })
+    ).toBeInTheDocument()
   })
 })

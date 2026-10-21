@@ -60,6 +60,13 @@ export function LobbyStage({
   const [sorting, setSorting] = useState(false)
   const [readingHint, setReadingHint] = useState(false)
   const [sceneLive, setSceneLive] = useState(false)
+  // A popup opening closes the book's details, or they would come back after
+  // it and take its focus. A book picked over a popup stays: popup was on.
+  const [wasPopup, setWasPopup] = useState(popup)
+  if (wasPopup !== popup) {
+    setWasPopup(popup)
+    if (popup) setSelectedId(null)
+  }
   const selected = books.find((book) => book.id === selectedId) ?? null
   const refresh = () => void router.invalidate()
   const select = (book: ShelfBook) => {
