@@ -41,7 +41,7 @@ src/routes/_member/_lobi/settings.tsx  isi Pengaturan
 
 - **Loader.** Memegang `loadShelf(context.user.id)` dengan `staleTime: 60_000` dan `errorComponent: ShelfLoadError`, dipindah dari lobi dan Rak. Rute anak memakai data itu lewat `getRouteApi("/_member/_lobi")`. Pengaturan ikut memuatnya, tapi data rak sudah di-cache dan tersedia offline.
 - **`validateSearch`.** Rak tetap memegang `parseShelfSearch` (genre, q, urutan). Lobi tetap memegang `kembali`.
-- **Render.** Layout menggambar `LobbyStage`. Kalau rute anak adalah `/shelf` atau `/settings`, layout juga membungkus `<Outlet/>` dengan `LobbyPopup`. Di `/lobby`, anak tidak menggambar apa pun selain `<h1 class="sr-only">Lobi</h1>`.
+- **Render.** Layout menggambar `LobbyStage` lalu `<Outlet/>`. Rute Rak dan Pengaturan membungkus isinya sendiri dengan `LobbyPopup`. Rute `/lobby` tidak menggambar apa pun; `h1` "Lobi" (sr-only) digambar `LobbyStage` selama tidak ada popup.
 - **`useShelfSnapshot`.** Dipanggil sekali di layout, tidak lagi di setiap halaman.
 - **`popup`.** Layout membaca `popup` dari child matches miliknya, bukan dari `resolvedLocation`. Child matches di-commit bersama `<Outlet/>`, jadi `LobbyStage` dan popup selalu berganti di commit yang sama.
 
