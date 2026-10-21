@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { LibraryIcon } from "lucide-react"
-import { type RefObject, useId, useRef, useState } from "react"
+import { type RefObject, useEffect, useId, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Logo } from "@/components/ui/logo"
 import type { ShelfBook } from "@/lib/book-types"
@@ -42,6 +42,29 @@ export function LobbyTopBar({
   const [query, setQuery] = useState("")
   const q = query.trim().slice(0, MAX_QUERY_LENGTH)
   const results = q ? shelfBooks(books, { q }).slice(0, MAX_RESULTS) : []
+  const accountRef = useRef<HTMLDetailsElement>(null)
+  /** The lobby stays mounted under its popups, so the menu must close itself (spec 1F §6). */
+  const closeAccount = (refocus: boolean) => {
+    const details = accountRef.current
+    if (!details?.open) return
+    details.open = false
+    if (refocus) details.querySelector("summary")?.focus()
+  }
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      const details = accountRef.current
+      if (
+        details?.open &&
+        event.target instanceof Node &&
+        !details.contains(event.target)
+      ) {
+        details.open = false
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown)
+    return () => document.removeEventListener("pointerdown", onPointerDown)
+  }, [])
 
   return (
     <header className={cn("lobby-topbar lobby-overlay", className)}>
@@ -82,6 +105,7 @@ export function LobbyTopBar({
           type="search"
           placeholder="Cari di rakmu"
           autoComplete="off"
+          data-lobby-search=""
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
@@ -116,7 +140,15 @@ export function LobbyTopBar({
           </ul>
         )}
       </div>
-      <details className="lobby-account">
+      <details
+        ref={accountRef}
+        className="lobby-account"
+        onKeyDown={(event) => {
+          if (event.key !== "Escape" || !accountRef.current?.open) return
+          event.preventDefault()
+          closeAccount(true)
+        }}
+      >
         <summary aria-label="Menu akun" className="lobby-me">
           <span className="lobby-avatar">{initials(user.displayName)}</span>
           <span className="hidden min-w-0 xl:block">
@@ -131,8 +163,12 @@ export function LobbyTopBar({
             <b className="block">{user.displayName}</b>
             <span className="text-muted-foreground">@{user.username}</span>
           </p>
-          <Link to="/settings">Pengaturan</Link>
-          <Link to="/logout">Keluar</Link>
+          <Link to="/settings" onClick={() => closeAccount(false)}>
+            Pengaturan
+          </Link>
+          <Link to="/logout" onClick={() => closeAccount(false)}>
+            Keluar
+          </Link>
         </div>
       </details>
     </header>

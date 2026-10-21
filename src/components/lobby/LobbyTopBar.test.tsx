@@ -87,4 +87,45 @@ describe("LobbyTopBar", () => {
       screen.getByRole("link", { name: "Keluar", hidden: true })
     ).toHaveAttribute("href", "/logout")
   })
+
+  it("closes the account menu on a choice, a click outside and Escape", async () => {
+    renderWithRouter(
+      <>
+        <LobbyTopBar user={member} books={[]} onSelect={vi.fn()} />
+        <p>Di luar</p>
+      </>
+    )
+    const summary = await screen.findByLabelText("Menu akun")
+    const details = summary.closest("details")
+    if (!details) throw new Error("the account menu has no <details>")
+
+    details.open = true
+    fireEvent.click(screen.getByRole("link", { name: "Pengaturan" }))
+    expect(details.open).toBe(false)
+
+    details.open = true
+    fireEvent.pointerDown(screen.getByText("Di luar"))
+    expect(details.open).toBe(false)
+
+    details.open = true
+    fireEvent.pointerDown(summary)
+    expect(details.open).toBe(true)
+
+    const escape = fireEvent.keyDown(
+      screen.getByRole("link", { name: "Keluar" }),
+      { key: "Escape" }
+    )
+    expect(details.open).toBe(false)
+    // Handled here: the popup behind must not close as well.
+    expect(escape).toBe(false)
+  })
+
+  it("marks the search as the lobby's fallback focus", async () => {
+    renderWithRouter(
+      <LobbyTopBar user={member} books={[]} onSelect={vi.fn()} />
+    )
+    expect(await screen.findByLabelText("Cari di rakmu")).toHaveAttribute(
+      "data-lobby-search"
+    )
+  })
 })

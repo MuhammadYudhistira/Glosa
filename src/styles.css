@@ -1032,7 +1032,9 @@
     position: absolute;
     inset-inline: 0;
     top: 0;
-    z-index: 10;
+    /* Above the corner panels (10) and the popup (15), so the account menu
+       shows over the map; below the floating menu (30) and dialogs (spec 1F §6). */
+    z-index: 20;
     display: flex;
     align-items: center;
     gap: 1.5rem;
