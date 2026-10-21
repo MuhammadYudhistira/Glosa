@@ -98,11 +98,12 @@ export function LobbyPopup({
         aria-label={label}
         className={cn("lobby-popup", className)}
       >
+        {/* Hidden on phones by utility: the Button's own inline-flex utility would beat a layered rule. */}
         <Button
           variant="ghost"
           size="icon"
           aria-label={`Tutup ${label}`}
-          className="lobby-popup-close"
+          className="lobby-popup-close max-lg:hidden"
           onClick={close}
         >
           <XIcon />
