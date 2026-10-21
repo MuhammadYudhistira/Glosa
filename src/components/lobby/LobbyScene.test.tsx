@@ -249,6 +249,25 @@ describe("LobbyScene", () => {
       expect(onLiveChange).toHaveBeenLastCalledWith(false)
     })
 
+    it("goes back to the poster when WebGL is held back, until a new stage is ready", async () => {
+      const { scene, onLiveChange, update, stage } = await goLive()
+      expect(scene.querySelector("img")).toBeNull()
+
+      update({ allow3d: false })
+      expect(screen.queryByTestId("lobby-canvas")).toBeNull()
+      expect(scene.querySelector("img")).toBeInTheDocument()
+      expect(onLiveChange).toHaveBeenLastCalledWith(false)
+      expect(screen.queryByRole("button", { name: "Pusatkan" })).toBeNull()
+      // No camera any more: the arrow keys keep scrolling the page.
+      expect(fireEvent.keyDown(scene, { key: "ArrowRight" })).toBe(true)
+      expect(stage.setView).not.toHaveBeenCalled()
+
+      update({ allow3d: true })
+      expect(screen.getByTestId("lobby-canvas")).toBeInTheDocument()
+      expect(scene.querySelector("img")).toBeInTheDocument()
+      expect(onLiveChange).toHaveBeenLastCalledWith(false)
+    })
+
     it("falls back to the still image when the scene fails", async () => {
       const { scene } = await goLive()
       act(() => canvas.props?.onFail())

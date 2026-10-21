@@ -85,6 +85,22 @@ export function LobbyScene({
   const stageRef = useRef<Stage | null>(null)
   const cameraRef = useRef<Camera | null>(null)
 
+  // Holding WebGL back unmounts the canvas, which disposes its stage: the
+  // scene is no longer live, and the poster shows until a new stage is ready.
+  const [allowed, setAllowed] = useState(allow3d)
+  if (allowed !== allow3d) {
+    setAllowed(allow3d)
+    if (!allow3d) {
+      setCamera(null)
+      if (mode === "3d") setMode("poster")
+    }
+  }
+  useEffect(() => {
+    if (allow3d) return
+    stageRef.current = null
+    cameraRef.current = null
+  }, [allow3d])
+
   // Only the browser knows how the lobby can be drawn; the server sends the poster.
   useEffect(() => {
     const environment = detectEnvironment()
