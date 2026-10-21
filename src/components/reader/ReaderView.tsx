@@ -12,8 +12,10 @@ import type { TocItem } from "@/lib/reader-types"
 import { loadReaderFonts } from "./reader-fonts"
 import {
   type ReaderMove,
+  createWheelPager,
   isTypingTarget,
   keyMove,
+  swipeVelocity,
   tapAction,
 } from "./reader-input"
 
@@ -76,6 +78,41 @@ function skipLayoutWhileLoading(renderer: FoliateRenderer) {
   }
 }
 
+/**
+ * Lets foliate settle each swipe by the whole swipe rather than by how fast
+ * the finger was moving just before it lifted (see swipeVelocity). Returns
+ * the touch listeners that measure the swipe, for the host and every section.
+ */
+function snapByWholeSwipe(renderer: FoliateRenderer) {
+  const snap = renderer.snap?.bind(renderer)
+  let start: { x: number; y: number } | null = null
+  let swipe: number | null = null
+  if (snap) {
+    renderer.snap = (vx, vy) => {
+      const velocity = swipe
+      swipe = null
+      snap(velocity ?? vx, vy)
+    }
+  }
+  return {
+    touchstart: (event: TouchEvent) => {
+      const touches = event.touches
+      start =
+        touches.length === 1
+          ? { x: touches[0].screenX, y: touches[0].screenY }
+          : null
+      swipe = null
+    },
+    // foliate snaps on the next frame, after this has run.
+    touchend: (event: TouchEvent) => {
+      const touch = event.changedTouches[0]
+      if (start && event.touches.length === 0)
+        swipe = swipeVelocity(touch.screenX - start.x, touch.screenY - start.y)
+      start = null
+    },
+  }
+}
+
 function toLocation(detail: RelocateDetail): ReaderLocation {
   const label = detail.tocItem?.label?.trim()
   return {
@@ -120,6 +157,8 @@ export function ReaderView({
     const isCancelled = () => cancelled
     const call = () => callbacksRef.current
     const interact = () => call().onInteract()
+    let swipes: ReturnType<typeof snapByWholeSwipe> | null = null
+    const wheelPager = createWheelPager()
 
     const move = async (direction: ReaderMove) => {
       if (!view) return
@@ -139,6 +178,11 @@ export function ReaderView({
       document.removeEventListener("keydown", onKey)
       host.removeEventListener("pointerdown", interact)
       host.removeEventListener("wheel", interact)
+      host.removeEventListener("wheel", onWheel)
+      if (swipes) {
+        host.removeEventListener("touchstart", swipes.touchstart)
+        host.removeEventListener("touchend", swipes.touchend)
+      }
       try {
         view?.close()
       } catch (error) {
@@ -158,11 +202,35 @@ export function ReaderView({
       void move(direction)
     }
 
+    // In paginated flow foliate ignores the wheel; scrolled flow scrolls natively.
+    const onWheel = (event: WheelEvent) => {
+      if (settingsRef.current.flow !== "paginated" || event.ctrlKey) return
+      const unit =
+        event.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? 16
+          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? host.clientHeight
+            : 1
+      const direction = wheelPager(
+        event.deltaX * unit,
+        event.deltaY * unit,
+        event.timeStamp
+      )
+      if (!direction) return
+      interact()
+      void move(direction)
+    }
+
     const onSectionLoad = (event: Event) => {
       const { doc } = (event as CustomEvent<{ doc: Document }>).detail
       doc.addEventListener("keydown", onKey)
       doc.addEventListener("pointerdown", interact)
       doc.addEventListener("wheel", interact, { passive: true })
+      doc.addEventListener("wheel", onWheel, { passive: true })
+      if (swipes) {
+        doc.addEventListener("touchstart", swipes.touchstart, { passive: true })
+        doc.addEventListener("touchend", swipes.touchend)
+      }
       doc.addEventListener("click", (click) => {
         // foliate follows links itself and marks those clicks handled.
         if (click.defaultPrevented || doc.getSelection()?.toString()) return
@@ -187,6 +255,7 @@ export function ReaderView({
     document.addEventListener("keydown", onKey)
     host.addEventListener("pointerdown", interact)
     host.addEventListener("wheel", interact, { passive: true })
+    host.addEventListener("wheel", onWheel, { passive: true })
 
     void (async () => {
       try {
@@ -209,6 +278,12 @@ export function ReaderView({
           return
         }
         skipLayoutWhileLoading(view.renderer)
+        // Before init, which loads the first section and so fires "load".
+        swipes = snapByWholeSwipe(view.renderer)
+        host.addEventListener("touchstart", swipes.touchstart, {
+          passive: true,
+        })
+        host.addEventListener("touchend", swipes.touchend)
         const fonts = await fontsLoading
         if (isCancelled()) {
           await teardown()

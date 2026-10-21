@@ -36,6 +36,8 @@ declare module "foliate-js/view.js" {
     /** Lays the current section out again (the paginator calls it on resize). */
     render?: () => void
     getContents?: () => Array<{ doc: Document | null }>
+    /** Settles a swipe on a page; the paginator calls it when a touch ends. */
+    snap?: (vx: number, vy: number) => void
   }
 
   /** The <foliate-view> element; importing the module defines it. */

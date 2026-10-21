@@ -114,6 +114,74 @@ test("turning pages by key or tap saves the new place", async ({
     .not.toBeNull()
 })
 
+/** The paginator's page within the current section. */
+function pageInSection(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      (
+        document.querySelector("foliate-view") as unknown as {
+          renderer: { page: number }
+        }
+      ).renderer.page
+  )
+}
+
+/** A finger swipe that slows down before it lifts, as real ones do. */
+async function swipe(page: Page, fromX: number, toX: number, y: number) {
+  const cdp = await page.context().newCDPSession(page)
+  const at = (t: number) => [{ x: fromX + (toX - fromX) * t, y, id: 1 }]
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: at(0),
+  })
+  for (let step = 1; step <= 12; step++) {
+    await page.waitForTimeout(16)
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: at(1 - (1 - step / 12) ** 3),
+    })
+  }
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  })
+  await cdp.detach()
+}
+
+test("a swipe or the wheel turns exactly one page", async ({
+  page,
+  isMobile,
+}) => {
+  const { bookId } = await memberWithBook(page)
+  await page.goto(`/read/${bookId}`)
+  await bookShown(page)
+  // Away from the first page, so turning back stays inside the section.
+  await page.keyboard.press("PageDown")
+  await expect.poll(() => pageInSection(page)).toBeGreaterThan(1)
+  const start = await pageInSection(page)
+  const { width, height } = page.viewportSize()!
+  const y = height / 2
+
+  if (isMobile) {
+    // Shorter than half the page, which foliate alone needed.
+    await swipe(page, width * 0.75, width * 0.75 - 150, y)
+    await expect.poll(() => pageInSection(page)).toBe(start + 1)
+    await swipe(page, width * 0.25, width * 0.25 + 150, y)
+    await expect.poll(() => pageInSection(page)).toBe(start)
+  } else {
+    await page.mouse.move(width / 2, y)
+    // One trackpad flick: a burst of shrinking deltas.
+    for (let event = 0; event < 30; event++) {
+      await page.mouse.wheel(0, Math.max(2, 80 * 0.85 ** event))
+      await page.waitForTimeout(16)
+    }
+    await expect.poll(() => pageInSection(page)).toBe(start + 1)
+    await page.waitForTimeout(300)
+    await page.mouse.wheel(0, -120)
+    await expect.poll(() => pageInSection(page)).toBe(start)
+  }
+})
+
 test("display settings follow the member", async ({ page }) => {
   const { userId, bookId } = await memberWithBook(page)
   await page.goto(`/read/${bookId}`)

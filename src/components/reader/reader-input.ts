@@ -9,6 +9,56 @@ export function tapAction(x: number, left: number, width: number): TapAction {
   return "menu"
 }
 
+/** A finger must travel this far across the page for its swipe to turn it. */
+const SWIPE_DISTANCE = 30
+
+/**
+ * foliate judges a swipe by the speed of its last touchmove only, and a
+ * finger slows down before it lifts, so most swipes fell back to the same
+ * page. Judged by the whole swipe instead: the velocity foliate's snap takes
+ * (positive is forward, foliate mirrors it for RTL books), or null to leave
+ * a short or vertical move to foliate.
+ */
+export function swipeVelocity(dx: number, dy: number): number | null {
+  if (Math.abs(dx) < SWIPE_DISTANCE || Math.abs(dx) <= Math.abs(dy)) return null
+  return dx < 0 ? 1 : -1
+}
+
+/** Wheel travel, in pixels, that counts as a deliberate move. */
+const WHEEL_DISTANCE = 40
+/** A gesture ends once the wheel has been still this long. */
+const WHEEL_REST_MS = 200
+
+/**
+ * The mouse wheel and a trackpad turn the paginated book one page per
+ * gesture: after a turn the rest of the gesture, trackpad inertia included,
+ * is ignored until the wheel rests. Deltas are in pixels; `now` in ms.
+ */
+export function createWheelPager() {
+  let total = 0
+  let axis: "x" | "y" = "y"
+  let turned = false
+  let last = Number.NEGATIVE_INFINITY
+
+  return (deltaX: number, deltaY: number, now: number): ReaderMove | null => {
+    if (now - last > WHEEL_REST_MS) {
+      total = 0
+      turned = false
+    }
+    last = now
+    if (turned) return null
+    const nextAxis = Math.abs(deltaX) > Math.abs(deltaY) ? "x" : "y"
+    const delta = nextAxis === "x" ? deltaX : deltaY
+    if (nextAxis !== axis || Math.sign(delta) !== Math.sign(total)) total = 0
+    axis = nextAxis
+    total += delta
+    if (Math.abs(total) < WHEEL_DISTANCE) return null
+    turned = true
+    if (axis === "x") return total > 0 ? "right" : "left"
+    return total > 0 ? "next" : "prev"
+  }
+}
+
 /** Arrow keys follow the page direction (RTL books too); PageUp/PageDown follow reading order. */
 export function keyMove(key: string): ReaderMove | null {
   switch (key) {

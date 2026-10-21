@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { isTypingTarget, keyMove, tapAction } from "./reader-input"
+import {
+  createWheelPager,
+  isTypingTarget,
+  keyMove,
+  swipeVelocity,
+  tapAction,
+} from "./reader-input"
 
 describe("tapAction", () => {
   it("turns pages from the outer 30% and opens the frame from the middle", () => {
@@ -21,6 +27,55 @@ describe("keyMove", () => {
     expect(keyMove("PageUp")).toBe("prev")
     expect(keyMove("PageDown")).toBe("next")
     expect(keyMove("a")).toBeNull()
+  })
+})
+
+describe("swipeVelocity", () => {
+  it("turns forward when the finger travels left, however slowly it ends", () => {
+    expect(swipeVelocity(-40, 5)).toBe(1)
+    expect(swipeVelocity(-150, 0)).toBe(1)
+  })
+
+  it("turns back when the finger travels right", () => {
+    expect(swipeVelocity(40, -5)).toBe(-1)
+  })
+
+  it("leaves short or mostly vertical moves to foliate", () => {
+    expect(swipeVelocity(-20, 0)).toBeNull()
+    expect(swipeVelocity(-40, 60)).toBeNull()
+  })
+})
+
+describe("createWheelPager", () => {
+  it("turns once per gesture, then waits for the wheel to rest", () => {
+    const wheel = createWheelPager()
+    expect(wheel(0, 100, 0)).toBe("next")
+    // The rest of the same flick, trackpad inertia included.
+    expect(wheel(0, 100, 50)).toBeNull()
+    expect(wheel(0, 30, 150)).toBeNull()
+    // A new gesture after a pause turns again.
+    expect(wheel(0, 100, 500)).toBe("next")
+  })
+
+  it("adds up small deltas until they are a deliberate move", () => {
+    const wheel = createWheelPager()
+    expect(wheel(0, 15, 0)).toBeNull()
+    expect(wheel(0, 15, 16)).toBeNull()
+    expect(wheel(0, 15, 32)).toBe("next")
+  })
+
+  it("goes back on wheel up and sideways on a horizontal swipe", () => {
+    const wheel = createWheelPager()
+    expect(wheel(0, -100, 0)).toBe("prev")
+    expect(wheel(100, 0, 1000)).toBe("right")
+    expect(wheel(-100, 0, 2000)).toBe("left")
+  })
+
+  it("starts afresh when the direction changes before a turn", () => {
+    const wheel = createWheelPager()
+    expect(wheel(0, 30, 0)).toBeNull()
+    expect(wheel(0, -30, 16)).toBeNull()
+    expect(wheel(0, -15, 32)).toBe("prev")
   })
 })
 
