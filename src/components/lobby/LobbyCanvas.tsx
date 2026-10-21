@@ -13,6 +13,7 @@ export function LobbyCanvas({
   quality,
   test,
   anda,
+  paused,
   onReady,
   onView,
   onQuality,
@@ -22,6 +23,8 @@ export function LobbyCanvas({
   quality: Quality
   test: boolean
   anda: Point2
+  /** Behind a popup: the stage keeps its last frame (spec 1F §4.5). */
+  paused: boolean
   onReady: (stage: Stage) => void
   onView: (view: View, viewport: Viewport) => void
   onQuality: (quality: Quality) => void
@@ -30,6 +33,7 @@ export function LobbyCanvas({
   const hostRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Stage | null>(null)
   const andaRef = useRef(anda)
+  const pausedRef = useRef(paused)
   const callbacks = useRef({ onReady, onView, onQuality, onFail })
   const initial = useRef({ quality, test })
 
@@ -55,6 +59,7 @@ export function LobbyCanvas({
           onQuality: (next) => callbacks.current.onQuality(next),
           onLost: () => callbacks.current.onFail(),
         })
+        stage.setPaused(pausedRef.current)
         stageRef.current = stage
         callbacks.current.onReady(stage)
       })
@@ -74,6 +79,11 @@ export function LobbyCanvas({
     andaRef.current = anda
     stageRef.current?.walkTo(anda)
   }, [anda])
+
+  useEffect(() => {
+    pausedRef.current = paused
+    stageRef.current?.setPaused(paused)
+  }, [paused])
 
   return <div ref={hostRef} className="lobby-canvas-host" />
 }

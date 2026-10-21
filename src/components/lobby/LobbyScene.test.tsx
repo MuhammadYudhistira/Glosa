@@ -41,27 +41,58 @@ const hotspots = lobbyHotspots(summarizeLobby([sherlock]).counts)
 
 const viewport = { width: 1280, height: 720 }
 
-function renderScene(environment: Environment) {
+type SceneProps = Partial<ComponentProps<typeof LobbyScene>>
+
+function renderScene(environment: Environment, extra: SceneProps = {}) {
   vi.mocked(detectEnvironment).mockReturnValue(environment)
   const onActivate = vi.fn()
   const onLiveChange = vi.fn()
   const ref = createRef<LobbySceneHandle>()
-  render(
+  const ui = (more: SceneProps) => (
     <LobbyScene
       ref={ref}
       hotspots={hotspots}
       anda={ANDA_START}
       onActivate={onActivate}
       onLiveChange={onLiveChange}
+      {...extra}
+      {...more}
     />
   )
+  const { rerender } = render(ui({}))
   const scene = screen.getByRole("region", { name: "Adegan lobi" })
-  return { scene, onActivate, onLiveChange, ref }
+  return {
+    scene,
+    onActivate,
+    onLiveChange,
+    ref,
+    update: (more: SceneProps) => rerender(ui(more)),
+  }
 }
 
 describe("LobbyScene", () => {
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it("holds the 3D scene back until it may start, with a lazy poster meanwhile", async () => {
+    const { scene, update } = renderScene(desktop, { allow3d: false })
+    await vi.waitFor(() =>
+      expect(scene).toHaveAttribute("data-quality", "tinggi")
+    )
+    expect(screen.queryByTestId("lobby-canvas")).toBeNull()
+    expect(scene.querySelector("img")).toHaveAttribute("loading", "lazy")
+
+    update({ allow3d: true })
+    expect(screen.getByTestId("lobby-canvas")).toBeInTheDocument()
+    expect(scene.querySelector("img")).toHaveAttribute("loading", "eager")
+  })
+
+  it("passes the pause on to the canvas", async () => {
+    const { update } = renderScene(desktop, { paused: true })
+    await vi.waitFor(() => expect(canvas.props?.paused).toBe(true))
+    update({ paused: false })
+    expect(canvas.props?.paused).toBe(false)
   })
 
   beforeEach(() => {
@@ -126,6 +157,7 @@ describe("LobbyScene", () => {
         books: 0,
         setView: vi.fn(),
         walkTo: vi.fn(),
+        setPaused: vi.fn(),
         dispose: vi.fn(),
       }
       act(() => {
@@ -201,6 +233,7 @@ describe("LobbyScene", () => {
           books: 0,
           setView: vi.fn(),
           walkTo: vi.fn(),
+          setPaused: vi.fn(),
           dispose: vi.fn(),
         })
       })

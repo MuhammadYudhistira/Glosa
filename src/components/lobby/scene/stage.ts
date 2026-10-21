@@ -49,6 +49,8 @@ export type Stage = {
   /** Moves the camera; the view is kept inside the map. */
   setView: (view: View) => void
   walkTo: (spot: Point2) => void
+  /** Stops the animation behind a popup; it goes on from the same moment (spec 1F §4.5). */
+  setPaused: (paused: boolean) => void
   dispose: () => void
 }
 
@@ -223,7 +225,11 @@ function buildStage(
   let frame = 0
   let disposed = false
   let needsRender = true
+  let paused = false
   let last = performance.now()
+  // The animation's own time: it moves only while the loop runs, so nothing
+  // jumps after a pause or a hidden tab.
+  let clock = last / 1000
   let measuring = animates()
   let measureStart = 0
   let measureFrames = 0
@@ -284,8 +290,9 @@ function buildStage(
     if (disposed || document.hidden) return
     const dt = Math.min(0.05, (now - last) / 1000)
     last = now
-    if (animates()) {
-      motion.update(now / 1000, dt)
+    if (animates() && !paused) {
+      clock += dt
+      motion.update(clock, dt)
       controls.update()
       draw()
       measure(now)
@@ -359,6 +366,14 @@ function buildStage(
     },
     walkTo(spot) {
       motion.walkTo(spot, !animates())
+      requestRender()
+    },
+    setPaused(next) {
+      if (next === paused) return
+      paused = next
+      // The time spent paused does not count, and the speed check starts over.
+      last = performance.now()
+      measureStart = 0
       requestRender()
     },
     dispose() {

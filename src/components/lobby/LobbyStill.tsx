@@ -13,9 +13,12 @@ export const STILL_VIEW: View = startView(STILL_SIZE)
 export function LobbyStill({
   className,
   sizes = "100vw",
+  loading = "eager",
 }: {
   className?: string
   sizes?: string
+  /** Lazy where the lobby may stay hidden (behind a page on phones), so it is not fetched. */
+  loading?: "eager" | "lazy"
 }) {
   return (
     <picture>
@@ -34,6 +37,7 @@ export function LobbyStill({
         alt=""
         width={STILL_SIZE.width}
         height={STILL_SIZE.height}
+        loading={loading}
         decoding="async"
         draggable={false}
         className={className}

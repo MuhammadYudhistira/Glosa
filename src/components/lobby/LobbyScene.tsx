@@ -62,6 +62,8 @@ export function LobbyScene({
   bubbles,
   onActivate,
   onLiveChange,
+  paused = false,
+  allow3d = true,
   ref,
 }: {
   hotspots: ReadonlyArray<HotspotModel>
@@ -70,6 +72,10 @@ export function LobbyScene({
   onActivate: (id: HotspotId) => void
   /** Whether a live 3D camera is on screen, so showSpot can move it. */
   onLiveChange?: (live: boolean) => void
+  /** Behind a popup: the 3D scene keeps its last frame (spec 1F §4.5). */
+  paused?: boolean
+  /** False keeps WebGL off, e.g. while the lobby is hidden behind a page on phones (spec 1F §5). */
+  allow3d?: boolean
   ref?: Ref<LobbySceneHandle>
 }) {
   const [quality, setQuality] = useState<Quality | null>(null)
@@ -132,11 +138,12 @@ export function LobbyScene({
       className="lobby-scene"
       onKeyDown={onKeyDown}
     >
-      {mode !== "still" && quality !== null && (
+      {mode !== "still" && quality !== null && allow3d && (
         <LobbyCanvas
           quality={quality}
           test={test}
           anda={anda}
+          paused={paused}
           onReady={(stage) => {
             stageRef.current = stage
             setMode("3d")
@@ -157,7 +164,11 @@ export function LobbyScene({
       <div className={live ? "lobby-live-layer" : "lobby-still-frame"}>
         {/* The frame covers the scene: as wide as 16:9 at its full height. */}
         {!live && (
-          <LobbyStill className="lobby-still" sizes="max(100vw, 178vh)" />
+          <LobbyStill
+            className="lobby-still"
+            sizes="max(100vw, 178vh)"
+            loading={allow3d ? "eager" : "lazy"}
+          />
         )}
         <HotspotLayer
           hotspots={hotspots}
