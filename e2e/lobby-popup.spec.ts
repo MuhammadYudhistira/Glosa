@@ -115,6 +115,28 @@ test.describe("desktop", () => {
     await expect(page.locator(".lobby-account")).not.toHaveAttribute("open")
   })
 
+  test("Escape returns the focus to the 3D hotspot that opened Rak Saya", async ({
+    page,
+  }) => {
+    await memberInLobby(page)
+    const hotspot = page
+      .getByRole("region", { name: "Adegan lobi" })
+      .getByRole("button", { name: "Fiksi & Sastra · 0 buku" })
+    await hotspot.focus()
+    await hotspot.press("Enter")
+    await expect(page).toHaveURL(/\/shelf\?genre=fiksi_sastra$/)
+    await expect(popupOf(page, "Rak Saya")).toBeVisible()
+
+    await page.keyboard.press("Escape")
+    await expect(page).toHaveURL(/\/lobby$/)
+    await expect(popupOf(page, "Rak Saya")).toHaveCount(0)
+    await expect(
+      page
+        .getByRole("region", { name: "Adegan lobi" })
+        .getByRole("button", { name: "Fiksi & Sastra · 0 buku" })
+    ).toBeFocused()
+  })
+
   test("a search result picked over Rak Saya shows the book in the lobby", async ({
     page,
   }) => {

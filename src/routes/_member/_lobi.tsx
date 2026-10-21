@@ -1,4 +1,8 @@
-import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router"
+import {
+  Outlet,
+  createFileRoute,
+  useChildMatches,
+} from "@tanstack/react-router"
 import { isPopupPath } from "@/components/lobby/LobbyPopup"
 import { LobbyStage } from "@/components/lobby/LobbyStage"
 import { ShelfLoadError } from "@/components/shelf/ShelfLoadError"
@@ -19,11 +23,11 @@ export const Route = createFileRoute("/_member/_lobi")({
 function LobiLayout() {
   const { books, usage, offline } = Route.useLoaderData()
   const { user } = Route.useRouteContext()
-  // The resolved location, like MemberShell: the page being left still
-  // renders while the next route resolves.
-  const popup = useRouterState({
-    select: (state) =>
-      isPopupPath((state.resolvedLocation ?? state.location).pathname),
+  // From the child matches, which the Outlet renders from too: the scene
+  // stops being inert in the same commit that removes the popup, so the
+  // popup can give the focus back to a hotspot in it.
+  const popup = useChildMatches({
+    select: (matches) => matches.some((match) => isPopupPath(match.pathname)),
   })
   useShelfSnapshot(user.id, books, usage, offline)
 

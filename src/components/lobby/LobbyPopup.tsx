@@ -41,8 +41,11 @@ export function LobbyPopup({
   const close = () => void navigate({ to: "/lobby" })
 
   // Taken before a popup on its way out hands the focus back, so going from
-  // Rak Saya to Pengaturan remembers the link that was used.
+  // Rak Saya to Pengaturan remembers the link that was used. Only once: in
+  // dev, StrictMode runs this again after the heading took the focus, and an
+  // opener in the now inert scene could not take it back in between.
   useLayoutEffect(() => {
+    if (openerRef.current) return
     const active = document.activeElement
     openerRef.current =
       active instanceof HTMLElement && active !== document.body ? active : null
