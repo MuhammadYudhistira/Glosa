@@ -43,6 +43,7 @@ src/routes/_member/_lobi/settings.tsx  isi Pengaturan
 - **`validateSearch`.** Rak tetap memegang `parseShelfSearch` (genre, q, urutan). Lobi tetap memegang `kembali`.
 - **Render.** Layout menggambar `LobbyStage`. Kalau rute anak adalah `/shelf` atau `/settings`, layout juga membungkus `<Outlet/>` dengan `LobbyPopup`. Di `/lobby`, anak tidak menggambar apa pun selain `<h1 class="sr-only">Lobi</h1>`.
 - **`useShelfSnapshot`.** Dipanggil sekali di layout, tidak lagi di setiap halaman.
+- **`popup`.** Layout membaca `popup` dari child matches miliknya, bukan dari `resolvedLocation`. Child matches di-commit bersama `<Outlet/>`, jadi `LobbyStage` dan popup selalu berganti di commit yang sama.
 
 ### `LobbyStage`
 
@@ -64,7 +65,7 @@ Prop baru:
 
 ### 4.1 Tampilan
 
-- **`LobbyPopup`.** Komponen baru di `src/components/lobby/LobbyPopup.tsx`, berupa `<main>` dengan tombol ✕. Judulnya tetap `h1` yang sudah ada di isi halaman ("Rak Saya" di `ShelfHeader`, "Pengaturan" di halaman Pengaturan). `LobbyPopup` tidak membuat `h1` sendiri; `aria-labelledby` menunjuk ke `h1` itu.
+- **`LobbyPopup`.** Komponen baru di `src/components/lobby/LobbyPopup.tsx`, berupa `<main>` dengan tombol ✕. Judulnya tetap `h1` yang sudah ada di isi halaman ("Rak Saya" di `ShelfHeader`, "Pengaturan" di halaman Pengaturan). `LobbyPopup` tidak membuat `h1` sendiri. `<main>` diberi nama lewat `aria-label` dengan teks yang sama dengan `h1` itu.
 - **Ukuran dan letak.** Lebar maksimal ± 1000px dan tinggi maksimal sebatas layar dikurangi top bar dan jarak tepi. Letaknya di tengah area di kanan menu kiri.
 - **Gaya.** Kaca seperti `Panel` lobi yang sudah ada.
 - **Scroll.** Isi menggulir di dalam panel, sedangkan halaman tidak menggulir.
@@ -80,8 +81,9 @@ Semua jalan yang sudah ada tetap berlaku karena semuanya link ke alamat:
 ### 4.3 Menutup
 
 - **Cara menutup.** Tombol ✕, tombol Esc (selama tidak ada dialog lain yang terbuka di atasnya), atau klik area lobi yang redup. Ketiganya menjalankan `navigate({ to: "/lobby" })`.
+- **Esc di top bar.** Esc diabaikan selama fokus ada di top bar. Kolom cari mengosongkan dirinya sendiri, dan menu akun menangani Esc-nya sendiri.
 - **Back browser.** Kembali ke alamat sebelumnya. Kalau alamat itu `/lobby`, popup tertutup.
-- **Fokus setelah menutup.** Kembali ke elemen yang membuka popup, kalau elemen itu masih ada. Kalau tidak, fokus pindah ke kolom pencarian di top bar.
+- **Fokus setelah menutup.** Kembali ke elemen yang membuka popup, kalau elemen itu masih ada. Ini termasuk hotspot di adegan, karena `inert` sudah lepas saat popup dilepas. Kalau tidak, fokus pindah ke kolom pencarian di top bar.
 
 ### 4.4 Fokus dan aksesibilitas
 

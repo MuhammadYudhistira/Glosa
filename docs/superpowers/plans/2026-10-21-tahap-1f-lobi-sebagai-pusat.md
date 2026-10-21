@@ -42,6 +42,10 @@ Semua keputusan berikut disengaja. Spec sudah diperbarui mengikutinya.
    - `LobbyPopup` mencatat elemen pembuka di `useLayoutEffect` dan mengembalikan fokus di cleanup `useEffect`. Saat pindah dari Rak ke Pengaturan, popup baru mencatat pembukanya sebelum popup lama mengembalikan fokus, lalu fokus berakhir di `h1` popup baru.
    - Fokus hanya diatur di desktop. Di HP perilaku navigasi halaman tetap seperti sekarang.
 6. **`tabIndex = -1` dipasang ke `h1` oleh `LobbyPopup`**, bukan ditulis di `ShelfHeader` dan halaman Pengaturan. Kedua komponen itu tetap tidak tahu apa-apa soal popup.
+7. **`popup` di layout `_lobi` dibaca dari child matches, bukan dari `resolvedLocation`.** `resolvedLocation` baru berubah satu pembaruan store setelah match `<Outlet/>` di-commit. Akibatnya, pada commit yang melepas popup, adegan masih `inert`, dan fokus tidak bisa kembali ke hotspot 3D yang membukanya. Child matches di-commit bersama `<Outlet/>`, jadi `inert` lepas di commit yang sama. Ini keputusan pemilik setelah review akhir.
+   - Di mode dev, StrictMode menjalankan `useLayoutEffect` `LobbyPopup` dua kali. Pada putaran kedua fokus sudah di `h1`, dan pembuka di adegan yang `inert` tidak bisa mengambilnya kembali. Karena itu pembuka hanya dicatat sekali.
+8. **`<main>` milik `LobbyPopup` diberi nama dengan `aria-label={label}`**, bukan `aria-labelledby` ke `h1`. Nama yang terbaca sama, tanpa perlu menyambungkan id.
+9. **Esc dibiarkan selama fokus ada di top bar.** Kolom cari mengosongkan dirinya sendiri, dan menu akun menangani Esc-nya sendiri.
 
 ## Struktur file
 
@@ -1482,7 +1486,11 @@ git mv src/routes/_member/settings.tsx src/routes/_member/_lobi/settings.tsx
 Buat `src/routes/_member/_lobi.tsx`:
 
 ```tsx
-import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router"
+import {
+  Outlet,
+  createFileRoute,
+  useChildMatches,
+} from "@tanstack/react-router"
 import { isPopupPath } from "@/components/lobby/LobbyPopup"
 import { LobbyStage } from "@/components/lobby/LobbyStage"
 import { ShelfLoadError } from "@/components/shelf/ShelfLoadError"
@@ -1503,11 +1511,11 @@ export const Route = createFileRoute("/_member/_lobi")({
 function LobiLayout() {
   const { books, usage, offline } = Route.useLoaderData()
   const { user } = Route.useRouteContext()
-  // The resolved location, like MemberShell: the page being left still
-  // renders while the next route resolves.
-  const popup = useRouterState({
-    select: (state) =>
-      isPopupPath((state.resolvedLocation ?? state.location).pathname),
+  // From the child matches, which the Outlet renders from too: the scene
+  // stops being inert in the same commit that removes the popup, so the
+  // popup can give the focus back to a hotspot in it.
+  const popup = useChildMatches({
+    select: (matches) => matches.some((match) => isPopupPath(match.pathname)),
   })
   useShelfSnapshot(user.id, books, usage, offline)
 
