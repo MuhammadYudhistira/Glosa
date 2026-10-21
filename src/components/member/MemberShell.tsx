@@ -25,6 +25,9 @@ export function hasShell(pathname: string): boolean {
 const isCurrent = (pathname: string, to: string) =>
   pathname === to || pathname.startsWith(`${to}/`)
 
+/** Pages with the lobby behind them on desktop (spec 1F §3). */
+const OVER_LOBBY = ["/lobby", "/shelf", "/settings"]
+
 /** Sidebar from 1024 px, tab bar below (spec 1D §5.3). */
 export function MemberShell({ children }: { children: ReactNode }) {
   // Follow the resolved location, not the pending one: the page being left
@@ -34,8 +37,10 @@ export function MemberShell({ children }: { children: ReactNode }) {
   })
   const shown = hasShell(pathname)
   // Over the lobby's scene the menu floats as a card, like the top bar and
-  // the panels there (owner's choice after the 1D review).
-  const floating = shown && isCurrent(pathname, "/lobby") ? "" : undefined
+  // the panels there (owner's choice after the 1D review). Rak Saya and
+  // Pengaturan open over the lobby too (spec 1F).
+  const floating =
+    shown && OVER_LOBBY.some((to) => isCurrent(pathname, to)) ? "" : undefined
 
   // The wrapper around children is always there, so showing or hiding the
   // navigation never remounts the page (e.g. the WebGL lobby on its way out).

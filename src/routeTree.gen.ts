@@ -18,13 +18,14 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as TermsRouteImport } from './routes/terms'
-import { Route as MemberLobbyRouteImport } from './routes/_member/lobby'
-import { Route as MemberSettingsRouteImport } from './routes/_member/settings'
-import { Route as MemberShelfRouteImport } from './routes/_member/shelf'
+import { Route as MemberLobiRouteImport } from './routes/_member/_lobi'
 import { Route as MemberWelcomeRouteImport } from './routes/_member/welcome'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
+import { Route as MemberLobiLobbyRouteImport } from './routes/_member/_lobi/lobby'
+import { Route as MemberLobiSettingsRouteImport } from './routes/_member/_lobi/settings'
+import { Route as MemberLobiShelfRouteImport } from './routes/_member/_lobi/shelf'
 import { Route as MemberReadBookIdRouteImport } from './routes/_member/read.$bookId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -71,19 +72,8 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MemberLobbyRoute = MemberLobbyRouteImport.update({
-  id: '/lobby',
-  path: '/lobby',
-  getParentRoute: () => MemberRoute,
-} as any)
-const MemberSettingsRoute = MemberSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => MemberRoute,
-} as any)
-const MemberShelfRoute = MemberShelfRouteImport.update({
-  id: '/shelf',
-  path: '/shelf',
+const MemberLobiRoute = MemberLobiRouteImport.update({
+  id: '/_lobi',
   getParentRoute: () => MemberRoute,
 } as any)
 const MemberWelcomeRoute = MemberWelcomeRouteImport.update({
@@ -106,6 +96,21 @@ const AuthConfirmRoute = AuthConfirmRouteImport.update({
   path: '/auth/confirm',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MemberLobiLobbyRoute = MemberLobiLobbyRouteImport.update({
+  id: '/lobby',
+  path: '/lobby',
+  getParentRoute: () => MemberLobiRoute,
+} as any)
+const MemberLobiSettingsRoute = MemberLobiSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => MemberLobiRoute,
+} as any)
+const MemberLobiShelfRoute = MemberLobiShelfRouteImport.update({
+  id: '/shelf',
+  path: '/shelf',
+  getParentRoute: () => MemberLobiRoute,
+} as any)
 const MemberReadBookIdRoute = MemberReadBookIdRouteImport.update({
   id: '/read/$bookId',
   path: '/read/$bookId',
@@ -121,13 +126,13 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
-  '/lobby': typeof MemberLobbyRoute
-  '/settings': typeof MemberSettingsRoute
-  '/shelf': typeof MemberShelfRoute
   '/welcome': typeof MemberWelcomeRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/lobby': typeof MemberLobiLobbyRoute
+  '/settings': typeof MemberLobiSettingsRoute
+  '/shelf': typeof MemberLobiShelfRoute
   '/read/$bookId': typeof MemberReadBookIdRoute
 }
 export interface FileRoutesByTo {
@@ -139,13 +144,13 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
-  '/lobby': typeof MemberLobbyRoute
-  '/settings': typeof MemberSettingsRoute
-  '/shelf': typeof MemberShelfRoute
   '/welcome': typeof MemberWelcomeRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/lobby': typeof MemberLobiLobbyRoute
+  '/settings': typeof MemberLobiSettingsRoute
+  '/shelf': typeof MemberLobiShelfRoute
   '/read/$bookId': typeof MemberReadBookIdRoute
 }
 export interface FileRoutesById {
@@ -159,13 +164,14 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
-  '/_member/lobby': typeof MemberLobbyRoute
-  '/_member/settings': typeof MemberSettingsRoute
-  '/_member/shelf': typeof MemberShelfRoute
+  '/_member/_lobi': typeof MemberLobiRouteWithChildren
   '/_member/welcome': typeof MemberWelcomeRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/_member/_lobi/lobby': typeof MemberLobiLobbyRoute
+  '/_member/_lobi/settings': typeof MemberLobiSettingsRoute
+  '/_member/_lobi/shelf': typeof MemberLobiShelfRoute
   '/_member/read/$bookId': typeof MemberReadBookIdRoute
 }
 export interface FileRouteTypes {
@@ -179,13 +185,13 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/terms'
-    | '/lobby'
-    | '/settings'
-    | '/shelf'
     | '/welcome'
     | '/api/health'
     | '/auth/callback'
     | '/auth/confirm'
+    | '/lobby'
+    | '/settings'
+    | '/shelf'
     | '/read/$bookId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -197,13 +203,13 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/terms'
-    | '/lobby'
-    | '/settings'
-    | '/shelf'
     | '/welcome'
     | '/api/health'
     | '/auth/callback'
     | '/auth/confirm'
+    | '/lobby'
+    | '/settings'
+    | '/shelf'
     | '/read/$bookId'
   id:
     | '__root__'
@@ -216,13 +222,14 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/terms'
-    | '/_member/lobby'
-    | '/_member/settings'
-    | '/_member/shelf'
+    | '/_member/_lobi'
     | '/_member/welcome'
     | '/api/health'
     | '/auth/callback'
     | '/auth/confirm'
+    | '/_member/_lobi/lobby'
+    | '/_member/_lobi/settings'
+    | '/_member/_lobi/shelf'
     | '/_member/read/$bookId'
   fileRoutesById: FileRoutesById
 }
@@ -306,25 +313,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_member/lobby': {
-      id: '/_member/lobby'
-      path: '/lobby'
-      fullPath: '/lobby'
-      preLoaderRoute: typeof MemberLobbyRouteImport
-      parentRoute: typeof MemberRoute
-    }
-    '/_member/settings': {
-      id: '/_member/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof MemberSettingsRouteImport
-      parentRoute: typeof MemberRoute
-    }
-    '/_member/shelf': {
-      id: '/_member/shelf'
-      path: '/shelf'
-      fullPath: '/shelf'
-      preLoaderRoute: typeof MemberShelfRouteImport
+    '/_member/_lobi': {
+      id: '/_member/_lobi'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof MemberLobiRouteImport
       parentRoute: typeof MemberRoute
     }
     '/_member/welcome': {
@@ -355,6 +348,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthConfirmRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_member/_lobi/lobby': {
+      id: '/_member/_lobi/lobby'
+      path: '/lobby'
+      fullPath: '/lobby'
+      preLoaderRoute: typeof MemberLobiLobbyRouteImport
+      parentRoute: typeof MemberLobiRoute
+    }
+    '/_member/_lobi/settings': {
+      id: '/_member/_lobi/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof MemberLobiSettingsRouteImport
+      parentRoute: typeof MemberLobiRoute
+    }
+    '/_member/_lobi/shelf': {
+      id: '/_member/_lobi/shelf'
+      path: '/shelf'
+      fullPath: '/shelf'
+      preLoaderRoute: typeof MemberLobiShelfRouteImport
+      parentRoute: typeof MemberLobiRoute
+    }
     '/_member/read/$bookId': {
       id: '/_member/read/$bookId'
       path: '/read/$bookId'
@@ -365,18 +379,30 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface MemberLobiRouteChildren {
+  MemberLobiLobbyRoute: typeof MemberLobiLobbyRoute
+  MemberLobiSettingsRoute: typeof MemberLobiSettingsRoute
+  MemberLobiShelfRoute: typeof MemberLobiShelfRoute
+}
+
+const MemberLobiRouteChildren: MemberLobiRouteChildren = {
+  MemberLobiLobbyRoute: MemberLobiLobbyRoute,
+  MemberLobiSettingsRoute: MemberLobiSettingsRoute,
+  MemberLobiShelfRoute: MemberLobiShelfRoute,
+}
+
+const MemberLobiRouteWithChildren = MemberLobiRoute._addFileChildren(
+  MemberLobiRouteChildren,
+)
+
 interface MemberRouteChildren {
-  MemberLobbyRoute: typeof MemberLobbyRoute
-  MemberSettingsRoute: typeof MemberSettingsRoute
-  MemberShelfRoute: typeof MemberShelfRoute
+  MemberLobiRoute: typeof MemberLobiRouteWithChildren
   MemberWelcomeRoute: typeof MemberWelcomeRoute
   MemberReadBookIdRoute: typeof MemberReadBookIdRoute
 }
 
 const MemberRouteChildren: MemberRouteChildren = {
-  MemberLobbyRoute: MemberLobbyRoute,
-  MemberSettingsRoute: MemberSettingsRoute,
-  MemberShelfRoute: MemberShelfRoute,
+  MemberLobiRoute: MemberLobiRouteWithChildren,
   MemberWelcomeRoute: MemberWelcomeRoute,
   MemberReadBookIdRoute: MemberReadBookIdRoute,
 }

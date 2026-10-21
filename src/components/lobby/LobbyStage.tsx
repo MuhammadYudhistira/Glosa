@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
+import { useNavigate, useRouter, useSearch } from "@tanstack/react-router"
 import { PlusIcon } from "lucide-react"
 import { type ReactNode, useMemo, useRef, useState } from "react"
 import { AdminDeskCard } from "@/components/lobby/AdminDeskCard"
@@ -16,35 +16,38 @@ import { TrolleyPanel } from "@/components/lobby/TrolleyPanel"
 import { lobbyHotspots, summarizeLobby } from "@/components/lobby/lobby-data"
 import { type HotspotId, spotOf } from "@/components/lobby/scene/layout"
 import { useAndaSpot } from "@/components/lobby/useAndaSpot"
-import { ShelfLoadError } from "@/components/shelf/ShelfLoadError"
 import { UploadPanel } from "@/components/shelf/UploadPanel"
 import { useLocalShelf } from "@/components/shelf/useLocalShelf"
-import { useShelfSnapshot } from "@/components/shelf/useShelfSnapshot"
 import { Button } from "@/components/ui/button"
-import type { ShelfBook } from "@/lib/book-types"
-import { loadShelf } from "@/lib/shelf-loader"
+import type { ShelfBook, StorageUsage } from "@/lib/book-types"
+import type { SessionUser } from "@/lib/session-types"
+import { useWideScreen } from "@/lib/use-wide-screen"
 
-export const Route = createFileRoute("/_member/lobby")({
-  // Keep the value as the number 1 so the URL stays `?kembali=1` after validation.
-  validateSearch: (search: Record<string, unknown>): { kembali?: 1 } => ({
-    kembali: search.kembali === 1 || search.kembali === "1" ? 1 : undefined,
-  }),
-  // The same shelf as Rak Saya, so the lobby also opens offline (spec 1D §3.2).
-  loader: ({ context }) => loadShelf(context.user.id),
-  staleTime: 60_000,
-  head: () => ({ meta: [{ title: "Lobi — Glosa" }] }),
-  errorComponent: ShelfLoadError,
-  component: LobbyPage,
-})
-
-function LobbyPage() {
-  const { books, usage, offline } = Route.useLoaderData()
-  const { user } = Route.useRouteContext()
-  const { kembali } = Route.useSearch()
+/**
+ * The lobby (spec 1D), mounted under /lobby, /shelf and /settings so the 3D
+ * scene stays loaded. With a popup over it (spec 1F §3): the scene pauses
+ * and hides from the keyboard, and the panels step aside; only the top bar
+ * stays. On phones CSS hides it all, and WebGL stays off.
+ */
+export function LobbyStage({
+  user,
+  books,
+  usage,
+  offline,
+  popup,
+}: {
+  user: SessionUser
+  books: Array<ShelfBook>
+  usage: StorageUsage
+  offline: boolean
+  /** Rak Saya or Pengaturan is open over the lobby. */
+  popup: boolean
+}) {
+  const { kembali } = useSearch({ strict: false })
   const navigate = useNavigate()
   const router = useRouter()
+  const wide = useWideScreen()
   const local = useLocalShelf()
-  useShelfSnapshot(user.id, books, usage, offline)
   const summary = useMemo(() => summarizeLobby(books), [books])
   const hotspots = useMemo(() => lobbyHotspots(summary.counts), [summary])
   const [anda, moveAnda] = useAndaSpot()
@@ -63,6 +66,8 @@ function LobbyPage() {
     const active = document.activeElement
     openerRef.current = active instanceof HTMLElement ? active : null
     setSelectedId(book.id)
+    // The details belong to the lobby: a popup over it closes (spec 1F §4.4).
+    if (popup) void navigate({ to: "/lobby" })
   }
   // A search result is gone once picked: then the focus goes to the search.
   const closeDetail = () => {
@@ -101,24 +106,38 @@ function LobbyPage() {
     }
   }
 
+  // Behind a popup the scene says nothing: its words would repeat the page's.
   const bubbles: Partial<Record<HotspotId, ReactNode>> = {}
-  if (readingHint) bubbles["meja-baca"] = <ReadingHint />
+  if (!popup && readingHint) bubbles["meja-baca"] = <ReadingHint />
   // Phones greet in the sheet instead: their first view leaves the desk out.
-  if (books.length === 0) {
+  if (!popup && books.length === 0) {
     bubbles["meja-admin"] = <LibrarianWelcome className="hidden lg:grid" />
   }
 
+  // One element for every mode, so switching never remounts the WebGL scene.
   return (
-    <main className="lobby-page">
-      <h1 className="sr-only">Lobi</h1>
-      <LobbyScene
-        ref={sceneRef}
-        hotspots={hotspots}
-        anda={anda}
-        bubbles={bubbles}
-        onActivate={activate}
-        onLiveChange={setSceneLive}
-      />
+    <div
+      className="lobby-page"
+      role={popup ? undefined : "main"}
+      data-popup={popup ? "" : undefined}
+    >
+      {!popup && <h1 className="sr-only">Lobi</h1>}
+      <div
+        className="contents"
+        inert={popup}
+        aria-hidden={popup ? "true" : undefined}
+      >
+        <LobbyScene
+          ref={sceneRef}
+          hotspots={hotspots}
+          anda={anda}
+          bubbles={bubbles}
+          onActivate={activate}
+          onLiveChange={setSceneLive}
+          paused={popup}
+          allow3d={!popup || wide}
+        />
+      </div>
       <LobbyTopBar
         user={user}
         books={books}
@@ -126,66 +145,70 @@ function LobbyPage() {
         searchRef={searchRef}
         className="hidden lg:flex"
       />
-      <div className="lobby-notices lobby-overlay">
-        {kembali === 1 && (
-          <output className="lobby-notice">
-            Selamat datang kembali, {user.displayName}!
-          </output>
-        )}
-        {offline && (
-          <output className="lobby-notice">
-            Kamu sedang offline. Rak ditampilkan dari salinan terakhir di
-            perangkat ini.
-          </output>
-        )}
-      </div>
-      {/* Each panel has its own corner, like mockups/lobi.html. */}
-      <aside aria-label="Panel lobi" className="lobby-side lobby-overlay">
-        <LibraryMap
-          hotspots={hotspots}
-          anda={anda}
-          interactive={sceneLive}
-          onSelect={(id) => sceneRef.current?.showSpot(id)}
-          className="lobby-at-map"
-        />
-        {selected && (
-          <BookDetailPanel
-            book={selected}
+      {!popup && (
+        <>
+          <div className="lobby-notices lobby-overlay">
+            {kembali === 1 && (
+              <output className="lobby-notice">
+                Selamat datang kembali, {user.displayName}!
+              </output>
+            )}
+            {offline && (
+              <output className="lobby-notice">
+                Kamu sedang offline. Rak ditampilkan dari salinan terakhir di
+                perangkat ini.
+              </output>
+            )}
+          </div>
+          {/* Each panel has its own corner, like mockups/lobi.html. */}
+          <aside aria-label="Panel lobi" className="lobby-side lobby-overlay">
+            <LibraryMap
+              hotspots={hotspots}
+              anda={anda}
+              interactive={sceneLive}
+              onSelect={(id) => sceneRef.current?.showSpot(id)}
+              className="lobby-at-map"
+            />
+            {selected && (
+              <BookDetailPanel
+                book={selected}
+                local={local}
+                onClose={closeDetail}
+                onChanged={refresh}
+                onDeleted={onDeleted}
+                className="lobby-at-detail"
+              />
+            )}
+            <RecentBooks
+              books={summary.recent}
+              local={local}
+              onSelect={select}
+              className="lobby-at-recent"
+            />
+            <AdminDeskCard
+              usage={usage}
+              onUpload={() => setUploading(true)}
+              className="lobby-at-admin"
+            />
+          </aside>
+          <ContinueSheet
+            key={summary.lastRead?.id}
+            book={summary.lastRead}
+            empty={books.length === 0}
             local={local}
-            onClose={closeDetail}
             onChanged={refresh}
             onDeleted={onDeleted}
-            className="lobby-at-detail"
           />
-        )}
-        <RecentBooks
-          books={summary.recent}
-          local={local}
-          onSelect={select}
-          className="lobby-at-recent"
-        />
-        <AdminDeskCard
-          usage={usage}
-          onUpload={() => setUploading(true)}
-          className="lobby-at-admin"
-        />
-      </aside>
-      <ContinueSheet
-        key={summary.lastRead?.id}
-        book={summary.lastRead}
-        empty={books.length === 0}
-        local={local}
-        onChanged={refresh}
-        onDeleted={onDeleted}
-      />
-      <Button
-        size="icon-lg"
-        aria-label="Bawa buku"
-        className="lobby-add lobby-overlay lg:hidden"
-        onClick={() => setUploading(true)}
-      >
-        <PlusIcon />
-      </Button>
+          <Button
+            size="icon-lg"
+            aria-label="Bawa buku"
+            className="lobby-add lobby-overlay lg:hidden"
+            onClick={() => setUploading(true)}
+          >
+            <PlusIcon />
+          </Button>
+        </>
+      )}
       <UploadPanel open={uploading} onOpenChange={setUploading} usage={usage} />
       <TrolleyPanel
         open={sorting}
@@ -193,6 +216,6 @@ function LobbyPage() {
         books={summary.trolley}
         onSaved={refresh}
       />
-    </main>
+    </div>
   )
 }

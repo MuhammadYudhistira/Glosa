@@ -1,6 +1,7 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { type FormEvent, useState } from "react"
+import { LobbyPopup } from "@/components/lobby/LobbyPopup"
 import { MembershipCard } from "@/components/member/MembershipCard"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +12,7 @@ import { clearLocalData } from "@/lib/local/device"
 import { normalizeUsername } from "@/lib/username"
 import { deleteAccountFn, updateProfileFn } from "@/server/profile"
 
-export const Route = createFileRoute("/_member/settings")({
+export const Route = createFileRoute("/_member/_lobi/settings")({
   head: () => ({ meta: [{ title: "Pengaturan — Glosa" }] }),
   component: SettingsPage,
 })
@@ -89,7 +90,7 @@ function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 p-4 sm:p-8">
+    <LobbyPopup label="Pengaturan" className="max-w-3xl" bodyClassName="gap-6">
       <h1 className="font-heading text-3xl font-bold">Pengaturan</h1>
 
       <Panel className="flex flex-col items-center gap-6 p-6 sm:flex-row sm:items-start">
@@ -181,6 +182,6 @@ function SettingsPage() {
           </Button>
         </form>
       </Panel>
-    </main>
+    </LobbyPopup>
   )
 }

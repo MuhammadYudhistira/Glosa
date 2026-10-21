@@ -1,4 +1,5 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router"
+import { createFileRoute, getRouteApi, useRouter } from "@tanstack/react-router"
+import { LobbyPopup } from "@/components/lobby/LobbyPopup"
 import { useMemo, useState } from "react"
 import { BookActions } from "@/components/shelf/BookActions"
 import { BookDetail } from "@/components/shelf/BookDetail"
@@ -6,12 +7,10 @@ import { BookGrid } from "@/components/shelf/BookGrid"
 import { EmptyShelf } from "@/components/shelf/EmptyShelf"
 import { GenreFilter } from "@/components/shelf/GenreFilter"
 import { ReadLink } from "@/components/shelf/ReadLink"
-import { ShelfLoadError } from "@/components/shelf/ShelfLoadError"
 import { ShelfHeader } from "@/components/shelf/ShelfHeader"
 import { ShelfToolbar } from "@/components/shelf/ShelfToolbar"
 import { TrolleyGenrePicker } from "@/components/shelf/TrolleyGenrePicker"
 import { UploadPanel } from "@/components/shelf/UploadPanel"
-import { useShelfSnapshot } from "@/components/shelf/useShelfSnapshot"
 import {
   shelfPercentage,
   useLocalShelf,
@@ -19,21 +18,17 @@ import {
 import { Button } from "@/components/ui/button"
 import { genreLabel } from "@/lib/genre"
 import { countBooks, parseShelfSearch, shelfBooks } from "@/lib/shelf"
-import { loadShelf } from "@/lib/shelf-loader"
 
-export const Route = createFileRoute("/_member/shelf")({
+const lobi = getRouteApi("/_member/_lobi")
+
+export const Route = createFileRoute("/_member/_lobi/shelf")({
   validateSearch: parseShelfSearch,
-  loader: ({ context }) => loadShelf(context.user.id),
-  // Filtering happens in the browser; reload only on invalidate or after a minute.
-  staleTime: 60_000,
   head: () => ({ meta: [{ title: "Rak Saya — Glosa" }] }),
-  errorComponent: ShelfLoadError,
   component: ShelfPage,
 })
 
 function ShelfPage() {
-  const { books, usage, offline } = Route.useLoaderData()
-  const { user } = Route.useRouteContext()
+  const { books, usage, offline } = lobi.useLoaderData()
   const search = Route.useSearch()
   const router = useRouter()
   const local = useLocalShelf()
@@ -48,10 +43,8 @@ function ShelfPage() {
     <Button onClick={() => setUploading(true)}>Bawa buku</Button>
   )
 
-  useShelfSnapshot(user.id, books, usage, offline)
-
   return (
-    <main className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-5 p-4 sm:p-8">
+    <LobbyPopup label="Rak Saya" className="max-w-5xl" bodyClassName="gap-5">
       <ShelfHeader
         usage={usage}
         actions={books.length > 0 ? bringButton : undefined}
@@ -123,6 +116,6 @@ function ShelfPage() {
         )}
       </BookDetail>
       <UploadPanel open={uploading} onOpenChange={setUploading} usage={usage} />
-    </main>
+    </LobbyPopup>
   )
 }
