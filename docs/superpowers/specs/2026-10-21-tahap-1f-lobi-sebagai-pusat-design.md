@@ -53,7 +53,7 @@ Isi `LobbyPage` sekarang dipindah ke `src/components/lobby/LobbyStage.tsx`:
 - state lobi: buku terpilih, posisi Anda, upload, troli, dan petunjuk baca.
 
 Prop baru:
-- `popup: boolean`. Kalau `true`, adegan dibekukan (§4.4), panel lobi dibuat `inert`, dan di HP seluruh stage disembunyikan (§5).
+- `popup: boolean`. Kalau `true`, adegan dibekukan (§4.5) dan disembunyikan dari keyboard, panel lobi tidak digambar (§4.4), dan di HP seluruh stage disembunyikan (§5).
 
 ### `MemberShell`
 
@@ -86,7 +86,7 @@ Semua jalan yang sudah ada tetap berlaku karena semuanya link ke alamat:
 ### 4.4 Fokus dan aksesibilitas
 
 - **Saat popup terbuka.** Fokus pindah ke `h1` pertama di dalam popup, yang diberi `tabIndex={-1}`.
-- **Lobi di belakang.** `LobbyScene` (termasuk `HotspotLayer` di dalamnya), notifikasi lobi, dan `aside.lobby-side` mendapat atribut `inert`, jadi tidak bisa di-Tab atau diklik dan tidak terbaca pembaca layar.
+- **Lobi di belakang.** `LobbyScene` (termasuk `HotspotLayer` di dalamnya) dibungkus elemen ber-`inert` dan `aria-hidden`, jadi tidak bisa di-Tab atau diklik dan tidak terbaca pembaca layar. Panel lobi (`aside.lobby-side`, notifikasi, gelembung, `ContinueSheet`, tombol "Bawa buku") tidak digambar sama sekali: isinya mengulang teks dan tombol Rak, misalnya judul buku dan pemberitahuan offline. State-nya ada di `LobbyStage`, jadi tidak hilang.
 - **Yang tetap aktif.** Top bar dan menu kiri tetap bisa dipakai, jadi pengguna bisa pindah langsung dari Rak ke Pengaturan.
 - **Pencarian top bar.** Kalau hasil pencarian dipilih saat popup terbuka, popup ditutup (`/lobby`) dan detail buku dibuka di lobi seperti biasa.
 - **Dialog lain.** Dialog yang sudah ada (detail buku di Rak, `UploadPanel`, konfirmasi hapus akun) tetap memakai portal Base UI, jadi muncul di atas popup.
@@ -117,7 +117,7 @@ Semua jalan yang sudah ada tetap berlaku karena semuanya link ke alamat:
 
 ## 7. Offline dan error
 
-- **Offline.** `loadShelf` sudah membaca salinan offline. Membuka `/shelf` saat offline di desktop menampilkan popup di atas lobi dengan notifikasi offline yang sama.
+- **Offline.** `loadShelf` sudah membaca salinan offline. Membuka `/shelf` saat offline di desktop menampilkan popup di atas lobi. Notifikasi offline tampil di dalam popup; notifikasi lobi baru muncul lagi setelah popup ditutup.
 - **Error.** Kalau `loadShelf` gagal, `ShelfLoadError` menggantikan seluruh layout, sama seperti perilaku halaman lobi dan Rak sekarang.
 
 ## 8. Alternatif yang ditolak
@@ -133,7 +133,7 @@ Semua jalan yang sudah ada tetap berlaku karena semuanya link ke alamat:
 - **`LobbyPopup`.** Tombol ✕, Esc, dan klik area redup memanggil navigasi ke `/lobby`. Fokus pindah ke `h1` di dalamnya saat popup dipasang. Esc diabaikan kalau ada dialog lain yang terbuka.
 - **`LobbyTopBar`.** Menu akun tertutup saat item dipilih, saat klik di luar, dan saat Esc ditekan.
 - **`MemberShell`.** `data-floating` aktif untuk `/lobby`, `/shelf`, dan `/settings`, dan tidak aktif untuk rute lain.
-- **Stage.** `setPaused` menghentikan dan melanjutkan loop render (uji pada bagian stage yang tidak butuh WebGL, seperti uji `motion` dan `quality` yang ada).
+- **Jeda.** `paused` diteruskan dari `LobbyScene` ke `LobbyCanvas` ke `stage.setPaused` (stage di-mock, karena jsdom tidak punya WebGL).
 
 ### E2E desktop (1280 × 720)
 
@@ -150,4 +150,4 @@ Semua jalan yang sudah ada tetap berlaku karena semuanya link ke alamat:
 ### Tes yang sudah ada
 
 - `shelf.spec.ts`, `auth.spec.ts` (Pengaturan), `offline.spec.ts`, dan `reader.spec.ts` berjalan di viewport desktop. Selektornya disesuaikan kalau ada yang bergantung pada `<main>` halaman lama.
-- Job `e2e-3d` di CI tetap menjaga adegan, termasuk jeda dan lanjut.
+- Job `e2e-3d` di CI tetap menjaga adegan. Test baru di sana memastikan canvas WebGL yang sama masih ada setelah Rak dibuka lalu ditutup.
