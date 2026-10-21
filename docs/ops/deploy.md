@@ -202,6 +202,8 @@ Di `https://status.nuvrastudio.space`, tambah tiga monitor:
 | Supabase dev | HTTP(s) | URL `https://<dev-ref>.supabase.co/auth/v1/health`, interval 300 detik |
 | Sapuan dev | Push | *Heartbeat Interval* 3900 detik (65 menit) |
 
+Untuk kedua monitor HTTP(s), isi *Retries* `2`. Di Uptime Kuma v2, monitor baru dibuat dengan *Retries* 0, sehingga satu kali gagal saja langsung mengirim peringatan.
+
 Salin **Push URL** monitor Sapuan dev ke `KUMA_PUSH_URL` di `/opt/glosa-dev/.env`. Monitor Supabase juga menjaga proyek gratis tetap aktif, karena proyek gratis dijeda setelah 7 hari tanpa aktivitas.
 
 Notifikasi email Kuma (Settings → Notifications) butuh SMTP. Isi setelah Resend siap (8.3).
@@ -210,8 +212,8 @@ Notifikasi email Kuma (Settings → Notifications) butuh SMTP. Isi setelah Resen
 
 ### 5.1 Memicu
 
-Push ke `main`, atau jalankan ulang run CI terakhir di `main` (Actions → run → *Re-run all jobs*). Urutannya:
-1. `test`;
+Push ke `main`, atau jalankan ulang run CI terakhir di `main` (Actions → run → *Re-run all jobs*). Commit yang hanya mengubah `docs/` atau berkas `.md` tidak menjalankan CI, jadi juga tidak deploy. Urutannya:
+1. `test` dan `e2e-3d` (test lobi 3D), berjalan bersamaan;
 2. `image` (build, smoke test, unggah ke GHCR);
 3. `deploy-dev`, langsung tanpa menunggu.
 

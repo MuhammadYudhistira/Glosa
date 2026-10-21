@@ -12,6 +12,17 @@ export type TestMember = {
 /** Every E2E email contains "e2e-" so global teardown can find and delete it. */
 export const E2E_MARKER = "e2e-"
 
+/**
+ * Emails also carry the run's id (set in playwright.config.ts), so a run's
+ * teardown can tell its own members from those of a run still going on in
+ * another CI job.
+ */
+export function runMarker(): string {
+  const run = process.env.E2E_RUN
+  if (!run) throw new Error("E2E_RUN is not set: run through playwright test")
+  return `${E2E_MARKER}${run}-`
+}
+
 export function admin() {
   return createClient(
     requireEnv("SUPABASE_URL"),
@@ -26,8 +37,8 @@ export function newMember(emailFor?: (id: string) => string): TestMember {
   const id = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`
   return {
     email: emailFor
-      ? emailFor(`${E2E_MARKER}${id}`)
-      : `${E2E_MARKER}${id}@glosa.test`,
+      ? emailFor(`${runMarker()}${id}`)
+      : `${runMarker()}${id}@glosa.test`,
     username: `e2e_${id}`.slice(0, 20),
     name: "Anggota Uji",
     password: "rahasia-123",

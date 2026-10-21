@@ -2,6 +2,9 @@ import { existsSync } from "node:fs"
 import { defineConfig, devices } from "@playwright/test"
 
 if (existsSync(".env.local")) process.loadEnvFile(".env.local")
+// One id per run, inherited by the workers: members' emails carry it so the
+// global teardown removes only this run's members (e2e/helpers/members.ts).
+process.env.E2E_RUN ??= Date.now().toString(36)
 
 // The service worker exists only in the production build (plan 1C, Task 11).
 const PREVIEW_URL = "http://localhost:4173"
@@ -54,6 +57,7 @@ export default defineConfig({
     {
       name: "lobby-3d",
       // SwiftShader is CPU-heavy: in parallel it would starve the other projects.
+      // CI runs it in its own job instead, with --no-deps.
       dependencies: ["desktop", "mobile", "offline"],
       // One camera-bounds run can take up to 25 min: a retry could pass the
       // CI job's 50-min limit.

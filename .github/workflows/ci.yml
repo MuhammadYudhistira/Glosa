@@ -3,7 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore: ["docs/**", "**/*.md"]
   pull_request:
+    paths-ignore: ["docs/**", "**/*.md"]
 
 env:
   IMAGE: ghcr.io/muhammadyudhistira/glosa
@@ -59,7 +61,8 @@ jobs:
           } > .env.local
       - run: npm run test:db
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      # The 3D lobby runs beside this job, in e2e-3d.
+      - run: npm run test:e2e -- --project=desktop --project=mobile --project=offline
         env:
           CI: "true"
       - if: failure()
@@ -69,9 +72,44 @@ jobs:
           path: playwright-report
           retention-days: 7
 
+  # The 3D lobby is drawn on the CPU (SwiftShader) and takes about half the E2E
+  # time, so it runs beside `test` instead of after it. No concurrency group:
+  # its members are its own, and its teardown removes only those
+  # (e2e/global-teardown.ts).
+  e2e-3d:
+    runs-on: ubuntu-latest
+    environment: dev
+    # One camera-bounds run can take up to 25 min (playwright.config.ts).
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Write .env.local from secrets
+        run: |
+          {
+            echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}"
+            echo "SUPABASE_PUBLISHABLE_KEY=${{ secrets.SUPABASE_PUBLISHABLE_KEY }}"
+            echo "SUPABASE_SECRET_KEY=${{ secrets.SUPABASE_SECRET_KEY }}"
+            echo "SITE_URL=http://localhost:3000"
+          } > .env.local
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e -- --project=lobby-3d --no-deps
+        env:
+          CI: "true"
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-3d
+          path: playwright-report
+          retention-days: 7
+
   # Built and smoke-tested on every run; pushed to GHCR only from main.
   image:
-    needs: test
+    needs: [test, e2e-3d]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

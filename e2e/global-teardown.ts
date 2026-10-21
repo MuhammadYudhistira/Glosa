@@ -1,10 +1,19 @@
 import { existsSync } from "node:fs"
-import { E2E_MARKER, admin } from "./helpers/members"
+import { E2E_MARKER, admin, runMarker } from "./helpers/members"
 
-/** Deletes every E2E user (emails contain the marker) and their book files. */
+// Longer than any run can last (CI jobs stop at 50 min), so a member this old
+// never belongs to a run still going on in another CI job.
+const LEFT_BEHIND_AFTER_MS = 3 * 60 * 60 * 1000
+
+/**
+ * Deletes this run's E2E users, plus those earlier runs left behind, and
+ * their book files.
+ */
 export default async function globalTeardown() {
   if (existsSync(".env.local")) process.loadEnvFile(".env.local")
   const client = admin()
+  const own = runMarker()
+  const leftBehind = Date.now() - LEFT_BEHIND_AFTER_MS
   const stale: Array<string> = []
   for (let page = 1; ; page++) {
     const { data, error } = await client.auth.admin.listUsers({
@@ -13,7 +22,13 @@ export default async function globalTeardown() {
     })
     if (error) throw error
     for (const user of data.users) {
-      if (user.email?.includes(E2E_MARKER)) stale.push(user.id)
+      if (!user.email?.includes(E2E_MARKER)) continue
+      if (
+        user.email.includes(own) ||
+        Date.parse(user.created_at) < leftBehind
+      ) {
+        stale.push(user.id)
+      }
     }
     if (data.users.length < 1000) break
   }
@@ -28,7 +43,7 @@ export default async function globalTeardown() {
   }
   if (failed.length > 0) {
     throw new Error(
-      `E2E teardown could not clean up ${failed.length} user(s), retry on the next run: ${failed.join(", ")}`
+      `E2E teardown could not clean up ${failed.length} user(s), a run 3 hours later removes them: ${failed.join(", ")}`
     )
   }
 }
