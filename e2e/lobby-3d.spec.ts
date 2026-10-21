@@ -123,3 +123,26 @@ test("with reduced motion the 3D lobby stays still", async ({ page }) => {
   await expect(scene).toHaveAttribute("data-quality", "diam")
   await expect(scene.locator("canvas")).toBeVisible({ timeout: 120_000 })
 })
+
+test("the 3D scene stays loaded behind Rak Saya", async ({ page }) => {
+  test.setTimeout(300_000)
+  await signInAndOnboard(page, await createConfirmedMember())
+  const canvas = sceneOf(page).locator("canvas")
+  await expect(canvas).toBeVisible({ timeout: 120_000 })
+  await canvas.evaluate((element) => {
+    element.dataset.e2eMark = "1"
+  })
+
+  await page
+    .getByRole("navigation", { name: "Navigasi anggota" })
+    .getByRole("link", { name: "Rak Saya" })
+    .click()
+  await expect(page.getByRole("main", { name: "Rak Saya" })).toBeVisible()
+  await page.keyboard.press("Escape")
+  await expect(page).toHaveURL(/\/lobby$/)
+  // The same canvas: WebGL was not started again (spec 1F §3).
+  await expect(sceneOf(page).locator("canvas")).toHaveAttribute(
+    "data-e2e-mark",
+    "1"
+  )
+})
