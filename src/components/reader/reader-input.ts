@@ -59,8 +59,11 @@ export function createWheelPager() {
   }
 }
 
-/** Arrow keys follow the page direction (RTL books too); PageUp/PageDown follow reading order. */
-export function keyMove(key: string): ReaderMove | null {
+/**
+ * Arrow keys follow the page direction (RTL books too); PageUp/PageDown and
+ * Space (Shift+Space back) follow reading order.
+ */
+export function keyMove(key: string, shift = false): ReaderMove | null {
   switch (key) {
     case "ArrowLeft":
       return "left"
@@ -70,9 +73,22 @@ export function keyMove(key: string): ReaderMove | null {
       return "prev"
     case "PageDown":
       return "next"
+    case " ":
+      return shift ? "prev" : "next"
     default:
       return null
   }
+}
+
+/** Space presses a focused button or link instead of turning the page. */
+export function isControlTarget(target: EventTarget | null): boolean {
+  const element = target as { closest?: (selector: string) => unknown } | null
+  return (
+    typeof element?.closest === "function" &&
+    element.closest(
+      "button, a[href], summary, [role='button'], [role='link'], [role='checkbox'], [role='radio'], [role='switch'], [role='tab'], [role='menuitem']"
+    ) !== null
+  )
 }
 
 /**

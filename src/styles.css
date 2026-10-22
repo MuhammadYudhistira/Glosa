@@ -360,7 +360,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reader-bar {
+  .reader-bar,
+  .reader-turn {
     transition: none;
   }
 }
@@ -710,6 +711,31 @@
   }
   .reader-slider {
     accent-color: var(--color-mint);
+  }
+  /* The way a click on the page's edge turns it (mouse only). */
+  .reader-turn {
+    position: absolute;
+    top: 50%;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, currentColor 8%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    translate: 0 -50%;
+    transition: opacity 150ms ease;
+  }
+  .reader-turn[data-shown="true"] {
+    opacity: 0.7;
+  }
+  .reader-turn-left {
+    left: max(0.75rem, env(safe-area-inset-left));
+  }
+  .reader-turn-right {
+    right: max(0.75rem, env(safe-area-inset-right));
   }
   .reader-toast,
   .reader-note {

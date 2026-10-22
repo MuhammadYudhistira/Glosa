@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   createWheelPager,
+  isControlTarget,
   isTypingTarget,
   keyMove,
   swipeVelocity,
@@ -27,6 +28,27 @@ describe("keyMove", () => {
     expect(keyMove("PageUp")).toBe("prev")
     expect(keyMove("PageDown")).toBe("next")
     expect(keyMove("a")).toBeNull()
+  })
+
+  it("reads on with Space and goes back with Shift+Space", () => {
+    expect(keyMove(" ")).toBe("next")
+    expect(keyMove(" ", true)).toBe("prev")
+    expect(keyMove("ArrowRight", true)).toBe("right")
+  })
+})
+
+describe("isControlTarget", () => {
+  it("is true for buttons and links, which Space presses", () => {
+    const target = {
+      closest: (s: string) => (s.includes("button") ? {} : null),
+    }
+    expect(isControlTarget(target as unknown as EventTarget)).toBe(true)
+  })
+
+  it("is false for the text and for objects without closest", () => {
+    const plain = { closest: () => null }
+    expect(isControlTarget(plain as unknown as EventTarget)).toBe(false)
+    expect(isControlTarget(null)).toBe(false)
   })
 })
 

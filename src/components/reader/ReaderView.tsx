@@ -1,5 +1,6 @@
 import type { FoliateRenderer, RelocateDetail, View } from "foliate-js/view.js"
-import { useEffect, useRef } from "react"
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 import { type OpenedBook, openBookFile } from "@/lib/epub/open-book"
 import {
   type FontSources,
@@ -12,7 +13,9 @@ import type { TocItem } from "@/lib/reader-types"
 import { loadReaderFonts } from "./reader-fonts"
 import {
   type ReaderMove,
+  type TapAction,
   createWheelPager,
+  isControlTarget,
   isTypingTarget,
   keyMove,
   swipeVelocity,
@@ -113,6 +116,19 @@ function snapByWholeSwipe(renderer: FoliateRenderer) {
   }
 }
 
+/**
+ * foliate slides from page to page while the renderer is "animated"; it stays
+ * still for members who asked their device for less motion. Returns a stop.
+ */
+function animateUnlessReduced(renderer: FoliateRenderer): () => void {
+  if (typeof window.matchMedia !== "function") return () => {}
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)")
+  const apply = () => renderer.toggleAttribute("animated", !reduce.matches)
+  apply()
+  reduce.addEventListener("change", apply)
+  return () => reduce.removeEventListener("change", apply)
+}
+
 function toLocation(detail: RelocateDetail): ReaderLocation {
   const label = detail.tocItem?.label?.trim()
   return {
@@ -142,6 +158,7 @@ export function ReaderView({
   const fontsRef = useRef<FontSources | null>(null)
   // Read once on purpose: the start position applies only when a file opens.
   const startRef = useRef(start)
+  const [hoverTurn, setHoverTurn] = useState<"left" | "right" | null>(null)
 
   useEffect(() => {
     callbacksRef.current = callbacks
@@ -158,14 +175,76 @@ export function ReaderView({
     const call = () => callbacksRef.current
     const interact = () => call().onInteract()
     let swipes: ReturnType<typeof snapByWholeSwipe> | null = null
+    let stopAnimating = () => {}
     const wheelPager = createWheelPager()
+    // The section shown now, whose cursor follows the mouse.
+    let sectionDoc: Document | null = null
 
-    const move = async (direction: ReaderMove) => {
+    const zoneAt = (x: number): TapAction => {
+      const box = host.getBoundingClientRect()
+      return tapAction(x, box.left, box.width)
+    }
+
+    /** A click or tap at x (in this window) turns the page or shows the frame. */
+    const tapAt = (x: number) => {
+      const action = zoneAt(x)
+      if (action === "menu") {
+        call().onTapMenu()
+        return
+      }
+      interact()
+      void move(action)
+    }
+
+    /** A mouse over the outer 30% shows which way a click there turns. */
+    const hoverAt = (x: number | null) => {
+      const zone = x === null ? null : zoneAt(x)
+      const turn = zone === "left" || zone === "right" ? zone : null
+      const cursor = turn ? "pointer" : ""
+      host.style.cursor = cursor
+      if (sectionDoc) sectionDoc.documentElement.style.cursor = cursor
+      setHoverTurn(turn)
+    }
+
+    // Clicks beside the book's frame: on wide screens foliate leaves a band
+    // on each side outside it. Clicks inside the frame stay in its document.
+    const onHostClick = (event: MouseEvent) => {
+      if (!event.defaultPrevented) tapAt(event.clientX)
+    }
+    const onHostPointerMove = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") hoverAt(event.clientX)
+    }
+    const onHostPointerLeave = () => hoverAt(null)
+
+    const turn = async (direction: ReaderMove) => {
       if (!view) return
       if (direction === "left") await view.goLeft()
       else if (direction === "right") await view.goRight()
       else if (direction === "prev") await view.prev()
       else await view.next()
+    }
+
+    // foliate drops a turn asked for while the last one still slides, so a
+    // quick second press or tap waits for it instead (the latest one only).
+    let turning = false
+    let queued: ReaderMove | null = null
+    const takeQueued = () => {
+      const next = queued
+      queued = null
+      return next
+    }
+    const move = async (direction: ReaderMove) => {
+      if (turning) {
+        queued = direction
+        return
+      }
+      turning = true
+      try {
+        for (let next: ReaderMove | null = direction; next; next = takeQueued())
+          await turn(next)
+      } finally {
+        turning = false
+      }
     }
 
     let tornDown = false
@@ -179,6 +258,10 @@ export function ReaderView({
       host.removeEventListener("pointerdown", interact)
       host.removeEventListener("wheel", interact)
       host.removeEventListener("wheel", onWheel)
+      host.removeEventListener("click", onHostClick)
+      host.removeEventListener("pointermove", onHostPointerMove)
+      host.removeEventListener("pointerleave", onHostPointerLeave)
+      stopAnimating()
       if (swipes) {
         host.removeEventListener("touchstart", swipes.touchstart)
         host.removeEventListener("touchend", swipes.touchend)
@@ -193,10 +276,11 @@ export function ReaderView({
     }
 
     const onKey = (event: KeyboardEvent) => {
-      const direction = keyMove(event.key)
+      const direction = keyMove(event.key, event.shiftKey)
       if (!direction || event.defaultPrevented) return
       if (event.altKey || event.ctrlKey || event.metaKey) return
       if (isTypingTarget(event.target)) return
+      if (event.key === " " && isControlTarget(event.target)) return
       event.preventDefault()
       interact()
       void move(direction)
@@ -211,10 +295,13 @@ export function ReaderView({
           : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
             ? host.clientHeight
             : 1
+      // timeStamp counts from its own window's start, and every section has
+      // its own frame: made absolute, times from any of them compare.
+      const origin = (event.view ?? window).performance.timeOrigin
       const direction = wheelPager(
         event.deltaX * unit,
         event.deltaY * unit,
-        event.timeStamp
+        origin + event.timeStamp
       )
       if (!direction) return
       interact()
@@ -231,19 +318,22 @@ export function ReaderView({
         doc.addEventListener("touchstart", swipes.touchstart, { passive: true })
         doc.addEventListener("touchend", swipes.touchend)
       }
+      // The frame's own coordinates, moved into this window's.
+      const inWindow = (x: number) =>
+        x + (doc.defaultView?.frameElement?.getBoundingClientRect().left ?? 0)
       doc.addEventListener("click", (click) => {
         // foliate follows links itself and marks those clicks handled.
         if (click.defaultPrevented || doc.getSelection()?.toString()) return
-        const frameLeft =
-          doc.defaultView?.frameElement?.getBoundingClientRect().left ?? 0
-        const box = host.getBoundingClientRect()
-        const action = tapAction(frameLeft + click.clientX, box.left, box.width)
-        if (action === "menu") {
-          call().onTapMenu()
-          return
-        }
-        interact()
-        void move(action)
+        tapAt(inWindow(click.clientX))
+      })
+      doc.addEventListener("pointermove", (pointer) => {
+        if (pointer.pointerType !== "mouse") return
+        sectionDoc = doc
+        hoverAt(inWindow(pointer.clientX))
+      })
+      // Leaving the document altogether: to the bars, a panel or the window's edge.
+      doc.addEventListener("pointerout", (pointer) => {
+        if (!pointer.relatedTarget) hoverAt(null)
       })
     }
 
@@ -256,6 +346,9 @@ export function ReaderView({
     host.addEventListener("pointerdown", interact)
     host.addEventListener("wheel", interact, { passive: true })
     host.addEventListener("wheel", onWheel, { passive: true })
+    host.addEventListener("click", onHostClick)
+    host.addEventListener("pointermove", onHostPointerMove)
+    host.addEventListener("pointerleave", onHostPointerLeave)
 
     void (async () => {
       try {
@@ -278,6 +371,7 @@ export function ReaderView({
           return
         }
         skipLayoutWhileLoading(view.renderer)
+        stopAnimating = animateUnlessReduced(view.renderer)
         // Before init, which loads the first section and so fires "load".
         swipes = snapByWholeSwipe(view.renderer)
         host.addEventListener("touchstart", swipes.touchstart, {
@@ -328,12 +422,32 @@ export function ReaderView({
     if (view && fonts) applySettings(view, settings, fonts)
   }, [settings])
 
+  const colors = THEME_COLORS[settings.theme]
   return (
-    <section
-      ref={hostRef}
-      aria-label="Isi buku"
-      className="reader-host"
-      style={{ background: THEME_COLORS[settings.theme].background }}
-    />
+    <>
+      <section
+        ref={hostRef}
+        aria-label="Isi buku"
+        className="reader-host"
+        style={{ background: colors.background }}
+      />
+      {/* Mouse only, and a hint for clicks; keys and taps turn pages as well. */}
+      <div
+        aria-hidden
+        className="reader-turn reader-turn-left"
+        data-shown={hoverTurn === "left"}
+        style={{ color: colors.text }}
+      >
+        <ChevronLeftIcon />
+      </div>
+      <div
+        aria-hidden
+        className="reader-turn reader-turn-right"
+        data-shown={hoverTurn === "right"}
+        style={{ color: colors.text }}
+      >
+        <ChevronRightIcon />
+      </div>
+    </>
   )
 }

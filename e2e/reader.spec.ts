@@ -169,17 +169,76 @@ test("a swipe or the wheel turns exactly one page", async ({
     await swipe(page, width * 0.25, width * 0.25 + 150, y)
     await expect.poll(() => pageInSection(page)).toBe(start)
   } else {
-    await page.mouse.move(width / 2, y)
-    // One trackpad flick: a burst of shrinking deltas.
-    for (let event = 0; event < 30; event++) {
-      await page.mouse.wheel(0, Math.max(2, 80 * 0.85 ** event))
-      await page.waitForTimeout(16)
-    }
+    // One trackpad flick: a burst of shrinking deltas, a frame apart. Sent
+    // from the page itself, as Playwright's own round trips can stall for
+    // longer than a pause between two gestures.
+    await page.evaluate(async () => {
+      const view = document.querySelector("foliate-view") as unknown as {
+        renderer: { getContents: () => Array<{ doc: Document }> }
+      }
+      const doc = view.renderer.getContents()[0].doc
+      const Wheel = (doc.defaultView as unknown as typeof window).WheelEvent
+      for (let event = 0; event < 30; event++) {
+        doc.body.dispatchEvent(
+          new Wheel("wheel", {
+            deltaY: Math.max(2, 80 * 0.85 ** event),
+            bubbles: true,
+          })
+        )
+        await new Promise((resolve) => setTimeout(resolve, 16))
+      }
+    })
     await expect.poll(() => pageInSection(page)).toBe(start + 1)
+    await page.mouse.move(width / 2, y)
     await page.waitForTimeout(300)
     await page.mouse.wheel(0, -120)
     await expect.poll(() => pageInSection(page)).toBe(start)
   }
+})
+
+test("on a wide screen the edges show and turn, Space reads on, and pages slide", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, "Mouse, keyboard and a wide screen")
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  const { bookId } = await memberWithBook(page)
+  await page.goto(`/read/${bookId}`)
+  await bookShown(page)
+  // foliate's shadow root is closed to locators.
+  const slides = () =>
+    page.evaluate(() =>
+      (
+        document.querySelector("foliate-view") as unknown as {
+          renderer: Element
+        }
+      ).renderer.hasAttribute("animated")
+    )
+  expect(await slides()).toBe(true)
+  await page.keyboard.press("PageDown")
+  await expect.poll(() => pageInSection(page)).toBeGreaterThan(1)
+  const start = await pageInSection(page)
+
+  await page.keyboard.press("Space")
+  await expect.poll(() => pageInSection(page)).toBe(start + 1)
+  await page.keyboard.press("Shift+Space")
+  await expect.poll(() => pageInSection(page)).toBe(start)
+
+  const right = page.locator(".reader-turn-right")
+  await expect(right).toHaveAttribute("data-shown", "false")
+  await page.mouse.move(1920 * 0.9, 540)
+  await expect(right).toHaveAttribute("data-shown", "true")
+  await page.mouse.move(1920 * 0.5, 540)
+  await expect(right).toHaveAttribute("data-shown", "false")
+
+  // The far band lies outside the book's frame on a screen this wide.
+  await page.mouse.click(1920 - 20, 540)
+  await expect.poll(() => pageInSection(page)).toBe(start + 1)
+  await page.mouse.click(20, 540)
+  await expect.poll(() => pageInSection(page)).toBe(start)
+
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await expect.poll(slides).toBe(false)
 })
 
 test("display settings follow the member", async ({ page }) => {
