@@ -36,7 +36,8 @@ Rilis publik dilakukan **setelah semua tahap selesai**. Selama pengembangan, 3�
 | Tahap | Isi | Spec |
 |---|---|---|
 | **1** | **Fondasi reader:** auth, upload, kuota, lobi perpustakaan, reader, sinkronisasi, offline | **Dokumen ini** |
-| 2 | Ketuk kata: lematisasi, kamus EN–ID di Postgres, popup arti, simpan kata | Terpisah |
+| 2 | Ketuk kata: lematisasi, kamus EN–ID di Postgres, popup arti, simpan kata, halaman Kosakata. Juga anotasi (highlight, catatan, bookmark) dan kenyamanan baca (catatan kaki, tombol Kembali, sisa waktu, perataan, dua halaman, layar tetap menyala). | [Tahap 2](2026-10-22-tahap-2-ketuk-kata-design.md) |
+| 2D | Cari teks di dalam buku | Terpisah |
 | 3 | Flashcard (FSRS) + gamifikasi: streak, level, statistik kosakata, % pemahaman | Terpisah |
 | 4 | Sosial: katalog `works` (ISBN / Open Library), review + level kesulitan, feed global, suka, moderasi, pembaca online. Subjek dari Open Library juga memperbaiki tebakan genre, tapi tidak pernah menimpa genre yang dipilih user. | Terpisah |
 | 5 | Monetisasi: paket Free/Pro, Midtrans/Xendit, batas harian, AI konteks (LLM) | Terpisah |
@@ -65,7 +66,7 @@ Keputusan yang sudah diambil untuk tahap selanjutnya (dicatat supaya desain taha
 
 ### Tidak termasuk (masuk tahap lain)
 
-Ketuk kata, kosakata, flashcard, streak/level, review, feed, pembaca online, tebakan genre via Open Library, highlight/catatan, pencarian teks di dalam buku, pembayaran, dan AI.
+Ketuk kata, kosakata, dan highlight/catatan (tahap 2); pencarian teks di dalam buku (tahap 2D); flashcard, streak/level, review, feed, pembaca online, tebakan genre via Open Library, pembayaran, dan AI.
 
 Elemen UI untuk fitur-fitur ini **tidak ditampilkan** di tahap 1. Item menu "Kosakata" dan "Papan Ulasan" baru muncul di tahapnya masing-masing. Tidak ada tombol mati atau label "segera hadir".
 
