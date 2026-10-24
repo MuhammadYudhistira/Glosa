@@ -39,6 +39,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      annotations: {
+        Row: {
+          book_id: string
+          cfi: string
+          color: string | null
+          created_at: string
+          deleted_at: string | null
+          excerpt: string
+          id: string
+          kind: string
+          note: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          cfi: string
+          color?: string | null
+          created_at: string
+          deleted_at?: string | null
+          excerpt?: string
+          id: string
+          kind: string
+          note?: string
+          updated_at: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          cfi?: string
+          color?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          excerpt?: string
+          id?: string
+          kind?: string
+          note?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "annotations_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annotations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           id: boolean
@@ -422,6 +479,7 @@ export type Database = {
           epub_path: string
         }[]
       }
+      save_annotations: { Args: { p_entries: Json }; Returns: string[] }
       save_progress: {
         Args: {
           p_book_id: string
