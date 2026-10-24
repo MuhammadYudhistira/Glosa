@@ -50,7 +50,40 @@ describe("excerptOf", () => {
   })
 })
 
+describe("excerptOf lone surrogates", () => {
+  it("drops a lone surrogate from the book text", () => {
+    expect(excerptOf("a\uD83Db \uDE00c")).toBe("ab c")
+    expect(excerptOf("a😀b")).toBe("a😀b")
+  })
+})
+
 describe("annotation changes", () => {
+  it("cuts a long note without half an emoji", () => {
+    const highlight = newHighlight({
+      bookId: BOOK,
+      cfi: "epubcfi(/6/4)",
+      text: "a",
+    })
+    const note = edited(highlight, { note: `${"a".repeat(1999)}😀` }).note
+    expect(note.length).toBeLessThanOrEqual(2000)
+    expect(note).toBe("a".repeat(1999))
+    expect(isValidAnnotation({ ...highlight, note })).toBe(true)
+  })
+
+  it("gives a bookmark no colour and no note", () => {
+    const bookmark = newBookmark({
+      bookId: BOOK,
+      cfi: "epubcfi(/6/4)",
+      text: "a",
+    })
+    const same = edited(bookmark, { color: "green", note: "Catatan" })
+    expect(same).toMatchObject({ color: null, note: "" })
+    expect(Date.parse(same.updatedAt)).toBeGreaterThan(
+      Date.parse(bookmark.updatedAt)
+    )
+    expect(isValidAnnotation(same)).toBe(true)
+  })
+
   it("makes a valid yellow highlight from a selection", () => {
     const highlight = newHighlight({
       bookId: BOOK,

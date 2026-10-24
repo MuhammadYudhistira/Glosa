@@ -21,9 +21,17 @@ export function stamp(): string {
 // eslint-disable-next-line no-control-regex -- control characters are the point
 const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g
 
+// A lone surrogate would make the excerpt text Postgres jsonb refuses.
+const LONE_SURROGATE =
+  /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+
 /** Book text on one line, cut to `max` characters with an ellipsis. */
 export function excerptOf(text: string, max = MAX_EXCERPT_LENGTH): string {
-  const flat = text.replace(CONTROL, "").replace(/\s+/g, " ").trim()
+  const flat = text
+    .replace(CONTROL, "")
+    .replace(LONE_SURROGATE, "")
+    .replace(/\s+/g, " ")
+    .trim()
   if (flat.length <= max) return flat
   // A cut between the two halves of an emoji would leave half of it behind.
   const cut = flat.slice(0, max - 1).replace(/[\uD800-\uDBFF]$/, "")
@@ -72,13 +80,21 @@ export function edited(
   annotation: Annotation,
   changes: { color?: HighlightColor; note?: string }
 ): Annotation {
+  // A bookmark has no colour and no note.
+  if (annotation.kind === "bookmark") {
+    return { ...annotation, updatedAt: stamp() }
+  }
   return {
     ...annotation,
     color: changes.color ?? annotation.color,
     note:
       changes.note === undefined
         ? annotation.note
-        : changes.note.trim().slice(0, MAX_NOTE_LENGTH),
+        : // Cut first, without leaving half an emoji, then trim.
+          changes.note
+            .slice(0, MAX_NOTE_LENGTH)
+            .replace(/[\uD800-\uDBFF]$/, "")
+            .trim(),
     updatedAt: stamp(),
   }
 }

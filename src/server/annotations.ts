@@ -19,7 +19,10 @@ const fail = (code: string) => ({ ok: false as const, code })
 /** PostgREST answers at most this many rows at once. */
 const PAGE = 1000
 
-type AnnotationRow = Database["public"]["Tables"]["annotations"]["Row"]
+type AnnotationRow = Omit<
+  Database["public"]["Tables"]["annotations"]["Row"],
+  "user_id"
+>
 
 /** Postgres writes times its own way; the device compares and sends ISO times. */
 const iso = (time: string) => new Date(time).toISOString()
@@ -93,7 +96,7 @@ export const listAnnotationsFn = createServerFn({ method: "GET" })
       const { data: rows, error } = await supabase
         .from("annotations")
         .select(
-          "id, user_id, book_id, kind, cfi, color, note, excerpt, created_at, updated_at, deleted_at"
+          "id, book_id, kind, cfi, color, note, excerpt, created_at, updated_at, deleted_at"
         )
         .eq("book_id", data.bookId)
         .order("id")

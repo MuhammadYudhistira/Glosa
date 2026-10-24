@@ -44,6 +44,15 @@ describe("isValidAnnotation", () => {
     expect(isValidAnnotation({ ...highlight, note: "a\u0000b" })).toBe(false)
     expect(isValidAnnotation({ ...highlight, id: "not-a-uuid" })).toBe(false)
   })
+
+  it("refuses a lone surrogate but takes an emoji pair", () => {
+    for (const bad of ["a\uD83D", "\uDE00b", "a\uD83Db"]) {
+      expect(isValidAnnotation({ ...highlight, note: bad })).toBe(false)
+      expect(isValidAnnotation({ ...highlight, excerpt: bad })).toBe(false)
+    }
+    expect(isValidAnnotation({ ...highlight, note: "ok 😀" })).toBe(true)
+    expect(isValidAnnotation({ ...highlight, excerpt: "😀 ok" })).toBe(true)
+  })
 })
 
 describe("AnnotationSyncSchema", () => {
