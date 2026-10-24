@@ -25,7 +25,7 @@
 - **Label kelas kata:** `noun` kata benda, `verb` kata kerja, `adj` kata sifat, `adv` kata keterangan, `pron` kata ganti, `prep` kata depan, `conj` kata sambung, `interj` kata seru, `phrase` frasa.
 - **SQL:** tabel memakai RLS "baca milik sendiri"; penulisan lewat fungsi `security definer` dengan `set search_path = ''`; `revoke execute … from public, anon` lalu `grant` ke peran yang perlu (pola `save_progress`).
 - **Migrasi:** di-push ke proyek Supabase dev sebelum branch di-push (`npm run db:push`), lalu tipe dibuat ulang (`npm run db:types`). Lihat [`docs/ops/deploy.md`](../../ops/deploy.md) §7.
-- **Proyek dev dipakai bersama** oleh situs dev, CI, dan test. Test tidak boleh memanggil `dict_swap` (itu mengganti kamus asli) dan hanya boleh menulis baris kamus milik fixture-nya sendiri.
+- **Proyek dev dipakai bersama** oleh situs dev, CI, dan test. Test tidak boleh memanggil `dict_swap` atau `dict_staging_reset` dengan service role (itu mengganti kamus asli). Sebagai member boleh, hanya untuk membuktikan penolakan izin (`42501`), tanpa `p_force` dan hanya boleh menulis baris kamus milik fixture-nya sendiri.
 - **E2E:** kalau port 3000 dipegang aplikasi lain (cek `curl -sL localhost:3000/login | grep -o "<title>[^<]*"`), jalankan dengan config sementara di port 3100, jangan matikan server lain.
 
 ## Keputusan dan penyimpangan dari spec
