@@ -171,9 +171,12 @@ function ReaderPage() {
       // relocates without moving: on a touch screen it snaps to the page after
       // every touch, the tap on the word too. Then the meaning stays.
       if (next.cfi !== tappedAtCfi.current) setTap(null)
+      // Not moving is not reading on: a tap at a word's place (spec 2 §6.4)
+      // keeps the place read.
+      const moved = next.cfi !== shownCfi.current
       shownCfi.current = next.cfi
       setLocation(next)
-      if (!ready.current || !interacted.current) return
+      if (!ready.current || !interacted.current || !moved) return
       progressSync()
         .record({
           bookId,

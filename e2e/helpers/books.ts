@@ -56,6 +56,19 @@ export async function storedPercentage(bookId: string): Promise<number | null> {
   return data?.percentage ?? null
 }
 
+/** The place stored on the server for the book, as the reader sent it. */
+export async function storedPosition(
+  bookId: string
+): Promise<{ cfi: string; updatedAt: string } | null> {
+  const { data, error } = await admin()
+    .from("reading_progress")
+    .select("cfi, updated_at")
+    .eq("book_id", bookId)
+    .maybeSingle()
+  if (error) throw error
+  return data ? { cfi: data.cfi, updatedAt: data.updated_at } : null
+}
+
 export async function readerSettingsOf(userId: string): Promise<unknown> {
   const { data, error } = await admin()
     .from("profiles")

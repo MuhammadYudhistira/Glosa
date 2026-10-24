@@ -1,5 +1,5 @@
 import { type Page, expect, test } from "@playwright/test"
-import { seedBook } from "./helpers/books"
+import { seedBook, storedPosition } from "./helpers/books"
 import {
   createConfirmedMember,
   hydrated,
@@ -173,6 +173,57 @@ test("a tap beside the text still turns the page", async ({
   else await page.mouse.click(width - 4, height / 2)
   await expect.poll(pageNumber).toBeGreaterThan(before)
   await expect(page.getByRole("dialog")).toBeHidden()
+})
+
+test("a tap at a word's place does not save that place as read", async ({
+  page,
+  isMobile,
+}) => {
+  // On phones foliate relocates to the same place after every touch, the tap
+  // on a word too. That is not reading on: the place read stays (spec 2 §6.4).
+  test.skip(!isMobile, "the snap after a touch happens on touch screens")
+  test.setTimeout(90_000)
+  const { bookId } = await memberReading(page)
+  const shown = () =>
+    page.evaluate(
+      () =>
+        (
+          document.querySelector("foliate-view") as unknown as {
+            lastLocation: { cfi: string }
+          }
+        ).lastLocation.cfi
+    )
+  /** Waits until the server holds the place shown now, and returns it. */
+  const sent = async () => {
+    await expect
+      .poll(
+        async () => (await storedPosition(bookId))?.cfi === (await shown()),
+        { timeout: 20_000 }
+      )
+      .toBe(true)
+    return (await storedPosition(bookId))!
+  }
+  // The place after the first two pages becomes the word's place; the place
+  // read moves on from there.
+  const earlier = await sent()
+  await page.keyboard.press("PageDown")
+  await page.keyboard.press("PageDown")
+  await expect.poll(shown).not.toBe(earlier.cfi)
+  const read = await sent()
+
+  await page.goto(`/read/${bookId}?cfi=${encodeURIComponent(earlier.cfi)}`)
+  await expect(page).toHaveURL(new RegExp(`/read/${bookId}$`), {
+    timeout: 30_000,
+  })
+  const word = await tapWord(page, isMobile)
+  const popup = page.getByRole("dialog", { name: `Arti ${word}` })
+  await expect(popup).toBeVisible()
+  await page.keyboard.press("Escape")
+  await expect(popup).toBeHidden()
+  // Past the five-second pause before a position is sent. A fixed wait is
+  // the only way to show that something does not happen.
+  await page.waitForTimeout(7_000)
+  expect(await storedPosition(bookId)).toEqual(read)
 })
 
 test("a place that is not in the book opens the last one, and says so", async ({
