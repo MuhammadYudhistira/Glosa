@@ -39,15 +39,26 @@ export async function clearLocalData(): Promise<void> {
   }
 }
 
-/**
- * Makes this device's data belong to `userId`. Another member's leftovers
- * (from a session that ended without signing out) are wiped first.
- */
-export async function claimLocalData(userId: string): Promise<void> {
+async function claim(userId: string): Promise<void> {
   const owner = await localDb().meta.get(OWNER_KEY)
   if (owner?.value === userId) return
   await wipeMemberData()
   await localDb().meta.put({ key: OWNER_KEY, value: userId })
+}
+
+/** Claims in flight, so callers at the same time share one. */
+const claims = new Map<string, Promise<void>>()
+
+/**
+ * Makes this device's data belong to `userId`. Another member's leftovers
+ * (from a session that ended without signing out) are wiped first.
+ */
+export function claimLocalData(userId: string): Promise<void> {
+  const inFlight = claims.get(userId)
+  if (inFlight) return inFlight
+  const claiming = claim(userId).finally(() => claims.delete(userId))
+  claims.set(userId, claiming)
+  return claiming
 }
 
 /** Asks the browser to keep our storage, the first time a book is saved (spec §11). */

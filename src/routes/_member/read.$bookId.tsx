@@ -20,6 +20,7 @@ import { loadReader } from "@/components/reader/load-reader"
 import { useReaderSettings } from "@/components/reader/useReaderSettings"
 import { BookLoadError } from "@/lib/book-download"
 import { bookMessage } from "@/lib/book-messages"
+import { claimLocalData } from "@/lib/local/device"
 import { EpubError } from "@/lib/epub/zip-loader"
 import { MAX_CFI_LENGTH, jumpOffer, toPercentage } from "@/lib/progress"
 import { progressSync, useSyncStatus } from "@/lib/progress-sync-client"
@@ -92,6 +93,7 @@ function ReaderError({ error }: { error: unknown }) {
 
 function ReaderPage() {
   const data = Route.useLoaderData()
+  const { user } = Route.useRouteContext()
   const bookId = data.book.id
   const { settings, update } = useReaderSettings(data.settings, data.online)
   const syncStatus = useSyncStatus()
@@ -141,11 +143,24 @@ function ReaderPage() {
   }, [bookId, data.online, markOpened])
 
   // Waiting word changes go when a book opens (spec 2 §7), and the forms of
-  // words saved on other devices come in for the underline.
+  // words saved on other devices come in for the underline. Both wait for
+  // this device to be the member's: another member's queue must not go
+  // under this session.
   useEffect(() => {
-    void wordSync().flush()
-    if (data.online) void refreshSavedForms()
-  }, [data.online])
+    let live = true
+    claimLocalData(user.id)
+      .then(() => {
+        if (!live) return
+        void wordSync().flush()
+        if (data.online) void refreshSavedForms()
+      })
+      .catch((error: unknown) =>
+        console.error("claiming this device failed", error)
+      )
+    return () => {
+      live = false
+    }
+  }, [data.online, user.id])
 
   const onReady = useCallback(
     (info: ReaderReady) => {

@@ -120,4 +120,15 @@ describe("shelf snapshot and device owner", () => {
     expect(await localBookIds()).toEqual(new Set())
     expect(await loadShelfSnapshot("u1")).toBeNull()
   })
+
+  it("shares one claim between callers at the same time", async () => {
+    const first = claimLocalData("u1")
+    expect(claimLocalData("u1")).toBe(first)
+    await first
+    expect((await localDb().meta.get("owner"))?.value).toBe("u1")
+    // Once settled, the next call checks again.
+    const later = claimLocalData("u1")
+    expect(later).not.toBe(first)
+    await later
+  })
 })
