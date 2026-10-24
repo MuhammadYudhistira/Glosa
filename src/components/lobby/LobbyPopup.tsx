@@ -21,8 +21,8 @@ const FALLBACK_FOCUS = "[data-lobby-search]"
 const OWN_ESCAPE = '[role="dialog"], [role="alertdialog"], .lobby-topbar'
 
 /**
- * Rak Saya, Kosakata or Pengaturan: a glass panel over the lobby on desktop, a plain
- * page on phones. CSS decides which (spec 1F §4, §5); the focus and Escape
+ * Rak Saya, Kosakata or Pengaturan: a glass panel over the lobby on desktop,
+ * a plain page on phones. CSS decides which (spec 1F §4, §5); the focus and Escape
  * are handled on desktop only.
  */
 export function LobbyPopup({

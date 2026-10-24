@@ -5,6 +5,7 @@ import { ShelfLoadError } from "@/components/shelf/ShelfLoadError"
 import { Button } from "@/components/ui/button"
 import { VocabularyList } from "@/components/vocabulary/VocabularyList"
 import { VocabularyNotice } from "@/components/vocabulary/VocabularyNotice"
+import { claimLocalData } from "@/lib/local/device"
 import { replaceLocalWords } from "@/lib/local/saved-words"
 import { loadVocabulary } from "@/lib/vocabulary-loader"
 import type { SavedWord } from "@/lib/words/types"
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/_member/_lobi/vocabulary")({
 
 function VocabularyPage() {
   const loaded = Route.useLoaderData()
+  const { user } = Route.useRouteContext()
   const { books } = lobi.useLoaderData()
   const words = useLocalWords(loaded.words)
   const forms = useSavedForms()
@@ -40,15 +42,23 @@ function VocabularyPage() {
   // The server's list becomes this device's copy for offline (spec 2 §7).
   useEffect(() => {
     if (loaded.offline) return
-    replaceLocalWords(loaded.words)
+    let live = true
+    // On a hard load the loader skips the claim, so wait for it here: a wipe
+    // for another member must not land after the replace.
+    claimLocalData(user.id)
+      .then(() => replaceLocalWords(loaded.words))
       .then(() => {
+        if (!live) return
         wordSync().notify()
         return refreshSavedForms()
       })
       .catch((error: unknown) =>
         console.error("storing Kosakata on this device failed", error)
       )
-  }, [loaded])
+    return () => {
+      live = false
+    }
+  }, [loaded, user.id])
 
   useEffect(() => {
     if (!removed) return

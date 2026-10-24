@@ -24,7 +24,7 @@ import type { SessionUser } from "@/lib/session-types"
 import { useWideScreen } from "@/lib/use-wide-screen"
 
 /**
- * The lobby (spec 1D), mounted under /lobby, /shelf and /settings so the 3D
+ * The lobby (spec 1D), mounted under /lobby, /shelf, /vocabulary and /settings so the 3D
  * scene stays loaded. With a popup over it (spec 1F §3): the scene pauses
  * and hides from the keyboard, and the panels step aside; only the top bar
  * stays. On phones CSS hides it all, and WebGL stays off.
