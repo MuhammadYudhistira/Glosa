@@ -670,6 +670,10 @@
     position: absolute;
     inset: 0;
   }
+  /* Takes the focus back from the word popup; there is nothing to outline. */
+  .reader-host:focus {
+    outline: none;
+  }
   .reader-view {
     display: block;
     width: 100%;

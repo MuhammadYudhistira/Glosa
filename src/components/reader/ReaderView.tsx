@@ -10,6 +10,13 @@ import {
   readerCss,
 } from "@/lib/reader-settings"
 import type { TocItem } from "@/lib/reader-types"
+import {
+  type SavedForms,
+  markSavedWords,
+  showActiveWord,
+  whenIdle,
+} from "@/lib/words/saved-marks"
+import { wordAt } from "@/lib/words/word-at"
 import { loadReaderFonts } from "./reader-fonts"
 import {
   type ReaderMove,
@@ -21,6 +28,7 @@ import {
   swipeVelocity,
   tapAction,
 } from "./reader-input"
+import type { WordRect, WordTap } from "./WordPopup"
 
 export type ReaderLocation = {
   fraction: number
@@ -43,6 +51,12 @@ type Callbacks = {
   /** Called before every page turn the member makes. */
   onInteract: () => void
   onTapMenu: () => void
+  /** A tap on a word (spec 2 §6.1, step 4). */
+  onWord: (tap: WordTap) => void
+  /** A tap beside the words while a meaning shows: it closes, the page stays. */
+  onDismissWord: () => void
+  /** `target` is not a place in this book (spec 2 §8). */
+  onTargetMissing: () => void
   onError: (error: unknown) => void
 }
 
@@ -129,6 +143,20 @@ function animateUnlessReduced(renderer: FoliateRenderer): () => void {
   return () => reduce.removeEventListener("change", apply)
 }
 
+/** Whether the book has the place a CFI points at. */
+function canOpen(view: View, cfi: string): boolean {
+  try {
+    const resolved = view.resolveNavigation(cfi)
+    return (
+      resolved !== undefined &&
+      resolved.index >= 0 &&
+      resolved.index < view.book.sections.length
+    )
+  } catch {
+    return false
+  }
+}
+
 function toLocation(detail: RelocateDetail): ReaderLocation {
   const label = detail.tocItem?.label?.trim()
   return {
@@ -143,13 +171,21 @@ function toLocation(detail: RelocateDetail): ReaderLocation {
 export function ReaderView({
   file,
   start,
+  target,
   settings,
+  wordOpen,
+  savedForms,
   ...callbacks
 }: {
   file: Blob
   /** CFI to open at; null opens at the start of the text. */
   start: string | null
+  /** A place asked for (Kosakata's "Buka di buku"); opened instead of `start`. */
+  target: string | null
   settings: ReaderSettings
+  /** A word's meaning shows: a tap beside the words closes it. */
+  wordOpen: boolean
+  savedForms: SavedForms
 } & Callbacks) {
   const hostRef = useRef<HTMLElement>(null)
   const viewRef = useRef<View | null>(null)
@@ -158,11 +194,16 @@ export function ReaderView({
   const fontsRef = useRef<FontSources | null>(null)
   // Read once on purpose: the start position applies only when a file opens.
   const startRef = useRef(start)
+  const targetRef = useRef(target)
+  const wordOpenRef = useRef(wordOpen)
+  const savedFormsRef = useRef(savedForms)
   const [hoverTurn, setHoverTurn] = useState<"left" | "right" | null>(null)
 
   useEffect(() => {
     callbacksRef.current = callbacks
     settingsRef.current = settings
+    wordOpenRef.current = wordOpen
+    savedFormsRef.current = savedForms
   })
 
   useEffect(() => {
@@ -194,6 +235,14 @@ export function ReaderView({
       }
       interact()
       void move(action)
+    }
+
+    const cfiOf = (index: number, range: Range): string | null => {
+      try {
+        return view?.getCFI(index, range) ?? null
+      } catch {
+        return null
+      }
     }
 
     /** A mouse over the outer 30% shows which way a click there turns. */
@@ -309,7 +358,9 @@ export function ReaderView({
     }
 
     const onSectionLoad = (event: Event) => {
-      const { doc } = (event as CustomEvent<{ doc: Document }>).detail
+      const { doc, index } = (
+        event as CustomEvent<{ doc: Document; index: number }>
+      ).detail
       doc.addEventListener("keydown", onKey)
       doc.addEventListener("pointerdown", interact)
       doc.addEventListener("wheel", interact, { passive: true })
@@ -319,13 +370,39 @@ export function ReaderView({
         doc.addEventListener("touchend", swipes.touchend)
       }
       // The frame's own coordinates, moved into this window's.
-      const inWindow = (x: number) =>
-        x + (doc.defaultView?.frameElement?.getBoundingClientRect().left ?? 0)
+      const frameBox = () =>
+        doc.defaultView?.frameElement?.getBoundingClientRect()
+      const inWindow = (x: number) => x + (frameBox()?.left ?? 0)
+      const rectInWindow = (box: DOMRect): WordRect => ({
+        left: box.left + (frameBox()?.left ?? 0),
+        top: box.top + (frameBox()?.top ?? 0),
+        width: box.width,
+        height: box.height,
+      })
+      // In order (spec 2 §6.1): links (foliate), a selection, a word, then the zones.
       doc.addEventListener("click", (click) => {
         // foliate follows links itself and marks those clicks handled.
         if (click.defaultPrevented || doc.getSelection()?.toString()) return
+        const hit = wordAt(doc, click.clientX, click.clientY)
+        if (hit) {
+          showActiveWord(doc, hit.range)
+          call().onWord({
+            word: hit.word,
+            sentence: hit.sentence,
+            next: hit.next,
+            cfi: cfiOf(index, hit.range),
+            rect: rectInWindow(hit.range.getBoundingClientRect()),
+          })
+          return
+        }
+        if (wordOpenRef.current) {
+          call().onDismissWord()
+          return
+        }
         tapAt(inWindow(click.clientX))
       })
+      const win = doc.defaultView
+      if (win) whenIdle(win, () => markSavedWords(doc, savedFormsRef.current))
       doc.addEventListener("pointermove", (pointer) => {
         if (pointer.pointerType !== "mouse") return
         sectionDoc = doc
@@ -386,7 +463,10 @@ export function ReaderView({
         fontsRef.current = fonts
         applySettings(view, settingsRef.current, fonts)
         viewRef.current = view
-        const startAt = startRef.current
+        const wanted = targetRef.current
+        const reachable = wanted !== null && canOpen(view, wanted)
+        if (wanted !== null && !reachable) call().onTargetMissing()
+        const startAt = reachable ? wanted : startRef.current
         await view.init(
           startAt ? { lastLocation: startAt } : { showTextStart: true }
         )
@@ -397,8 +477,8 @@ export function ReaderView({
         const current = view
         call().onReady({
           controls: {
-            goTo: async (target) => {
-              await current.goTo(target)
+            goTo: async (place) => {
+              await current.goTo(place)
             },
             goToFraction: (fraction) => current.goToFraction(fraction),
             move,
@@ -422,12 +502,35 @@ export function ReaderView({
     if (view && fonts) applySettings(view, settings, fonts)
   }, [settings])
 
+  // The tapped word stays lit only while its meaning shows.
+  useEffect(() => {
+    if (wordOpen) return
+    for (const { doc } of viewRef.current?.renderer.getContents?.() ?? []) {
+      if (doc) showActiveWord(doc, null)
+    }
+  }, [wordOpen])
+
+  // A word saved or deleted: the open section underlines again.
+  useEffect(() => {
+    const contents = viewRef.current?.renderer.getContents?.() ?? []
+    const cancels = contents.flatMap(({ doc }) => {
+      const win = doc?.defaultView
+      return doc && win
+        ? [whenIdle(win, () => markSavedWords(doc, savedForms))]
+        : []
+    })
+    return () => {
+      for (const cancel of cancels) cancel()
+    }
+  }, [savedForms])
+
   const colors = THEME_COLORS[settings.theme]
   return (
     <>
       <section
         ref={hostRef}
         aria-label="Isi buku"
+        tabIndex={-1}
         className="reader-host"
         style={{ background: colors.background }}
       />

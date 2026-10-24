@@ -1,6 +1,9 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router"
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { WordPopup, type WordTap } from "@/components/reader/WordPopup"
+import { useWordLookup } from "@/components/reader/useWordLookup"
+import { VocabularyNotice } from "@/components/vocabulary/VocabularyNotice"
 import { JumpOffer } from "@/components/reader/JumpOffer"
 import { ReaderFooter } from "@/components/reader/ReaderFooter"
 import { ReaderProblem } from "@/components/reader/ReaderProblem"
@@ -18,16 +21,37 @@ import { useReaderSettings } from "@/components/reader/useReaderSettings"
 import { BookLoadError } from "@/lib/book-download"
 import { bookMessage } from "@/lib/book-messages"
 import { EpubError } from "@/lib/epub/zip-loader"
-import { jumpOffer, toPercentage } from "@/lib/progress"
+import { MAX_CFI_LENGTH, jumpOffer, toPercentage } from "@/lib/progress"
 import { progressSync, useSyncStatus } from "@/lib/progress-sync-client"
 import { THEME_COLORS } from "@/lib/reader-settings"
 import type { Position, TocItem } from "@/lib/reader-types"
 import { reportError } from "@/lib/sentry-client"
+import { savedChoice } from "@/lib/words/lookup"
+import { savedFormsOf } from "@/lib/words/saved-marks"
+import {
+  refreshSavedForms,
+  useSavedForms,
+  useSavedHeadwords,
+  wordSync,
+} from "@/lib/words/word-sync-client"
 import { markBookOpenedFn } from "@/server/reading"
+
+type ReaderSearch = { cfi?: string }
+
+const NO_WORDS: Array<string> = []
+/** The popup gives the focus back to the book. */
+const bookFocus = () => document.querySelector<HTMLElement>(".reader-host")
 
 export const Route = createFileRoute("/_member/read/$bookId")({
   // The book, its position and the settings live in the browser (spec §9).
   ssr: false,
+  // "Buka di buku" in Kosakata opens a word's place (spec 2 §6.4).
+  validateSearch: (search: Record<string, unknown>): ReaderSearch =>
+    typeof search.cfi === "string" &&
+    search.cfi.length > 0 &&
+    search.cfi.length <= MAX_CFI_LENGTH
+      ? { cfi: search.cfi }
+      : {},
   loader: ({ params, context }) => loadReader(params.bookId, context.user.id),
   // Keep the open book while reading; load afresh on every visit.
   staleTime: Number.POSITIVE_INFINITY,
@@ -72,13 +96,33 @@ function ReaderPage() {
   const { settings, update } = useReaderSettings(data.settings, data.online)
   const syncStatus = useSyncStatus()
   const markOpened = useServerFn(markBookOpenedFn)
+  const search = Route.useSearch()
+  const navigate = useNavigate()
+  // Read once: the place asked for applies only when the book opens.
+  const [target] = useState(() => search.cfi ?? null)
+  const [targetMissing, setTargetMissing] = useState(false)
+  const [tap, setTap] = useState<WordTap | null>(null)
+  const lookup = useWordLookup(tap?.word ?? null, tap?.next ?? NO_WORDS)
+  const savedHeadwords = useSavedHeadwords()
+  const formsByHeadword = useSavedForms()
+  const savedForms = useMemo(
+    () => savedFormsOf(formsByHeadword),
+    [formsByHeadword]
+  )
+  const choice = tap
+    ? savedChoice(
+        lookup.state.kind === "result" ? lookup.state.result : null,
+        tap.word
+      )
+    : null
+  const saved = choice !== null && savedHeadwords.has(choice.headword)
   const [controls, setControls] = useState<ReaderControls | null>(null)
   const [toc, setToc] = useState<Array<TocItem>>([])
   const [location, setLocation] = useState<ReaderLocation | null>(null)
   const [chromeHidden, setChromeHidden] = useState(false)
   const [panel, setPanel] = useState<"toc" | "settings" | null>(null)
   const [offer, setOffer] = useState<Position | null>(() =>
-    jumpOffer(data.local, data.server)
+    target ? null : jumpOffer(data.local, data.server)
   )
   const [viewError, setViewError] = useState<string | null>(null)
   // Positions are saved only once the book is open and the member has moved
@@ -93,14 +137,35 @@ function ReaderPage() {
     )
   }, [bookId, data.online, markOpened])
 
-  const onReady = useCallback((info: ReaderReady) => {
-    ready.current = true
-    setControls(info.controls)
-    setToc(info.toc)
-  }, [])
+  // Waiting word changes go when a book opens (spec 2 §7), and the forms of
+  // words saved on other devices come in for the underline.
+  useEffect(() => {
+    void wordSync().flush()
+    if (data.online) void refreshSavedForms()
+  }, [data.online])
+
+  const onReady = useCallback(
+    (info: ReaderReady) => {
+      ready.current = true
+      setControls(info.controls)
+      setToc(info.toc)
+      // Reloading the page opens the last place read, not the word again.
+      if (target) {
+        void navigate({
+          to: "/read/$bookId",
+          params: { bookId },
+          search: {},
+          replace: true,
+        })
+      }
+    },
+    [bookId, navigate, target]
+  )
 
   const onRelocate = useCallback(
     (next: ReaderLocation) => {
+      // Turning the page closes the meaning (spec 2 §6.3).
+      setTap(null)
       setLocation(next)
       if (!ready.current || !interacted.current) return
       progressSync()
@@ -125,6 +190,30 @@ function ReaderPage() {
     console.error("opening the book failed", error)
     setViewError(error instanceof EpubError ? error.code : "unknown")
   }, [])
+
+  const closeWord = useCallback(() => setTap(null), [])
+  const onTargetMissing = useCallback(() => setTargetMissing(true), [])
+
+  const toggleSave = () => {
+    if (!tap || !choice) return
+    const sync = wordSync()
+    const done = saved
+      ? sync.remove(choice.headword)
+      : sync.save(
+          {
+            ...choice,
+            bookId,
+            bookTitle: data.book.title,
+            sentence: tap.sentence,
+            cfi: tap.cfi && tap.cfi.length <= MAX_CFI_LENGTH ? tap.cfi : null,
+            createdAt: new Date().toISOString(),
+          },
+          [tap.word]
+        )
+    done.catch((error: unknown) =>
+      console.error("saving the word failed", error)
+    )
+  }
 
   const go = useCallback(
     (action: (current: ReaderControls) => Promise<void>) => {
@@ -152,11 +241,17 @@ function ReaderPage() {
       <ReaderView
         file={data.file}
         start={data.local?.cfi ?? null}
+        target={target}
         settings={settings}
+        wordOpen={tap !== null}
+        savedForms={savedForms}
         onReady={onReady}
         onRelocate={onRelocate}
         onInteract={onInteract}
         onTapMenu={onTapMenu}
+        onWord={setTap}
+        onDismissWord={closeWord}
+        onTargetMissing={onTargetMissing}
         onError={onError}
       />
       <ReaderToolbar
@@ -169,6 +264,22 @@ function ReaderPage() {
       {!data.saved && (
         <output className="reader-note">{bookMessage("device_full")}</output>
       )}
+      {targetMissing && (
+        <output className="reader-note">
+          {bookMessage("position_missing")}
+        </output>
+      )}
+      <VocabularyNotice />
+      <WordPopup
+        key={tap ? `${tap.word} ${tap.rect.left} ${tap.rect.top}` : "none"}
+        tap={tap}
+        lookup={lookup.state}
+        saved={saved}
+        onToggleSave={toggleSave}
+        onRetry={lookup.retry}
+        onClose={closeWord}
+        finalFocus={bookFocus}
+      />
       <JumpOffer
         offer={offer}
         onJump={() => {

@@ -104,7 +104,8 @@ test("turning pages by key or tap saves the new place", async ({
   const viewport = page.viewportSize()!
   for (let turn = 0; turn < 3; turn++) {
     if (isMobile) {
-      await page.touchscreen.tap(viewport.width * 0.85, viewport.height / 2)
+      // The far edge, beside the text: a tap on a word opens its meaning (spec 2 §2).
+      await page.touchscreen.tap(viewport.width - 4, viewport.height / 2)
     } else {
       await page.keyboard.press("ArrowRight")
     }

@@ -44,6 +44,16 @@ describe("bookMessage", () => {
     expect(bookMessage("offline")).toBe("Butuh internet.")
   })
 
+  it("explains why a word was not kept, and a place that is gone", () => {
+    expect(bookMessage("words_full")).toBe(
+      "Kosakata sudah penuh (5.000 kata). Hapus beberapa kata untuk menyimpan yang baru."
+    )
+    expect(bookMessage("word_invalid")).toBe("Kata ini tidak bisa disimpan.")
+    expect(bookMessage("position_missing")).toBe(
+      "Posisi itu tidak ditemukan di buku ini"
+    )
+  })
+
   it("falls back for unknown codes, including prototype keys", () => {
     const fallback = "Ada yang tidak beres. Coba lagi sebentar lagi."
     expect(bookMessage("unknown")).toBe(fallback)

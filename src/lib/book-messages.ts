@@ -20,6 +20,10 @@ const MESSAGES: Record<string, string> = {
   device_full_offline:
     "Penyimpanan perangkat penuh. Buku ini tidak bisa disimpan untuk offline.",
   offline: "Butuh internet.",
+  words_full:
+    "Kosakata sudah penuh (5.000 kata). Hapus beberapa kata untuk menyimpan yang baru.",
+  word_invalid: "Kata ini tidak bisa disimpan.",
+  position_missing: "Posisi itu tidak ditemukan di buku ini",
 }
 
 const FALLBACK = "Ada yang tidak beres. Coba lagi sebentar lagi."

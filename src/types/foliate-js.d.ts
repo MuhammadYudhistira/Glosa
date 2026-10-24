@@ -51,6 +51,10 @@ declare module "foliate-js/view.js" {
     }): Promise<void>
     close(): void
     goTo(target: string): Promise<unknown>
+    /** The CFI of a range in section `index`. */
+    getCFI(index: number, range?: Range): string
+    /** Where a CFI or href leads; index -1 when the book has no such place. */
+    resolveNavigation(target: string): { index: number } | undefined
     goToFraction(fraction: number): Promise<void>
     goLeft(): Promise<void>
     goRight(): Promise<void>
