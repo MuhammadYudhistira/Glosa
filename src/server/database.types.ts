@@ -122,6 +122,113 @@ export type Database = {
           },
         ]
       }
+      dict_entries: {
+        Row: {
+          headword: string
+          meanings: string[]
+          pos: string
+        }
+        Insert: {
+          headword: string
+          meanings: string[]
+          pos: string
+        }
+        Update: {
+          headword?: string
+          meanings?: string[]
+          pos?: string
+        }
+        Relationships: []
+      }
+      dict_entries_staging: {
+        Row: {
+          headword: string
+          meanings: string[]
+          pos: string
+        }
+        Insert: {
+          headword: string
+          meanings: string[]
+          pos: string
+        }
+        Update: {
+          headword?: string
+          meanings?: string[]
+          pos?: string
+        }
+        Relationships: []
+      }
+      dict_forms: {
+        Row: {
+          form: string
+          headword: string
+          pos: string
+        }
+        Insert: {
+          form: string
+          headword: string
+          pos: string
+        }
+        Update: {
+          form?: string
+          headword?: string
+          pos?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dict_forms_headword_pos_fkey"
+            columns: ["headword", "pos"]
+            isOneToOne: false
+            referencedRelation: "dict_entries"
+            referencedColumns: ["headword", "pos"]
+          },
+        ]
+      }
+      dict_forms_staging: {
+        Row: {
+          form: string
+          headword: string
+          pos: string
+        }
+        Insert: {
+          form: string
+          headword: string
+          pos: string
+        }
+        Update: {
+          form?: string
+          headword?: string
+          pos?: string
+        }
+        Relationships: []
+      }
+      dict_meta: {
+        Row: {
+          dump_date: string | null
+          entries: number
+          forms: number
+          id: boolean
+          imported_at: string
+          source: string
+        }
+        Insert: {
+          dump_date?: string | null
+          entries: number
+          forms: number
+          id?: boolean
+          imported_at?: string
+          source: string
+        }
+        Update: {
+          dump_date?: string | null
+          entries?: number
+          forms?: number
+          id?: boolean
+          imported_at?: string
+          source?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -224,6 +331,16 @@ export type Database = {
     }
     Functions: {
       before_user_created: { Args: { event: Json }; Returns: Json }
+      dict_pos_rank: { Args: { p_pos: string }; Returns: number }
+      dict_staging_reset: { Args: never; Returns: undefined }
+      dict_swap: {
+        Args: { p_dump_date?: string; p_force?: boolean; p_source: string }
+        Returns: Json
+      }
+      lookup_word: {
+        Args: { p_next?: string[]; p_word: string }
+        Returns: Json
+      }
       mark_book_ready: {
         Args: { p_book_id: string; p_user_id: string }
         Returns: boolean
