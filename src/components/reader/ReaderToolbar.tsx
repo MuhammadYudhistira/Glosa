@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { ArrowLeft, List, Type } from "lucide-react"
+import { ArrowLeft, Bookmark, BookmarkCheck, List, Type } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import type { SyncStatus } from "@/lib/progress-sync"
 import { cn } from "@/lib/utils"
@@ -8,12 +8,16 @@ export function ReaderToolbar({
   title,
   hidden,
   syncStatus,
+  bookmarked,
+  onBookmark,
   onToc,
   onSettings,
 }: {
   title: string
   hidden: boolean
   syncStatus: SyncStatus
+  bookmarked: boolean
+  onBookmark: () => void
   onToc: () => void
   onSettings: () => void
 }) {
@@ -43,7 +47,21 @@ export function ReaderToolbar({
         variant="ghost"
         size="icon-lg"
         className="size-10"
-        aria-label="Daftar isi"
+        aria-label={bookmarked ? "Hapus bookmark" : "Bookmark halaman ini"}
+        aria-pressed={bookmarked}
+        onClick={onBookmark}
+      >
+        {bookmarked ? (
+          <BookmarkCheck aria-hidden="true" />
+        ) : (
+          <Bookmark aria-hidden="true" />
+        )}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-lg"
+        className="size-10"
+        aria-label="Daftar isi dan anotasi"
         onClick={onToc}
       >
         <List aria-hidden="true" />

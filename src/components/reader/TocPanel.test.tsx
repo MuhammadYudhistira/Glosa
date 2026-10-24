@@ -21,9 +21,13 @@ describe("TocPanel", () => {
         toc={toc}
         currentHref="text/the-redheaded-league.xhtml"
         onSelect={onSelect}
+        annotations={[]}
+        chaptersOf={null}
+        onSelectPlace={() => undefined}
+        onDeleteAnnotation={() => undefined}
       />
     )
-    await screen.findByRole("dialog", { name: "Daftar isi" })
+    await screen.findByRole("dialog", { name: "Daftar isi dan anotasi" })
     expect(screen.getByRole("button", { name: "I" })).toBeInTheDocument()
     expect(
       screen.getByRole("button", { name: "The Redheaded League" })
@@ -43,10 +47,32 @@ describe("TocPanel", () => {
         toc={[]}
         currentHref={null}
         onSelect={() => undefined}
+        annotations={[]}
+        chaptersOf={null}
+        onSelectPlace={() => undefined}
+        onDeleteAnnotation={() => undefined}
       />
     )
     expect(
       await screen.findByText("Buku ini tidak punya daftar isi.")
     ).toBeInTheDocument()
+  })
+
+  it("shows the annotations in their own tab", async () => {
+    render(
+      <TocPanel
+        open
+        onOpenChange={() => undefined}
+        toc={toc}
+        currentHref={null}
+        onSelect={() => undefined}
+        annotations={[]}
+        chaptersOf={null}
+        onSelectPlace={() => undefined}
+        onDeleteAnnotation={() => undefined}
+      />
+    )
+    fireEvent.click(await screen.findByRole("tab", { name: "Anotasi" }))
+    expect(await screen.findByText(/Belum ada anotasi/)).toBeInTheDocument()
   })
 })

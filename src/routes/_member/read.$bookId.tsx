@@ -301,6 +301,8 @@ function ReaderPage() {
         title={data.book.title}
         hidden={chromeHidden}
         syncStatus={syncStatus}
+        bookmarked={false}
+        onBookmark={() => undefined}
         onToc={() => setPanel("toc")}
         onSettings={() => setPanel("settings")}
       />
@@ -341,6 +343,13 @@ function ReaderPage() {
           setPanel(null)
           go((current) => current.goTo(href))
         }}
+        annotations={[]}
+        chaptersOf={null}
+        onSelectPlace={(cfi) => {
+          setPanel(null)
+          go((current) => current.goTo(cfi))
+        }}
+        onDeleteAnnotation={() => undefined}
       />
       <ReaderSettingsPanel
         open={panel === "settings"}
