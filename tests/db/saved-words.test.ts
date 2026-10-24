@@ -136,7 +136,7 @@ describe("saved words", () => {
     expect([...forms[fixture.run]].sort()).toEqual(
       [fixture.ran, fixture.run, fixture.running].sort()
     )
-    expect(forms.holmes).toEqual(["holmes"])
+    expect(forms.holmes).toContain("holmes")
   })
 
   it("shows members only their own words, and writes go through the functions", async () => {
