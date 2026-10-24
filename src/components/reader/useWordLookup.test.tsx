@@ -7,7 +7,7 @@ vi.mock("@/lib/words/lookup", () => ({ lookUp: vi.fn() }))
 
 const found: LookupOutcome = {
   kind: "result",
-  result: { word: "ran", entries: [], phrases: [] },
+  result: { word: "ran", entries: [], phrases: [], version: null },
 }
 
 beforeEach(() => {

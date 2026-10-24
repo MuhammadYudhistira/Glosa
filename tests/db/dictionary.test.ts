@@ -36,7 +36,7 @@ describe("dictionary", () => {
   it("finds a derived form's headword", async () => {
     const { data, error } = await lookUp(fixture.ran)
     expect(error).toBeNull()
-    expect(data).toEqual({
+    expect(data).toMatchObject({
       word: fixture.ran,
       entries: [
         {
@@ -47,6 +47,16 @@ describe("dictionary", () => {
       ],
       phrases: [],
     })
+  })
+
+  it("names the dictionary it answers from", async () => {
+    const { data } = await lookUp(fixture.ran)
+    expect(data).toHaveProperty("version")
+    // Null before the first import, else when the dictionary was imported.
+    const meta = await member.from("dict_meta").select("imported_at")
+    expect((data as { version: unknown }).version).toBe(
+      meta.data?.[0]?.imported_at ?? null
+    )
   })
 
   it("lists verbs before nouns", async () => {

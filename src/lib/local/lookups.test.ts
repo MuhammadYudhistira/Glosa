@@ -6,10 +6,15 @@ import { localDb } from "./db"
 import { clearLocalData } from "./device"
 import { getCachedLookup, getCachedWord, putCachedLookup } from "./lookups"
 
-const result = (word: string, phrase = false): LookupResult => ({
+const result = (
+  word: string,
+  phrase = false,
+  version: string | null = "2026-10-24T00:00:00+00:00"
+): LookupResult => ({
   word,
   entries: [{ headword: word, pos: "verb", meanings: ["arti"] }],
   phrases: phrase ? [{ headword: `${word} up`, meanings: ["frasa"] }] : [],
+  version,
 })
 
 beforeEach(async () => {
@@ -40,6 +45,16 @@ describe("lookup cache", () => {
     expect(
       (await localDb().lookups.toCollection().primaryKeys()).sort()
     ).toEqual(["a", "c"])
+  })
+
+  it("empties itself when the dictionary's version changes", async () => {
+    await putCachedLookup("a", [], result("a", false, null), 1)
+    await putCachedLookup("b", [], result("b", false, "v2"), 2)
+    expect(await localDb().lookups.toCollection().primaryKeys()).toEqual(["b"])
+    await putCachedLookup("c", [], result("c", false, "v2"), 3)
+    expect(
+      (await localDb().lookups.toCollection().primaryKeys()).sort()
+    ).toEqual(["b", "c"])
   })
 
   it("is cleared with the member's data", async () => {

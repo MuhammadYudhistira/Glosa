@@ -4,6 +4,9 @@ import { localDb } from "./db"
 /** Words whose meanings stay on this device; the least recently used go first (spec 2 §5). */
 export const LOOKUP_CACHE_LIMIT = 2000
 
+/** The dictionary the cached meanings came from (`LookupResult.version`). */
+const VERSION_KEY = "dict-version"
+
 /** Phrasal verbs depend on the next words, so they are part of the key. */
 const keyOf = (word: string, next: ReadonlyArray<string>) =>
   [word, ...next].join(" ")
@@ -36,7 +39,14 @@ export async function putCachedLookup(
   limit = LOOKUP_CACHE_LIMIT
 ): Promise<void> {
   const db = localDb()
-  await db.transaction("rw", db.lookups, async () => {
+  const version = result.version ?? null
+  await db.transaction("rw", db.lookups, db.meta, async () => {
+    // A new import makes every cached answer stale, empty ones too.
+    const known = await db.meta.get(VERSION_KEY)
+    if (!known || known.value !== version) {
+      await db.lookups.clear()
+      await db.meta.put({ key: VERSION_KEY, value: version })
+    }
     await db.lookups.put({ key: keyOf(word, next), word, result, usedAt: now })
     const extra = (await db.lookups.count()) - limit
     if (extra > 0) {

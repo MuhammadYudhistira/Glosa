@@ -25,6 +25,7 @@ const result: LookupResult = {
     { headword: "running", pos: "noun", meanings: ["lari"] },
   ],
   phrases: [{ headword: "run up", meanings: ["menaikkan"] }],
+  version: null,
 }
 
 function show(
@@ -74,7 +75,7 @@ describe("WordPopup", () => {
   it("says when there is no meaning yet, and still saves", async () => {
     const props = show({
       kind: "result",
-      result: { word: "running", entries: [], phrases: [] },
+      result: { word: "running", entries: [], phrases: [], version: null },
     })
     const dialog = await popup()
     expect(

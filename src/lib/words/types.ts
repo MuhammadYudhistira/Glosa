@@ -31,6 +31,8 @@ export type LookupResult = {
   word: string
   entries: Array<DictEntry>
   phrases: Array<DictPhrase>
+  /** When the dictionary was imported; null before the first import. */
+  version: string | null
 }
 
 export const MAX_SAVED_WORDS = 5000

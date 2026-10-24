@@ -18,8 +18,14 @@ const ran: LookupResult = {
     { headword: "ran", pos: "noun", meanings: ["nama"] },
   ],
   phrases: [],
+  version: null,
 }
-const empty: LookupResult = { word: "zzz", entries: [], phrases: [] }
+const empty: LookupResult = {
+  word: "zzz",
+  entries: [],
+  phrases: [],
+  version: null,
+}
 
 function deps(answer: LookupAnswer | Error, online = true) {
   return {
