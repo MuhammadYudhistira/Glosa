@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto"
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/server/database.types"
 
@@ -74,4 +75,33 @@ export async function deleteTestMembers() {
       `Failed to delete ${failed.length} test member(s): ${failed.join(", ")}`
     )
   }
+}
+
+/** A book on the member's shelf (ready unless asked otherwise), reserved as the server does. */
+export async function newTestBook(
+  userId: string,
+  options: { ready?: boolean; title?: string } = {}
+): Promise<string> {
+  const bookId = randomUUID()
+  const admin = adminClient()
+  const { error } = await admin
+    .rpc("reserve_book_upload", {
+      p_user_id: userId,
+      p_book_id: bookId,
+      p_sha256: createHash("sha256").update(bookId).digest("hex"),
+      p_epub_bytes: 1000,
+      p_title: options.title ?? "Buku Uji",
+      p_author: "Penulis Uji",
+      p_subjects: [],
+    })
+    .single()
+  if (error) throw error
+  if (options.ready ?? true) {
+    const { error: readyError } = await admin
+      .from("books")
+      .update({ status: "ready" })
+      .eq("id", bookId)
+    if (readyError) throw readyError
+  }
+  return bookId
 }

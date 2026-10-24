@@ -307,6 +307,60 @@ export type Database = {
           },
         ]
       }
+      saved_words: {
+        Row: {
+          book_id: string | null
+          book_title: string | null
+          cfi: string | null
+          created_at: string
+          headword: string
+          id: string
+          meanings: string[]
+          pos: string | null
+          sentence: string
+          user_id: string
+        }
+        Insert: {
+          book_id?: string | null
+          book_title?: string | null
+          cfi?: string | null
+          created_at?: string
+          headword: string
+          id?: string
+          meanings?: string[]
+          pos?: string | null
+          sentence?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string | null
+          book_title?: string | null
+          cfi?: string | null
+          created_at?: string
+          headword?: string
+          id?: string
+          meanings?: string[]
+          pos?: string | null
+          sentence?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_words_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_words_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       signup_invites: {
         Row: {
           created_at: string
@@ -331,6 +385,7 @@ export type Database = {
     }
     Functions: {
       before_user_created: { Args: { event: Json }; Returns: Json }
+      delete_word: { Args: { p_headword: string }; Returns: undefined }
       dict_pos_rank: { Args: { p_pos: string }; Returns: number }
       dict_staging_reset: { Args: never; Returns: undefined }
       dict_swap: {
@@ -376,6 +431,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      save_word: {
+        Args: {
+          p_book_id?: string
+          p_cfi?: string
+          p_headword: string
+          p_meanings?: string[]
+          p_pos?: string
+          p_sentence?: string
+        }
+        Returns: string
+      }
+      saved_word_forms: { Args: never; Returns: Json }
       unique_username: { Args: { base: string }; Returns: string }
       username_available: { Args: { candidate: string }; Returns: boolean }
       visitors_today: { Args: never; Returns: number }
