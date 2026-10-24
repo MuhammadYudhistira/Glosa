@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { MAX_CFI_LENGTH } from "@/lib/progress"
+import { StoredText } from "@/lib/stored-text"
 import { MAX_WORD_LENGTH } from "./normalize"
 import {
   DICT_POS,
@@ -9,10 +10,7 @@ import {
   type WordOp,
 } from "./types"
 
-/** Text Postgres can store: a text value cannot hold NUL. */
-const Text = z.string().refine((text) => !text.includes("\u0000"), {
-  message: "NUL",
-})
+const Text = StoredText
 const Word = Text.min(1).max(MAX_WORD_LENGTH)
 
 export const LookupRequestSchema = z.object({
