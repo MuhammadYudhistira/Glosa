@@ -84,9 +84,9 @@ Akses: `authenticated` hanya boleh `select`, dan hanya `service_role` yang boleh
 3. Mengembalikan `jsonb`: `{ word, entries: [{ headword, pos, meanings }], phrases: [{ headword, meanings }] }`. Phrasal verb yang lebih panjang diurutkan lebih dulu, dan `entries` diurutkan menurut kelas kata yang paling umum (verb, noun, adj, adv, lainnya).
 4. `p_word` maksimal 64 karakter dan `p_next` maksimal 2 item. Selain itu, fungsi mengembalikan hasil kosong.
 
-Browser memanggil fungsi ini langsung lewat RPC, karena ini operasi baca biasa (spec induk §3). Di Tahap 5, pemanggilan dipindah ke balik server function yang menghitung kuota harian.
+Browser memanggil fungsi ini lewat server function `lookupWordFn`, seperti panggilan lain (tidak ada klien Supabase di browser). Di Tahap 5, kuota harian dihitung di server function yang sama.
 
-**Impor:** perintah `node scripts/import-dictionary.mjs <file.jsonl> --env dev|prod` memakai `SUPABASE_SERVICE_ROLE_KEY` dari env yang dipilih.
+**Impor:** perintah `node scripts/import-dictionary.ts <file.jsonl[.gz]> --env dev|prod [--dump-date YYYY-MM-DD] [--force]` memakai `SUPABASE_URL` dan `SUPABASE_SECRET_KEY` dari `.env.local` (dev) atau `.env.prod` (prod). Kamus baru ditukar lewat fungsi `dict_swap`.
 - Ambil entri dengan `lang_code = "en"`. Per kelas kata, kumpulkan terjemahan dengan `code = "id"`, buang yang kembar, dan ambil paling banyak 8.
 - Bentuk kata diambil dari `forms` di entri bentuk dasar dan dari `senses[].form_of` di entri bentuk turunan. Bentuk hanya disimpan bila headword-nya punya arti.
 - Semua kata melewati `normalizeWord` (§5), yang juga dipakai reader.
@@ -116,7 +116,8 @@ Unik per (`user_id`, `headword`). Member hanya bisa `select` baris miliknya.
 Fungsi:
 - **`save_word(p_headword, p_pos, p_meanings, p_book_id, p_sentence, p_cfi)`** menyimpan kata bila belum ada. Kalau kata sudah ada, konteks pertama yang dipertahankan dan fungsi tetap mengembalikan sukses. Batas 5.000 kata dicek dengan mengunci baris profil, seperti `reserve_book_upload`. `book_id` harus buku milik user dan `book_title` diambil dari baris buku itu, bukan dari client.
 - **`delete_word(p_headword)`** menghapus kata bila ada.
-- **`saved_word_forms()`** mengembalikan `headword` beserta semua `form` dari kata tersimpan user, untuk garis bawah (§6.5).
+- **`saved_word_forms()`** mengembalikan satu objek `jsonb` `{ headword: [bentuk…] }` dari kata tersimpan user, untuk garis bawah (§6.5).
+- **Buku pada `save_word`:** buku yang sudah tidak ada membuat kata disimpan tanpa buku. Buku milik user lain ditolak.
 
 Server function **`syncSavedWordsFn`** menerima batch dari antrean (maksimal 50 operasi), lalu menjalankan `save_word` atau `delete_word` berurutan. Tiap operasi idempoten. Hasilnya per operasi: `ok`, `limit_reached`, atau `invalid`.
 
@@ -220,12 +221,13 @@ Swipe, tombol, roda mouse, dan tepi klik di margin tidak berubah.
   - *belum ada arti*: "Belum ada arti untuk kata ini", Simpan tetap bisa;
   - *offline tanpa cache*: "Arti butuh koneksi";
   - *gagal*: "Arti tidak bisa dimuat" dan tombol Coba lagi. Error dicatat ke Sentry.
-- **Fokus:** masuk ke popup saat terbuka. Escape atau ketukan di luar menutup popup, lalu fokus kembali ke buku. Membalik halaman juga menutup popup.
+- **Fokus:** masuk ke popup saat terbuka. Escape atau ketukan di luar menutup popup, lalu fokus kembali ke buku. Membalik halaman juga menutup popup; `relocate` di tempat yang sama (misalnya snap foliate setelah sentuhan) tidak menutupnya. Ketukan di ruang kosong saat popup terbuka hanya menutup popup.
+- **Offline:** hanya koneksi yang hilang (`TypeError` dari fetch, pesan yang sama dengan yang diabaikan Sentry) yang dianggap offline. Error lain menampilkan "Arti tidak bisa dimuat" dan dicatat ke Sentry.
 
 ### 6.4 Halaman Kosakata
 
 - Route `src/routes/_member/_lobi/vocabulary.tsx`, alamat `/vocabulary`, dibungkus `LobbyPopup` seperti Rak Saya dan Pengaturan (spec 1F §3–§5). Di HP tampil sebagai halaman penuh dengan tab baru **Kosakata** di tab bar bawah.
-- Hotspot baru `katalog` di `src/components/lobby/scene/layout.ts`, berupa model low-poly lemari katalog kartu dengan label "Kosakata".
+- Hotspot baru `katalog` di `src/components/lobby/scene/layout.ts`, berupa model low-poly lemari katalog kartu dengan label "Kosakata", di dinding kiri di atas Meja Admin.
 - **Isi:**
   - daftar kata, terbaru di atas;
   - pencarian di sisi client (cukup untuk 5.000 kata);
@@ -234,7 +236,7 @@ Swipe, tombol, roda mouse, dan tepi klik di margin tidak berubah.
   - tombol hapus dengan toast *Urungkan*;
   - **Buka di buku**, yang membuka `/read/$bookId?cfi=…`. Tombol ini disembunyikan bila buku sudah dihapus atau CFI kosong.
 - **Keadaan kosong:** "Ketuk kata yang sulit saat membaca, lalu simpan. Kata itu akan muncul di sini."
-- Reader menerima parameter `cfi` dan membuka posisi itu, alih-alih posisi baca terakhir. Posisi baca baru tersimpan setelah user membalik halaman, mengikuti aturan "yang terbaru menang" yang sudah ada. Parameter ini juga dipakai panel anotasi (§6.6).
+- Reader menerima parameter `cfi` dan membuka posisi itu, alih-alih posisi baca terakhir. Posisi baca baru tersimpan setelah user membalik halaman, mengikuti aturan "yang terbaru menang" yang sudah ada. Parameter ini juga dipakai panel anotasi (§6.6). `?cfi` yang section-nya ada tetapi jalurnya tidak menuju apa pun juga jatuh ke posisi terakhir dengan catatan yang sama (§8).
 
 ### 6.5 Garis bawah kata tersimpan
 
@@ -273,7 +275,7 @@ Swipe, tombol, roda mouse, dan tepi klik di margin tidak berubah.
 - **Arti:** kata yang pernah dicari muncul dari cache Dexie tanpa jaringan.
 - **Simpan/hapus kata dan perubahan anotasi:** ditampilkan seketika di perangkat, lalu masuk antrean Dexie. Antrean dikirim saat online kembali, saat buku dibuka, dan 2 detik setelah perubahan terakhir.
 - **Penolakan server:** misalnya `limit_reached`. Perubahan di perangkat dibatalkan dan pesan ditampilkan, misalnya "Kosakata sudah penuh (5.000 kata). Hapus beberapa kata untuk menyimpan yang baru." Pesan ditambahkan ke modul pesan yang sudah ada.
-- **Kosakata:** daftar disimpan di cache TanStack Query yang dipersist ke IndexedDB, seperti daftar buku.
+- **Kosakata:** daftar disimpan di tabel Dexie `words`, seperti salinan rak.
 - **Anotasi:** anotasi buku yang sudah diunduh ikut tersedia offline.
 
 ## 8. Error dan batas
