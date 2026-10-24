@@ -32,3 +32,44 @@ export type LookupResult = {
   entries: Array<DictEntry>
   phrases: Array<DictPhrase>
 }
+
+export const MAX_SAVED_WORDS = 5000
+/** Changes sent in one request (spec 2 §4.2). */
+export const MAX_WORD_OPS = 50
+export const MAX_SENTENCE_LENGTH = 500
+
+/** A word in Kosakata (spec 2 §4.2), as the server and this device keep it. */
+export type SavedWord = {
+  headword: string
+  pos: DictPos | null
+  meanings: Array<string>
+  bookId: string | null
+  /** Copied from the book when saved; stays after the book is deleted. */
+  bookTitle: string | null
+  sentence: string
+  cfi: string | null
+  createdAt: string
+}
+
+/** One change to Kosakata, as it travels to the server. */
+export type WordOp =
+  | {
+      kind: "save"
+      headword: string
+      pos: DictPos | null
+      meanings: Array<string>
+      bookId: string | null
+      sentence: string
+      cfi: string | null
+    }
+  | { kind: "delete"; headword: string }
+
+export type WordOpResult = "ok" | "limit_reached" | "invalid"
+
+type Failed = { ok: false; code: string }
+export type LookupAnswer = { ok: true; result: LookupResult } | Failed
+export type WordSyncAnswer = { ok: true; results: Array<WordOpResult> } | Failed
+export type SavedWordsAnswer = { ok: true; words: Array<SavedWord> } | Failed
+/** Every form of every saved word, by headword (the headword included). */
+export type SavedFormsAnswer =
+  { ok: true; forms: Record<string, Array<string>> } | Failed
