@@ -295,6 +295,22 @@ sudo reboot                # semua container kembali sendiri (restart: unless-st
 
 `unattended-upgrades` memasang update keamanan otomatis. Sesekali jalankan `sudo apt update && sudo apt upgrade`.
 
+### 6.5 Kamus
+
+Arti kata di reader berasal dari English Wiktionary, lewat ekstrak kaikki.org (lisensi CC BY-SA). Selama kamus belum diimpor, semua kata tampil "Belum ada arti untuk kata ini". Skrip impor tidak dijalankan CI. Jalankan dari laptop setiap kali kamus perlu diperbarui, misalnya beberapa bulan sekali.
+
+1. Unduh ekstrak semua kata bahasa Inggris dalam format JSONL dari [kaikki.org/dictionary/English](https://kaikki.org/dictionary/English/). Bagian unduhan ada di bawah halaman. Ukurannya beberapa GB, dan boleh tetap dalam bentuk `.gz`.
+2. Pastikan migrasi kamus sudah ada di proyek tujuan (§7).
+3. Jalankan, misalnya untuk dev:
+   ```bash
+   node scripts/import-dictionary.ts ~/Downloads/kaikki.org-dictionary-English.jsonl --env dev --dump-date 2026-10-20
+   ```
+   - `--env dev` memakai `.env.local`. `--env prod` memakai `.env.prod`, yang berisi `SUPABASE_URL` dan `SUPABASE_SECRET_KEY` proyek prod. File itu tidak boleh di-commit.
+   - `--dump-date` adalah tanggal dump Wiktionary yang tertulis di halaman kaikki. Boleh dikosongkan.
+4. Skrip mencetak jumlah entri, bentuk kata, dan phrasal verb, lalu menukar kamus dalam satu transaksi. Selama penukaran (beberapa detik), pencarian arti menunggu.
+5. Kalau jumlah entri turun lebih dari 20% dari impor sebelumnya, skrip berhenti tanpa mengubah kamus. Periksa file-nya dulu. Kalau memang benar, ulangi dengan `--force`.
+6. Cek hasilnya di SQL editor: `select * from dict_meta;`
+
 ## 7. Aturan migrasi
 
 - **Dev:** migrasi baru di-push ke proyek dev saat pengembangan (`npm run db:push`), sebelum branch di-push. Kalau lupa, test CI gagal karena skemanya belum ada.
