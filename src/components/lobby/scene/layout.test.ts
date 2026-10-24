@@ -35,6 +35,7 @@ describe("lobby layout", () => {
       ...GENRE_VALUES,
       "troli",
       "meja-admin",
+      "katalog",
     ])
   })
 

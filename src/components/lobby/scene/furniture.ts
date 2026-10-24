@@ -3,6 +3,7 @@ import type { Kit } from "./kit"
 import {
   ADMIN_DESK,
   ATRIUM,
+  CARD_CATALOG,
   LOUNGES,
   type Point2,
   type Point3,
@@ -392,12 +393,35 @@ function lounge(kit: Kit, [cx, cz]: Point2, color: string): Array<Seat> {
   ]
 }
 
-/** Towers, desks, the trolley, decorations and the lounges (spec 1D §4). */
+/** A low cabinet of small drawers with brass pulls: the card catalogue (spec 2 §6.4). */
+function cardCatalog(kit: Kit) {
+  const [cx, cz] = CARD_CATALOG
+  kit.block(0.7, 1.25, 1.5, "#7a4a2a", cx, 0, cz, { r: 0.04 })
+  kit.block(0.8, 0.06, 1.6, WOOD, cx, 1.25, cz, { r: 0.02 })
+  const front = cx + 0.36
+  for (let row = 0; row < 4; row++) {
+    for (let column = 0; column < 4; column++) {
+      const y = 0.14 + row * 0.27
+      const z = cz - 0.54 + column * 0.36
+      kit.block(0.03, 0.22, 0.31, "#b9824c", front, y, z, {
+        r: 0.01,
+        cast: false,
+      })
+      kit.block(0.03, 0.03, 0.1, "#d9b26a", front + 0.02, y + 0.09, z, {
+        r: 0.01,
+        cast: false,
+      })
+    }
+  }
+}
+
+/** Towers, desks, the trolley, the card catalogue, decorations and the lounges (spec 1D §4). */
 export function buildFurniture(kit: Kit): Furnishings {
   for (const { at } of ZONES) towerBody(kit, at)
   const pagePivots = readingTable(kit)
   adminDesk(kit)
   trolley(kit)
+  cardCatalog(kit)
   displayTable(kit, 22, 5.5)
   displayTable(kit, 26.5, 9.5, 2.2, 1.2)
   displayTable(kit, 9.5, 11.6, 2.2, 1.2)

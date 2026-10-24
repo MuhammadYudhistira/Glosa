@@ -108,6 +108,8 @@ export function LobbyStage({
       setUploading(true)
     } else if (id === "troli") {
       setSorting(true)
+    } else if (id === "katalog") {
+      void navigate({ to: "/vocabulary" })
     } else {
       void navigate({ to: "/shelf", search: { genre: id } })
     }

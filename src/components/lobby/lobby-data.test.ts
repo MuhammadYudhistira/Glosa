@@ -68,7 +68,7 @@ describe("lobbyHotspots", () => {
       count: null,
       badge: 2,
     })
-    expect(hotspots.at(-1)).toMatchObject({
+    expect(hotspots.find(({ id }) => id === "meja-admin")).toMatchObject({
       id: "meja-admin",
       label: "Meja Admin",
       count: null,
@@ -81,5 +81,16 @@ describe("lobbyHotspots", () => {
     expect(
       lobbyHotspots(counts).find(({ id }) => id === "troli")?.badge
     ).toBeNull()
+  })
+
+  it("ends with the card catalogue, which opens Kosakata", () => {
+    const hotspots = lobbyHotspots(summarizeLobby([]).counts)
+    expect(hotspots.at(-1)).toEqual({
+      id: "katalog",
+      label: "Kosakata",
+      count: null,
+      badge: null,
+      dim: false,
+    })
   })
 })

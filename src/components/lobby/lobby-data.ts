@@ -46,6 +46,7 @@ export function lobbyHotspots(
     const plain = { id, count: null, badge: null, dim: false }
     if (id === "meja-baca") return { ...plain, label: "Meja Baca" }
     if (id === "meja-admin") return { ...plain, label: "Meja Admin" }
+    if (id === "katalog") return { ...plain, label: "Kosakata" }
     if (id === "troli") {
       return {
         ...plain,

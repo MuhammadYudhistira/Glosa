@@ -434,6 +434,10 @@
   .lobby-map-mark[data-kind="troli"] {
     background: #c58af0;
   }
+  .lobby-map-spot[data-kind="katalog"],
+  .lobby-map-mark[data-kind="katalog"] {
+    background: #ff8fa3;
+  }
   .lobby-legend {
     display: grid;
     gap: 0.4rem;

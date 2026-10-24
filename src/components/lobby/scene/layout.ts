@@ -48,6 +48,12 @@ export const ZONES: ReadonlyArray<{ genre: Genre; at: Point2 }> = [
 export const READING_TABLE: Point2 = [19.5, 26]
 export const ADMIN_DESK: Point2 = [5.5, 25.5]
 export const TROLLEY: Point2 = [9, 26.8]
+
+/**
+ * The card catalogue that opens Kosakata (spec 2 §6.4), against the left wall
+ * by the admin desk: nothing tall stands between it and the camera.
+ */
+export const CARD_CATALOG: Point2 = [1.0, 22.5]
 /** Readers seated at the long table, facing along +Z (0) or −Z (π). */
 export const READERS: ReadonlyArray<{ at: Point2; facing: number }> = [
   { at: [18.4, 25], facing: 0 },
@@ -196,11 +202,11 @@ export const SHELF_FACES: ReadonlyArray<ShelfFace> = [
   }),
 ]
 
-export type HotspotId = Genre | "meja-baca" | "meja-admin" | "troli"
+export type HotspotId = Genre | "meja-baca" | "meja-admin" | "troli" | "katalog"
 /** `label`: where the hotspot's label floats. `stand`: where "Anda" walks to. */
 export type HotspotSpot = { id: HotspotId; label: Point3; stand: Point2 }
 
-/** In tab order (spec 1D §6): reading table, zones, trolley, admin desk. */
+/** In tab order (spec 1D §6): reading table, zones, trolley, admin desk, card catalogue. */
 export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   { id: "meja-baca", label: [19.5, 2.2, 26], stand: [19.5, 28.2] },
   ...ZONES.map(({ genre, at: [x, z] }): HotspotSpot => ({
@@ -210,6 +216,7 @@ export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   })),
   { id: "troli", label: [9, 1.9, 26.8], stand: [10.5, 28.3] },
   { id: "meja-admin", label: [5.5, 2.8, 25.5], stand: [7.5, 27.8] },
+  { id: "katalog", label: [1.0, 2.1, 22.5], stand: [2.8, 22.6] },
 ]
 
 export function spotOf(id: HotspotId): HotspotSpot {
