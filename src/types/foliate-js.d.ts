@@ -12,7 +12,7 @@ declare module "foliate-js/epub.js" {
     init(): Promise<EPUB>
     /** Readium-webpub-like metadata; values may be strings, language maps or arrays. */
     metadata: unknown
-    sections: Array<unknown>
+    sections: Array<{ createDocument?: () => Promise<Document> }>
     toc?: Array<TocItem> | null
     dir?: string
     getCover(): Promise<Blob | null>
@@ -54,7 +54,9 @@ declare module "foliate-js/view.js" {
     /** The CFI of a range in section `index`. */
     getCFI(index: number, range?: Range): string
     /** Where a CFI or href leads; index -1 when the book has no such place. */
-    resolveNavigation(target: string): { index: number } | undefined
+    resolveNavigation(
+      target: string
+    ): { index: number; anchor?: (doc: Document) => unknown } | undefined
     goToFraction(fraction: number): Promise<void>
     goLeft(): Promise<void>
     goRight(): Promise<void>

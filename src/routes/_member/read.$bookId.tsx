@@ -192,7 +192,11 @@ function ReaderPage() {
   }, [])
 
   const closeWord = useCallback(() => setTap(null), [])
-  const onTargetMissing = useCallback(() => setTargetMissing(true), [])
+  const onTargetMissing = useCallback(() => {
+    setTargetMissing(true)
+    // The place asked for is gone, so the other device's place is offered after all.
+    setOffer(jumpOffer(data.local, data.server))
+  }, [data.local, data.server])
 
   const toggleSave = () => {
     if (!tap || !choice) return

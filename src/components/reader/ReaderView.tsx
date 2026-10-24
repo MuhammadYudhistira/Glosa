@@ -143,15 +143,25 @@ function animateUnlessReduced(renderer: FoliateRenderer): () => void {
   return () => reduce.removeEventListener("change", apply)
 }
 
-/** Whether the book has the place a CFI points at. */
-function canOpen(view: View, cfi: string): boolean {
+/**
+ * Whether the book has the place a CFI points at: its section exists and the
+ * path inside it leads somewhere. Never rejects.
+ */
+async function canOpen(view: View, cfi: string): Promise<boolean> {
   try {
     const resolved = view.resolveNavigation(cfi)
-    return (
-      resolved !== undefined &&
-      resolved.index >= 0 &&
-      resolved.index < view.book.sections.length
+    if (
+      resolved === undefined ||
+      resolved.index < 0 ||
+      resolved.index >= view.book.sections.length
     )
+      return false
+    const { anchor } = resolved
+    if (!anchor) return true
+    const doc = await view.book.sections[resolved.index].createDocument?.()
+    if (!doc) return false
+    // foliate resolves the path lazily and throws when it leads nowhere.
+    return Boolean(anchor(doc))
   } catch {
     return false
   }
@@ -258,7 +268,13 @@ export function ReaderView({
     // Clicks beside the book's frame: on wide screens foliate leaves a band
     // on each side outside it. Clicks inside the frame stay in its document.
     const onHostClick = (event: MouseEvent) => {
-      if (!event.defaultPrevented) tapAt(event.clientX)
+      if (event.defaultPrevented) return
+      // A meaning is open: this click only closes it (spec 2 decision 9).
+      if (wordOpenRef.current) {
+        call().onDismissWord()
+        return
+      }
+      tapAt(event.clientX)
     }
     const onHostPointerMove = (event: PointerEvent) => {
       if (event.pointerType === "mouse") hoverAt(event.clientX)
@@ -464,7 +480,7 @@ export function ReaderView({
         applySettings(view, settingsRef.current, fonts)
         viewRef.current = view
         const wanted = targetRef.current
-        const reachable = wanted !== null && canOpen(view, wanted)
+        const reachable = wanted !== null && (await canOpen(view, wanted))
         if (wanted !== null && !reachable) call().onTargetMissing()
         const startAt = reachable ? wanted : startRef.current
         await view.init(
