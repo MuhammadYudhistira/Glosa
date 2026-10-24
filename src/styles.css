@@ -1358,6 +1358,84 @@
       animation: none;
     }
   }
+  /* Annotations (spec 2 §6.6). */
+  .selection-menu {
+    display: flex;
+    gap: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--color-panel);
+    padding: 0.25rem;
+    color: var(--foreground);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.25);
+    outline: none;
+  }
+  .annotation-card {
+    display: grid;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+  }
+  .annotation-colors {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .annotation-swatch {
+    width: 2rem;
+    height: 2rem;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+  }
+  .annotation-swatch[aria-pressed="true"] {
+    border-color: var(--foreground);
+  }
+  .annotation-swatch:focus-visible {
+    outline: 2px solid var(--color-mint);
+    outline-offset: 2px;
+  }
+  .annotation-note {
+    white-space: pre-wrap;
+    color: var(--muted-foreground);
+  }
+  .annotation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .note-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 50;
+    display: grid;
+    gap: 0.75rem;
+    width: min(32rem, calc(100vw - 2rem));
+    translate: -50% -50%;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--color-panel);
+    padding: 1rem;
+    color: var(--foreground);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.25);
+    outline: none;
+  }
+  .note-sheet {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .note-input {
+    width: 100%;
+    min-height: 8rem;
+    resize: vertical;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--background);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+  .note-input:focus-visible {
+    outline: 2px solid var(--color-mint);
+  }
+
   /* Kosakata (spec 2 §6.4). */
   .vocab-toolbar {
     display: grid;

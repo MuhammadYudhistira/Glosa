@@ -1,18 +1,10 @@
-import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
-import { Popover } from "@base-ui/react/popover"
 import { Button } from "@/components/ui/button"
-import { useWideScreen } from "@/lib/use-wide-screen"
 import { POS_LABELS } from "@/lib/words/labels"
 import type { LookupResult } from "@/lib/words/types"
+import { ReaderPopup, type WordRect } from "./ReaderPopup"
 import type { WordLookupState } from "./useWordLookup"
 
-/** Where the tapped word is, in this window's coordinates. */
-export type WordRect = {
-  left: number
-  top: number
-  width: number
-  height: number
-}
+export type { WordRect } from "./ReaderPopup"
 
 /** A tapped word and what Simpan keeps with it (spec 2 §6.2). */
 export type WordTap = {
@@ -24,21 +16,6 @@ export type WordTap = {
 }
 
 const WIKTIONARY = "https://en.wiktionary.org/wiki/"
-
-/** A virtual element at the word, for the popover to sit beside. */
-function anchorAt({ left, top, width, height }: WordRect) {
-  const box = {
-    x: left,
-    y: top,
-    left,
-    top,
-    width,
-    height,
-    right: left + width,
-    bottom: top + height,
-  }
-  return { getBoundingClientRect: () => ({ ...box, toJSON: () => box }) }
-}
 
 type CardProps = {
   tap: WordTap
@@ -138,8 +115,7 @@ function WordCard({ tap, lookup, saved, onToggleSave, onRetry }: CardProps) {
 
 /**
  * A tapped word's meanings (spec 2 §6.3): a popover beside the word on wide
- * screens, a bottom sheet on phones. Escape or a tap outside closes it, and
- * the focus goes back to the book.
+ * screens, a bottom sheet on phones.
  */
 export function WordPopup({
   tap,
@@ -151,48 +127,15 @@ export function WordPopup({
   onClose: () => void
   finalFocus: () => HTMLElement | null
 }) {
-  const wide = useWideScreen()
   if (!tap) return null
-  const label = `Arti ${tap.word}`
-  const onOpenChange = (open: boolean) => {
-    if (!open) onClose()
-  }
-
-  if (wide) {
-    return (
-      <Popover.Root open onOpenChange={onOpenChange}>
-        <Popover.Portal>
-          <Popover.Positioner
-            anchor={anchorAt(tap.rect)}
-            side="bottom"
-            sideOffset={8}
-            collisionPadding={16}
-            className="word-positioner"
-          >
-            <Popover.Popup
-              aria-label={label}
-              className="word-popup"
-              finalFocus={finalFocus}
-            >
-              <WordCard tap={tap} {...card} />
-            </Popover.Popup>
-          </Popover.Positioner>
-        </Popover.Portal>
-      </Popover.Root>
-    )
-  }
   return (
-    <DialogPrimitive.Root open onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop className="word-sheet-backdrop" />
-        <DialogPrimitive.Popup
-          aria-label={label}
-          className="word-sheet"
-          finalFocus={finalFocus}
-        >
-          <WordCard tap={tap} {...card} />
-        </DialogPrimitive.Popup>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+    <ReaderPopup
+      rect={tap.rect}
+      label={`Arti ${tap.word}`}
+      onClose={onClose}
+      finalFocus={finalFocus}
+    >
+      <WordCard tap={tap} {...card} />
+    </ReaderPopup>
   )
 }
