@@ -108,10 +108,7 @@ describe("annotations", () => {
 
     const own = await ani.from("annotations").select("id").eq("id", entry.id)
     expect(own.data).toEqual([{ id: entry.id }])
-    const other = await budi
-      .from("annotations")
-      .select("id")
-      .eq("id", entry.id)
+    const other = await budi.from("annotations").select("id").eq("id", entry.id)
     expect(other.data).toEqual([])
     const anon = await anonClient().from("annotations").select("id")
     expect(anon.error).not.toBeNull()
