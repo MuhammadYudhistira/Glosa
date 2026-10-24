@@ -216,7 +216,7 @@ export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   })),
   { id: "troli", label: [9, 1.9, 26.8], stand: [10.5, 28.3] },
   { id: "meja-admin", label: [5.5, 2.8, 25.5], stand: [7.5, 27.8] },
-  { id: "katalog", label: [1.0, 2.1, 22.5], stand: [2.8, 22.6] },
+  { id: "katalog", label: [1.0, 2.1, 22.5], stand: [2.8, 23.4] },
 ]
 
 export function spotOf(id: HotspotId): HotspotSpot {
