@@ -87,14 +87,11 @@ describe("dictionary", () => {
     const insert = await member
       .from("dict_entries")
       .insert({ headword: `${fixture.run}x`, pos: "noun", meanings: ["x"] })
-    expect(insert.error).not.toBeNull()
+    expect(insert.error?.code).toBe("42501")
     const reset = await member.rpc("dict_staging_reset")
-    expect(reset.error).not.toBeNull()
-    const swap = await member.rpc("dict_swap", {
-      p_source: "test",
-      p_force: true,
-    })
-    expect(swap.error).not.toBeNull()
+    expect(reset.error?.code).toBe("42501")
+    const swap = await member.rpc("dict_swap", { p_source: "test" })
+    expect(swap.error?.code).toBe("42501")
   })
 
   it("keeps guests out", async () => {
