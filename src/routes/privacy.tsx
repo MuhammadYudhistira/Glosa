@@ -9,7 +9,7 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyPage() {
   return (
-    <LegalPage title="Kebijakan Privasi" updated="20 Oktober 2026">
+    <LegalPage title="Kebijakan Privasi" updated="24 Oktober 2026">
       <p>
         Glosa menghormati privasimu. Halaman ini menjelaskan data apa yang kami
         kumpulkan, untuk apa, dan apa hakmu sesuai Undang-Undang Pelindungan
@@ -25,7 +25,9 @@ function PrivacyPage() {
           File EPUB yang kamu unggah beserta judul, penulis, dan sampul buku.
         </li>
         <li>
-          Data membaca: posisi baca, pengaturan tampilan, dan aktivitas belajar.
+          Data membaca: posisi baca, pengaturan tampilan, dan aktivitas belajar,
+          termasuk kata yang kamu simpan di Kosakata beserta artinya, kalimat
+          asalnya, dan judul bukunya.
         </li>
         <li>
           Data teknis: waktu masuk terakhir dan laporan error untuk memperbaiki
@@ -51,6 +53,18 @@ function PrivacyPage() {
         olehmu. Jumlah "pengunjung hari ini" di buku tamu hanya berupa angka
         tanpa nama.
       </p>
+      <h2>Kamus</h2>
+      <p>
+        Kata yang kamu ketuk saat membaca dikirim ke server kami untuk dicari
+        artinya, dan tidak dibagikan ke pihak lain. Arti kata berasal dari{" "}
+        <a href="https://en.wiktionary.org/">English Wiktionary</a> lewat
+        ekstrak <a href="https://kaikki.org/">kaikki.org</a>, dengan lisensi{" "}
+        <a href="https://creativecommons.org/licenses/by-sa/4.0/">
+          CC BY-SA 4.0
+        </a>
+        .
+      </p>
+
       <h2>Tempat penyimpanan</h2>
       <p>
         Akun, data membaca, dan file bukumu disimpan di Supabase, di pusat data

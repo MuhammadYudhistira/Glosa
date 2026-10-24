@@ -8,7 +8,14 @@ import {
 } from "@tanstack/react-router"
 import type { ReactNode } from "react"
 
-const PATHS = ["/lobby", "/shelf", "/settings", "/logout", "/read/$bookId"]
+const PATHS = [
+  "/lobby",
+  "/shelf",
+  "/vocabulary",
+  "/settings",
+  "/logout",
+  "/read/$bookId",
+]
 
 /** Renders a component that uses <Link> or server functions inside a small router. */
 export function renderWithRouter(ui: ReactNode, url = "/lobby") {

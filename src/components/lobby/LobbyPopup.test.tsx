@@ -19,6 +19,7 @@ describe("LobbyPopup", () => {
 
   it("knows which pages open over the lobby", () => {
     expect(isPopupPath("/shelf")).toBe(true)
+    expect(isPopupPath("/vocabulary")).toBe(true)
     expect(isPopupPath("/settings")).toBe(true)
     expect(isPopupPath("/lobby")).toBe(false)
     expect(isPopupPath("/read/abc")).toBe(false)

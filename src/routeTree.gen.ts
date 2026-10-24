@@ -26,6 +26,7 @@ import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
 import { Route as MemberLobiLobbyRouteImport } from './routes/_member/_lobi/lobby'
 import { Route as MemberLobiSettingsRouteImport } from './routes/_member/_lobi/settings'
 import { Route as MemberLobiShelfRouteImport } from './routes/_member/_lobi/shelf'
+import { Route as MemberLobiVocabularyRouteImport } from './routes/_member/_lobi/vocabulary'
 import { Route as MemberReadBookIdRouteImport } from './routes/_member/read.$bookId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -111,6 +112,11 @@ const MemberLobiShelfRoute = MemberLobiShelfRouteImport.update({
   path: '/shelf',
   getParentRoute: () => MemberLobiRoute,
 } as any)
+const MemberLobiVocabularyRoute = MemberLobiVocabularyRouteImport.update({
+  id: '/vocabulary',
+  path: '/vocabulary',
+  getParentRoute: () => MemberLobiRoute,
+} as any)
 const MemberReadBookIdRoute = MemberReadBookIdRouteImport.update({
   id: '/read/$bookId',
   path: '/read/$bookId',
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/lobby': typeof MemberLobiLobbyRoute
   '/settings': typeof MemberLobiSettingsRoute
   '/shelf': typeof MemberLobiShelfRoute
+  '/vocabulary': typeof MemberLobiVocabularyRoute
   '/read/$bookId': typeof MemberReadBookIdRoute
 }
 export interface FileRoutesByTo {
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/lobby': typeof MemberLobiLobbyRoute
   '/settings': typeof MemberLobiSettingsRoute
   '/shelf': typeof MemberLobiShelfRoute
+  '/vocabulary': typeof MemberLobiVocabularyRoute
   '/read/$bookId': typeof MemberReadBookIdRoute
 }
 export interface FileRoutesById {
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/_member/_lobi/lobby': typeof MemberLobiLobbyRoute
   '/_member/_lobi/settings': typeof MemberLobiSettingsRoute
   '/_member/_lobi/shelf': typeof MemberLobiShelfRoute
+  '/_member/_lobi/vocabulary': typeof MemberLobiVocabularyRoute
   '/_member/read/$bookId': typeof MemberReadBookIdRoute
 }
 export interface FileRouteTypes {
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/lobby'
     | '/settings'
     | '/shelf'
+    | '/vocabulary'
     | '/read/$bookId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/lobby'
     | '/settings'
     | '/shelf'
+    | '/vocabulary'
     | '/read/$bookId'
   id:
     | '__root__'
@@ -230,6 +241,7 @@ export interface FileRouteTypes {
     | '/_member/_lobi/lobby'
     | '/_member/_lobi/settings'
     | '/_member/_lobi/shelf'
+    | '/_member/_lobi/vocabulary'
     | '/_member/read/$bookId'
   fileRoutesById: FileRoutesById
 }
@@ -369,6 +381,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MemberLobiShelfRouteImport
       parentRoute: typeof MemberLobiRoute
     }
+    '/_member/_lobi/vocabulary': {
+      id: '/_member/_lobi/vocabulary'
+      path: '/vocabulary'
+      fullPath: '/vocabulary'
+      preLoaderRoute: typeof MemberLobiVocabularyRouteImport
+      parentRoute: typeof MemberLobiRoute
+    }
     '/_member/read/$bookId': {
       id: '/_member/read/$bookId'
       path: '/read/$bookId'
@@ -383,12 +402,14 @@ interface MemberLobiRouteChildren {
   MemberLobiLobbyRoute: typeof MemberLobiLobbyRoute
   MemberLobiSettingsRoute: typeof MemberLobiSettingsRoute
   MemberLobiShelfRoute: typeof MemberLobiShelfRoute
+  MemberLobiVocabularyRoute: typeof MemberLobiVocabularyRoute
 }
 
 const MemberLobiRouteChildren: MemberLobiRouteChildren = {
   MemberLobiLobbyRoute: MemberLobiLobbyRoute,
   MemberLobiSettingsRoute: MemberLobiSettingsRoute,
   MemberLobiShelfRoute: MemberLobiShelfRoute,
+  MemberLobiVocabularyRoute: MemberLobiVocabularyRoute,
 }
 
 const MemberLobiRouteWithChildren = MemberLobiRoute._addFileChildren(
@@ -427,13 +448,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -47,6 +47,7 @@ describe("MemberShell", () => {
       expect(links.map((link) => link.getAttribute("href"))).toEqual([
         "/lobby",
         "/shelf",
+        "/vocabulary",
         "/settings",
       ])
       expect(

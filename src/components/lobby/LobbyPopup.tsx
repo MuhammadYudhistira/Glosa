@@ -5,8 +5,12 @@ import { Button } from "@/components/ui/button"
 import { isWideScreen } from "@/lib/use-wide-screen"
 import { cn } from "@/lib/utils"
 
-/** The pages that open over the lobby on desktop (spec 1F §3). */
-export const POPUP_PATHS: ReadonlyArray<string> = ["/shelf", "/settings"]
+/** The pages that open over the lobby on desktop (spec 1F §3, spec 2 §6.4). */
+export const POPUP_PATHS: ReadonlyArray<string> = [
+  "/shelf",
+  "/vocabulary",
+  "/settings",
+]
 
 export const isPopupPath = (pathname: string): boolean =>
   POPUP_PATHS.includes(pathname)
@@ -17,7 +21,7 @@ const FALLBACK_FOCUS = "[data-lobby-search]"
 const OWN_ESCAPE = '[role="dialog"], [role="alertdialog"], .lobby-topbar'
 
 /**
- * Rak Saya or Pengaturan: a glass panel over the lobby on desktop, a plain
+ * Rak Saya, Kosakata or Pengaturan: a glass panel over the lobby on desktop, a plain
  * page on phones. CSS decides which (spec 1F §4, §5); the focus and Escape
  * are handled on desktop only.
  */

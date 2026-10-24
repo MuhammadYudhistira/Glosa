@@ -1,11 +1,22 @@
 import { Link, useRouterState } from "@tanstack/react-router"
-import { BookOpenIcon, LibraryIcon, SettingsIcon } from "lucide-react"
+import {
+  BookOpenIcon,
+  LanguagesIcon,
+  LibraryIcon,
+  SettingsIcon,
+} from "lucide-react"
 import type { ReactNode } from "react"
 import { Logo } from "@/components/ui/logo"
 
 const LINKS = [
   { to: "/lobby", label: "Lobi", short: "Lobi", Icon: LibraryIcon },
   { to: "/shelf", label: "Rak Saya", short: "Rak", Icon: BookOpenIcon },
+  {
+    to: "/vocabulary",
+    label: "Kosakata",
+    short: "Kosakata",
+    Icon: LanguagesIcon,
+  },
   {
     to: "/settings",
     label: "Pengaturan",
@@ -25,8 +36,8 @@ export function hasShell(pathname: string): boolean {
 const isCurrent = (pathname: string, to: string) =>
   pathname === to || pathname.startsWith(`${to}/`)
 
-/** Pages with the lobby behind them on desktop (spec 1F §3). */
-const OVER_LOBBY = ["/lobby", "/shelf", "/settings"]
+/** Pages with the lobby behind them on desktop (spec 1F §3, spec 2 §6.4). */
+const OVER_LOBBY = ["/lobby", "/shelf", "/vocabulary", "/settings"]
 
 /** Sidebar from 1024 px, tab bar below (spec 1D §5.3). */
 export function MemberShell({ children }: { children: ReactNode }) {

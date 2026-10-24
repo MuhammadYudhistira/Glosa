@@ -809,7 +809,7 @@
     bottom: 0;
     z-index: 30;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     height: var(--tabbar-h);
     padding-bottom: env(safe-area-inset-bottom);
     border-top: 1px solid var(--border);
@@ -1352,6 +1352,69 @@
   @media (prefers-reduced-motion: reduce) {
     .word-skeleton span {
       animation: none;
+    }
+  }
+  /* Kosakata (spec 2 §6.4). */
+  .vocab-toolbar {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .vocab-select {
+    height: 2.25rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--background);
+    padding-inline: 0.5rem;
+    font-size: 0.875rem;
+  }
+  .vocab-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .vocab-card {
+    display: grid;
+    gap: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--color-panel);
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+  .vocab-sentence {
+    border-left: 3px solid var(--border);
+    padding-left: 0.75rem;
+    color: var(--muted-foreground);
+    font-style: italic;
+  }
+  .vocab-sentence b {
+    color: var(--foreground);
+    font-style: normal;
+  }
+  .vocab-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .vocab-notice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--color-panel);
+    padding: 0.75rem 1rem;
+  }
+  .vocab-notice.reader-toast {
+    position: static;
+    max-width: none;
+    margin: 0;
+  }
+  @media (min-width: 640px) {
+    .vocab-toolbar {
+      grid-template-columns: 1fr 14rem;
     }
   }
 }
