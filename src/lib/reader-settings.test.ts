@@ -92,4 +92,14 @@ describe("readerCss", () => {
     expect(css).toContain("background: #f6eedb !important")
     expect(css).toContain('font-family: "Glosa Serif"')
   })
+
+  it("underlines saved words and lights the tapped one in the theme's colours", () => {
+    const css = readerCss({ ...DEFAULT_READER_SETTINGS, theme: "dark" }, fonts)
+    expect(css).toContain(
+      "::highlight(glosa-saved) { text-decoration: underline dotted 2px #2fe0b8; }"
+    )
+    expect(css).toContain(
+      "::highlight(glosa-active) { background-color: #2a5b52; }"
+    )
+  })
 })

@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { ACTIVE_HIGHLIGHT, SAVED_HIGHLIGHT } from "@/lib/words/saved-marks"
 
 export const READER_FONTS = ["serif", "sans", "dyslexic"] as const
 export const READER_THEMES = ["light", "sepia", "dark"] as const
@@ -104,13 +105,29 @@ export const FLOW_LABELS: Record<ReaderFlow, string> = {
   scrolled: "Gulir",
 }
 
+/** `mark` lights the tapped word while its meaning shows (spec 2 §6.2). */
 export const THEME_COLORS: Record<
   ReaderTheme,
-  { background: string; text: string; link: string }
+  { background: string; text: string; link: string; mark: string }
 > = {
-  light: { background: "#ffffff", text: "#1c1b19", link: "#1d4ed8" },
-  sepia: { background: "#f6eedb", text: "#2b2118", link: "#7a2e2e" },
-  dark: { background: "#0b1518", text: "#d8e4e1", link: "#2fe0b8" },
+  light: {
+    background: "#ffffff",
+    text: "#1c1b19",
+    link: "#1d4ed8",
+    mark: "#fde68a",
+  },
+  sepia: {
+    background: "#f6eedb",
+    text: "#2b2118",
+    link: "#7a2e2e",
+    mark: "#ecd59a",
+  },
+  dark: {
+    background: "#0b1518",
+    text: "#d8e4e1",
+    link: "#2fe0b8",
+    mark: "#2a5b52",
+  },
 }
 
 /** foliate's paginator `gap`: the space beside the text, as a share of the page width. */
@@ -152,5 +169,7 @@ export function readerCss(
     `p, li, blockquote, dd, dt, td, th { line-height: ${settings.lineHeight} !important; }`,
     `a:link, a:visited { color: ${colors.link} !important; }`,
     "pre { white-space: pre-wrap !important; }",
+    `::highlight(${SAVED_HIGHLIGHT}) { text-decoration: underline dotted 2px ${colors.link}; }`,
+    `::highlight(${ACTIVE_HIGHLIGHT}) { background-color: ${colors.mark}; }`,
   ].join("\n")
 }
