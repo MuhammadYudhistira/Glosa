@@ -1258,96 +1258,96 @@
     .lobby-notices {
       top: calc(var(--lobby-bar-h) + 0.75rem);
     }
+  }
 
-    /* A tapped word's meanings (spec 2 §6.3). */
-    .word-positioner {
-      z-index: 40;
-    }
-    .word-popup,
-    .word-sheet {
-      overflow-y: auto;
-      border: 1px solid var(--border);
-      background: var(--color-panel);
-      padding: 1rem;
-      color: var(--foreground);
-      box-shadow: 0 12px 32px rgb(0 0 0 / 0.25);
-      outline: none;
-    }
-    .word-popup {
-      width: min(22rem, calc(100vw - 2rem));
-      max-height: min(60dvh, 28rem);
-      border-radius: 0.75rem;
-    }
-    .word-sheet-backdrop {
-      position: fixed;
-      inset: 0;
-      z-index: 50;
-      background: rgb(0 0 0 / 0.35);
-    }
-    .word-sheet {
-      position: fixed;
-      inset-inline: 0;
-      bottom: 0;
-      z-index: 50;
-      max-height: 70dvh;
-      border-radius: 1rem 1rem 0 0;
-      padding-bottom: calc(1rem + env(safe-area-inset-bottom));
-    }
-    .word-card {
-      display: grid;
-      gap: 0.75rem;
-      font-size: 0.9rem;
-    }
-    .word-head {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 0.5rem;
-    }
-    .word-sense h3 {
-      font-size: 0.75rem;
-      color: var(--muted-foreground);
-    }
-    .word-tag {
-      border: 1px solid var(--border);
-      border-radius: 9999px;
-      padding: 0 0.4rem;
-      font-size: 0.7rem;
-    }
-    .word-note {
-      display: grid;
-      justify-items: start;
-      gap: 0.5rem;
-      color: var(--muted-foreground);
-    }
-    .word-actions {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-    }
-    .word-credit {
-      font-size: 0.7rem;
-      color: var(--muted-foreground);
-      text-decoration: underline;
-    }
-    .word-skeleton {
-      display: grid;
-      gap: 0.4rem;
-    }
+  /* A tapped word's meanings (spec 2 §6.3). */
+  .word-positioner {
+    z-index: 40;
+  }
+  .word-popup,
+  .word-sheet {
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    background: var(--color-panel);
+    padding: 1rem;
+    color: var(--foreground);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.25);
+    outline: none;
+  }
+  .word-popup {
+    width: min(22rem, calc(100vw - 2rem));
+    max-height: min(60dvh, 28rem);
+    border-radius: 0.75rem;
+  }
+  .word-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgb(0 0 0 / 0.35);
+  }
+  .word-sheet {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 50;
+    max-height: 70dvh;
+    border-radius: 1rem 1rem 0 0;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+  .word-card {
+    display: grid;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+  }
+  .word-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .word-sense h3 {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+  .word-tag {
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    padding: 0 0.4rem;
+    font-size: 0.7rem;
+  }
+  .word-note {
+    display: grid;
+    justify-items: start;
+    gap: 0.5rem;
+    color: var(--muted-foreground);
+  }
+  .word-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .word-credit {
+    font-size: 0.7rem;
+    color: var(--muted-foreground);
+    text-decoration: underline;
+  }
+  .word-skeleton {
+    display: grid;
+    gap: 0.4rem;
+  }
+  .word-skeleton span {
+    height: 0.8rem;
+    border-radius: 0.25rem;
+    background: var(--muted);
+    animation: word-pulse 1.5s ease-in-out infinite;
+  }
+  .word-skeleton span:last-child {
+    width: 60%;
+  }
+  @media (prefers-reduced-motion: reduce) {
     .word-skeleton span {
-      height: 0.8rem;
-      border-radius: 0.25rem;
-      background: var(--muted);
-      animation: word-pulse 1.5s ease-in-out infinite;
-    }
-    .word-skeleton span:last-child {
-      width: 60%;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .word-skeleton span {
-        animation: none;
-      }
+      animation: none;
     }
   }
 }

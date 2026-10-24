@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from "@testing-library/react"
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { LookupResult } from "@/lib/words/types"
 import { stubWideScreen, unstubWideScreen } from "@/test/media"
@@ -126,5 +132,32 @@ describe("WordPopup", () => {
     stubWideScreen(true)
     show({ kind: "result", result })
     expect(within(await popup()).getByText("→ run")).toBeInTheDocument()
+  })
+
+  it("closes on Escape on wide screens", async () => {
+    stubWideScreen(true)
+    const props = show({ kind: "result", result })
+    fireEvent.keyDown(await popup(), { key: "Escape" })
+    expect(props.onClose).toHaveBeenCalled()
+  })
+
+  it("returns focus to the book when it closes on wide screens", async () => {
+    stubWideScreen(true)
+    const target = document.createElement("button")
+    document.body.append(target)
+    const props = {
+      tap,
+      lookup: { kind: "result", result } as WordLookupState,
+      saved: false,
+      onToggleSave: vi.fn(),
+      onRetry: vi.fn(),
+      onClose: vi.fn(),
+      finalFocus: () => target,
+    }
+    const { rerender } = render(<WordPopup {...props} />)
+    fireEvent.keyDown(await popup(), { key: "Escape" })
+    rerender(<WordPopup {...props} tap={null} />)
+    await waitFor(() => expect(target).toHaveFocus())
+    target.remove()
   })
 })
