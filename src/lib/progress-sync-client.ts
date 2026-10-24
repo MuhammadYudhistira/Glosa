@@ -7,6 +7,7 @@ import {
   type SyncStatus,
   createProgressSync,
 } from "./progress-sync"
+import { wordSync } from "./words/word-sync-client"
 
 const keepaliveFetch: typeof fetch = (input, init) =>
   fetch(input, { ...init, keepalive: true })
@@ -64,14 +65,14 @@ export function useSyncStatus(): SyncStatus {
 const LEAVE_FLUSH_MS = 3_000
 
 /**
- * Before signing out: send the positions still waiting (for a few seconds at
- * most), then wipe this device's copies (plan 1C, decision 6).
+ * Before signing out: send the positions and word changes still waiting (for
+ * a few seconds at most), then wipe this device's copies (plan 1C, decision 6).
  */
 export async function leaveDevice(): Promise<void> {
   await Promise.race([
-    progressSync()
-      .flush()
-      .catch(() => undefined),
+    Promise.all([progressSync().flush(), wordSync().flush()]).catch(
+      () => undefined
+    ),
     new Promise((resolve) => setTimeout(resolve, LEAVE_FLUSH_MS)),
   ])
   await clearLocalData()

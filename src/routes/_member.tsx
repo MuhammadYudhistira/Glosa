@@ -4,6 +4,7 @@ import { MemberShell } from "@/components/member/MemberShell"
 import { resolveUser } from "@/lib/current-user"
 import { claimLocalData } from "@/lib/local/device"
 import { useProgressFlush } from "@/lib/progress-sync-client"
+import { useWordFlush } from "@/lib/words/word-sync-client"
 import { memberRedirect } from "@/lib/redirects"
 
 export const Route = createFileRoute("/_member")({
@@ -26,6 +27,7 @@ function MemberLayout() {
     )
   }, [user.id])
   useProgressFlush()
+  useWordFlush()
 
   return (
     <MemberShell>
