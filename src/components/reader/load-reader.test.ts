@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   removeLocalBook: vi.fn(),
   getLocalPosition: vi.fn(),
   removeLocalPosition: vi.fn(),
+  removeLocalAnnotations: vi.fn(async () => undefined),
   loadShelfSnapshot: vi.fn(),
   requestPersistence: vi.fn(),
 }))
@@ -24,6 +25,10 @@ vi.mock("@/lib/local/book-files", () => ({
   saveLocalBook: mocks.saveLocalBook,
   removeLocalBook: mocks.removeLocalBook,
 }))
+vi.mock("@/lib/local/annotations", () => ({
+  removeLocalAnnotations: mocks.removeLocalAnnotations,
+}))
+
 vi.mock("@/lib/local/positions", () => ({
   getLocalPosition: mocks.getLocalPosition,
   removeLocalPosition: mocks.removeLocalPosition,
@@ -188,6 +193,7 @@ describe("loadReader", () => {
     expect(isNotFound(error)).toBe(true)
     expect(mocks.removeLocalBook).toHaveBeenCalledWith(BOOK_ID)
     expect(mocks.removeLocalPosition).toHaveBeenCalledWith(BOOK_ID)
+    expect(mocks.removeLocalAnnotations).toHaveBeenCalledWith(BOOK_ID)
   })
 
   it("reports a network failure during the download as a load error", async () => {

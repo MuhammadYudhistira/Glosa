@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   saveBookOffline: vi.fn(),
   removeLocalBook: vi.fn(),
   removeLocalPosition: vi.fn(),
+  removeLocalAnnotations: vi.fn(async () => undefined),
 }))
 const { updateBookGenreFn, deleteBookFn } = mocks
 vi.mock("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }))
@@ -28,6 +29,10 @@ vi.mock("@/lib/local/book-files", () => ({
   removeLocalBook: mocks.removeLocalBook,
   localBookIds: vi.fn(async () => new Set()),
 }))
+vi.mock("@/lib/local/annotations", () => ({
+  removeLocalAnnotations: mocks.removeLocalAnnotations,
+}))
+
 vi.mock("@/lib/local/positions", () => ({
   removeLocalPosition: mocks.removeLocalPosition,
   localPercentages: vi.fn(async () => new Map()),
@@ -178,6 +183,7 @@ describe("BookActions", () => {
     await vi.waitFor(() => expect(onDeleted).toHaveBeenCalledWith(sherlock))
     expect(mocks.removeLocalBook).toHaveBeenCalledWith(sherlock.id)
     expect(mocks.removeLocalPosition).toHaveBeenCalledWith(sherlock.id)
+    expect(mocks.removeLocalAnnotations).toHaveBeenCalledWith(sherlock.id)
   })
 
   it("needs a connection for changes, deletion and offline copies", () => {

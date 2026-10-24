@@ -5,6 +5,7 @@ import {
   removeLocalBook,
   saveLocalBook,
 } from "@/lib/local/book-files"
+import { removeLocalAnnotations } from "@/lib/local/annotations"
 import { requestPersistence } from "@/lib/local/device"
 import { getLocalPosition, removeLocalPosition } from "@/lib/local/positions"
 import { loadShelfSnapshot } from "@/lib/local/shelf-snapshot"
@@ -66,7 +67,11 @@ export async function loadReader(
   if (state && !state.ok) {
     if (state.code === "not_found") {
       // Deleted on another device: this device's copy goes too.
-      await Promise.all([removeLocalBook(bookId), removeLocalPosition(bookId)])
+      await Promise.all([
+        removeLocalBook(bookId),
+        removeLocalPosition(bookId),
+        removeLocalAnnotations(bookId),
+      ])
       throw notFound()
     }
     if (state.code === "not_authenticated") {

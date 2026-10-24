@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from "dexie"
+import type { Annotation } from "@/lib/annotations/types"
 import type { LookupResult, SavedWord } from "@/lib/words/types"
 
 export type LocalFile = {
@@ -36,6 +37,9 @@ export type LocalWordOp = {
   queuedAt: number
 }
 
+/** An annotation as this device keeps it; `pending` is 1 until the server has this change. */
+export type LocalAnnotation = Annotation & { pending: 0 | 1 }
+
 /** Everything Glosa keeps in IndexedDB for the member using this device (spec §3). */
 class GlosaDb extends Dexie {
   files!: EntityTable<LocalFile, "bookId">
@@ -44,6 +48,7 @@ class GlosaDb extends Dexie {
   lookups!: EntityTable<LocalLookup, "key">
   words!: EntityTable<SavedWord, "headword">
   wordOps!: EntityTable<LocalWordOp, "headword">
+  annotations!: EntityTable<LocalAnnotation, "id">
 
   constructor() {
     super("glosa")
@@ -57,6 +62,10 @@ class GlosaDb extends Dexie {
       lookups: "key, word, usedAt",
       words: "headword, createdAt",
       wordOps: "headword, queuedAt",
+    })
+    // Tahap 2B: highlights and bookmarks, with their queue (spec 2 §5).
+    this.version(3).stores({
+      annotations: "id, bookId, pending",
     })
   }
 }

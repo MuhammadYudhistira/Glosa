@@ -12,6 +12,7 @@ import {
   isGenre,
 } from "@/lib/genre"
 import { removeLocalBook } from "@/lib/local/book-files"
+import { removeLocalAnnotations } from "@/lib/local/annotations"
 import { removeLocalPosition } from "@/lib/local/positions"
 import { formatBytes } from "@/lib/member"
 import { useOnline } from "@/lib/use-online"
@@ -74,6 +75,7 @@ export function BookActions({
         await Promise.all([
           removeLocalBook(book.id),
           removeLocalPosition(book.id),
+          removeLocalAnnotations(book.id),
         ]).catch((error: unknown) =>
           console.error("removing this device's copy failed", error)
         )
