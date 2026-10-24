@@ -14,3 +14,6 @@ dist-ssr/
 playwright-report/
 test-results/
 supabase/.temp/
+
+# Downloaded dictionary extracts (docs/ops/deploy.md §6.5); they live in the database, not in git.
+dict/
