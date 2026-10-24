@@ -23,6 +23,9 @@ const MESSAGES: Record<string, string> = {
   words_full:
     "Kosakata sudah penuh (5.000 kata). Hapus beberapa kata untuk menyimpan yang baru.",
   word_invalid: "Kata ini tidak bisa disimpan.",
+  annotations_full:
+    "Anotasi sudah penuh (10.000). Hapus beberapa anotasi untuk membuat yang baru.",
+  annotation_invalid: "Anotasi ini tidak bisa disimpan.",
   position_missing: "Posisi itu tidak ditemukan di buku ini",
 }
 

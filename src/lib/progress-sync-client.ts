@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react"
 import { saveProgressFn } from "@/server/reading"
+import { annotationSync } from "./annotations/annotation-sync-client"
 import { clearLocalData } from "./local/device"
 import { localPositionStore } from "./local/positions"
 import {
@@ -65,17 +66,21 @@ export function useSyncStatus(): SyncStatus {
 const LEAVE_FLUSH_MS = 3_000
 
 /**
- * Before signing out: send the positions and word changes still waiting (for
- * a few seconds at most), then wipe this device's copies (plan 1C, decision 6).
+ * Before signing out: send the positions, word and annotation changes still
+ * waiting (for a few seconds at most), then wipe this device's copies (plan
+ * 1C, decision 6).
  */
 export async function leaveDevice(): Promise<void> {
   await Promise.race([
-    Promise.all([progressSync().flush(), wordSync().flush()]).catch(
-      () => undefined
-    ),
+    Promise.all([
+      progressSync().flush(),
+      wordSync().flush(),
+      annotationSync().flush(),
+    ]).catch(() => undefined),
     new Promise((resolve) => setTimeout(resolve, LEAVE_FLUSH_MS)),
   ])
   await clearLocalData()
   // A refusal notice belongs to this member, not to the next one.
   wordSync().dismissRejection()
+  annotationSync().dismissRejection()
 }

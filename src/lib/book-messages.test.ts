@@ -54,6 +54,15 @@ describe("bookMessage", () => {
     )
   })
 
+  it("explains refused annotations", () => {
+    expect(bookMessage("annotations_full")).toBe(
+      "Anotasi sudah penuh (10.000). Hapus beberapa anotasi untuk membuat yang baru."
+    )
+    expect(bookMessage("annotation_invalid")).toBe(
+      "Anotasi ini tidak bisa disimpan."
+    )
+  })
+
   it("falls back for unknown codes, including prototype keys", () => {
     const fallback = "Ada yang tidak beres. Coba lagi sebentar lagi."
     expect(bookMessage("unknown")).toBe(fallback)
