@@ -76,4 +76,6 @@ export async function leaveDevice(): Promise<void> {
     new Promise((resolve) => setTimeout(resolve, LEAVE_FLUSH_MS)),
   ])
   await clearLocalData()
+  // A refusal notice belongs to this member, not to the next one.
+  wordSync().dismissRejection()
 }

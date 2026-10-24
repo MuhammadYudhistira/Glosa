@@ -141,6 +141,24 @@ describe("wordAt", () => {
     expect(wordAt(doc, 10, 10)).toBeNull()
   })
 
+  it("takes a word in a section without a body, as an SVG page", () => {
+    const svg = new DOMParser().parseFromString(
+      '<svg xmlns="http://www.w3.org/2000/svg"><text>Holmes smiled.</text></svg>',
+      "image/svg+xml"
+    )
+    const text = svg.querySelector("text")?.firstChild as Text
+    stub(svg, "caretRangeFromPoint", () => {
+      const range = svg.createRange()
+      range.setStart(text, 0)
+      return range
+    })
+    stub(Range.prototype, "getClientRects", () => [box])
+    expect(wordAt(svg, 10, 10)).toMatchObject({
+      word: "holmes",
+      sentence: "Holmes smiled.",
+    })
+  })
+
   it("finds nothing without a caret", () => {
     const { doc } = page("<p>Holmes</p>", 0)
     stub(doc, "caretRangeFromPoint", () => null)

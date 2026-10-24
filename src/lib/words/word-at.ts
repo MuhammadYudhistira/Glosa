@@ -159,10 +159,16 @@ function containsPoint(range: Range, x: number, y: number): boolean {
   )
 }
 
+/** The section's body; an SVG page has none. */
+function rootOf(doc: Document): Element {
+  const body = doc.body as HTMLElement | null
+  return body ?? doc.documentElement
+}
+
 /** The paragraph's text and where `node` starts in it. */
 function paragraphOf(node: Text): { text: string; offset: number } {
   const doc = node.ownerDocument
-  const block = node.parentElement?.closest(BLOCKS) ?? doc.body
+  const block = node.parentElement?.closest(BLOCKS) ?? rootOf(doc)
   const walker = doc.createTreeWalker(block, NodeFilter.SHOW_TEXT)
   let offset = 0
   for (

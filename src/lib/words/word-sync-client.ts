@@ -4,7 +4,6 @@ import {
   type FormsByHeadword,
   listLocalWords,
   loadSavedForms,
-  localHeadwords,
   localWordStore,
   saveSavedForms,
 } from "@/lib/local/saved-words"
@@ -97,12 +96,7 @@ function useLocal<T>(read: () => Promise<T>, initial: T): T {
   return value
 }
 
-const NO_HEADWORDS: ReadonlySet<string> = new Set()
 const NO_FORMS: FormsByHeadword = {}
-
-export function useSavedHeadwords(): ReadonlySet<string> {
-  return useLocal<ReadonlySet<string>>(localHeadwords, NO_HEADWORDS)
-}
 
 export function useSavedForms(): FormsByHeadword {
   return useLocal(loadSavedForms, NO_FORMS)

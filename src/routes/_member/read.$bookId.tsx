@@ -32,7 +32,6 @@ import { savedFormsOf } from "@/lib/words/saved-marks"
 import {
   refreshSavedForms,
   useSavedForms,
-  useSavedHeadwords,
   wordSync,
 } from "@/lib/words/word-sync-client"
 import { markBookOpenedFn } from "@/server/reading"
@@ -40,6 +39,8 @@ import { markBookOpenedFn } from "@/server/reading"
 type ReaderSearch = { cfi?: string }
 
 const NO_WORDS: Array<string> = []
+/** How long "Posisi itu tidak ditemukan di buku ini" stays. */
+const NOTE_MS = 8000
 /** The popup gives the focus back to the book. */
 const bookFocus = () => document.querySelector<HTMLElement>(".reader-host")
 
@@ -105,7 +106,6 @@ function ReaderPage() {
   const [targetMissing, setTargetMissing] = useState(false)
   const [tap, setTap] = useState<WordTap | null>(null)
   const lookup = useWordLookup(tap?.word ?? null, tap?.next ?? NO_WORDS)
-  const savedHeadwords = useSavedHeadwords()
   const formsByHeadword = useSavedForms()
   const savedForms = useMemo(
     () => savedFormsOf(formsByHeadword),
@@ -117,7 +117,10 @@ function ReaderPage() {
         tap.word
       )
     : null
-  const saved = choice !== null && savedHeadwords.has(choice.headword)
+  // The forms come in when a book opens and change with every local save, so
+  // a word saved on another device shows as saved too.
+  const saved =
+    choice !== null && Object.hasOwn(formsByHeadword, choice.headword)
   const [controls, setControls] = useState<ReaderControls | null>(null)
   const [toc, setToc] = useState<Array<TocItem>>([])
   const [location, setLocation] = useState<ReaderLocation | null>(null)
@@ -192,6 +195,8 @@ function ReaderPage() {
       shownCfi.current = next.cfi
       setLocation(next)
       if (!ready.current || !interacted.current || !moved) return
+      // The first page turn puts the missing-place note away.
+      setTargetMissing(false)
       progressSync()
         .record({
           bookId,
@@ -220,6 +225,12 @@ function ReaderPage() {
     setTap(next)
   }, [])
   const closeWord = useCallback(() => setTap(null), [])
+  // The note goes after a while too, if no page is turned.
+  useEffect(() => {
+    if (!targetMissing) return
+    const timer = setTimeout(() => setTargetMissing(false), NOTE_MS)
+    return () => clearTimeout(timer)
+  }, [targetMissing])
   const onTargetMissing = useCallback(() => {
     setTargetMissing(true)
     // The place asked for is gone, so the other device's place is offered after all.

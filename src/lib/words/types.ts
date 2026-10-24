@@ -35,7 +35,6 @@ export type LookupResult = {
   version: string | null
 }
 
-export const MAX_SAVED_WORDS = 5000
 /** Changes sent in one request (spec 2 §4.2). */
 export const MAX_WORD_OPS = 50
 export const MAX_SENTENCE_LENGTH = 500

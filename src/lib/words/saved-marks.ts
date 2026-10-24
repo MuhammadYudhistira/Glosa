@@ -6,7 +6,6 @@ export const ACTIVE_HIGHLIGHT = "glosa-active"
 
 /** Every form of every saved word, and how many words the longest has (at most 3). */
 export type SavedForms = { set: ReadonlySet<string>; maxWords: number }
-export const NO_SAVED_FORMS: SavedForms = { set: new Set(), maxWords: 0 }
 
 export function savedFormsOf(forms: Record<string, Array<string>>): SavedForms {
   const set = new Set(Object.values(forms).flat())
@@ -69,7 +68,9 @@ export function markSavedWords(
   const Highlight = scope?.Highlight
   if (!registry || !Highlight) return
   const ranges: Array<Range> = []
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT)
+  // An SVG page has no body.
+  const root = (doc.body as HTMLElement | null) ?? doc.documentElement
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT)
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const text = node as Text
     if (text.parentElement?.closest("script, style")) continue

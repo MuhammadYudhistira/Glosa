@@ -7,11 +7,13 @@ import { clearLocalData } from "./device"
 import {
   listLocalWords,
   loadSavedForms,
-  localHeadwords,
   localWordStore,
   replaceLocalWords,
   saveSavedForms,
 } from "./saved-words"
+
+const headwords = async () =>
+  (await listLocalWords()).map((saved) => saved.headword)
 
 const word = (headword: string, minute = 0): SavedWord => ({
   headword,
@@ -31,7 +33,7 @@ beforeEach(async () => {
 describe("Kosakata on this device", () => {
   it("shows a saved word at once and queues it", async () => {
     await localWordStore.save(word("run"), ["ran"])
-    expect(await localHeadwords()).toEqual(new Set(["run"]))
+    expect(await headwords()).toEqual(["run"])
     expect(await loadSavedForms()).toEqual({ run: ["run", "ran"] })
     const pending = await localWordStore.pending()
     expect(pending.map(({ headword, kind }) => [headword, kind])).toEqual([
@@ -73,7 +75,7 @@ describe("Kosakata on this device", () => {
     const [first] = await localWordStore.pending()
     await localWordStore.save(word("walk", 1), [])
     await localWordStore.revert(first)
-    expect(await localHeadwords()).toEqual(new Set(["walk"]))
+    expect(await headwords()).toEqual(["walk"])
   })
 
   it("lays this device's waiting changes over the server's list", async () => {

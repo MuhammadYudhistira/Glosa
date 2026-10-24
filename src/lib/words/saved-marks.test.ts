@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   ACTIVE_HIGHLIGHT,
-  NO_SAVED_FORMS,
   SAVED_HIGHLIGHT,
   findSavedSpans,
   markSavedWords,
@@ -48,7 +47,7 @@ describe("findSavedSpans", () => {
   })
 
   it("finds nothing without saved words", () => {
-    expect(findSavedSpans("run", NO_SAVED_FORMS)).toEqual([])
+    expect(findSavedSpans("run", savedFormsOf({}))).toEqual([])
   })
 })
 
@@ -64,6 +63,17 @@ describe("markSavedWords", () => {
     markSavedWords(document, forms, scope)
     const ranges = registry.get(SAVED_HIGHLIGHT)?.ranges ?? []
     expect(ranges.map((range) => range.toString())).toEqual(["ran", "Running"])
+  })
+
+  it("marks a section without a body, as an SVG page", () => {
+    const svg = new DOMParser().parseFromString(
+      '<svg xmlns="http://www.w3.org/2000/svg"><text>He ran.</text></svg>',
+      "image/svg+xml"
+    )
+    const { registry, scope } = fakeScope()
+    markSavedWords(svg, forms, scope)
+    const ranges = registry.get(SAVED_HIGHLIGHT)?.ranges ?? []
+    expect(ranges.map((range) => range.toString())).toEqual(["ran"])
   })
 })
 

@@ -177,7 +177,7 @@ test("on phones Rak Saya and Pengaturan stay pages", async ({
   await page.keyboard.press("Escape")
   await expect(page).toHaveURL(/\/shelf$/)
 
-  // Pressed, not clicked: with five tabs the dev-only devtools button sits
+  // Pressed, not clicked: with four tabs the dev-only devtools button sits
   // over the last one.
   await navOf(page).getByRole("link", { name: "Pengaturan" }).press("Enter")
   await expect(

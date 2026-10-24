@@ -2,14 +2,15 @@ import { listSavedWordsFn } from "@/server/words"
 import { BookLoadError } from "./book-download"
 import { claimLocalData } from "./local/device"
 import { listLocalWords } from "./local/saved-words"
+import { isNetworkError } from "./network-error"
 import type { SavedWord } from "./words/types"
 import { wordSync } from "./words/word-sync-client"
 
 export type VocabularyView = { words: Array<SavedWord>; offline: boolean }
 
-// The connection can drop while the request is in flight.
+// The connection can drop while the request is in flight; any other error is a bug.
 const unreachable = (error: unknown) =>
-  !navigator.onLine || error instanceof TypeError
+  !navigator.onLine || isNetworkError(error)
 
 /**
  * Kosakata (spec 2 §7). Online: the server's list, once this device's

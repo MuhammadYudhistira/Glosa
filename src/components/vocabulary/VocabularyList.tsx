@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { Trash2Icon } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useId, useMemo, useState } from "react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -28,7 +28,7 @@ function VocabularyCard({
   onShelf: boolean
   onDelete: () => void
 }) {
-  const headingId = `kata-${word.headword.replaceAll(" ", "-")}`
+  const headingId = useId()
   return (
     <article aria-labelledby={headingId} className="vocab-card">
       <header className="flex items-baseline gap-2">

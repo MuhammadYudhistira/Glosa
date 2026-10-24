@@ -20,10 +20,6 @@ export async function listLocalWords(): Promise<Array<SavedWord>> {
   return localDb().words.orderBy("createdAt").reverse().toArray()
 }
 
-export async function localHeadwords(): Promise<Set<string>> {
-  return new Set(await localDb().words.toCollection().primaryKeys())
-}
-
 export async function loadSavedForms(): Promise<FormsByHeadword> {
   const row = await localDb().meta.get(FORMS_KEY)
   return (row?.value as FormsByHeadword | undefined) ?? {}
