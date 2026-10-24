@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
+import { claimLocalData } from "@/lib/local/device"
 import {
   type FormsByHeadword,
   listLocalWords,
@@ -39,15 +40,30 @@ export async function refreshSavedForms(): Promise<void> {
   }
 }
 
-/** Sends waiting changes when the app opens and when the connection comes back (spec 2 §7). */
-export function useWordFlush(): void {
+/**
+ * Sends waiting changes when the app opens and when the connection comes back
+ * (spec 2 §7). It waits for this device to be the member's first: otherwise the
+ * previous member's queue could be sent under the new session.
+ */
+export function useWordFlush(userId: string): void {
   useEffect(() => {
+    let live = true
     const sync = wordSync()
-    void sync.flush()
     const onOnline = () => void sync.flush()
-    window.addEventListener("online", onOnline)
-    return () => window.removeEventListener("online", onOnline)
-  }, [])
+    claimLocalData(userId)
+      .then(() => {
+        if (!live) return
+        void sync.flush()
+        window.addEventListener("online", onOnline)
+      })
+      .catch((error: unknown) =>
+        console.error("claiming this device failed", error)
+      )
+    return () => {
+      live = false
+      window.removeEventListener("online", onOnline)
+    }
+  }, [userId])
 }
 
 export function useVocabularyVersion(): number {
@@ -58,7 +74,10 @@ export function useVocabularyVersion(): number {
   )
 }
 
-/** Reads this device's copy on mount and again after every change to Kosakata. */
+/**
+ * Reads this device's copy on mount and again after every change to Kosakata.
+ * `read` must keep the same identity (a module-level function).
+ */
 function useLocal<T>(read: () => Promise<T>, initial: T): T {
   const version = useVocabularyVersion()
   const [value, setValue] = useState(initial)
@@ -116,5 +135,5 @@ export function useLocalWords(initial: Array<SavedWord>): Array<SavedWord> {
 
 export function useWordRejection(): WordRejection | null {
   useVocabularyVersion()
-  return wordSync().rejection()
+  return import.meta.env.SSR ? null : wordSync().rejection()
 }

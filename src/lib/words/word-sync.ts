@@ -112,14 +112,25 @@ export function createWordSync(options: {
         if (!answer.ok) return
         await store.confirm(batch)
         delivered = true
+        const refused: Array<{
+          op: QueuedWordOp
+          code: WordRejection["code"]
+        }> = []
         for (const [index, result] of answer.results.entries()) {
           if (result === "ok") continue
           const op = batch[index]
           await store.revert(op)
-          refuse(
-            result === "limit_reached" ? "words_full" : "word_invalid",
-            op.headword
-          )
+          refused.push({
+            op,
+            code: result === "limit_reached" ? "words_full" : "word_invalid",
+          })
+        }
+        if (refused.length > 0) {
+          // A word changed again while the batch was in flight is not refused news.
+          const queued = new Set((await store.pending()).map((q) => q.headword))
+          for (const { op, code } of refused) {
+            if (!queued.has(op.headword)) refuse(code, op.headword)
+          }
         }
       }
     } finally {

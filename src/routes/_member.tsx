@@ -27,7 +27,7 @@ function MemberLayout() {
     )
   }, [user.id])
   useProgressFlush()
-  useWordFlush()
+  useWordFlush(user.id)
 
   return (
     <MemberShell>

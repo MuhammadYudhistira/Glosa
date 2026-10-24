@@ -181,4 +181,21 @@ describe("createWordSync", () => {
     await sync.flush()
     expect(send.mock.calls.map(([sent]) => sent.length)).toEqual([50, 1])
   })
+
+  it("does not report a refusal for a word changed again in flight", async () => {
+    const { ops, store } = memoryStore()
+    let release: (answer: WordSyncAnswer) => void = () => {}
+    const send = vi.fn(
+      () => new Promise<WordSyncAnswer>((resolve) => (release = resolve))
+    )
+    const sync = createWordSync({ store, send, isOnline: () => true })
+    await sync.save(word("run"), [])
+    const flushing = sync.flush()
+    await vi.advanceTimersByTimeAsync(0)
+    await sync.remove("run")
+    release({ ok: true, results: ["limit_reached"] })
+    await flushing
+    expect(sync.rejection()).toBeNull()
+    expect(ops.get("run")?.kind).toBe("delete")
+  })
 })
