@@ -22,12 +22,24 @@ declare module "foliate-js/epub.js" {
 
 declare module "foliate-js/view.js" {
   import type { EPUB } from "foliate-js/epub.js"
+  import type { Overlayer } from "foliate-js/overlayer.js"
 
   export type RelocateDetail = {
     /** Position in the whole book, 0–1. */
     fraction: number
     cfi: string
     tocItem?: { label?: string; href?: string } | null
+    /** The text shown now. */
+    range?: Range
+  }
+
+  /** foliate asks how to draw an annotation added with addAnnotation. */
+  export type DrawAnnotationDetail = {
+    draw: <T>(
+      draw: (rects: DOMRectList, options: T) => SVGElement,
+      options: T
+    ) => void
+    annotation: { value: string }
   }
 
   /** foliate-paginator (reflowable) or foliate-fxl (fixed layout, no setStyles). */
@@ -35,7 +47,11 @@ declare module "foliate-js/view.js" {
     setStyles?: (styles: string) => void
     /** Lays the current section out again (the paginator calls it on resize). */
     render?: () => void
-    getContents?: () => Array<{ doc: Document | null }>
+    getContents?: () => Array<{
+      doc: Document | null
+      index?: number
+      overlayer?: Overlayer
+    }>
     /** Settles a swipe on a page; the paginator calls it when a touch ends. */
     snap?: (vx: number, vy: number) => void
   }
@@ -53,6 +69,17 @@ declare module "foliate-js/view.js" {
     goTo(target: string): Promise<unknown>
     /** The CFI of a range in section `index`. */
     getCFI(index: number, range?: Range): string
+    /** Draws (or, with remove, clears) an annotation; `value` is its CFI. */
+    addAnnotation(
+      annotation: { value: string },
+      remove?: boolean
+    ): Promise<unknown>
+    deleteAnnotation(annotation: { value: string }): Promise<unknown>
+    /** The table-of-contents entry a range in section `index` belongs to. */
+    getProgressOf(
+      index: number,
+      range?: Range
+    ): { tocItem?: { label?: string } | null }
     /** Where a CFI or href leads; index -1 when the book has no such place. */
     resolveNavigation(
       target: string
@@ -62,5 +89,23 @@ declare module "foliate-js/view.js" {
     goRight(): Promise<void>
     prev(): Promise<void>
     next(): Promise<void>
+  }
+}
+
+declare module "foliate-js/epubcfi.js" {
+  /** The start (or, with `toEnd`, the end) of a range CFI; a point stays as it is. */
+  export function collapse(cfi: string, toEnd?: boolean): string
+  /** Negative, zero or positive, by place in the book. */
+  export function compare(a: string, b: string): number
+}
+
+declare module "foliate-js/overlayer.js" {
+  export class Overlayer {
+    static highlight(
+      rects: ArrayLike<DOMRect>,
+      options?: { color?: string }
+    ): SVGElement
+    /** The annotation drawn under a point, in the section's coordinates. */
+    hitTest(point: { x: number; y: number }): [string, Range] | []
   }
 }
