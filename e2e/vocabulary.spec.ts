@@ -127,6 +127,32 @@ test("a deleted word comes back with Urungkan", async ({ page, isMobile }) => {
     .toBe(1)
 })
 
+test("turning the page closes the meaning", async ({ page, isMobile }) => {
+  // Keys in a meaning never turn pages, and on phones its sheet covers the
+  // book; the wheel over the book still turns it beside the popover.
+  test.skip(isMobile, "the sheet is modal: the book is out of reach")
+  await memberReading(page)
+  const word = await tapWord(page, isMobile)
+  const popup = page.getByRole("dialog", { name: `Arti ${word}` })
+  await expect(popup).toBeVisible()
+  const place = () =>
+    page.evaluate(
+      () =>
+        (
+          document.querySelector("foliate-view") as unknown as {
+            lastLocation: { cfi: string }
+          }
+        ).lastLocation.cfi
+    )
+  const before = await place()
+  const { width, height } = page.viewportSize()!
+  // Low on the page, clear of the popover under the word.
+  await page.mouse.move(width / 2, height - 100)
+  await page.mouse.wheel(0, 200)
+  await expect.poll(place).not.toBe(before)
+  await expect(popup).toBeHidden()
+})
+
 test("a tap beside the text still turns the page", async ({
   page,
   isMobile,

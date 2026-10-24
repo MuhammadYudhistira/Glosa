@@ -119,6 +119,9 @@ function ReaderPage() {
   const [controls, setControls] = useState<ReaderControls | null>(null)
   const [toc, setToc] = useState<Array<TocItem>>([])
   const [location, setLocation] = useState<ReaderLocation | null>(null)
+  // The place shown now, and the place shown when the open word was tapped.
+  const shownCfi = useRef<string | null>(null)
+  const tappedAtCfi = useRef<string | null>(null)
   const [chromeHidden, setChromeHidden] = useState(false)
   const [panel, setPanel] = useState<"toc" | "settings" | null>(null)
   const [offer, setOffer] = useState<Position | null>(() =>
@@ -164,8 +167,11 @@ function ReaderPage() {
 
   const onRelocate = useCallback(
     (next: ReaderLocation) => {
-      // Turning the page closes the meaning (spec 2 §6.3).
-      setTap(null)
+      // Turning the page closes the meaning (spec 2 §6.3). foliate also
+      // relocates without moving: on a touch screen it snaps to the page after
+      // every touch, the tap on the word too. Then the meaning stays.
+      if (next.cfi !== tappedAtCfi.current) setTap(null)
+      shownCfi.current = next.cfi
       setLocation(next)
       if (!ready.current || !interacted.current) return
       progressSync()
@@ -191,6 +197,10 @@ function ReaderPage() {
     setViewError(error instanceof EpubError ? error.code : "unknown")
   }, [])
 
+  const openWord = useCallback((next: WordTap) => {
+    tappedAtCfi.current = shownCfi.current
+    setTap(next)
+  }, [])
   const closeWord = useCallback(() => setTap(null), [])
   const onTargetMissing = useCallback(() => {
     setTargetMissing(true)
@@ -253,7 +263,7 @@ function ReaderPage() {
         onRelocate={onRelocate}
         onInteract={onInteract}
         onTapMenu={onTapMenu}
-        onWord={setTap}
+        onWord={openWord}
         onDismissWord={closeWord}
         onTargetMissing={onTargetMissing}
         onError={onError}
