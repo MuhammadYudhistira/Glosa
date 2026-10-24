@@ -3,11 +3,19 @@ import { COVER_CACHE, READER_SETTINGS_KEY, USER_KEY } from "./keys"
 
 const OWNER_KEY = "owner"
 
-/** Drops the member's books, positions, shelf snapshot, cached covers and reader settings. */
+/** Drops the member's books, positions, Kosakata, shelf snapshot, cached covers and reader settings. */
 async function wipeMemberData(): Promise<void> {
   const db = localDb()
-  await db.transaction("rw", db.files, db.positions, db.meta, async () => {
-    await Promise.all([db.files.clear(), db.positions.clear(), db.meta.clear()])
+  const tables = [
+    db.files,
+    db.positions,
+    db.meta,
+    db.lookups,
+    db.words,
+    db.wordOps,
+  ]
+  await db.transaction("rw", tables, async () => {
+    await Promise.all(tables.map((table) => table.clear()))
   })
   try {
     localStorage.removeItem(READER_SETTINGS_KEY)
