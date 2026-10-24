@@ -9,7 +9,11 @@ import {
   type WordOp,
 } from "./types"
 
-const Word = z.string().min(1).max(MAX_WORD_LENGTH)
+/** Text Postgres can store: a text value cannot hold NUL. */
+const Text = z.string().refine((text) => !text.includes("\u0000"), {
+  message: "NUL",
+})
+const Word = Text.min(1).max(MAX_WORD_LENGTH)
 
 export const LookupRequestSchema = z.object({
   word: Word,
@@ -21,9 +25,9 @@ export const WordOpSchema = z.discriminatedUnion("kind", [
     kind: z.literal("save"),
     headword: Word,
     pos: z.enum(DICT_POS).nullable(),
-    meanings: z.array(z.string().min(1).max(200)).max(MAX_MEANINGS),
+    meanings: z.array(Text.min(1).max(200)).max(MAX_MEANINGS),
     bookId: z.uuid().nullable(),
-    sentence: z.string().max(MAX_SENTENCE_LENGTH),
+    sentence: Text.max(MAX_SENTENCE_LENGTH),
     cfi: z.string().min(1).max(MAX_CFI_LENGTH).nullable(),
   }),
   z.object({ kind: z.literal("delete"), headword: Word }),

@@ -31,6 +31,13 @@ describe("isValidWordOp", () => {
     expect(isValidWordOp({ ...save, cfi: "c".repeat(2001) })).toBe(false)
     expect(isValidWordOp({ ...save, bookId: "bukan-uuid" })).toBe(false)
   })
+
+  it("refuses NUL, which a Postgres text cannot hold", () => {
+    expect(isValidWordOp({ ...save, headword: "ru\u0000n" })).toBe(false)
+    expect(isValidWordOp({ ...save, meanings: ["ber\u0000lari"] })).toBe(false)
+    expect(isValidWordOp({ ...save, sentence: "He\u0000 ran." })).toBe(false)
+    expect(isValidWordOp({ kind: "delete", headword: "ru\u0000n" })).toBe(false)
+  })
 })
 
 describe("LookupRequestSchema", () => {

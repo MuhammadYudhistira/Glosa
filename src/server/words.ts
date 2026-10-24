@@ -96,8 +96,14 @@ export const syncSavedWordsFn = createServerFn({ method: "POST" })
             })
           : await supabase.rpc("delete_word", { p_headword: op.headword })
       if (error) {
-        // Another member's book, or a value the table's checks refuse.
-        if (error.message === "invalid" || error.code === "23514") {
+        // Another member's book, or a value the database refuses (data
+        // exceptions, class 22, and integrity violations, class 23): that one
+        // change is dropped, so it cannot hold up the queue behind it.
+        if (
+          error.message === "invalid" ||
+          error.code.startsWith("22") ||
+          error.code.startsWith("23")
+        ) {
           results.push("invalid")
           continue
         }

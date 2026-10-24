@@ -52,6 +52,18 @@ describe("sentenceAround", () => {
     expect(sentence.length).toBeLessThanOrEqual(500)
     expect(sentence).toContain("target")
   })
+
+  it("does not keep half of a character the cut went through", () => {
+    // Cut to 8 characters, the sentence starts inside the emoji.
+    const text = "x\u{1F600} word here"
+    const start = text.indexOf("word")
+    expect(sentenceAround(text, start, start + 4, 8)).toBe("word h")
+  })
+
+  it("drops control characters but keeps the words apart", () => {
+    expect(around("He ran\u0000 away\u0007.\tThen", "ran")).toBe("He ran away.")
+    expect(around("He\tran\naway.", "ran")).toBe("He ran away.")
+  })
 })
 
 describe("nextWords", () => {

@@ -24,6 +24,12 @@ const ABBREVIATIONS = new Set([
 /** Elements whose text makes one paragraph for the sentence and the next words. */
 const BLOCKS =
   "p, li, blockquote, dd, dt, td, th, h1, h2, h3, h4, h5, h6, figcaption, pre, div"
+/** Half of a surrogate pair: the cut to 500 characters can split an emoji. */
+const LONE_SURROGATE =
+  /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+/** C0 control characters other than whitespace; the database refuses NUL. */
+// eslint-disable-next-line no-control-regex
+const CONTROL = /[\u0000-\u0008\u000E-\u001F]/g
 /** How far outside a word's box a tap still counts, in pixels. */
 const SLOP = 1
 
@@ -57,7 +63,8 @@ function endsSentence(text: string, index: number): boolean {
 /**
  * The sentence holding text[start, end) (spec 2 §6.2): from the last stop
  * before it to the first after it, or the paragraph's edges, cut to `max`
- * characters around the word.
+ * characters around the word. Clean enough for the database: no half
+ * characters, no control characters.
  */
 export function sentenceAround(
   text: string,
@@ -88,7 +95,12 @@ export function sentenceAround(
     )
     to = Math.min(to, from + max)
   }
-  return text.slice(from, to).replace(/\s+/gu, " ").trim()
+  return text
+    .slice(from, to)
+    .replace(LONE_SURROGATE, "")
+    .replace(CONTROL, "")
+    .replace(/\s+/gu, " ")
+    .trim()
 }
 
 /** Up to `count` words right after text[end] in the paragraph, for phrasal verbs (spec 2 §6.2). */
