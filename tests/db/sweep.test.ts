@@ -2,11 +2,13 @@ import { createHash, randomUUID } from "node:crypto"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { bookStorage } from "@/server/book-storage"
 import { runSweep } from "@/server/sweep/run-sweep"
+import { purgeTombstones } from "@/server/sweep/tombstones"
 import {
   adminClient,
   createTestMember,
   deleteTestMembers,
   forgetTestMember,
+  newTestBook,
 } from "./helpers"
 
 const run = Date.now().toString(36)
@@ -154,5 +156,73 @@ describe("runSweep (limited to test members)", () => {
 
     expect(await bookExists(readyId)).toBe(true)
     expect(await present(readyPath)).toBe(true)
+  })
+})
+
+describe("purgeTombstones (limited to a test member)", () => {
+  const DAY = 24 * HOUR
+  let member = ""
+  const ids = { old: randomUUID(), recent: randomUUID(), active: randomUUID() }
+
+  async function exists(id: string) {
+    const { data, error } = await adminClient()
+      .from("annotations")
+      .select("id")
+      .eq("id", id)
+      .maybeSingle()
+    if (error) throw error
+    return data !== null
+  }
+
+  beforeAll(async () => {
+    member = (
+      await createTestMember({ email: `db-sweep-notes-${run}@glosa.test` })
+    ).id
+    const bookId = await newTestBook(member)
+    const long = new Date(Date.now() - 40 * DAY).toISOString()
+    const row = (id: string, deletedAt: string | null) => ({
+      id,
+      user_id: member,
+      book_id: bookId,
+      kind: "bookmark",
+      cfi: "epubcfi(/6/4!/4/2/1:0)",
+      color: null,
+      created_at: long,
+      updated_at: deletedAt ?? long,
+      deleted_at: deletedAt,
+    })
+    const { error } = await adminClient()
+      .from("annotations")
+      .insert([
+        row(ids.old, new Date(Date.now() - 31 * DAY).toISOString()),
+        row(ids.recent, new Date(Date.now() - DAY).toISOString()),
+        row(ids.active, null),
+      ])
+    if (error) throw error
+  })
+
+  afterAll(async () => {
+    await deleteTestMembers()
+  })
+
+  it("only counts in a dry run", async () => {
+    const count = await purgeTombstones({
+      admin: adminClient(),
+      onlyUserIds: [member],
+      dryRun: true,
+    })
+    expect(count).toBe(1)
+    expect(await exists(ids.old)).toBe(true)
+  })
+
+  it("removes tombstones older than 30 days and nothing else", async () => {
+    const count = await purgeTombstones({
+      admin: adminClient(),
+      onlyUserIds: [member],
+    })
+    expect(count).toBe(1)
+    expect(await exists(ids.old)).toBe(false)
+    expect(await exists(ids.recent)).toBe(true)
+    expect(await exists(ids.active)).toBe(true)
   })
 })

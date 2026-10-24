@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/server/database.types"
 import { flushServerErrors, logServerError } from "@/server/monitoring"
 import { SWEEP_LIMITS, runSweep, summarize } from "./run-sweep"
+import { purgeTombstones } from "./tombstones"
 
 // Entry of the sweep container (spec 1E §6): one round, then exit. The
 // container's shell loop runs it again an hour later.
@@ -42,14 +43,11 @@ async function main(): Promise<number> {
       requireEnv("SUPABASE_SECRET_KEY"),
       { auth: { persistSession: false, autoRefreshToken: false } }
     )
-    const result = await runSweep({
-      admin,
-      dryRun: process.env.SWEEP_DRY_RUN === "1",
-      limits: limitsFromEnv(),
-    })
+    const dryRun = process.env.SWEEP_DRY_RUN === "1"
+    const result = await runSweep({ admin, dryRun, limits: limitsFromEnv() })
     const summary = summarize(result)
-    console.log(JSON.stringify({ sweep: summary, plan: result.plan }))
     if (result.status === "too_many") {
+      console.log(JSON.stringify({ sweep: summary, plan: result.plan }))
       logServerError(
         "sweep stopped: too many deletions",
         new Error(
@@ -58,8 +56,13 @@ async function main(): Promise<number> {
       )
       return 1
     }
+    // Deleted annotations are already gone for the member: the round's limits do not apply.
+    const tombstones = await purgeTombstones({ admin, dryRun })
+    console.log(
+      JSON.stringify({ sweep: summary, plan: result.plan, tombstones })
+    )
     await sendHeartbeat(
-      `${summary.status}: ${summary.books} books, ${summary.objects} objects, ${summary.users} accounts`
+      `${summary.status}: ${summary.books} books, ${summary.objects} objects, ${summary.users} accounts, ${tombstones} tombstones`
     )
     return 0
   } catch (error) {
