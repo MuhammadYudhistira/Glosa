@@ -3,6 +3,7 @@ import {
   getCachedWord,
   putCachedLookup,
 } from "@/lib/local/lookups"
+import { isNetworkError } from "@/lib/network-error"
 import { reportError } from "@/lib/sentry-client"
 import { lookupWordFn } from "@/server/words"
 import {
@@ -59,8 +60,8 @@ export async function lookUp(
   try {
     answer = await deps.fetch(word, next)
   } catch (error) {
-    // The connection can drop while the request is in flight.
-    if (!deps.isOnline() || error instanceof TypeError) return offline()
+    // The connection can drop while the request is in flight; any other error is a bug.
+    if (!deps.isOnline() || isNetworkError(error)) return offline()
     reportError(error)
     return { kind: "failed" }
   }

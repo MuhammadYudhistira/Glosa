@@ -1,4 +1,5 @@
 import type * as SentryReact from "@sentry/react"
+import { NETWORK_ERROR_MESSAGES } from "./network-error"
 import { SENTRY_DATA_COLLECTION, type SentryConfig } from "./sentry-env"
 
 type BrowserSentry = typeof SentryReact
@@ -17,7 +18,7 @@ export function startBrowserSentry(config: SentryConfig | null): void {
         dataCollection: SENTRY_DATA_COLLECTION,
         tracesSampleRate: 0,
         // Losing the connection is expected in an offline-first app.
-        ignoreErrors: ["Failed to fetch", "NetworkError", "Load failed"],
+        ignoreErrors: [...NETWORK_ERROR_MESSAGES],
       })
       return Sentry
     })

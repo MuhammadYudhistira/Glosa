@@ -78,6 +78,13 @@ describe("lookUp", () => {
     expect(reportError).not.toHaveBeenCalled()
   })
 
+  it("reports any other error while online", async () => {
+    expect(
+      await lookUp("took", [], deps(new TypeError("x is not a function")))
+    ).toEqual({ kind: "failed" })
+    expect(reportError).toHaveBeenCalledOnce()
+  })
+
   it("reports a server error", async () => {
     expect(
       await lookUp("took", [], deps({ ok: false, code: "unknown" }))
