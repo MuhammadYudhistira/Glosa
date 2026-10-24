@@ -1,4 +1,5 @@
 import type { LocalWordOp } from "@/lib/local/db"
+import { type QueueStore, createQueueSync } from "@/lib/sync/queue-sync"
 import { isValidWordOp } from "./schemas"
 import {
   MAX_WORD_OPS,
@@ -11,17 +12,11 @@ import {
 export type QueuedWordOp = LocalWordOp
 
 /** Where Kosakata and its waiting changes live (IndexedDB in the browser). */
-export type WordStore = {
+export type WordStore = QueueStore<QueuedWordOp> & {
   /** Shows the word at once and queues its save; `forms` underline it until the server's arrive. */
   save: (word: SavedWord, forms: Array<string>) => Promise<void>
   /** Hides the word at once and queues its deletion. */
   remove: (headword: string) => Promise<void>
-  /** Oldest first. */
-  pending: () => Promise<Array<QueuedWordOp>>
-  /** Drops sent changes, unless the word changed again since. */
-  confirm: (sent: ReadonlyArray<QueuedWordOp>) => Promise<void>
-  /** Takes back a save the server refused, unless the word changed again since. */
-  revert: (op: QueuedWordOp) => Promise<void>
 }
 
 /** A change the server refused, shown until dismissed. `code` is a bookMessage key. */
@@ -68,102 +63,29 @@ export function createWordSync(options: {
   onSynced?: () => Promise<void>
   debounceMs?: number
 }): WordSync {
-  const { store, send, isOnline } = options
-  const debounceMs = options.debounceMs ?? 2_000
-  const listeners = new Set<() => void>()
-  let version = 0
+  const { store } = options
   let rejection: WordRejection | null = null
-  let timer: ReturnType<typeof setTimeout> | null = null
-  let running: Promise<void> | null = null
-  let again = false
-
-  function changed() {
-    version += 1
-    for (const listener of listeners) listener()
-  }
-
-  function later() {
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(() => {
-      timer = null
-      void flush()
-    }, debounceMs)
-  }
+  const queue = createQueueSync<QueuedWordOp>({
+    store,
+    send: (batch) => options.send(batch.map(toWordOp)),
+    isOnline: options.isOnline,
+    keyOf: (op) => op.headword,
+    batchSize: MAX_WORD_OPS,
+    onRefused: (refused) => {
+      for (const { item, result } of refused) {
+        refuse(
+          result === "limit_reached" ? "words_full" : "word_invalid",
+          item.headword
+        )
+      }
+    },
+    onSynced: options.onSynced,
+    debounceMs: options.debounceMs,
+  })
 
   function refuse(code: WordRejection["code"], headword: string) {
     rejection = { code, headword }
-    changed()
-  }
-
-  /** Sends the waiting changes until a batch fails; the next trigger retries. */
-  async function sendWaiting() {
-    if (!isOnline()) return
-    const waiting = await store.pending()
-    let delivered = false
-    try {
-      for (let i = 0; i < waiting.length; i += MAX_WORD_OPS) {
-        const batch = waiting.slice(i, i + MAX_WORD_OPS)
-        let answer: WordSyncAnswer
-        try {
-          answer = await send(batch.map(toWordOp))
-        } catch {
-          return
-        }
-        if (!answer.ok) return
-        await store.confirm(batch)
-        delivered = true
-        const refused: Array<{
-          op: QueuedWordOp
-          code: WordRejection["code"]
-        }> = []
-        for (const [index, result] of answer.results.entries()) {
-          if (result === "ok") continue
-          const op = batch[index]
-          await store.revert(op)
-          refused.push({
-            op,
-            code: result === "limit_reached" ? "words_full" : "word_invalid",
-          })
-        }
-        if (refused.length > 0) {
-          // A word changed again while the batch was in flight is not refused news.
-          const queued = new Set((await store.pending()).map((q) => q.headword))
-          for (const { op, code } of refused) {
-            if (!queued.has(op.headword)) refuse(code, op.headword)
-          }
-        }
-      }
-    } finally {
-      if (delivered) await options.onSynced?.()
-    }
-  }
-
-  function flush(): Promise<void> {
-    if (timer) {
-      clearTimeout(timer)
-      timer = null
-    }
-    if (running) {
-      again = true
-      return running
-    }
-    running = (async () => {
-      try {
-        do {
-          again = false
-          try {
-            await sendWaiting()
-          } catch {
-            // A storage error: the changes stay queued for the next trigger.
-          }
-          // again is set by a flush() made while the loop awaits; TS cannot see it.
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        } while (again)
-      } finally {
-        running = null
-      }
-    })()
-    return running
+    queue.changed()
   }
 
   return {
@@ -179,32 +101,24 @@ export function createWordSync(options: {
         return
       }
       await store.save(word, forms)
-      changed()
-      later()
+      queue.changed()
+      queue.later()
     },
     async remove(headword) {
       await store.remove(headword)
-      changed()
-      later()
+      queue.changed()
+      queue.later()
     },
-    flush,
-    version: () => version,
-    notify: changed,
+    flush: queue.flush,
+    version: queue.version,
+    notify: queue.changed,
     rejection: () => rejection,
     dismissRejection() {
       if (!rejection) return
       rejection = null
-      changed()
+      queue.changed()
     },
-    subscribe(listener) {
-      listeners.add(listener)
-      return () => {
-        listeners.delete(listener)
-      }
-    },
-    dispose() {
-      if (timer) clearTimeout(timer)
-      timer = null
-    },
+    subscribe: queue.subscribe,
+    dispose: queue.dispose,
   }
 }

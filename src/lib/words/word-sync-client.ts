@@ -1,5 +1,4 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
-import { claimLocalData } from "@/lib/local/device"
 import {
   type FormsByHeadword,
   listLocalWords,
@@ -7,6 +6,7 @@ import {
   localWordStore,
   saveSavedForms,
 } from "@/lib/local/saved-words"
+import { useQueueFlush } from "@/lib/sync/use-queue-flush"
 import { savedWordFormsFn, syncSavedWordsFn } from "@/server/words"
 import type { SavedWord } from "./types"
 import { type WordRejection, type WordSync, createWordSync } from "./word-sync"
@@ -39,30 +39,11 @@ export async function refreshSavedForms(): Promise<void> {
   }
 }
 
-/**
- * Sends waiting changes when the app opens and when the connection comes back
- * (spec 2 §7). It waits for this device to be the member's first: otherwise the
- * previous member's queue could be sent under the new session.
- */
+const flushWords = () => wordSync().flush()
+
+/** Sends waiting word changes when the app opens and when the connection comes back. */
 export function useWordFlush(userId: string): void {
-  useEffect(() => {
-    let live = true
-    const sync = wordSync()
-    const onOnline = () => void sync.flush()
-    claimLocalData(userId)
-      .then(() => {
-        if (!live) return
-        void sync.flush()
-        window.addEventListener("online", onOnline)
-      })
-      .catch((error: unknown) =>
-        console.error("claiming this device failed", error)
-      )
-    return () => {
-      live = false
-      window.removeEventListener("online", onOnline)
-    }
-  }, [userId])
+  useQueueFlush(userId, flushWords)
 }
 
 export function useVocabularyVersion(): number {
