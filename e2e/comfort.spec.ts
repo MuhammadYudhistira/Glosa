@@ -144,9 +144,7 @@ async function alignOf(
       const { doc } = view.renderer.getContents()[0]
       const element = doc.querySelector(target)
       return element && doc.defaultView
-        ? doc.defaultView.getComputedStyle(element)[
-            prop as "textAlign" | "hyphens"
-          ]
+        ? doc.defaultView.getComputedStyle(element)[prop]
         : null
     },
     [selector, property] as const
