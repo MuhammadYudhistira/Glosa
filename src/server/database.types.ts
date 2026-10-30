@@ -184,16 +184,19 @@ export type Database = {
           headword: string
           meanings: string[]
           pos: string
+          source: string
         }
         Insert: {
           headword: string
           meanings: string[]
           pos: string
+          source?: string
         }
         Update: {
           headword?: string
           meanings?: string[]
           pos?: string
+          source?: string
         }
         Relationships: []
       }
@@ -202,16 +205,19 @@ export type Database = {
           headword: string
           meanings: string[]
           pos: string
+          source: string
         }
         Insert: {
           headword: string
           meanings: string[]
           pos: string
+          source?: string
         }
         Update: {
           headword?: string
           meanings?: string[]
           pos?: string
+          source?: string
         }
         Relationships: []
       }
@@ -259,6 +265,30 @@ export type Database = {
         }
         Relationships: []
       }
+      dict_generated: {
+        Row: {
+          created_at: string
+          headword: string
+          meanings: string[]
+          model: string
+          pos: string
+        }
+        Insert: {
+          created_at?: string
+          headword: string
+          meanings: string[]
+          model: string
+          pos: string
+        }
+        Update: {
+          created_at?: string
+          headword?: string
+          meanings?: string[]
+          model?: string
+          pos?: string
+        }
+        Relationships: []
+      }
       dict_meta: {
         Row: {
           dump_date: string | null
@@ -283,6 +313,24 @@ export type Database = {
           id?: boolean
           imported_at?: string
           source?: string
+        }
+        Relationships: []
+      }
+      dict_misses: {
+        Row: {
+          last_seen: string
+          lookups: number
+          word: string
+        }
+        Insert: {
+          last_seen?: string
+          lookups?: number
+          word: string
+        }
+        Update: {
+          last_seen?: string
+          lookups?: number
+          word?: string
         }
         Relationships: []
       }
@@ -443,6 +491,7 @@ export type Database = {
     Functions: {
       before_user_created: { Args: { event: Json }; Returns: Json }
       delete_word: { Args: { p_headword: string }; Returns: undefined }
+      dict_note_miss: { Args: { p_word: string }; Returns: undefined }
       dict_pos_rank: { Args: { p_pos: string }; Returns: number }
       dict_staging_reset: { Args: never; Returns: undefined }
       dict_swap: {

@@ -22,6 +22,10 @@ export type DictPos = (typeof DICT_POS)[number]
 /** Meanings kept per part of speech, and copied into a saved word. */
 export const MAX_MEANINGS = 8
 
+/** Where an entry's meanings came from (spec kamus tiga sumber §3.1). */
+export const DICT_SOURCES = ["wiktionary", "wordnet", "ai"] as const
+export type DictSource = (typeof DICT_SOURCES)[number]
+
 export type DictEntry = {
   headword: string
   pos: DictPos
@@ -30,10 +34,18 @@ export type DictEntry = {
 export type DictPhrase = { headword: string; meanings: Array<string> }
 export type DictForm = { form: string; headword: string; pos: DictPos }
 
+/** An entry as the dictionary keeps it: one source per headword and part of speech. */
+export type SourcedEntry = DictEntry & { source: DictSource }
+/**
+ * An entry as lookup_word answers it. Answers cached on a device before the
+ * source column came have none: those meanings came from Wiktionary.
+ */
+export type LookupEntry = DictEntry & { source?: DictSource }
+
 /** What lookup_word answers (spec 2 §4.1). */
 export type LookupResult = {
   word: string
-  entries: Array<DictEntry>
+  entries: Array<LookupEntry>
   phrases: Array<DictPhrase>
   /** When the dictionary was imported; null before the first import. */
   version: string | null
