@@ -58,3 +58,23 @@ export async function turnPages(
       .toBe(key === "PageDown" ? before + turn : before - turn)
   }
 }
+
+/** The middle of an element of the shown section, in this window. */
+export async function pointOf(page: Page, id: string) {
+  const point = await page.evaluate((target) => {
+    const view = document.querySelector("foliate-view") as unknown as {
+      renderer: { getContents: () => Array<{ doc: Document }> }
+    }
+    const doc = view.renderer.getContents()[0].doc
+    const element = doc.getElementById(target)
+    const frame = doc.defaultView?.frameElement?.getBoundingClientRect()
+    if (!element || !frame) return null
+    const box = element.getBoundingClientRect()
+    return {
+      x: frame.left + box.left + box.width / 2,
+      y: frame.top + box.top + box.height / 2,
+    }
+  }, id)
+  if (!point) throw new Error(`#${id} does not show`)
+  return point
+}

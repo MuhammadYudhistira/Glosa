@@ -1,6 +1,7 @@
+import { Fragment } from "react"
 import { Button } from "@/components/ui/button"
 import { POS_LABELS } from "@/lib/words/labels"
-import type { LookupResult } from "@/lib/words/types"
+import type { DictSource, LookupResult } from "@/lib/words/types"
 import { ReaderPopup, type WordRect } from "./ReaderPopup"
 import type { WordLookupState } from "./useWordLookup"
 
@@ -16,6 +17,46 @@ export type WordTap = {
 }
 
 const WIKTIONARY = "https://en.wiktionary.org/wiki/"
+const WORDNET_BAHASA = "https://wn-msa.sourceforge.net/"
+const SOURCE_ORDER: ReadonlyArray<DictSource> = ["wiktionary", "wordnet", "ai"]
+
+/**
+ * Where the shown meanings came from (spec kamus tiga sumber §5), on one
+ * line in a fixed order. Entries cached before the source column came are
+ * Wiktionary's, and so are phrasal verbs and phrases.
+ */
+function Credit({ result, page }: { result: LookupResult; page: string }) {
+  const used = new Set<DictSource>(
+    result.entries.map((entry) => entry.source ?? "wiktionary")
+  )
+  if (result.phrases.length > 0) used.add("wiktionary")
+  const sources = SOURCE_ORDER.filter((source) => used.has(source))
+  if (sources.length === 0) return null
+  return (
+    <p className="word-credit">
+      {sources.map((source, i) => (
+        <Fragment key={source}>
+          {i > 0 && " · "}
+          {source === "wiktionary" && (
+            <a
+              href={`${WIKTIONARY}${encodeURIComponent(page)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Wiktionary · CC BY-SA
+            </a>
+          )}
+          {source === "wordnet" && (
+            <a href={WORDNET_BAHASA} target="_blank" rel="noreferrer">
+              WordNet Bahasa
+            </a>
+          )}
+          {source === "ai" && "Dibuat AI"}
+        </Fragment>
+      ))}
+    </p>
+  )
+}
 
 type CardProps = {
   tap: WordTap
@@ -100,14 +141,7 @@ function WordCard({ tap, lookup, saved, onToggleSave, onRetry }: CardProps) {
         >
           {saved ? "Tersimpan" : "Simpan"}
         </Button>
-        <a
-          className="word-credit"
-          href={`${WIKTIONARY}${encodeURIComponent(base ?? tap.word)}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Wiktionary · CC BY-SA
-        </a>
+        {result && <Credit result={result} page={base ?? tap.word} />}
       </div>
     </div>
   )

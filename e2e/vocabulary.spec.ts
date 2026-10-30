@@ -18,9 +18,6 @@ test("a tapped word is saved, listed in Kosakata, and opens its place again", as
   const word = await tapWord(page, isMobile)
   const popup = page.getByRole("dialog", { name: `Arti ${word}` })
   await expect(popup).toBeVisible()
-  await expect(
-    popup.getByRole("link", { name: "Wiktionary · CC BY-SA" })
-  ).toBeVisible()
   await popup.getByRole("button", { name: "Simpan" }).click()
   await expect(popup.getByRole("button", { name: "Tersimpan" })).toBeVisible()
 

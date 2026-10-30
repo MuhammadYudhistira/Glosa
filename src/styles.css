@@ -1435,6 +1435,8 @@
   .word-credit {
     font-size: 0.7rem;
     color: var(--muted-foreground);
+  }
+  .word-credit a {
     text-decoration: underline;
   }
   .word-skeleton {

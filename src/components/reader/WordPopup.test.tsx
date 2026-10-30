@@ -72,6 +72,87 @@ describe("WordPopup", () => {
     ).toHaveAttribute("href", "https://en.wiktionary.org/wiki/run")
   })
 
+  const credit = (dialog: HTMLElement) =>
+    within(dialog).getByText(
+      (_, element) => element?.classList.contains("word-credit") ?? false
+    )
+
+  it("credits each source shown, in a fixed order on one line", async () => {
+    show({
+      kind: "result",
+      result: {
+        word: "running",
+        entries: [
+          { headword: "run", pos: "verb", meanings: ["berlari"], source: "ai" },
+          {
+            headword: "run",
+            pos: "noun",
+            meanings: ["lari"],
+            source: "wordnet",
+          },
+          {
+            headword: "running",
+            pos: "adj",
+            meanings: ["berjalan"],
+            source: "wiktionary",
+          },
+        ],
+        phrases: [],
+        version: null,
+      },
+    })
+    const dialog = await popup()
+    expect(credit(dialog)).toHaveTextContent(
+      "Wiktionary · CC BY-SA · WordNet Bahasa · Dibuat AI"
+    )
+    expect(
+      within(dialog).getByRole("link", { name: "WordNet Bahasa" })
+    ).toHaveAttribute("href", "https://wn-msa.sourceforge.net/")
+  })
+
+  it("says Dibuat AI as text, without a Wiktionary link, when only the AI gave meanings", async () => {
+    show({
+      kind: "result",
+      result: {
+        word: "running",
+        entries: [
+          { headword: "run", pos: "verb", meanings: ["berlari"], source: "ai" },
+        ],
+        phrases: [],
+        version: null,
+      },
+    })
+    const dialog = await popup()
+    expect(credit(dialog)).toHaveTextContent(/^Dibuat AI$/)
+    expect(within(dialog).queryByRole("link")).toBeNull()
+  })
+
+  it("credits Wiktionary for a phrasal verb", async () => {
+    show({
+      kind: "result",
+      result: {
+        word: "running",
+        entries: [],
+        phrases: [{ headword: "run up", meanings: ["menaikkan"] }],
+        version: null,
+      },
+    })
+    const dialog = await popup()
+    expect(
+      within(dialog).getByRole("link", { name: "Wiktionary · CC BY-SA" })
+    ).toHaveAttribute("href", "https://en.wiktionary.org/wiki/running")
+  })
+
+  it("shows no credit without meanings", async () => {
+    show({
+      kind: "result",
+      result: { word: "running", entries: [], phrases: [], version: null },
+    })
+    const dialog = await popup()
+    expect(within(dialog).queryByText("Dibuat AI")).toBeNull()
+    expect(within(dialog).queryByRole("link")).toBeNull()
+  })
+
   it("says when there is no meaning yet, and still saves", async () => {
     const props = show({
       kind: "result",
