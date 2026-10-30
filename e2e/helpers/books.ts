@@ -8,6 +8,11 @@ export const SHERLOCK = {
   author: "Arthur Conan Doyle",
 }
 
+/** A book from the fixtures (`path`) or made by the test (`file`). */
+type SeedBook = { title: string; author: string } & (
+  { path: string } | { file: Buffer }
+)
+
 /**
  * Puts an EPUB straight on a member's shelf, without the upload screen:
  * reserve, upload through the admin client, mark ready. The global teardown
@@ -15,9 +20,9 @@ export const SHERLOCK = {
  */
 export async function seedBook(
   userId: string,
-  book: { path: string; title: string; author: string } = SHERLOCK
+  book: SeedBook = SHERLOCK
 ): Promise<string> {
-  const file = await readFile(book.path)
+  const file = "file" in book ? book.file : await readFile(book.path)
   const bookId = randomUUID()
   const client = admin()
   const { error } = await client

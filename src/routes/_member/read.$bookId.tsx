@@ -6,7 +6,12 @@ import {
   AnnotationPopup,
   type HighlightTap,
 } from "@/components/reader/AnnotationPopup"
+import {
+  FootnotePopup,
+  type FootnoteTap,
+} from "@/components/reader/FootnotePopup"
 import { NoteEditor } from "@/components/reader/NoteEditor"
+import { ReaderBack } from "@/components/reader/ReaderBack"
 import {
   SelectionMenu,
   type TextSelection,
@@ -41,6 +46,7 @@ import {
 import { TocPanel } from "@/components/reader/TocPanel"
 import { loadReader } from "@/components/reader/load-reader"
 import { useReaderSettings } from "@/components/reader/useReaderSettings"
+import { useReadingSpeed } from "@/components/reader/useReadingSpeed"
 import { BookLoadError } from "@/lib/book-download"
 import { bookMessage } from "@/lib/book-messages"
 import { claimLocalData } from "@/lib/local/device"
@@ -50,6 +56,7 @@ import { progressSync, useSyncStatus } from "@/lib/progress-sync-client"
 import { THEME_COLORS } from "@/lib/reader-settings"
 import type { Position, TocItem } from "@/lib/reader-types"
 import { reportError } from "@/lib/sentry-client"
+import { useWakeLock } from "@/lib/use-wake-lock"
 import { savedChoice } from "@/lib/words/lookup"
 import { savedFormsOf } from "@/lib/words/saved-marks"
 import {
@@ -64,6 +71,8 @@ type ReaderSearch = { cfi?: string }
 const NO_WORDS: Array<string> = []
 /** How long "Posisi itu tidak ditemukan di buku ini" stays. */
 const NOTE_MS = 8000
+/** Kembali goes after this many page turns (spec 2 §6.7). */
+const BACK_TURNS = 5
 /** The popup gives the focus back to the book. */
 const bookFocus = () => document.querySelector<HTMLElement>(".reader-host")
 
@@ -177,10 +186,17 @@ function ReaderPage() {
   const [selection, setSelection] = useState<TextSelection | null>(null)
   const [marked, setMarked] = useState<HighlightTap | null>(null)
   const [noteFor, setNoteFor] = useState<Annotation | null>(null)
+  const [footnote, setFootnote] = useState<FootnoteTap | null>(null)
+  // The place left by the last jump, and the page turns since (spec 2 §6.7).
+  const [backTo, setBackTo] = useState<string | null>(null)
+  const turnsSinceJump = useRef(0)
+  const { ratio, record: recordSpeed } = useReadingSpeed()
+  useWakeLock(true)
   const markedHighlight = marked
     ? (highlights.find((highlight) => highlight.cfi === marked.cfi) ?? null)
     : null
-  const popupOpen = tap !== null || marked !== null || selection !== null
+  const popupOpen =
+    tap !== null || marked !== null || selection !== null || footnote !== null
   // The place shown now, and the place shown when the open word was tapped.
   const shownCfi = useRef<string | null>(null)
   const tappedAtCfi = useRef<string | null>(null)
@@ -255,6 +271,7 @@ function ReaderPage() {
       if (next.cfi !== tappedAtCfi.current) {
         setTap(null)
         setMarked(null)
+        setFootnote(null)
       }
       // Not moving is not reading on: a tap at a word's place (spec 2 §6.4)
       // keeps the place read.
@@ -266,6 +283,11 @@ function ReaderPage() {
         setSelection(null)
       }
       shownCfi.current = next.cfi
+      recordSpeed(next)
+      if (moved && next.turned) {
+        turnsSinceJump.current += 1
+        if (turnsSinceJump.current >= BACK_TURNS) setBackTo(null)
+      }
       setLocation(next)
       if (!ready.current || !interacted.current || !moved) return
       // The first page turn puts the missing-place note away.
@@ -281,7 +303,7 @@ function ReaderPage() {
           console.error("saving the position failed", error)
         )
     },
-    [bookId]
+    [bookId, recordSpeed]
   )
 
   const onInteract = useCallback(() => {
@@ -296,18 +318,21 @@ function ReaderPage() {
   const openWord = useCallback((next: WordTap) => {
     tappedAtCfi.current = shownCfi.current
     setMarked(null)
+    setFootnote(null)
     setTap(next)
   }, [])
   const closeWord = useCallback(() => setTap(null), [])
   const openHighlight = useCallback((next: HighlightTap) => {
     tappedAtCfi.current = shownCfi.current
     setTap(null)
+    setFootnote(null)
     setMarked(next)
   }, [])
   const showSelection = useCallback((next: TextSelection | null) => {
     if (next) {
       setTap(null)
       setMarked(null)
+      setFootnote(null)
     }
     setSelection(next)
   }, [])
@@ -316,6 +341,22 @@ function ReaderPage() {
     setTap(null)
     setMarked(null)
     setSelection(null)
+    setFootnote(null)
+  }, [])
+  const openFootnote = useCallback((next: FootnoteTap) => {
+    tappedAtCfi.current = shownCfi.current
+    // A link beats the selection (spec 2 §6.1): drop it with its menu.
+    controlsRef.current?.clearSelection()
+    setTap(null)
+    setMarked(null)
+    setSelection(null)
+    setFootnote(next)
+  }, [])
+  /** A jump from here: Kembali comes back to this place (plan 2C, decision 4). */
+  const markJump = useCallback(() => {
+    if (!shownCfi.current) return
+    turnsSinceJump.current = 0
+    setBackTo(shownCfi.current)
   }, [])
   // The note goes after a while too, if no page is turned.
   useEffect(() => {
@@ -427,9 +468,23 @@ function ReaderPage() {
     [controls]
   )
   const onSeek = useCallback(
-    (fraction: number) => go((current) => current.goToFraction(fraction)),
-    [go]
+    (fraction: number) => {
+      markJump()
+      go((current) => current.goToFraction(fraction))
+    },
+    [go, markJump]
   )
+  const goBack = () => {
+    const place = backTo
+    setBackTo(null)
+    if (place) go((current) => current.goTo(place))
+  }
+  const timeLeft = location?.time
+    ? {
+        chapter: location.time.section * ratio,
+        book: location.time.total * ratio,
+      }
+    : null
 
   if (viewError) return <ReaderProblem message={bookMessage(viewError)} />
 
@@ -448,8 +503,8 @@ function ReaderPage() {
         popupOpen={popupOpen}
         savedForms={savedForms}
         highlights={highlights}
-        onFootnote={() => undefined}
-        onJump={() => undefined}
+        onFootnote={openFootnote}
+        onJump={markJump}
         onReady={onReady}
         onRelocate={onRelocate}
         onInteract={onInteract}
@@ -512,6 +567,16 @@ function ReaderPage() {
         onClose={saveNote}
         finalFocus={bookFocus}
       />
+      <FootnotePopup
+        key={
+          footnote
+            ? `${footnote.rect.left} ${footnote.rect.top}`
+            : "no-footnote"
+        }
+        note={footnote}
+        onClose={() => setFootnote(null)}
+        finalFocus={bookFocus}
+      />
       <WordPopup
         key={tap ? `${tap.word} ${tap.rect.left} ${tap.rect.top}` : "no-word"}
         tap={tap}
@@ -530,10 +595,11 @@ function ReaderPage() {
         }}
         onDismiss={() => setOffer(null)}
       />
+      <ReaderBack shown={backTo !== null} onBack={goBack} />
       <ReaderFooter
         hidden={chromeHidden}
         location={location}
-        timeLeft={null}
+        timeLeft={timeLeft}
         onSeek={onSeek}
       />
       <TocPanel
@@ -543,6 +609,7 @@ function ReaderPage() {
         currentHref={location?.chapterHref ?? null}
         onSelect={(href) => {
           setPanel(null)
+          markJump()
           go((current) => current.goTo(href))
         }}
         annotations={annotations}
@@ -551,8 +618,12 @@ function ReaderPage() {
           setPanel(null)
           // A place gone from the book (another edition): say so (spec 2 §8).
           go(async (current) => {
-            if (await current.canOpen(cfi)) await current.goTo(cfi)
-            else setTargetMissing(true)
+            if (!(await current.canOpen(cfi))) {
+              setTargetMissing(true)
+              return
+            }
+            markJump()
+            await current.goTo(cfi)
           })
         }}
         onDeleteAnnotation={(annotation) => putAnnotation(deleted(annotation))}

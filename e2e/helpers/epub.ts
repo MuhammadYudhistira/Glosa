@@ -11,6 +11,8 @@ export async function makeEpub(book: {
   author: string
   subjects: ReadonlyArray<string>
   cover?: boolean
+  /** The chapter's body (XHTML, epub: namespace available); by default a heading and the title. */
+  body?: string
 }): Promise<Buffer> {
   const cover =
     book.cover === false
@@ -61,7 +63,10 @@ export async function makeEpub(book: {
       )
     ),
     "OEBPS/bab1.xhtml": strToU8(
-      xhtml("Bab 1", `<h1>Bab 1</h1><p>${escapeXml(book.title)}</p>`)
+      xhtml(
+        "Bab 1",
+        book.body ?? `<h1>Bab 1</h1><p>${escapeXml(book.title)}</p>`
+      )
     ),
   }
   if (cover) files["OEBPS/cover.png"] = cover

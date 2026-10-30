@@ -47,8 +47,14 @@ export async function turnPages(
     landing.landedPage = view.renderer.page
     return view.renderer.page
   })
-  for (let turn = 0; turn < count; turn++) await page.keyboard.press(key)
-  await expect
-    .poll(() => page.evaluate(() => (window as unknown as Landing).landedPage))
-    .toBe(key === "PageDown" ? before + count : before - count)
+  // One turn at a time: foliate drops a turn asked for while the last one
+  // still slides, so keys pressed at once land on fewer pages than asked.
+  for (let turn = 1; turn <= count; turn++) {
+    await page.keyboard.press(key)
+    await expect
+      .poll(() =>
+        page.evaluate(() => (window as unknown as Landing).landedPage)
+      )
+      .toBe(key === "PageDown" ? before + turn : before - turn)
+  }
 }
