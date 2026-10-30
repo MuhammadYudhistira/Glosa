@@ -1,17 +1,23 @@
 import { useEffect, useState } from "react"
 import { formatPercent, toPercentage } from "@/lib/progress"
+import { formatDuration } from "@/lib/reading-speed"
 import { cn } from "@/lib/utils"
 import type { ReaderLocation } from "./ReaderView"
 
 const SEEK_DELAY_MS = 250
 
+/** Minutes left at this member's speed (plan 2C, decision 7). */
+export type TimeLeft = { chapter: number; book: number }
+
 export function ReaderFooter({
   hidden,
   location,
+  timeLeft,
   onSeek,
 }: {
   hidden: boolean
   location: ReaderLocation | null
+  timeLeft: TimeLeft | null
   onSeek: (fraction: number) => void
 }) {
   const [draft, setDraft] = useState<number | null>(null)
@@ -56,12 +62,24 @@ export function ReaderFooter({
           {percent}
         </output>
       </div>
-      <output
-        aria-label="Bab saat ini"
-        className="block truncate text-xs text-muted-foreground"
-      >
-        {location?.chapter ?? ""}
-      </output>
+      <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
+        <output
+          aria-label="Bab saat ini"
+          className="block min-w-0 flex-1 truncate"
+        >
+          {location?.chapter ?? ""}
+        </output>
+        {timeLeft && (
+          // The book's time needs a wide screen (plan 2C, decision 8).
+          <output aria-label="Sisa waktu" className="shrink-0 tabular-nums">
+            {formatDuration(timeLeft.chapter)} lagi di bab ini
+            <span className="max-lg:hidden">
+              {" "}
+              · {formatDuration(timeLeft.book)} lagi di buku
+            </span>
+          </output>
+        )}
+      </div>
     </footer>
   )
 }

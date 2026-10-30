@@ -528,7 +528,12 @@ function ReaderPage() {
         }}
         onDismiss={() => setOffer(null)}
       />
-      <ReaderFooter hidden={chromeHidden} location={location} onSeek={onSeek} />
+      <ReaderFooter
+        hidden={chromeHidden}
+        location={location}
+        timeLeft={null}
+        onSeek={onSeek}
+      />
       <TocPanel
         open={panel === "toc"}
         onOpenChange={(open) => setPanel(open ? "toc" : null)}

@@ -780,6 +780,13 @@
     display: block;
     font-size: 0.8rem;
   }
+  /* Back to the place before a jump (spec 2 §6.7), above the bottom bar. */
+  .reader-back {
+    position: absolute;
+    bottom: 5.5rem;
+    left: max(1rem, env(safe-area-inset-left));
+    z-index: 2;
+  }
   .toc-item {
     display: block;
     width: 100%;
@@ -1391,6 +1398,11 @@
     display: grid;
     gap: 0.75rem;
     font-size: 0.9rem;
+  }
+  /* A long footnote scrolls inside its popup. */
+  .footnote-card {
+    max-height: 40dvh;
+    overflow-y: auto;
   }
   .word-head {
     display: flex;
