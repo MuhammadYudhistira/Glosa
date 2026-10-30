@@ -343,13 +343,17 @@ Kedua skrip kamus tidak dijalankan CI. Jalankan dari laptop.
 
 #### Mengisi celah dengan AI
 
-> **Belum dipakai.** Bagian ini berbiaya: Anthropic API, dengan kunci milik pemilik. Skripnya disimpan, tetapi belum dijalankan. Saat arti AI pertama ditulis, tambahkan kalimat ini ke paragraf Kamus di Kebijakan Privasi (`src/routes/privacy.tsx`), setelah kalimat WordNet Bahasa:
+> **Belum dipakai.** Bagian ini berbiaya: Anthropic API, dengan kunci milik pemilik. Skripnya disimpan, tetapi belum dijalankan. Jangan jalankan langkah 2–4 sebelum kamu memutuskan memakai AI.
+>
+> Saat arti AI pertama ditulis, tambahkan dua kalimat ini ke paragraf Kamus di Kebijakan Privasi (`src/routes/privacy.tsx`), setelah kalimat WordNet Bahasa. Kalimat lama bahwa ketukan tidak dibagikan ke pihak lain juga harus disesuaikan, karena kata tanpa arti kini dikirim ke Anthropic:
 >
 > Sebagian arti dibuat dengan AI, sekali saat kamus disusun, dan ditandai “Dibuat AI” di popup arti.
+>
+> Kata yang belum punya arti (dari daftar kata umum, dan kata yang diketuk tanpa identitas) dikirim ke Anthropic untuk dibuatkan artinya.
 
 Pengisi AI hanya menanyakan kata yang saat ini tidak menampilkan arti sama sekali: kata itu dan bentuk dasarnya tidak punya arti dari sumber mana pun. Calonnya dipilih dari 50.000 kata teratas dan kata di `dict_misses` (kata yang diketuk member tetapi belum punya arti, dicatat tanpa identitas). Saat ini sekitar 15.000 kata. Kata-kata itu dikirim ke Claude Opus 5.5 lewat Batch API (harga 50%). Kunci API hanya ada di laptop: `ANTHROPIC_API_KEY`, atau profil dari `ant auth login`.
 
-Skrip memakai file unduhan yang sama dengan impor (kaikki, `wn-msa-all.tab`, `index.sense`) ditambah `dict/wordfreq-en-50k.txt`.
+Skrip memakai file unduhan yang sama dengan impor (kaikki, `wn-msa-all.tab`, `index.sense`) ditambah `dict/wordfreq-en-50k.txt`. Impor menerima kaikki yang masih `.gz` (file-nya argumen), tetapi pengisi AI memakai `dict/kaikki.org-dictionary-English.jsonl` secara default. Untuk path lain, pakai `--kaikki <file>`, `--wordnet`, `--senses`, atau `--words`.
 
 1. Lihat calon katanya tanpa biaya dan tanpa kunci API. Skrip mencetak jumlah calon dan 40 yang pertama:
    ```bash
@@ -365,12 +369,12 @@ Skrip memakai file unduhan yang sama dengan impor (kaikki, `wn-msa-all.tab`, `in
    - 20 contoh arti.
 
    Tekan Ctrl+C kapan saja. Menjalankan perintah yang sama lagi akan melanjutkan batch yang sama, karena ID-nya tersimpan di `dict/fill-state.json`, jadi tidak membayar ulang.
-3. Kalau contohnya bagus, simpan hasil uji coba dengan `--commit`, tanpa `--trial`. Kalau tidak, buang dengan `--discard`. Uji coba bisa diulang dengan `--effort low` atau `--effort high` untuk membandingkan biaya dan mutu, tetapi hanya setelah batch yang menunggu di-`--commit` atau di-`--discard`. Selama ada batch yang menunggu, `--trial`, `--limit`, dan `--effort` diabaikan.
-4. Batch penuh. Effort-nya sama dengan uji coba yang dipilih. Pastikan tidak ada batch yang menunggu (langkah 3 selesai), karena kalau ada, `--commit` menulis batch itu, bukan membuat yang baru:
+3. Kalau contohnya bagus, simpan hasil uji coba dengan `--commit`, tanpa `--trial` dan tanpa `--full`. Kalau tidak ada batch yang menunggu (misalnya `dict/fill-state.json` hilang karena beda folder atau sudah di-`--discard`), skrip berhenti tanpa memanggil API dan tanpa membayar. Kalau tidak bagus, buang dengan `--discard`. Uji coba bisa diulang dengan `--effort low` atau `--effort high` untuk membandingkan biaya dan mutu, tetapi hanya setelah batch yang menunggu di-`--commit` atau di-`--discard`. Selama ada batch yang menunggu, `--trial`, `--limit`, dan `--effort` diabaikan.
+4. Batch penuh. Ini langkah yang benar-benar mengeluarkan uang, jadi cek dulu perkiraan biaya dari uji coba. Pakai `--commit --full` dengan effort yang sama dengan uji coba yang dipilih, misalnya `--effort medium`. Pastikan tidak ada batch yang menunggu (langkah 3 selesai), karena kalau ada, `--commit` menulis batch itu, bukan membuat yang baru:
    ```bash
-   node --max-old-space-size=8192 scripts/fill-dictionary.ts --env dev --commit --effort medium
+   node --max-old-space-size=8192 scripts/fill-dictionary.ts --env dev --commit --full --effort medium
    ```
-   `--limit N` membatasi batch penuh ke N kata pertama. Kata yang jawabannya tidak valid dicatat di `dict/fill-problems.log`, lalu ditanyakan lagi pada jalan berikutnya. Kata di `dict_misses` yang sudah terjawab (atau bukan kata) ikut dihapus dari tabel itu.
+   `--full` tanpa `--commit` ditolak. `--limit N` membatasi batch penuh ke N kata pertama. Kata yang jawabannya tidak valid dicatat di `dict/fill-problems.log`, lalu ditanyakan lagi pada jalan berikutnya. Saat batch penuh dibuat, kata di `dict_misses` yang tidak lagi mengarah ke apa pun untuk ditanyakan, karena sudah punya arti atau bukan kata, ikut dihapus dari tabel itu. Itu tidak terjadi saat batch yang menunggu di-`--commit`.
 5. Terbitkan arti AI dengan menjalankan **Impor** di atas.
 
 Ulangi langkah 1, 4, dan 5 sesekali, misalnya sebulan sekali, untuk kata baru di `dict_misses`.

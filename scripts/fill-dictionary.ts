@@ -1,14 +1,17 @@
 // Fills the dictionary's gaps with meanings made by AI (spec kamus tiga
 // sumber §4.3), through the Message Batches API:
 //   node --max-old-space-size=8192 scripts/fill-dictionary.ts --env dev|prod
-//     [--dry-run] [--trial N] [--commit] [--discard] [--effort low|medium|high]
+//     [--dry-run] [--trial N] [--commit] [--full] [--discard]
+//     [--effort low|medium|high]
 //     [--limit N] [--kaikki file] [--wordnet file] [--senses file] [--words file]
 //     [--wordnet-quality YO]
 //   --dry-run  picks the words and prints them, without the API.
 //   --trial N  asks the first N words as one small batch, then prints the
 //              real cost, an estimate for all words and 20 samples.
-//   --commit   writes the valid answers into dict_generated. A full batch
-//              needs it.
+//   --commit   writes the valid answers into dict_generated. With a batch
+//              waiting it writes that batch; it never starts a full batch alone.
+//   --full     with --commit and no batch waiting, starts a full (paid) batch.
+//              Without a waiting batch, --commit alone stops before the API.
 //   --discard  forgets (and cancels) the batch waiting in dict/fill-state.json.
 // The batch id waits in dict/fill-state.json, so a run cut short picks the
 // same batch up again without paying twice. Run by hand from the owner's
@@ -55,7 +58,7 @@ const POLL_MS = 30_000
 const EFFORTS = ["low", "medium", "high"] as const
 type Effort = (typeof EFFORTS)[number]
 const USAGE =
-  "Usage: node --max-old-space-size=8192 scripts/fill-dictionary.ts --env dev|prod [--dry-run] [--trial N] [--commit] [--discard] [--effort low|medium|high] [--limit N]"
+  "Usage: node --max-old-space-size=8192 scripts/fill-dictionary.ts --env dev|prod [--dry-run] [--trial N] [--commit] [--full] [--discard] [--effort low|medium|high] [--limit N]"
 
 type FillState = {
   env: EnvName
@@ -73,6 +76,7 @@ const { values } = parseArgs({
     "dry-run": { type: "boolean", default: false },
     trial: { type: "string" },
     commit: { type: "boolean", default: false },
+    full: { type: "boolean", default: false },
     discard: { type: "boolean", default: false },
     effort: { type: "string", default: "medium" },
     limit: { type: "string" },
@@ -179,6 +183,15 @@ async function main() {
     )
   }
 
+  if (values.full && !values.commit) {
+    stop("--full needs --commit: a full batch is only started with both.")
+  }
+  if (!state && trial === undefined && values.commit && !values.full) {
+    stop(
+      "No batch is waiting. To start a full (paid) batch, add --full. To try first, use --trial N."
+    )
+  }
+
   const client = new Anthropic()
   if (state) {
     const size = Object.values(state.requests).reduce(
@@ -197,9 +210,9 @@ async function main() {
     const requests = await candidates()
     const chosen = requests.slice(0, trial ?? limit ?? requests.length)
     if (chosen.length === 0) return console.log("Nothing to ask.")
-    if (trial === undefined && !values.commit) {
+    if (trial === undefined && !(values.commit && values.full)) {
       stop(
-        "A full batch needs --commit. Run a --trial first and check its cost."
+        "A full batch needs --commit --full. Run a --trial first and check its cost."
       )
     }
     const groups: FillState["requests"] = {}
