@@ -1,7 +1,29 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { Annotation } from "@/lib/annotations/types"
+import { AnnotationNotice } from "@/components/reader/AnnotationNotice"
+import {
+  AnnotationPopup,
+  type HighlightTap,
+} from "@/components/reader/AnnotationPopup"
+import { NoteEditor } from "@/components/reader/NoteEditor"
+import {
+  SelectionMenu,
+  type TextSelection,
+} from "@/components/reader/SelectionMenu"
+import {
+  annotationSync,
+  refreshBookAnnotations,
+  useBookAnnotations,
+} from "@/lib/annotations/annotation-sync-client"
+import {
+  deleted,
+  edited,
+  newBookmark,
+  newHighlight,
+} from "@/lib/annotations/changes"
+import { onPage, pageStart } from "@/lib/annotations/places"
+import type { Annotation, HighlightColor } from "@/lib/annotations/types"
 import { WordPopup, type WordTap } from "@/components/reader/WordPopup"
 import { useWordLookup } from "@/components/reader/useWordLookup"
 import { VocabularyNotice } from "@/components/vocabulary/VocabularyNotice"
@@ -40,9 +62,6 @@ import { markBookOpenedFn } from "@/server/reading"
 type ReaderSearch = { cfi?: string }
 
 const NO_WORDS: Array<string> = []
-const NO_HIGHLIGHTS: Array<Annotation> = []
-const ignoreSelection = () => undefined
-const ignoreHighlight = () => undefined
 /** How long "Posisi itu tidak ditemukan di buku ini" stays. */
 const NOTE_MS = 8000
 /** The popup gives the focus back to the book. */
@@ -96,6 +115,14 @@ function ReaderError({ error }: { error: unknown }) {
   )
 }
 
+function putAnnotation(annotation: Annotation) {
+  annotationSync()
+    .put(annotation)
+    .catch((error: unknown) =>
+      console.error("saving the annotation failed", error)
+    )
+}
+
 function ReaderPage() {
   const data = Route.useLoaderData()
   const { user } = Route.useRouteContext()
@@ -128,6 +155,30 @@ function ReaderPage() {
   const [controls, setControls] = useState<ReaderControls | null>(null)
   const [toc, setToc] = useState<Array<TocItem>>([])
   const [location, setLocation] = useState<ReaderLocation | null>(null)
+  const annotations = useBookAnnotations(bookId)
+  const highlights = useMemo(
+    () => annotations.filter((annotation) => annotation.kind === "highlight"),
+    [annotations]
+  )
+  // The bookmarks on the page shown (plan 2B, decision 16).
+  const pageBookmarks = useMemo(
+    () =>
+      location
+        ? annotations.filter(
+            (annotation) =>
+              annotation.kind === "bookmark" &&
+              onPage(annotation.cfi, location.cfi)
+          )
+        : [],
+    [annotations, location]
+  )
+  const [selection, setSelection] = useState<TextSelection | null>(null)
+  const [marked, setMarked] = useState<HighlightTap | null>(null)
+  const [noteFor, setNoteFor] = useState<Annotation | null>(null)
+  const markedHighlight = marked
+    ? (highlights.find((highlight) => highlight.cfi === marked.cfi) ?? null)
+    : null
+  const popupOpen = tap !== null || marked !== null || selection !== null
   // The place shown now, and the place shown when the open word was tapped.
   const shownCfi = useRef<string | null>(null)
   const tappedAtCfi = useRef<string | null>(null)
@@ -149,10 +200,11 @@ function ReaderPage() {
     )
   }, [bookId, data.online, markOpened])
 
-  // Waiting word changes go when a book opens (spec 2 §7), and the forms of
-  // words saved on other devices come in for the underline. Both wait for
-  // this device to be the member's: another member's queue must not go
-  // under this session.
+  // Waiting changes go when a book opens (spec 2 §7): words and annotations.
+  // The forms of words saved on other devices come in for the underline, and
+  // the book's annotations from other devices for the overlay. All of it
+  // waits for this device to be the member's: another member's queue must
+  // not go under this session.
   useEffect(() => {
     let live = true
     claimLocalData(user.id)
@@ -160,6 +212,11 @@ function ReaderPage() {
         if (!live) return
         void wordSync().flush()
         if (data.online) void refreshSavedForms()
+        void annotationSync()
+          .flush()
+          .then(() =>
+            data.online ? refreshBookAnnotations(bookId) : undefined
+          )
       })
       .catch((error: unknown) =>
         console.error("claiming this device failed", error)
@@ -167,7 +224,7 @@ function ReaderPage() {
     return () => {
       live = false
     }
-  }, [data.online, user.id])
+  }, [bookId, data.online, user.id])
 
   const onReady = useCallback(
     (info: ReaderReady) => {
@@ -192,10 +249,14 @@ function ReaderPage() {
       // Turning the page closes the meaning (spec 2 §6.3). foliate also
       // relocates without moving: on a touch screen it snaps to the page after
       // every touch, the tap on the word too. Then the meaning stays.
-      if (next.cfi !== tappedAtCfi.current) setTap(null)
+      if (next.cfi !== tappedAtCfi.current) {
+        setTap(null)
+        setMarked(null)
+      }
       // Not moving is not reading on: a tap at a word's place (spec 2 §6.4)
       // keeps the place read.
       const moved = next.cfi !== shownCfi.current
+      if (moved) setSelection(null)
       shownCfi.current = next.cfi
       setLocation(next)
       if (!ready.current || !interacted.current || !moved) return
@@ -226,9 +287,28 @@ function ReaderPage() {
 
   const openWord = useCallback((next: WordTap) => {
     tappedAtCfi.current = shownCfi.current
+    setMarked(null)
     setTap(next)
   }, [])
   const closeWord = useCallback(() => setTap(null), [])
+  const openHighlight = useCallback((next: HighlightTap) => {
+    tappedAtCfi.current = shownCfi.current
+    setTap(null)
+    setMarked(next)
+  }, [])
+  const showSelection = useCallback((next: TextSelection | null) => {
+    if (next) {
+      setTap(null)
+      setMarked(null)
+    }
+    setSelection(next)
+  }, [])
+  // A tap beside the words closes whatever shows.
+  const closePopups = useCallback(() => {
+    setTap(null)
+    setMarked(null)
+    setSelection(null)
+  }, [])
   // The note goes after a while too, if no page is turned.
   useEffect(() => {
     if (!targetMissing) return
@@ -262,6 +342,71 @@ function ReaderPage() {
     )
   }
 
+  const dropSelection = () => {
+    controls?.clearSelection()
+    setSelection(null)
+  }
+  /** Highlight · Catatan (spec 2 §6.6); the same text twice is one highlight. */
+  const highlightSelection = (withNote: boolean) => {
+    if (!selection) return
+    const existing = highlights.find(
+      (highlight) => highlight.cfi === selection.cfi
+    )
+    const highlight =
+      existing ??
+      newHighlight({ bookId, cfi: selection.cfi, text: selection.text })
+    if (!existing) putAnnotation(highlight)
+    dropSelection()
+    if (withNote) setNoteFor(highlight)
+  }
+  const copySelection = () => {
+    if (!selection) return
+    navigator.clipboard
+      .writeText(selection.text)
+      .catch((error: unknown) =>
+        console.error("copying the text failed", error)
+      )
+    dropSelection()
+  }
+  const recolor = (color: HighlightColor) => {
+    if (markedHighlight) putAnnotation(edited(markedHighlight, { color }))
+  }
+  const editNote = () => {
+    if (markedHighlight) setNoteFor(markedHighlight)
+    setMarked(null)
+  }
+  const removeMarked = () => {
+    if (markedHighlight) putAnnotation(deleted(markedHighlight))
+    setMarked(null)
+  }
+  const meaningOfMarked = () => {
+    if (marked?.word) setTap(marked.word)
+    setMarked(null)
+  }
+  const saveNote = (note: string) => {
+    const edit = noteFor
+    setNoteFor(null)
+    if (!edit) return
+    // The highlight may have changed since the editor opened (a colour).
+    const current =
+      highlights.find((highlight) => highlight.id === edit.id) ?? edit
+    if (note.trim() !== current.note) putAnnotation(edited(current, { note }))
+  }
+  const toggleBookmark = () => {
+    if (!location) return
+    if (pageBookmarks.length > 0) {
+      for (const bookmark of pageBookmarks) putAnnotation(deleted(bookmark))
+      return
+    }
+    putAnnotation(
+      newBookmark({
+        bookId,
+        cfi: pageStart(location.cfi),
+        text: location.pageText,
+      })
+    )
+  }
+
   const go = useCallback(
     (action: (current: ReaderControls) => Promise<void>) => {
       if (!controls) return
@@ -291,17 +436,17 @@ function ReaderPage() {
         target={target}
         settings={settings}
         wordOpen={tap !== null}
+        popupOpen={popupOpen}
         savedForms={savedForms}
+        highlights={highlights}
         onReady={onReady}
         onRelocate={onRelocate}
         onInteract={onInteract}
         onTapMenu={onTapMenu}
         onWord={openWord}
-        onDismiss={closeWord}
-        popupOpen={tap !== null}
-        highlights={NO_HIGHLIGHTS}
-        onSelection={ignoreSelection}
-        onHighlight={ignoreHighlight}
+        onHighlight={openHighlight}
+        onSelection={showSelection}
+        onDismiss={closePopups}
         onTargetMissing={onTargetMissing}
         onError={onError}
       />
@@ -309,11 +454,14 @@ function ReaderPage() {
         title={data.book.title}
         hidden={chromeHidden}
         syncStatus={syncStatus}
-        bookmarked={false}
-        onBookmark={() => undefined}
+        bookmarked={pageBookmarks.length > 0}
+        onBookmark={toggleBookmark}
         onToc={() => setPanel("toc")}
         onSettings={() => setPanel("settings")}
       />
+      {pageBookmarks.length > 0 && (
+        <div aria-hidden="true" className="reader-ribbon" />
+      )}
       {!data.saved && (
         <output className="reader-note">{bookMessage("device_full")}</output>
       )}
@@ -323,8 +471,38 @@ function ReaderPage() {
         </output>
       )}
       <VocabularyNotice />
+      <AnnotationNotice />
+      <SelectionMenu
+        key={selection?.cfi ?? "no-selection"}
+        selection={selection}
+        onHighlight={() => highlightSelection(false)}
+        onNote={() => highlightSelection(true)}
+        onCopy={copySelection}
+        onClose={dropSelection}
+      />
+      <AnnotationPopup
+        key={
+          marked
+            ? `${marked.cfi} ${marked.rect.left} ${marked.rect.top}`
+            : "no-highlight"
+        }
+        tap={marked}
+        annotation={markedHighlight}
+        onColor={recolor}
+        onNote={editNote}
+        onDelete={removeMarked}
+        onMeaning={meaningOfMarked}
+        onClose={() => setMarked(null)}
+        finalFocus={bookFocus}
+      />
+      <NoteEditor
+        key={noteFor?.id ?? "no-note"}
+        annotation={noteFor}
+        onClose={saveNote}
+        finalFocus={bookFocus}
+      />
       <WordPopup
-        key={tap ? `${tap.word} ${tap.rect.left} ${tap.rect.top}` : "none"}
+        key={tap ? `${tap.word} ${tap.rect.left} ${tap.rect.top}` : "no-word"}
         tap={tap}
         lookup={lookup.state}
         saved={saved}
@@ -351,13 +529,17 @@ function ReaderPage() {
           setPanel(null)
           go((current) => current.goTo(href))
         }}
-        annotations={[]}
-        chaptersOf={null}
+        annotations={annotations}
+        chaptersOf={controls?.chaptersOf ?? null}
         onSelectPlace={(cfi) => {
           setPanel(null)
-          go((current) => current.goTo(cfi))
+          // A place gone from the book (another edition): say so (spec 2 §8).
+          go(async (current) => {
+            if (await current.canOpen(cfi)) await current.goTo(cfi)
+            else setTargetMissing(true)
+          })
         }}
-        onDeleteAnnotation={() => undefined}
+        onDeleteAnnotation={(annotation) => putAnnotation(deleted(annotation))}
       />
       <ReaderSettingsPanel
         open={panel === "settings"}

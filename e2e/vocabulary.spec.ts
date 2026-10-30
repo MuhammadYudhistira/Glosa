@@ -1,39 +1,19 @@
-import { type Page, expect, test } from "@playwright/test"
-import { seedBook, storedPosition } from "./helpers/books"
-import {
-  createConfirmedMember,
-  hydrated,
-  signInAndOnboard,
-  userIdOf,
-} from "./helpers/members"
+import { expect, test } from "@playwright/test"
+import { storedPosition } from "./helpers/books"
+import { hydrated } from "./helpers/members"
+import { startReading } from "./helpers/reading"
 import { savedWordsOf, tapWord } from "./helpers/words"
 
 // The dev project's dictionary changes with each import, so these tests
 // check what the reader does with a word, not what the word means (plan 2A,
 // decision 12).
 
-async function memberReading(page: Page) {
-  const member = await createConfirmedMember()
-  await signInAndOnboard(page, member)
-  const userId = await userIdOf(member.email)
-  const bookId = await seedBook(userId)
-  await page.goto(`/read/${bookId}`)
-  await expect(page.getByRole("status", { name: "Posisi baca" })).toHaveText(
-    /^\d+%$/,
-    { timeout: 30_000 }
-  )
-  // Away from the title page, into the text.
-  await page.keyboard.press("PageDown")
-  await page.keyboard.press("PageDown")
-  return { userId, bookId }
-}
-
 test("a tapped word is saved, listed in Kosakata, and opens its place again", async ({
   page,
   isMobile,
 }) => {
   test.setTimeout(90_000)
-  const { userId, bookId } = await memberReading(page)
+  const { userId, bookId } = await startReading(page)
 
   const word = await tapWord(page, isMobile)
   const popup = page.getByRole("dialog", { name: `Arti ${word}` })
@@ -104,7 +84,7 @@ test("a tapped word is saved, listed in Kosakata, and opens its place again", as
 })
 
 test("a deleted word comes back with Urungkan", async ({ page, isMobile }) => {
-  const { userId } = await memberReading(page)
+  const { userId } = await startReading(page)
   await tapWord(page, isMobile)
   await page.getByRole("button", { name: "Simpan" }).click()
   await expect
@@ -131,7 +111,7 @@ test("turning the page closes the meaning", async ({ page, isMobile }) => {
   // Keys in a meaning never turn pages, and on phones its sheet covers the
   // book; the wheel over the book still turns it beside the popover.
   test.skip(isMobile, "the sheet is modal: the book is out of reach")
-  await memberReading(page)
+  await startReading(page)
   const word = await tapWord(page, isMobile)
   const popup = page.getByRole("dialog", { name: `Arti ${word}` })
   await expect(popup).toBeVisible()
@@ -157,7 +137,7 @@ test("a tap beside the text still turns the page", async ({
   page,
   isMobile,
 }) => {
-  await memberReading(page)
+  await startReading(page)
   const pageNumber = () =>
     page.evaluate(
       () =>
@@ -183,7 +163,7 @@ test("a tap at a word's place does not save that place as read", async ({
   // on a word too. That is not reading on: the place read stays (spec 2 §6.4).
   test.skip(!isMobile, "the snap after a touch happens on touch screens")
   test.setTimeout(90_000)
-  const { bookId } = await memberReading(page)
+  const { bookId } = await startReading(page)
   const shown = () =>
     page.evaluate(
       () =>
@@ -229,7 +209,7 @@ test("a tap at a word's place does not save that place as read", async ({
 test("a place that is not in the book opens the last one, and says so", async ({
   page,
 }) => {
-  const { bookId } = await memberReading(page)
+  const { bookId } = await startReading(page)
   await page.goto(
     `/read/${bookId}?cfi=${encodeURIComponent("epubcfi(/6/999!/4/2/1:0)")}`
   )
