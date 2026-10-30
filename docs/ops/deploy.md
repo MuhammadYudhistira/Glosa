@@ -283,6 +283,8 @@ Sapuan berjalan saat container naik, lalu tiap jam. Ia merencanakan penghapusan:
 3. folder milik akun yang sudah tidak punya profil;
 4. file yang tidak dirujuk buku mana pun dan lebih tua dari 1 jam.
 
+Sapuan juga menghapus anotasi yang dihapus member lebih dari 30 hari lalu (tombstone); di dry run hanya dihitung, dan baris log JSON-nya kini memuat `"tombstones": <jumlah>`.
+
 Di dev rencana itu **hanya dicatat** (`SWEEP_DRY_RUN=1`, lihat 4.2). Membacanya di log tetap berguna untuk melihat sampah apa yang ditinggalkan test.
 
 ### 6.4 Restart dan pembaruan sistem

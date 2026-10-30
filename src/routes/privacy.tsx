@@ -27,7 +27,8 @@ function PrivacyPage() {
         <li>
           Data membaca: posisi baca, pengaturan tampilan, dan aktivitas belajar,
           termasuk kata yang kamu simpan di Kosakata beserta artinya, kalimat
-          asalnya, dan judul bukunya.
+          asalnya, dan judul bukunya, serta highlight, catatan, dan bookmark di
+          bukumu beserta kutipan teksnya.
         </li>
         <li>
           Data teknis: waktu masuk terakhir dan laporan error untuk memperbaiki
