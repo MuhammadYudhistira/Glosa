@@ -1,5 +1,6 @@
 // Extensions spelled out: Node runs this file for scripts/import-dictionary.ts
 // and resolves nothing by itself.
+import { keyOf } from "./dict-merge.ts"
 import { MAX_WORD_LENGTH, normalizeWord } from "./normalize.ts"
 import {
   type DictEntry,
@@ -51,8 +52,6 @@ const SKIPPED_FORM_TAGS = new Set([
 ])
 const MAX_MEANING_LENGTH = 100
 
-const keyOf = (headword: string, pos: DictPos) => `${headword}\t${pos}`
-
 function cleanWord(raw: unknown): string | null {
   if (typeof raw !== "string") return null
   const word = normalizeWord(raw)
@@ -76,12 +75,13 @@ function indonesian(record: WiktRecord): Array<string> {
 /**
  * Builds the dictionary from wiktextract records (spec 2 §4.1): English
  * entries with their Indonesian translations, at most eight per part of
- * speech, and the forms that lead to them. Forms whose headword has no
- * meaning are dropped.
+ * speech, and the forms that lead to them. Forms are kept for every headword;
+ * mergeDictionary drops those whose headword gets no meaning from any source.
  */
 export function createDictionaryBuilder() {
   const entries = new Map<string, DictEntry>()
   const forms = new Map<string, DictForm>()
+  const partsOfSpeech = new Map<string, Set<DictPos>>()
 
   function addForm(form: string | null, headword: string | null, pos: DictPos) {
     if (!form || !headword || form === headword) return
@@ -95,6 +95,9 @@ export function createDictionaryBuilder() {
       const pos = record.pos ? POS[record.pos] : undefined
       const headword = cleanWord(record.word)
       if (record.lang_code !== "en" || !pos || !headword) return
+      const known = partsOfSpeech.get(headword) ?? new Set<DictPos>()
+      known.add(pos)
+      partsOfSpeech.set(headword, known)
 
       const meanings = indonesian(record)
       if (meanings.length > 0) {
@@ -127,15 +130,17 @@ export function createDictionaryBuilder() {
 
     result(): {
       entries: Array<DictEntry>
+      /** Every form, of headwords without meanings too: mergeDictionary keeps the ones whose headword gets an entry. */
       forms: Array<DictForm>
+      /** Each English headword's parts of speech, with meanings or without (spec kamus tiga sumber, decision 6). */
+      partsOfSpeech: Map<string, Set<DictPos>>
       phrases: number
     } {
       const list = [...entries.values()]
       return {
         entries: list,
-        forms: [...forms.values()].filter((form) =>
-          entries.has(keyOf(form.headword, form.pos))
-        ),
+        forms: [...forms.values()],
+        partsOfSpeech,
         phrases: list.filter((entry) => entry.headword.includes(" ")).length,
       }
     },

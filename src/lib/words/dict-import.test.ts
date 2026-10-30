@@ -61,13 +61,24 @@ describe("createDictionaryBuilder", () => {
     expect(forms.sort()).toEqual(["ran", "running", "runs"])
   })
 
-  it("drops forms of headwords without meanings, other languages and other parts of speech", () => {
+  it("keeps every form and part of speech, also of headwords without meanings, but not other languages or names", () => {
     const result = build(
       { word: "sing", lang_code: "en", pos: "verb", forms: [{ form: "sang" }] },
       { ...run, lang_code: "fr" },
       { ...run, pos: "name" }
     )
-    expect(result).toEqual({ entries: [], forms: [], phrases: 0 })
+    expect(result.entries).toEqual([])
+    expect(result.forms).toEqual([
+      { form: "sang", headword: "sing", pos: "verb" },
+    ])
+    expect(result.partsOfSpeech).toEqual(new Map([["sing", new Set(["verb"])]]))
+  })
+
+  it("lists every part of speech a headword has", () => {
+    const like = (pos: string) => ({ word: "like", lang_code: "en", pos })
+    expect(
+      build(like("verb"), like("prep"), like("verb")).partsOfSpeech.get("like")
+    ).toEqual(new Set(["verb", "prep"]))
   })
 
   it("keeps phrasal verbs, their own forms, and counts them", () => {
