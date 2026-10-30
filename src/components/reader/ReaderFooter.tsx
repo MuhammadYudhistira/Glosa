@@ -33,6 +33,8 @@ export function ReaderFooter({
     return () => clearTimeout(timer)
   }, [draft, onSeek])
 
+  const chapterLeft = timeLeft ? formatDuration(timeLeft.chapter) : ""
+  const bookLeft = timeLeft ? formatDuration(timeLeft.book) : ""
   const percent =
     draft !== null || location ? formatPercent(toPercentage(fraction)) : ""
   return (
@@ -69,14 +71,13 @@ export function ReaderFooter({
         >
           {location?.chapter ?? ""}
         </output>
-        {timeLeft && (
+        {chapterLeft && (
           // The book's time needs a wide screen (plan 2C, decision 8).
           <output aria-label="Sisa waktu" className="shrink-0 tabular-nums">
-            {formatDuration(timeLeft.chapter)} lagi di bab ini
-            <span className="max-lg:hidden">
-              {" "}
-              · {formatDuration(timeLeft.book)} lagi di buku
-            </span>
+            {chapterLeft} lagi di bab ini
+            {bookLeft && (
+              <span className="max-lg:hidden"> · {bookLeft} lagi di buku</span>
+            )}
           </output>
         )}
       </div>

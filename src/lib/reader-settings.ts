@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { ACTIVE_HIGHLIGHT, SAVED_HIGHLIGHT } from "@/lib/words/saved-marks"
+import { KEEP_ALIGN, KEEP_HYPHENS } from "@/lib/epub/keep-layout"
 
 export const READER_FONTS = ["serif", "sans", "dyslexic"] as const
 export const READER_THEMES = ["light", "sepia", "dark"] as const
@@ -194,8 +195,8 @@ export function readerCss(
     // Not forced: a paragraph in a container the book centres, right-aligns or
     // does not hyphenate is marked by markKeptLayout and keeps the book's way
     // (plan 2C, decision 9). foliate gives each section the book's language.
-    `:is(p, li, blockquote, dd):not([data-glosa-keep-align]) { text-align: ${settings.align}; }`,
-    `:is(p, li, blockquote, dd):not([data-glosa-keep-hyphens]) { -webkit-hyphens: ${hyphens}; hyphens: ${hyphens}; }`,
+    `:is(p, li, blockquote, dd):where(:not([${KEEP_ALIGN}])) { text-align: ${settings.align}; }`,
+    `:is(p, li, blockquote, dd):where(:not([${KEEP_HYPHENS}])) { -webkit-hyphens: ${hyphens}; hyphens: ${hyphens}; }`,
     `a:link, a:visited { color: ${colors.link} !important; }`,
     "pre { white-space: pre-wrap !important; }",
     `::highlight(${SAVED_HIGHLIGHT}) { text-decoration: underline dotted 2px ${colors.link}; }`,

@@ -19,15 +19,25 @@ export function markKeptLayout(doc: Document): void {
   try {
     const win = doc.defaultView
     if (!win) return
+    // One measurement per parent, however many blocks it holds.
+    const decided = new Map<Element, { align: boolean; hyphens: boolean }>()
     for (const block of doc.querySelectorAll(BLOCKS)) {
       const parent = block.parentElement
       if (!parent) continue
-      const style = win.getComputedStyle(parent)
-      if (ALIGNS.has(style.textAlign)) block.setAttribute(KEEP_ALIGN, "")
-      const hyphens =
-        style.getPropertyValue("hyphens") ||
-        style.getPropertyValue("-webkit-hyphens")
-      if (NO_HYPHENS.has(hyphens)) block.setAttribute(KEEP_HYPHENS, "")
+      let keep = decided.get(parent)
+      if (!keep) {
+        const style = win.getComputedStyle(parent)
+        const hyphens =
+          style.getPropertyValue("hyphens") ||
+          style.getPropertyValue("-webkit-hyphens")
+        keep = {
+          align: ALIGNS.has(style.textAlign),
+          hyphens: NO_HYPHENS.has(hyphens),
+        }
+        decided.set(parent, keep)
+      }
+      if (keep.align) block.setAttribute(KEEP_ALIGN, "")
+      if (keep.hyphens) block.setAttribute(KEEP_HYPHENS, "")
     }
   } catch {
     // A section that cannot be measured is left as the settings have it.

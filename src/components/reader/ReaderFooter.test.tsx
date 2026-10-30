@@ -31,6 +31,29 @@ describe("ReaderFooter", () => {
     ).toBeEmptyDOMElement()
   })
 
+  it("shows no time left when the chapter's time cannot be told, and only the chapter's when the book's cannot", () => {
+    const { rerender } = render(
+      <ReaderFooter
+        hidden={false}
+        location={location}
+        timeLeft={{ chapter: Number.NaN, book: 30 }}
+        onSeek={() => undefined}
+      />
+    )
+    expect(screen.queryByRole("status", { name: "Sisa waktu" })).toBeNull()
+    rerender(
+      <ReaderFooter
+        hidden={false}
+        location={location}
+        timeLeft={{ chapter: 5, book: Number.NaN }}
+        onSeek={() => undefined}
+      />
+    )
+    const output = screen.getByRole("status", { name: "Sisa waktu" })
+    expect(output).toHaveTextContent("±5 mnt lagi di bab ini")
+    expect(output).not.toHaveTextContent("lagi di buku")
+  })
+
   it("shows the position and chapter, and seeks after the slider rests", () => {
     vi.useFakeTimers()
     const onSeek = vi.fn()

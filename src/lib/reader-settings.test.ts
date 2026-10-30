@@ -133,18 +133,18 @@ describe("readerCss", () => {
 
   it("hyphenates paragraphs as chosen, except where the book keeps its own", () => {
     expect(readerCss(DEFAULT_READER_SETTINGS, fonts)).toContain(
-      ":is(p, li, blockquote, dd):not([data-glosa-keep-hyphens]) { -webkit-hyphens: auto; hyphens: auto; }"
+      ":is(p, li, blockquote, dd):where(:not([data-glosa-keep-hyphens])) { -webkit-hyphens: auto; hyphens: auto; }"
     )
     expect(
       readerCss({ ...DEFAULT_READER_SETTINGS, hyphenate: false }, fonts)
     ).toContain(
-      ":is(p, li, blockquote, dd):not([data-glosa-keep-hyphens]) { -webkit-hyphens: manual; hyphens: manual; }"
+      ":is(p, li, blockquote, dd):where(:not([data-glosa-keep-hyphens])) { -webkit-hyphens: manual; hyphens: manual; }"
     )
   })
 
   it("aligns paragraphs as chosen, except where the book keeps its own", () => {
     expect(readerCss(DEFAULT_READER_SETTINGS, fonts)).toContain(
-      ":is(p, li, blockquote, dd):not([data-glosa-keep-align]) { text-align: start; }"
+      ":is(p, li, blockquote, dd):where(:not([data-glosa-keep-align])) { text-align: start; }"
     )
     expect(
       readerCss(
@@ -152,7 +152,7 @@ describe("readerCss", () => {
         fonts
       )
     ).toContain(
-      ":is(p, li, blockquote, dd):not([data-glosa-keep-align]) { text-align: justify; }"
+      ":is(p, li, blockquote, dd):where(:not([data-glosa-keep-align])) { text-align: justify; }"
     )
   })
 })

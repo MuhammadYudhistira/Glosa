@@ -130,18 +130,27 @@ test("Kembali after scrubbing the slider goes back to where the member read", as
   await expect(chapter).toHaveText(before)
 })
 
-/** The computed text-align of the first match in the shown section. */
-async function alignOf(page: Page, selector: string) {
-  return page.evaluate((target) => {
-    const view = document.querySelector("foliate-view") as unknown as {
-      renderer: { getContents: () => Array<{ doc: Document }> }
-    }
-    const { doc } = view.renderer.getContents()[0]
-    const element = doc.querySelector(target)
-    return element && doc.defaultView
-      ? doc.defaultView.getComputedStyle(element).textAlign
-      : null
-  }, selector)
+/** A computed style property of the first match in the shown section. */
+async function alignOf(
+  page: Page,
+  selector: string,
+  property: "textAlign" | "hyphens" = "textAlign"
+) {
+  return page.evaluate(
+    ([target, prop]) => {
+      const view = document.querySelector("foliate-view") as unknown as {
+        renderer: { getContents: () => Array<{ doc: Document }> }
+      }
+      const { doc } = view.renderer.getContents()[0]
+      const element = doc.querySelector(target)
+      return element && doc.defaultView
+        ? doc.defaultView.getComputedStyle(element)[
+            prop as "textAlign" | "hyphens"
+          ]
+        : null
+    },
+    [selector, property] as const
+  )
 }
 
 // A made book, not Sherlock: its signature sits in a footer the book itself
@@ -161,7 +170,7 @@ test("text the book aligns right stays there when the member chooses Rata kiri-k
       ...book,
       subjects: [],
       cover: false,
-      body: `<style>footer { text-align: right; }</style><h1>Bab 1</h1><p id="isi">Satu paragraf biasa di dalam buku ini.</p><footer><p id="ttd">Salam hormat, Penguji</p></footer>`,
+      body: `<style>footer { text-align: right; } .tengah { text-align: center; } .tanpa-penggal { hyphens: none; }</style><h1>Bab 1</h1><p id="isi">Satu paragraf biasa di dalam buku ini.</p><p class="tengah" id="tengah">Dipusatkan oleh kelas buku.</p><p class="tanpa-penggal" id="tp">Tanpa penggal oleh kelas buku.</p><footer><p id="ttd">Salam hormat, Penguji</p></footer>`,
     }),
   })
   await page.goto(`/read/${bookId}`)
@@ -171,10 +180,15 @@ test("text the book aligns right stays there when the member chooses Rata kiri-k
 
   await expect.poll(() => alignOf(page, "footer p")).toBe("right")
   await expect.poll(() => alignOf(page, "#isi")).toMatch(/^(left|start)$/)
+  // The book's own classes on the paragraph itself beat the reader's rule.
+  await expect.poll(() => alignOf(page, "#tengah")).toBe("center")
+  await expect.poll(() => alignOf(page, "#tp", "hyphens")).toBe("none")
 
   await page.getByRole("button", { name: "Tampilan" }).click()
   const panel = page.getByRole("dialog", { name: "Tampilan" })
   await panel.getByText("Rata kiri-kanan", { exact: true }).click()
   await expect.poll(() => alignOf(page, "#isi")).toBe("justify")
   await expect.poll(() => alignOf(page, "footer p")).toBe("right")
+  await expect.poll(() => alignOf(page, "#tengah")).toBe("center")
+  await expect.poll(() => alignOf(page, "#tp", "hyphens")).toBe("none")
 })

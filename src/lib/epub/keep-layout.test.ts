@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { markKeptLayout } from "./keep-layout"
 
 /** The page's own document stands for a section: it has a window to compute in. */
@@ -46,6 +46,18 @@ describe("markKeptLayout", () => {
     expect(
       doc.getElementById("c")?.hasAttribute("data-glosa-keep-hyphens")
     ).toBe(false)
+  })
+
+  it("measures each parent once, however many blocks it holds", () => {
+    const doc = section(
+      "footer { text-align: right }",
+      "<footer><p>a</p><p>b</p><p>c</p></footer><div><p>d</p><p>e</p></div>"
+    )
+    const spy = vi.spyOn(window, "getComputedStyle")
+    markKeptLayout(doc)
+    expect(spy).toHaveBeenCalledTimes(2)
+    expect(doc.querySelectorAll("[data-glosa-keep-align]")).toHaveLength(3)
+    spy.mockRestore()
   })
 
   it("leaves a document without a window alone", () => {
