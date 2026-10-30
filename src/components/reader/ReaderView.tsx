@@ -34,6 +34,7 @@ import {
   type TapAction,
   createWheelPager,
   isControlTarget,
+  isTurn,
   isTypingTarget,
   keyMove,
   selectionAction,
@@ -99,8 +100,6 @@ const BAR_SPACE = "64px"
 const MAX_LINE_LENGTH = "720px"
 /** A selection that has stopped changing this long gets its menu (plan 2B, decision 9). */
 const SELECTION_SETTLE_MS = 300
-/** foliate's reasons for a relocate the member made by turning or scrolling (plan 2C, decision 5). */
-const TURN_REASONS = new Set(["page", "snap", "scroll"])
 
 /** A box in a section's frame, in this window's coordinates. */
 function rectInWindow(doc: Document, box: DOMRect): WordRect {
@@ -314,7 +313,8 @@ async function footnoteOf(
 
 function toLocation(
   detail: RelocateDetail,
-  reason: string | undefined
+  reason: string | null | undefined,
+  readerTurning: boolean
 ): ReaderLocation {
   const label = detail.tocItem?.label?.trim()
   return {
@@ -326,7 +326,7 @@ function toLocation(
       detail.range?.toString() ?? "",
       BOOKMARK_EXCERPT_LENGTH
     ),
-    turned: reason !== undefined && TURN_REASONS.has(reason),
+    turned: isTurn(reason, readerTurning),
     time: detail.time ?? null,
   }
 }
@@ -682,8 +682,9 @@ export function ReaderView({
     const onRendererRelocate = (event: Event) => {
       const place = view?.lastLocation
       if (!place) return
-      const { reason } = (event as CustomEvent<{ reason?: string }>).detail
-      call().onRelocate(toLocation(place, reason))
+      const { reason } = (event as CustomEvent<{ reason?: string | null }>)
+        .detail
+      call().onRelocate(toLocation(place, reason, turning))
     }
 
     // A link in the book, before foliate follows it: a footnote opens in a

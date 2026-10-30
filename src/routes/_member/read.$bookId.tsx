@@ -353,10 +353,16 @@ function ReaderPage() {
     setFootnote(next)
   }, [])
   /** A jump from here: Kembali comes back to this place (plan 2C, decision 4). */
-  const markJump = useCallback(() => {
+  // A seek that follows a seek, with no turn between, keeps the first place:
+  // the slider makes several seeks while it is scrubbed.
+  const lastJumpWasSeek = useRef(false)
+  const markJump = useCallback((seek = false) => {
     if (!shownCfi.current) return
+    const from = shownCfi.current
+    const keep = seek && lastJumpWasSeek.current && turnsSinceJump.current === 0
+    lastJumpWasSeek.current = seek
     turnsSinceJump.current = 0
-    setBackTo(shownCfi.current)
+    setBackTo((current) => (keep && current !== null ? current : from))
   }, [])
   // The note goes after a while too, if no page is turned.
   useEffect(() => {
@@ -469,7 +475,7 @@ function ReaderPage() {
   )
   const onSeek = useCallback(
     (fraction: number) => {
-      markJump()
+      markJump(true)
       go((current) => current.goToFraction(fraction))
     },
     [go, markJump]
@@ -504,7 +510,7 @@ function ReaderPage() {
         savedForms={savedForms}
         highlights={highlights}
         onFootnote={openFootnote}
-        onJump={markJump}
+        onJump={() => markJump()}
         onReady={onReady}
         onRelocate={onRelocate}
         onInteract={onInteract}

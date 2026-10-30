@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   createWheelPager,
   isControlTarget,
+  isTurn,
   isTypingTarget,
   keyMove,
   selectionAction,
@@ -130,5 +131,24 @@ describe("selectionAction", () => {
   it("treats a selection without a CFI as no selection", () => {
     expect(selectionAction(true, false, true)).toBe("clear")
     expect(selectionAction(true, false, false)).toBe("none")
+  })
+})
+
+describe("isTurn", () => {
+  it("counts foliate's turn reasons and scrolled-flow key turns (null)", () => {
+    for (const reason of ["page", "snap", "scroll", null])
+      expect(isTurn(reason, false)).toBe(true)
+  })
+
+  it("counts a navigation only while the reader's own turn is in flight", () => {
+    expect(isTurn("navigation", true)).toBe(true)
+    expect(isTurn("navigation", false)).toBe(false)
+  })
+
+  it("never counts jumps or an unknown reason", () => {
+    for (const reason of ["anchor", "selection", undefined]) {
+      expect(isTurn(reason, false)).toBe(false)
+      expect(isTurn(reason, true)).toBe(false)
+    }
   })
 })

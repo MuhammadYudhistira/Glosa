@@ -65,6 +65,14 @@ test("a footnote opens in a popup and the page stays", async ({
   const popup = page.getByRole("dialog", { name: "Catatan kaki" })
   await expect(popup).toHaveText(NOTE)
   await expect(place).toHaveText(before ?? "")
+  // A followed link would be a jump and show Kembali; it is not rendered when hidden.
+  await expect(
+    page.getByRole("button", {
+      name: "Kembali",
+      exact: true,
+      includeHidden: true,
+    })
+  ).toHaveCount(0)
   await page.keyboard.press("Escape")
   await expect(popup).toBeHidden()
 })
@@ -98,4 +106,26 @@ test("Kembali goes back to the place before a jump from the contents", async ({
   await expect(back).toBeVisible()
   await turnPages(page, "PageDown", 1)
   await expect(back).toBeHidden()
+})
+
+test("Kembali after scrubbing the slider goes back to where the member read", async ({
+  page,
+}) => {
+  test.setTimeout(120_000)
+  await startReading(page)
+  const chapter = page.getByRole("status", { name: "Bab saat ini" })
+  const before = (await chapter.textContent()) ?? ""
+  const back = page.getByRole("button", { name: "Kembali", exact: true })
+
+  // Two separate seeks, as a drag with a pause or arrow-key steps make.
+  const slider = page.getByRole("slider", { name: "Posisi dalam buku" })
+  await slider.focus()
+  await page.keyboard.press("End")
+  await expect(chapter).not.toHaveText(before)
+  const atEnd = (await chapter.textContent()) ?? ""
+  await page.keyboard.press("Home")
+  await expect(chapter).not.toHaveText(atEnd)
+
+  await back.click()
+  await expect(chapter).toHaveText(before)
 })

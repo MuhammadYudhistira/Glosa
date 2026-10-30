@@ -80,6 +80,24 @@ export function keyMove(key: string, shift = false): ReaderMove | null {
   }
 }
 
+const TURN_REASONS = new Set(["page", "snap", "scroll"])
+
+/**
+ * Whether a relocate was the member turning or scrolling (plan 2C,
+ * decision 5): foliate's turn reasons, its scrolled-flow key and button turns
+ * (reason null), and a turn of the reader's own that crossed into the next
+ * section (navigation while it turns).
+ */
+export function isTurn(
+  reason: string | null | undefined,
+  readerTurning: boolean
+): boolean {
+  if (reason === null) return true
+  if (reason === undefined) return false
+  if (reason === "navigation") return readerTurning
+  return TURN_REASONS.has(reason)
+}
+
 /** Space presses a focused button or link instead of turning the page. */
 export function isControlTarget(target: EventTarget | null): boolean {
   const element = target as { closest?: (selector: string) => unknown } | null
