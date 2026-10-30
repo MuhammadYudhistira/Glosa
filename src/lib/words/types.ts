@@ -12,6 +12,10 @@ export const DICT_POS = [
   "conj",
   "interj",
   "phrase",
+  "article",
+  "det",
+  "num",
+  "particle",
 ] as const
 export type DictPos = (typeof DICT_POS)[number]
 

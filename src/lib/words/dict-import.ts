@@ -34,6 +34,13 @@ const POS: Partial<Record<string, DictPos>> = {
   intj: "interj",
   phrase: "phrase",
   prep_phrase: "phrase",
+  article: "article",
+  det: "det",
+  num: "num",
+  particle: "particle",
+  // "ago", "apart": they work as adverbs, and the popup names them so.
+  postp: "adv",
+  // Names ("name") stay out: lower case, US and May would meet us and may.
 }
 /** Inflection-table bookkeeping, not forms anyone reads. */
 const SKIPPED_FORM_TAGS = new Set([

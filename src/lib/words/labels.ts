@@ -11,4 +11,8 @@ export const POS_LABELS: Record<DictPos, string> = {
   conj: "kata sambung",
   interj: "kata seru",
   phrase: "frasa",
+  article: "kata sandang",
+  det: "kata penentu",
+  num: "kata bilangan",
+  particle: "partikel",
 }

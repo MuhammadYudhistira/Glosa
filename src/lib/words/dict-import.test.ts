@@ -104,4 +104,37 @@ describe("createDictionaryBuilder", () => {
     }
     expect(build(record).entries[0].pos).toBe("interj")
   })
+
+  it("keeps articles, determiners, numbers and particles, and files postpositions as adverbs", () => {
+    const entry = (word: string, pos: string, meaning: string) => ({
+      word,
+      lang_code: "en",
+      pos,
+      translations: [{ code: "id", word: meaning }],
+    })
+    const built = build(
+      entry("the", "article", "si"),
+      entry("every", "det", "setiap"),
+      entry("two", "num", "dua"),
+      entry("yes", "particle", "ya"),
+      entry("ago", "postp", "yang lalu")
+    ).entries.map(({ headword, pos }) => `${headword} ${pos}`)
+    expect(built).toEqual([
+      "the article",
+      "every det",
+      "two num",
+      "yes particle",
+      "ago adv",
+    ])
+  })
+
+  it("leaves names out: lower case, they would meet ordinary words (US, May)", () => {
+    const record = {
+      word: "US",
+      lang_code: "en",
+      pos: "name",
+      translations: [{ code: "id", word: "AS" }],
+    }
+    expect(build(record).entries).toEqual([])
+  })
 })
