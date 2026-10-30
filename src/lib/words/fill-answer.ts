@@ -17,13 +17,14 @@ const ASKED_POS = DICT_POS.filter((pos) => pos !== "phrase")
 export const FILL_SYSTEM = `You write entries for an English-Indonesian dictionary inside an e-book reader for Indonesian readers learning English. A reader taps an English word and sees its Indonesian equivalents.
 
 For each requested word and each requested part of speech, give the Indonesian equivalents that a reader would understand the word by, the most common sense first:
-- Each equivalent is an Indonesian word or a short phrase in standard spelling (KBBI): lower case unless always capitalised, with no explanation, example, brackets or English.
+- Each equivalent is an Indonesian word or a short phrase of at most 100 characters in standard spelling (KBBI): lower case unless always capitalised, with no explanation, example, brackets or English.
 - At most 8 per part of speech, without repeats. A word with few senses gets few equivalents.
 - Function words (pronouns, prepositions, conjunctions, determiners, articles, particles) get the Indonesian words that usually translate them, e.g. "it" (pron): "itu", "ia", "dia".
 - If no Indonesian equivalent fits a part of speech, give an empty list for it.
 - If a word's pos list is empty, choose the one part of speech it is most often used as, from: ${ASKED_POS.join(", ")}. Answer with that one only.
+- If a requested word is not an English word, or has no use a reader would look up, answer it with one part of speech (the likeliest, or a requested one) and an empty list, so it is not asked again.
 
-Answer every requested word, in the order given, with exactly the parts of speech requested.`
+Answer every requested word once, in the order given, repeating each "word" exactly as given, with exactly the parts of speech requested.`
 
 /** The user message: one JSON object per line. */
 export function fillPrompt(requests: ReadonlyArray<FillRequest>): string {
@@ -91,8 +92,8 @@ function cleanMeanings(raw: Array<string>): Array<string> | null {
 /**
  * The dict_generated rows an answer gives (spec kamus tiga sumber §4.3, step
  * 4): a row for each part of speech asked, or for the one the AI picked. A
- * word without an answer, with other parts of speech, or with a bad meaning
- * gives no rows and is named in problems; the next run asks it again.
+ * word without an answer, answered twice, with other parts of speech, or with
+ * a bad meaning gives no rows and is named in problems; the next run asks it again.
  */
 export function readAnswer(
   requests: ReadonlyArray<FillRequest>,
@@ -118,18 +119,21 @@ export function readAnswer(
     }
   }
 
-  const byWord = new Map(
-    parsed.words.map(
-      (word): [string, (typeof parsed.words)[number]["entries"]] => [
-        normalizeWord(word.word),
-        word.entries,
-      ]
-    )
-  )
+  const byWord = new Map<string, (typeof parsed.words)[number]["entries"]>()
+  const twice = new Set<string>()
+  for (const { word, entries } of parsed.words) {
+    const key = normalizeWord(word)
+    if (byWord.has(key)) twice.add(key)
+    byWord.set(key, entries)
+  }
   const rows: Array<GeneratedRow> = []
   const answered: Array<string> = []
   const problems: Array<string> = []
   for (const request of requests) {
+    if (twice.has(request.headword)) {
+      problems.push(`${request.headword}: answered twice`)
+      continue
+    }
     const entries = byWord.get(request.headword)
     if (!entries) {
       problems.push(`${request.headword}: no answer`)

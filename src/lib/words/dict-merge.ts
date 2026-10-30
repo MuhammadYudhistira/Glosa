@@ -13,6 +13,9 @@ export type GeneratedRow = DictEntry
 
 export const keyOf = (headword: string, pos: DictPos) => `${headword}\t${pos}`
 
+/** The headword of a keyOf pair: the key format lives here. */
+export const headwordOfKey = (key: string) => key.slice(0, key.indexOf("\t"))
+
 /**
  * One dictionary from three sources (spec kamus tiga sumber, decision 1): for
  * each headword and part of speech, Wiktionary's meanings, else WordNet

@@ -1,5 +1,5 @@
 // Extensions spelled out: Node runs this file for scripts/fill-dictionary.ts.
-import { keyOf } from "./dict-merge.ts"
+import { headwordOfKey, keyOf } from "./dict-merge.ts"
 import { isLookupWord, normalizeWord } from "./normalize.ts"
 import type { DictForm, DictPos } from "./types.ts"
 
@@ -44,7 +44,7 @@ export function pickCandidates(sources: CandidateSources): Array<FillRequest> {
     sources.filled.has(keyOf(headword, pos)) ||
     sources.generated.has(keyOf(headword, pos))
   const touched = new Set(
-    [...sources.filled, ...sources.generated].map((key) => key.split("\t")[0])
+    [...sources.filled, ...sources.generated].map(headwordOfKey)
   )
   const requests = new Map<string, FillRequest>()
   const ask = (headword: string, pos: Array<DictPos>, word: string) => {

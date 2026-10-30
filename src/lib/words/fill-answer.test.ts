@@ -66,6 +66,7 @@ describe("readAnswer", () => {
         ...requests,
         { headword: "run", pos: ["verb"], from: ["run"] },
         { headword: "like", pos: ["prep"], from: ["like"] },
+        { headword: "cat", pos: ["noun"], from: ["cat"] },
       ],
       answer([
         { word: "make", entries: [{ pos: "verb", meanings: ["membuat"] }] },
@@ -82,13 +83,40 @@ describe("readAnswer", () => {
         },
         {
           word: "like",
-          entries: [{ pos: "prep", meanings: ["seperti\u0007"] }],
+          entries: [{ pos: "prep", meanings: ["seperti"] }],
         },
       ])
     )
     expect(result.rows).toEqual([])
     expect(result.answered).toEqual([])
-    expect(result.problems).toHaveLength(4)
+    expect(result.problems).toEqual([
+      "make: answered verb, asked verb/noun",
+      "gonna: answered verb/noun, asked one",
+      "run: a meaning is empty, too long or holds control characters",
+      "like: a meaning is empty, too long or holds control characters",
+      "cat: no answer",
+    ])
+  })
+
+  it("gives a word answered twice no rows", () => {
+    const result = readAnswer(
+      [requests[1]],
+      answer([
+        { word: "gonna", entries: [{ pos: "verb", meanings: ["akan"] }] },
+        { word: "gonna", entries: [{ pos: "verb", meanings: ["hendak"] }] },
+      ])
+    )
+    expect(result).toEqual({
+      rows: [],
+      answered: [],
+      problems: ["gonna: answered twice"],
+    })
+  })
+
+  it("names every word when the answer parses but breaks the schema", () => {
+    const result = readAnswer(requests, '{"words":[{"word":"make"}]}')
+    expect(result.rows).toEqual([])
+    expect(result.problems).toEqual(["unreadable answer for make, gonna"])
   })
 
   it("names every word when the answer cannot be read", () => {

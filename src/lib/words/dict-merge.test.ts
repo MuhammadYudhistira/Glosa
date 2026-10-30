@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { mergeDictionary } from "./dict-merge"
+import { headwordOfKey, keyOf, mergeDictionary } from "./dict-merge"
 
 const forms = [
   { form: "made", headword: "make", pos: "verb" as const },
@@ -68,5 +68,11 @@ describe("mergeDictionary", () => {
         source: "ai",
       },
     ])
+  })
+})
+
+describe("headwordOfKey", () => {
+  it("gives back the headword of a keyOf pair", () => {
+    expect(headwordOfKey(keyOf("make up", "verb"))).toBe("make up")
   })
 })
