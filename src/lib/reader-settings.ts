@@ -191,9 +191,11 @@ export function readerCss(
     "body *:not(code, kbd, pre, samp, tt, code *, pre *) { font-family: inherit !important; }",
     "body *:not(img, svg, video, canvas) { color: inherit !important; background-color: transparent !important; }",
     `p, li, blockquote, dd, dt, td, th { line-height: ${settings.lineHeight} !important; }`,
-    // Not forced: a book's own centred or right-aligned text keeps its place
+    // Not forced: a paragraph in a container the book centres, right-aligns or
+    // does not hyphenate is marked by markKeptLayout and keeps the book's way
     // (plan 2C, decision 9). foliate gives each section the book's language.
-    `p, li, blockquote, dd { text-align: ${settings.align}; -webkit-hyphens: ${hyphens}; hyphens: ${hyphens}; }`,
+    `:is(p, li, blockquote, dd):not([data-glosa-keep-align]) { text-align: ${settings.align}; }`,
+    `:is(p, li, blockquote, dd):not([data-glosa-keep-hyphens]) { -webkit-hyphens: ${hyphens}; hyphens: ${hyphens}; }`,
     `a:link, a:visited { color: ${colors.link} !important; }`,
     "pre { white-space: pre-wrap !important; }",
     `::highlight(${SAVED_HIGHLIGHT}) { text-decoration: underline dotted 2px ${colors.link}; }`,

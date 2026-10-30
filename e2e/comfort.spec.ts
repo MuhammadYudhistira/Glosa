@@ -129,3 +129,52 @@ test("Kembali after scrubbing the slider goes back to where the member read", as
   await back.click()
   await expect(chapter).toHaveText(before)
 })
+
+/** The computed text-align of the first match in the shown section. */
+async function alignOf(page: Page, selector: string) {
+  return page.evaluate((target) => {
+    const view = document.querySelector("foliate-view") as unknown as {
+      renderer: { getContents: () => Array<{ doc: Document }> }
+    }
+    const { doc } = view.renderer.getContents()[0]
+    const element = doc.querySelector(target)
+    return element && doc.defaultView
+      ? doc.defaultView.getComputedStyle(element).textAlign
+      : null
+  }, selector)
+}
+
+// A made book, not Sherlock: its signature sits in a footer the book itself
+// aligns right, in the one section that is shown, so nothing depends on which
+// section of a real book is loaded when the check runs.
+test("text the book aligns right stays there when the member chooses Rata kiri-kanan", async ({
+  page,
+}) => {
+  test.setTimeout(90_000)
+  const member = await createConfirmedMember()
+  await signInAndOnboard(page, member)
+  const userId = await userIdOf(member.email)
+  const book = { title: "Buku Perataan", author: "Penguji" }
+  const bookId = await seedBook(userId, {
+    ...book,
+    file: await makeEpub({
+      ...book,
+      subjects: [],
+      cover: false,
+      body: `<style>footer { text-align: right; }</style><h1>Bab 1</h1><p id="isi">Satu paragraf biasa di dalam buku ini.</p><footer><p id="ttd">Salam hormat, Penguji</p></footer>`,
+    }),
+  })
+  await page.goto(`/read/${bookId}`)
+  await expect(
+    page.getByRole("status", { name: "Posisi baca", includeHidden: true })
+  ).toHaveText(/^\d+%$/, { timeout: 30_000 })
+
+  await expect.poll(() => alignOf(page, "footer p")).toBe("right")
+  await expect.poll(() => alignOf(page, "#isi")).toMatch(/^(left|start)$/)
+
+  await page.getByRole("button", { name: "Tampilan" }).click()
+  const panel = page.getByRole("dialog", { name: "Tampilan" })
+  await panel.getByText("Rata kiri-kanan", { exact: true }).click()
+  await expect.poll(() => alignOf(page, "#isi")).toBe("justify")
+  await expect.poll(() => alignOf(page, "footer p")).toBe("right")
+})

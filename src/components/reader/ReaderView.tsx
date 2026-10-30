@@ -11,6 +11,8 @@ import { HIGHLIGHT_FILL, drawHighlight } from "@/lib/annotations/draw"
 import { endRect, rectAt, selectedRange } from "@/lib/annotations/selection"
 import type { Annotation } from "@/lib/annotations/types"
 import { footnoteText, isFootnoteLink } from "@/lib/epub/footnotes"
+import { markKeptLayout } from "@/lib/epub/keep-layout"
+import { finiteTime } from "@/lib/reading-speed"
 import { type OpenedBook, openBookFile } from "@/lib/epub/open-book"
 import {
   type FontSources,
@@ -298,14 +300,17 @@ function redrawHighlights(
  */
 async function footnoteOf(
   view: View,
-  href: string
+  href: string,
+  referenceId: string
 ): Promise<Array<string> | null> {
   try {
     const resolved = view.resolveNavigation(href)
     if (!resolved || resolved.index < 0 || !resolved.anchor) return null
     const doc = await view.book.sections[resolved.index]?.createDocument?.()
     const target = doc ? resolved.anchor(doc) : null
-    return target instanceof Element ? footnoteText(target) : null
+    return target instanceof Element
+      ? footnoteText(target, referenceId || undefined)
+      : null
   } catch {
     return null
   }
@@ -327,7 +332,7 @@ function toLocation(
       BOOKMARK_EXCERPT_LENGTH
     ),
     turned: isTurn(reason, readerTurning),
-    time: detail.time ?? null,
+    time: finiteTime(detail.time),
   }
 }
 
@@ -565,6 +570,9 @@ export function ReaderView({
       const { doc, index } = (
         event as CustomEvent<{ doc: Document; index: number }>
       ).detail
+      // The book's own layout, before anything reads it: it depends on the
+      // book's CSS only, so a change of settings does not need it again.
+      markKeptLayout(doc)
       doc.addEventListener("keydown", onKey)
       doc.addEventListener("pointerdown", interact)
       doc.addEventListener("wheel", interact, { passive: true })
@@ -684,7 +692,15 @@ export function ReaderView({
       if (!place) return
       const { reason } = (event as CustomEvent<{ reason?: string | null }>)
         .detail
-      call().onRelocate(toLocation(place, reason, turning))
+      call().onRelocate(
+        toLocation(
+          place,
+          reason,
+          // Paged turns always relocate once on their own (the padding page);
+          // only the scrolled flow can cross a section by navigation alone.
+          turning && settingsRef.current.flow === "scrolled"
+        )
+      )
     }
 
     // A link in the book, before foliate follows it: a footnote opens in a
@@ -692,8 +708,11 @@ export function ReaderView({
     const showFootnote = async (a: Element, href: string) => {
       const current = view
       if (!current) return
-      const paragraphs = await footnoteOf(current, href)
+      const placeBefore = current.lastLocation?.cfi
+      const paragraphs = await footnoteOf(current, href, a.id)
       if (isCancelled()) return
+      // The member moved while the note was read: it is stale.
+      if (current.lastLocation?.cfi !== placeBefore) return
       if (paragraphs) {
         call().onFootnote({
           paragraphs,
@@ -713,7 +732,9 @@ export function ReaderView({
         return
       }
       event.preventDefault()
-      void showFootnote(a, href)
+      showFootnote(a, href).catch((error: unknown) => {
+        console.error("Footnote failed", error)
+      })
     }
 
     // A section's overlay is new: draw its highlights (spec 2 §6.6).

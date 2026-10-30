@@ -54,6 +54,18 @@ export function isFootnoteLink(a: Element): boolean {
   )
 }
 
+/** The fragment of a link's href, without the "#"; null when it has none. */
+function fragmentOf(a: Element): string | null {
+  const href = a.getAttribute("href") ?? ""
+  const at = href.indexOf("#")
+  if (at < 0) return null
+  try {
+    return decodeURIComponent(href.slice(at + 1))
+  } catch {
+    return href.slice(at + 1)
+  }
+}
+
 /** The note a link's target belongs to: the target, or the block around it. */
 function noteOf(target: Element): Element | null {
   let note = target
@@ -66,12 +78,25 @@ function noteOf(target: Element): Element | null {
 
 const clean = (text: string) => text.replace(/\s+/g, " ").trim()
 
-/** The note's paragraphs, without its links back to the text; null when it has no text. */
-export function footnoteText(target: Element): Array<string> | null {
+/**
+ * The note's paragraphs, without its links back to the text; null when it has
+ * no text. Links back are the marked ones and any link to `referenceId`, the
+ * id of the link that was clicked (Gutenberg does not mark them).
+ */
+export function footnoteText(
+  target: Element,
+  referenceId?: string
+): Array<string> | null {
   const note = noteOf(target)
   if (!note) return null
   const copy = note.cloneNode(true) as Element
-  for (const a of copy.querySelectorAll("a")) if (isBacklink(a)) a.remove()
+  for (const a of copy.querySelectorAll("a")) {
+    if (isBacklink(a) || (referenceId && fragmentOf(a) === referenceId))
+      a.remove()
+  }
+  // A line break is a word break, or verse would run its words together.
+  for (const br of copy.querySelectorAll("br"))
+    br.replaceWith(br.ownerDocument.createTextNode(" "))
   // The innermost blocks are the paragraphs; a note without blocks is one.
   const blocks = [...copy.querySelectorAll(BLOCKS)].filter(
     (block) => !block.querySelector(BLOCKS)

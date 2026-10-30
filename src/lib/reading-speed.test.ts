@@ -3,6 +3,7 @@ import {
   PAGE_MS,
   SPEED_SAMPLES,
   addSample,
+  finiteTime,
   formatDuration,
   pageSample,
   parseSamples,
@@ -62,6 +63,33 @@ describe("formatDuration", () => {
     expect(formatDuration(59.6)).toBe("±1 j")
     expect(formatDuration(80)).toBe("±1 j 20 mnt")
     expect(formatDuration(120)).toBe("±2 j")
+  })
+
+  it("says nothing for a time that is not a number or is negative", () => {
+    for (const bad of [NaN, Infinity, -Infinity, -3])
+      expect(formatDuration(bad)).toBe("")
+  })
+})
+
+describe("finiteTime", () => {
+  it("keeps a time whose two values are finite and not negative", () => {
+    expect(finiteTime({ section: 3, total: 40 })).toEqual({
+      section: 3,
+      total: 40,
+    })
+    expect(finiteTime({ section: 0, total: 0 })).toEqual({
+      section: 0,
+      total: 0,
+    })
+  })
+
+  it("drops a time with a NaN, infinite or negative value, or none", () => {
+    expect(finiteTime({ section: NaN, total: 4 })).toBeNull()
+    expect(finiteTime({ section: 4, total: NaN })).toBeNull()
+    expect(finiteTime({ section: Infinity, total: 4 })).toBeNull()
+    expect(finiteTime({ section: 4, total: -1 })).toBeNull()
+    expect(finiteTime(null)).toBeNull()
+    expect(finiteTime(undefined)).toBeNull()
   })
 })
 

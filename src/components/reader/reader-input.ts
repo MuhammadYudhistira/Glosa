@@ -85,8 +85,10 @@ const TURN_REASONS = new Set(["page", "snap", "scroll"])
 /**
  * Whether a relocate was the member turning or scrolling (plan 2C,
  * decision 5): foliate's turn reasons, its scrolled-flow key and button turns
- * (reason null), and a turn of the reader's own that crossed into the next
- * section (navigation while it turns).
+ * (reason null), and, in the scrolled flow only, a turn of the reader's own
+ * that crossed into the next section (navigation while it turns). A paged turn
+ * across a section relocates once with 'page' or 'snap' first, so counting its
+ * navigation too would count it twice.
  */
 export function isTurn(
   reason: string | null | undefined,

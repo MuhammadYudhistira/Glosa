@@ -263,20 +263,20 @@ Swipe, tombol, roda mouse, dan tepi klik di margin tidak berubah.
 
 - **Catatan kaki:** tautan catatan kaki dikenali dengan aturan `footnotes.js` foliate (`epub:type="noteref"`, `role="doc-noteref"`, atau angka yang dinaikkan). Isinya dibaca dari dokumen section dan ditampilkan sebagai paragraf teks di popup yang gayanya sama dengan popup arti: tanpa tautan kembali, maksimal 2.000 karakter. Catatan yang isinya tidak bisa dibaca berperilaku seperti tautan biasa. Tautan biasa tetap melompat.
 - **Tombol Kembali:** muncul di kiri bawah setelah lompatan lewat daftar isi, tautan, anotasi, atau slider posisi. Tombol ini membawa user kembali ke posisi sebelum lompatan, dan hilang setelah dipakai atau setelah 5 kali balik halaman.
-  - Yang dicatat adalah tempat sebelum lompatan terakhir. Balik halaman dihitung dari `relocate` foliate dengan alasan `page`, `snap`, atau `scroll` yang memindahkan tempat; di mode gulir, tiap kali guliran berhenti dihitung satu. Membuka buku dari Kosakata dan *Lompat* ke posisi perangkat lain bukan lompatan.
-  - Balik halaman juga dihitung untuk tombol atau tombol keyboard di mode gulir (foliate mengirimnya tanpa alasan) dan untuk balik halaman oleh reader yang melewati batas ke section berikutnya; swipe yang melewati batas section tidak dihitung.
+  - Yang dicatat adalah tempat sebelum lompatan terakhir, kecuali gerakan slider berturut-turut (di bawah). Balik halaman dihitung dari `relocate` foliate dengan alasan `page`, `snap`, atau `scroll` yang memindahkan tempat; di mode gulir, tiap kali guliran berhenti dihitung satu. Membuka buku dari Kosakata dan *Lompat* ke posisi perangkat lain bukan lompatan.
+  - Balik halaman juga dihitung untuk tombol halaman atau tombol keyboard di mode gulir (foliate mengirimnya tanpa alasan). Di mode gulir, balik halaman oleh reader yang melewati batas ke section berikutnya juga dihitung (`relocate` dengan alasan `navigation` selama reader membalik). Di mode halaman, balik halaman yang melewati batas section dihitung satu kali lewat `relocate` `page` atau `snap` ke halaman pengisi di ujung section, sehingga `navigation` sesudahnya tidak dihitung lagi. Swipe yang melewati batas section dihitung satu kali lewat `snap` yang sama.
   - Beberapa gerakan slider berturut-turut, tanpa balik halaman di antaranya, mempertahankan tempat baca yang semula untuk Kembali.
 - **Sisa waktu:** footer menampilkan "±8 mnt lagi di bab ini".
   - Angkanya `time.section` dari `relocate` foliate, dikalikan rasio kecepatan user terhadap kecepatan default foliate.
   - Kecepatan diukur dari halaman yang dibaca 5 detik sampai 10 menit, sebagai rata-rata bergerak dari 50 halaman terakhir.
   - Sebelum ada 10 halaman terukur, kecepatan default foliate yang dipakai.
-  - Di mode scroll, sisa waktu dihitung dengan cara yang sama dari `relocate`.
+  - Di mode gulir, sisa waktu dihitung dengan cara yang sama dari `relocate`.
   - Satu halaman memberi sampel menit foliate yang terlewati (turunnya `time.total`) dan menit yang benar-benar dipakai. Rasio = jumlah menit yang dipakai / jumlah menit foliate dari 50 sampel terakhir. Halaman yang dibaca mundur, `relocate` di tempat yang sama, dan halaman saat tab disembunyikan tidak dihitung. Di layar ≥ 1024px footer juga menampilkan sisa waktu buku ("±5 j lagi di buku").
 - **Setelan baru** di `ReaderSettingsPanel`:
   - perataan (*Rata kiri* / *Rata kiri-kanan*);
   - pemenggalan kata, lewat `hyphens: auto` dan atribut `lang` buku;
   - dua halaman (*Otomatis* / *Satu halaman*). Pilihan ini hanya tampil di layar ≥ 1024px dan mode halaman. *Otomatis* membiarkan foliate menampilkan dua kolom bila layar cukup lebar.
-  - Perataan dan pemenggalan dipasang tanpa `!important` pada `p, li, blockquote, dd`, jadi teks yang oleh bukunya dibuat rata tengah atau rata kanan tetap di tempatnya. *Satu halaman* memasang `max-column-count` paginator menjadi 1.
+  - Perataan dan pemenggalan dipasang tanpa `!important` pada `p, li, blockquote, dd`, jadi teks yang oleh bukunya dibuat rata tengah atau rata kanan tetap di tempatnya. Paragraf yang wadahnya (`footer`, `hgroup`, `section`, dan sebagainya) oleh buku dibuat rata tengah, rata kanan, atau tanpa pemenggalan (`hyphens: none`) ditandai saat section dimuat (`data-glosa-keep-align` dan `data-glosa-keep-hyphens`), dan aturan reader melewatinya. Batasnya: perataan buku yang dipasang pada elemen yang sama dengan selektor tipe berspesifisitas sama (`p { text-align: center }`) tetap mengalah pada setelan, seperti reader foliate sendiri. *Satu halaman* memasang `max-column-count` paginator menjadi 1.
 - **Layar tetap menyala:** Wake Lock diminta saat reader terbuka dan tab terlihat, dilepas saat tab disembunyikan, dan diminta lagi saat tab terlihat kembali. Bila browser tidak mendukung atau menolak, tidak ada pesan apa pun.
 
 ## 7. Offline dan sinkron

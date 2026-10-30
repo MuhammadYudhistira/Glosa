@@ -49,8 +49,22 @@ export function speedRatio(samples: ReadonlyArray<SpeedSample>): number {
   return expected > 0 ? actual / expected : 1
 }
 
+/**
+ * foliate's time left, or null unless both values are finite and not negative:
+ * a section without text pages gives NaN, and the footer must not show it.
+ */
+export function finiteTime(
+  time: { section: number; total: number } | null | undefined
+): { section: number; total: number } | null {
+  if (!time) return null
+  const ok = (value: number) => Number.isFinite(value) && value >= 0
+  return ok(time.section) && ok(time.total) ? time : null
+}
+
 /** "<1 mnt", "±8 mnt", "±1 j 20 mnt" (plan 2C, decision 8). */
 export function formatDuration(minutes: number): string {
+  // Never a false "<1 mnt" for a time that is not one.
+  if (!Number.isFinite(minutes) || minutes < 0) return ""
   const rounded = Math.round(minutes)
   if (rounded < 1) return "<1 mnt"
   if (rounded < 60) return `±${rounded} mnt`

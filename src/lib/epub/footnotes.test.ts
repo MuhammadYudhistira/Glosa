@@ -59,6 +59,24 @@ describe("footnoteText", () => {
     expect(footnoteText(element(doc, "n3"))).toEqual(["Catatan tiga."])
   })
 
+  it("also drops an unmarked link back to the clicked reference", () => {
+    const doc = xhtml(
+      '<div id="n6"><p>Nota satu. <a href="#FNanchor_1">[1]</a> <a href="ch1.xhtml#FNanchor_1">[1]</a> <a href="#lain">dua</a></p></div>'
+    )
+    expect(footnoteText(element(doc, "n6"), "FNanchor_1")).toEqual([
+      "Nota satu. dua",
+    ])
+    // Without the reference's id the link is kept: it may be part of the text.
+    expect(footnoteText(element(doc, "n6"))).toEqual(["Nota satu. [1] [1] dua"])
+  })
+
+  it("keeps a word break where a note has a line break", () => {
+    const doc = xhtml('<p id="n7">Baris satu<br/>baris dua<br />tiga</p>')
+    expect(footnoteText(element(doc, "n7"))).toEqual([
+      "Baris satu baris dua tiga",
+    ])
+  })
+
   it("has nothing for a note without text", () => {
     const doc = xhtml('<p id="n4">   </p>')
     expect(footnoteText(element(doc, "n4"))).toBeNull()
