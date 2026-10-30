@@ -22,7 +22,7 @@ For each requested word and each requested part of speech, give the Indonesian e
 - Function words (pronouns, prepositions, conjunctions, determiners, articles, particles) get the Indonesian words that usually translate them, e.g. "it" (pron): "itu", "ia", "dia".
 - If no Indonesian equivalent fits a part of speech, give an empty list for it.
 - If a word's pos list is empty, choose the one part of speech it is most often used as, from: ${ASKED_POS.join(", ")}. Answer with that one only.
-- If a requested word is not an English word, or has no use a reader would look up, answer it with one part of speech (the likeliest, or a requested one) and an empty list, so it is not asked again.
+- If a requested word is not an English word, or has no use a reader would look up, answer it with an empty list for each requested part of speech; if none were requested, answer with its one likeliest part of speech and an empty list, so it is not asked again.
 
 Answer every requested word once, in the order given, repeating each "word" exactly as given, with exactly the parts of speech requested.`
 

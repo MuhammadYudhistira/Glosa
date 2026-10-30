@@ -83,7 +83,7 @@ describe("readAnswer", () => {
         },
         {
           word: "like",
-          entries: [{ pos: "prep", meanings: ["seperti"] }],
+          entries: [{ pos: "prep", meanings: ["seperti\u0007"] }],
         },
       ])
     )
