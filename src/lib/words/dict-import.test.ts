@@ -81,6 +81,33 @@ describe("createDictionaryBuilder", () => {
     ).toEqual(new Set(["verb", "prep"]))
   })
 
+  it("does not count a form-of-only record as a part of speech, but keeps its form", () => {
+    const result = build(
+      {
+        word: "made",
+        lang_code: "en",
+        pos: "verb",
+        senses: [{ form_of: [{ word: "make" }] }],
+      },
+      {
+        word: "saw",
+        lang_code: "en",
+        pos: "verb",
+        senses: [
+          { form_of: [{ word: "see" }] },
+          { translations: [{ lang_code: "id", word: "menggergaji" }] },
+        ],
+      }
+    )
+    expect(result.partsOfSpeech.has("made")).toBe(false)
+    expect(result.partsOfSpeech.get("saw")).toEqual(new Set(["verb"]))
+    expect(result.forms).toContainEqual({
+      form: "made",
+      headword: "make",
+      pos: "verb",
+    })
+  })
+
   it("keeps phrasal verbs, their own forms, and counts them", () => {
     const giveUp = {
       word: "give up",

@@ -95,9 +95,19 @@ export function createDictionaryBuilder() {
       const pos = record.pos ? POS[record.pos] : undefined
       const headword = cleanWord(record.word)
       if (record.lang_code !== "en" || !pos || !headword) return
-      const known = partsOfSpeech.get(headword) ?? new Set<DictPos>()
-      known.add(pos)
-      partsOfSpeech.set(headword, known)
+      // "made", "ran": a record of nothing but form_of senses is no part of
+      // speech of its own; the base ("make") has it. A record without senses counts.
+      const senses = record.senses ?? []
+      const formOnly =
+        senses.length > 0 &&
+        senses.every((sense) =>
+          (sense.form_of ?? []).some((base) => base.word?.trim())
+        )
+      if (!formOnly) {
+        const known = partsOfSpeech.get(headword) ?? new Set<DictPos>()
+        known.add(pos)
+        partsOfSpeech.set(headword, known)
+      }
 
       const meanings = indonesian(record)
       if (meanings.length > 0) {
@@ -132,7 +142,7 @@ export function createDictionaryBuilder() {
       entries: Array<DictEntry>
       /** Every form, of headwords without meanings too: mergeDictionary keeps the ones whose headword gets an entry. */
       forms: Array<DictForm>
-      /** Each English headword's parts of speech, with meanings or without (spec kamus tiga sumber, decision 6). */
+      /** Each English headword's parts of speech, with meanings or without (spec kamus tiga sumber, decision 6); records that only say "form of" another word do not count. */
       partsOfSpeech: Map<string, Set<DictPos>>
       phrases: number
     } {
