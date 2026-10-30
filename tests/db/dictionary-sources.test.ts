@@ -103,6 +103,25 @@ describe("dictionary sources", () => {
     expect(await missesOf(fixture.run)).toEqual([])
   })
 
+  it("holds only single words in the AI meanings, never a phrase", async () => {
+    const admin = adminClient()
+    const phrase = await admin.from("dict_generated").insert({
+      headword: `${prefix}run up`,
+      pos: "verb",
+      meanings: ["naik"],
+      model: "test",
+    })
+    expect(phrase.error?.code).toBe("23514")
+    const phrasePos = await admin.from("dict_generated").insert({
+      headword: `${prefix}single`,
+      pos: "phrase",
+      meanings: ["tunggal"],
+      model: "test",
+    })
+    expect(phrasePos.error?.code).toBe("23514")
+    await admin.from("dict_generated").delete().like("headword", `${prefix}%`)
+  })
+
   it("keeps members and guests out of the AI meanings and the misses", async () => {
     const generated = await member.from("dict_generated").select("headword")
     expect(generated.error?.code).toBe("42501")
