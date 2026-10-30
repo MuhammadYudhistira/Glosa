@@ -1,71 +1,105 @@
-// Imports the dictionary (spec 2 §4.1) from a kaikki.org English extract:
-//   node scripts/import-dictionary.ts <file.jsonl[.gz]> --env dev|prod [--dump-date YYYY-MM-DD] [--force]
+// Imports the dictionary (spec 2 §4.1; spec kamus tiga sumber §4.2) from
+// three sources: English Wiktionary (a kaikki.org extract), WordNet Bahasa,
+// and the AI meanings kept in dict_generated.
+//   node --max-old-space-size=8192 scripts/import-dictionary.ts <kaikki.jsonl[.gz]> --env dev|prod
+//     [--wordnet dict/wn-msa-all.tab] [--senses dict/index.sense] [--wordnet-quality YO]
+//     [--no-wordnet] [--no-generated] [--coverage book.txt] [--dry-run]
+//     [--dump-date YYYY-MM-DD] [--force]
 // dev reads .env.local, prod reads .env.prod (both kept out of git). The rows
 // go to staging tables first; dict_swap then replaces the dictionary in one
-// transaction. Run by hand, never by CI (docs/ops/deploy.md §6.5).
-import { createReadStream, existsSync } from "node:fs"
+// transaction. --dry-run reads and counts everything and changes nothing.
+// Run by hand, never by CI (docs/ops/deploy.md §6.5).
+import { readFileSync } from "node:fs"
 import { basename } from "node:path"
-import { createInterface } from "node:readline"
 import { parseArgs } from "node:util"
-import { createGunzip } from "node:zlib"
-import { createClient } from "@supabase/supabase-js"
-import { createDictionaryBuilder } from "../src/lib/words/dict-import.ts"
+import { measureCoverage } from "../src/lib/words/coverage.ts"
+import { mergeDictionary } from "../src/lib/words/dict-merge.ts"
+import type { DictEntry } from "../src/lib/words/types.ts"
+import {
+  DEFAULT_FILES,
+  connect,
+  needFile,
+  parseQualities,
+  readGenerated,
+  readWiktionary,
+  readWordnet,
+  stop,
+} from "./dictionary-files.ts"
 
-const ENV_FILES = { dev: ".env.local", prod: ".env.prod" } as const
 const BATCH = 1000
 const USAGE =
-  "Usage: node scripts/import-dictionary.ts <file.jsonl[.gz]> --env dev|prod [--dump-date YYYY-MM-DD] [--force]"
-
-function stop(message: string): never {
-  console.error(message)
-  process.exit(1)
-}
+  "Usage: node --max-old-space-size=8192 scripts/import-dictionary.ts <kaikki.jsonl[.gz]> --env dev|prod [--wordnet file] [--senses file] [--wordnet-quality YO] [--no-wordnet] [--no-generated] [--coverage book.txt] [--dry-run] [--dump-date YYYY-MM-DD] [--force]"
+const WORDNET_HINT =
+  "See docs/ops/deploy.md §6.5, or import without it: --no-wordnet."
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     env: { type: "string" },
+    wordnet: { type: "string", default: DEFAULT_FILES.wordnet },
+    senses: { type: "string", default: DEFAULT_FILES.senses },
+    "wordnet-quality": { type: "string" },
+    "no-wordnet": { type: "boolean", default: false },
+    "no-generated": { type: "boolean", default: false },
+    coverage: { type: "string" },
+    "dry-run": { type: "boolean", default: false },
     "dump-date": { type: "string" },
     force: { type: "boolean", default: false },
   },
 })
 const [file] = positionals
-const envName = values.env
-if (!file || (envName !== "dev" && envName !== "prod")) stop(USAGE)
-const envFile = ENV_FILES[envName]
-if (!existsSync(envFile)) stop(`Missing ${envFile}`)
-process.loadEnvFile(envFile)
-const url = process.env.SUPABASE_URL
-const key = process.env.SUPABASE_SECRET_KEY
-if (!url || !key) stop(`${envFile} needs SUPABASE_URL and SUPABASE_SECRET_KEY`)
-const supabase = createClient(url, key, {
-  auth: { persistSession: false, autoRefreshToken: false },
-})
-console.log(`Target: ${new URL(url).host} (${envName})`)
-
-const builder = createDictionaryBuilder()
-const input = createReadStream(file)
-const lines = createInterface({
-  input: file.endsWith(".gz") ? input.pipe(createGunzip()) : input,
-  crlfDelay: Infinity,
-})
-let read = 0
-let unreadable = 0
-for await (const line of lines) {
-  if (!line.trim()) continue
-  read += 1
-  try {
-    builder.add(JSON.parse(line))
-  } catch {
-    unreadable += 1
-  }
-  if (read % 200_000 === 0) console.log(`  ${read} records read`)
+if (!file) stop(USAGE)
+const qualities = parseQualities(values["wordnet-quality"])
+needFile(file, "Download it from kaikki.org (docs/ops/deploy.md §6.5).")
+if (!values["no-wordnet"]) {
+  needFile(values.wordnet, WORDNET_HINT)
+  needFile(values.senses, WORDNET_HINT)
 }
-const { entries, forms, phrases } = builder.result()
+if (values.coverage) needFile(values.coverage, "Give a plain-text book.")
+const { supabase } = connect(values.env, USAGE)
+
+const wiktionary = await readWiktionary(file)
+if (wiktionary.entries.length === 0) stop("Nothing to import.")
+const wordnet: Array<DictEntry> = values["no-wordnet"]
+  ? []
+  : await readWordnet(
+      { bahasa: values.wordnet, senses: values.senses },
+      qualities
+    )
+const generated = values["no-generated"] ? [] : await readGenerated(supabase)
 console.log(
-  `Read ${read} records (${unreadable} unreadable): ${entries.length} entries, ${forms.length} forms, ${phrases} phrasal verbs and phrases.`
+  `AI: ${generated.filter((row) => row.meanings.length > 0).length} rows with meanings, of ${generated.length}.`
 )
-if (entries.length === 0) stop("Nothing to import.")
+
+const { entries, forms, counts } = mergeDictionary({
+  wiktionary: wiktionary.entries,
+  wordnet,
+  generated,
+  forms: wiktionary.forms,
+})
+console.log(
+  `Dictionary: ${entries.length} entries (Wiktionary ${counts.wiktionary}, WordNet ${counts.wordnet}, AI ${counts.ai}), ${forms.length} forms.`
+)
+
+if (values.coverage) {
+  // dict_swap makes every headword its own form too.
+  const known = new Set([
+    ...entries.map((entry) => entry.headword),
+    ...forms.map((form) => form.form),
+  ])
+  const c = measureCoverage(readFileSync(values.coverage, "utf8"), (word) =>
+    known.has(word)
+  )
+  const percent = (part: number, whole: number) =>
+    `${((part / Math.max(whole, 1)) * 100).toFixed(1)}%`
+  console.log(
+    `Coverage of ${basename(values.coverage)}: ${percent(c.coveredTokens, c.tokens)} of ${c.tokens} words as they occur, ${percent(c.coveredWords, c.words)} of ${c.words} distinct words.`
+  )
+}
+if (values["dry-run"]) {
+  console.log("Dry run: the dictionary stays as it is.")
+  process.exit(0)
+}
 
 async function check(
   step: string,
@@ -104,7 +138,7 @@ const { data, error } = await supabase.rpc("dict_swap", {
 if (error) {
   stop(
     error.message === "shrunk"
-      ? "The new dictionary has over 20% fewer entries than the last one. Check the file, or run again with --force."
+      ? "The new dictionary has over 20% fewer entries than the last one. Check the files, or run again with --force."
       : `Swapping the dictionary failed: ${error.message}`
   )
 }
