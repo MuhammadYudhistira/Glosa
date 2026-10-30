@@ -7,6 +7,7 @@ const location = {
   cfi: "epubcfi(/6/8!/4/2)",
   chapter: "The Redheaded League",
   chapterHref: "text/the-redheaded-league.xhtml",
+  pageText: "",
 }
 
 afterEach(() => {

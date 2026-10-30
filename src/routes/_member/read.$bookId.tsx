@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { Annotation } from "@/lib/annotations/types"
 import { WordPopup, type WordTap } from "@/components/reader/WordPopup"
 import { useWordLookup } from "@/components/reader/useWordLookup"
 import { VocabularyNotice } from "@/components/vocabulary/VocabularyNotice"
@@ -39,6 +40,9 @@ import { markBookOpenedFn } from "@/server/reading"
 type ReaderSearch = { cfi?: string }
 
 const NO_WORDS: Array<string> = []
+const NO_HIGHLIGHTS: Array<Annotation> = []
+const ignoreSelection = () => undefined
+const ignoreHighlight = () => undefined
 /** How long "Posisi itu tidak ditemukan di buku ini" stays. */
 const NOTE_MS = 8000
 /** The popup gives the focus back to the book. */
@@ -293,7 +297,11 @@ function ReaderPage() {
         onInteract={onInteract}
         onTapMenu={onTapMenu}
         onWord={openWord}
-        onDismissWord={closeWord}
+        onDismiss={closeWord}
+        popupOpen={tap !== null}
+        highlights={NO_HIGHLIGHTS}
+        onSelection={ignoreSelection}
+        onHighlight={ignoreHighlight}
         onTargetMissing={onTargetMissing}
         onError={onError}
       />

@@ -1,6 +1,15 @@
-import type { FoliateRenderer, RelocateDetail, View } from "foliate-js/view.js"
+import type {
+  DrawAnnotationDetail,
+  FoliateRenderer,
+  RelocateDetail,
+  View,
+} from "foliate-js/view.js"
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { BOOKMARK_EXCERPT_LENGTH, excerptOf } from "@/lib/annotations/changes"
+import { HIGHLIGHT_FILL, drawHighlight } from "@/lib/annotations/draw"
+import { endRect, rectAt, selectedRange } from "@/lib/annotations/selection"
+import type { Annotation } from "@/lib/annotations/types"
 import { type OpenedBook, openBookFile } from "@/lib/epub/open-book"
 import {
   type FontSources,
@@ -16,7 +25,8 @@ import {
   showActiveWord,
   whenIdle,
 } from "@/lib/words/saved-marks"
-import { wordAt } from "@/lib/words/word-at"
+import { type WordHit, wordAt } from "@/lib/words/word-at"
+import type { HighlightTap } from "./AnnotationPopup"
 import { loadReaderFonts } from "./reader-fonts"
 import {
   type ReaderMove,
@@ -28,6 +38,7 @@ import {
   swipeVelocity,
   tapAction,
 } from "./reader-input"
+import type { TextSelection } from "./SelectionMenu"
 import type { WordRect, WordTap } from "./WordPopup"
 
 export type ReaderLocation = {
@@ -35,12 +46,20 @@ export type ReaderLocation = {
   cfi: string
   chapter: string | null
   chapterHref: string | null
+  /** The start of the page's text: a bookmark's excerpt. */
+  pageText: string
 }
 
 export type ReaderControls = {
   goTo: (target: string) => Promise<void>
   goToFraction: (fraction: number) => Promise<void>
   move: (move: ReaderMove) => Promise<void>
+  /** Drops the text selected in the book. */
+  clearSelection: () => void
+  /** Whether the book has this place (spec 2 §8). Never rejects. */
+  canOpen: (cfi: string) => Promise<boolean>
+  /** The chapter of each place, for the annotations panel. Never rejects. */
+  chaptersOf: (cfis: ReadonlyArray<string>) => Promise<Array<string | null>>
 }
 
 export type ReaderReady = { controls: ReaderControls; toc: Array<TocItem> }
@@ -53,8 +72,12 @@ type Callbacks = {
   onTapMenu: () => void
   /** A tap on a word (spec 2 §6.1, step 4). */
   onWord: (tap: WordTap) => void
-  /** A tap beside the words while a meaning shows: it closes, the page stays. */
-  onDismissWord: () => void
+  /** A tap on a highlight (spec 2 §6.1, step 2). */
+  onHighlight: (tap: HighlightTap) => void
+  /** Text selected, or the selection gone (spec 2 §6.6). */
+  onSelection: (selection: TextSelection | null) => void
+  /** A tap beside the words while a popup shows: it closes, the page stays. */
+  onDismiss: () => void
   /** `target` is not a place in this book (spec 2 §8). */
   onTargetMissing: () => void
   onError: (error: unknown) => void
@@ -63,6 +86,8 @@ type Callbacks = {
 /** Room above and below the text for the reader's bars, which overlay the book. */
 const BAR_SPACE = "64px"
 const MAX_LINE_LENGTH = "720px"
+/** A selection that has stopped changing this long gets its menu (plan 2B, decision 9). */
+const SELECTION_SETTLE_MS = 300
 
 function applySettings(
   view: View,
@@ -167,6 +192,77 @@ async function canOpen(view: View, cfi: string): Promise<boolean> {
   }
 }
 
+/**
+ * The chapter of each place (plan 2B, decision 13). Each section's document
+ * is read once per call. Never rejects: a place it cannot find has none.
+ */
+async function chaptersOf(
+  view: View,
+  cfis: ReadonlyArray<string>
+): Promise<Array<string | null>> {
+  const docs = new Map<number, Promise<Document | undefined>>()
+  const docOf = (index: number) => {
+    let doc = docs.get(index)
+    if (!doc) {
+      doc = Promise.resolve(view.book.sections[index]?.createDocument?.())
+      docs.set(index, doc)
+    }
+    return doc
+  }
+  return Promise.all(
+    cfis.map(async (cfi) => {
+      try {
+        const resolved = view.resolveNavigation(cfi)
+        if (!resolved || resolved.index < 0) return null
+        const doc = await docOf(resolved.index)
+        const target = doc && resolved.anchor ? resolved.anchor(doc) : null
+        let range: Range | undefined
+        if (target instanceof Range) range = target
+        else if (doc && target instanceof Node) {
+          range = doc.createRange()
+          range.selectNodeContents(target)
+        }
+        const label = view
+          .getProgressOf(resolved.index, range)
+          .tocItem?.label?.trim()
+        return label ? label : null
+      } catch {
+        return null
+      }
+    })
+  )
+}
+
+/** How a highlight looks: drawn again when this changes. */
+const lookOf = (highlight: Annotation) =>
+  `${highlight.color ?? ""} ${highlight.note === "" ? "" : "note"}`
+
+const drawFailed = (error: unknown) =>
+  console.error("drawing a highlight failed", error)
+
+/**
+ * Brings the overlay in line with the highlights wanted: gone ones are
+ * cleared, new or changed ones drawn. A section not shown has no overlay;
+ * its highlights are drawn when it loads ("create-overlay").
+ */
+function redrawHighlights(
+  view: View,
+  wanted: ReadonlyMap<string, Annotation>,
+  drawn: Map<string, string>
+) {
+  for (const cfi of [...drawn.keys()]) {
+    if (wanted.has(cfi)) continue
+    drawn.delete(cfi)
+    view.deleteAnnotation({ value: cfi }).catch(drawFailed)
+  }
+  for (const [cfi, highlight] of wanted) {
+    const look = lookOf(highlight)
+    if (drawn.get(cfi) === look) continue
+    drawn.set(cfi, look)
+    view.addAnnotation({ value: cfi }).catch(drawFailed)
+  }
+}
+
 function toLocation(detail: RelocateDetail): ReaderLocation {
   const label = detail.tocItem?.label?.trim()
   return {
@@ -174,6 +270,10 @@ function toLocation(detail: RelocateDetail): ReaderLocation {
     cfi: detail.cfi,
     chapter: label ? label : null,
     chapterHref: detail.tocItem?.href ?? null,
+    pageText: excerptOf(
+      detail.range?.toString() ?? "",
+      BOOKMARK_EXCERPT_LENGTH
+    ),
   }
 }
 
@@ -184,7 +284,9 @@ export function ReaderView({
   target,
   settings,
   wordOpen,
+  popupOpen,
   savedForms,
+  highlights,
   ...callbacks
 }: {
   file: Blob
@@ -193,9 +295,13 @@ export function ReaderView({
   /** A place asked for (Kosakata's "Buka di buku"); opened instead of `start`. */
   target: string | null
   settings: ReaderSettings
-  /** A word's meaning shows: a tap beside the words closes it. */
+  /** A word's meaning shows: the tapped word stays lit. */
   wordOpen: boolean
+  /** Any popup shows: a tap beside the words closes it. */
+  popupOpen: boolean
   savedForms: SavedForms
+  /** The book's highlights, drawn over the text. */
+  highlights: ReadonlyArray<Annotation>
 } & Callbacks) {
   const hostRef = useRef<HTMLElement>(null)
   const viewRef = useRef<View | null>(null)
@@ -205,16 +311,27 @@ export function ReaderView({
   // Read once on purpose: the start position applies only when a file opens.
   const startRef = useRef(start)
   const targetRef = useRef(target)
-  const wordOpenRef = useRef(wordOpen)
+  const popupOpenRef = useRef(popupOpen)
   const savedFormsRef = useRef(savedForms)
+  // The highlights wanted, by CFI, and how each one is drawn now.
+  const highlightsRef = useRef<ReadonlyMap<string, Annotation>>(new Map())
+  const drawnRef = useRef(new Map<string, string>())
   const [hoverTurn, setHoverTurn] = useState<"left" | "right" | null>(null)
 
   useEffect(() => {
     callbacksRef.current = callbacks
     settingsRef.current = settings
-    wordOpenRef.current = wordOpen
+    popupOpenRef.current = popupOpen
     savedFormsRef.current = savedForms
   })
+
+  useEffect(() => {
+    highlightsRef.current = new Map(
+      highlights.map((highlight) => [highlight.cfi, highlight])
+    )
+    const view = viewRef.current
+    if (view) redrawHighlights(view, highlightsRef.current, drawnRef.current)
+  }, [highlights])
 
   useEffect(() => {
     const host = hostRef.current
@@ -230,6 +347,10 @@ export function ReaderView({
     const wheelPager = createWheelPager()
     // The section shown now, whose cursor follows the mouse.
     let sectionDoc: Document | null = null
+    // Whether the page was told about a selection it has not been told is gone.
+    let selectionShown = false
+    // A new book: nothing of it is drawn yet.
+    drawnRef.current = new Map()
 
     const zoneAt = (x: number): TapAction => {
       const box = host.getBoundingClientRect()
@@ -255,6 +376,19 @@ export function ReaderView({
       }
     }
 
+    const clearSelection = () => {
+      selectionShown = false
+      for (const { doc } of view?.renderer.getContents?.() ?? []) {
+        doc?.getSelection()?.removeAllRanges()
+      }
+    }
+
+    /** Closes whatever popup shows, the selection menu with its selection. */
+    const dismiss = () => {
+      if (selectionShown) clearSelection()
+      call().onDismiss()
+    }
+
     /** A mouse over the outer 30% shows which way a click there turns. */
     const hoverAt = (x: number | null) => {
       const zone = x === null ? null : zoneAt(x)
@@ -269,9 +403,9 @@ export function ReaderView({
     // on each side outside it. Clicks inside the frame stay in its document.
     const onHostClick = (event: MouseEvent) => {
       if (event.defaultPrevented) return
-      // A meaning is open: this click only closes it (spec 2 decision 9).
-      if (wordOpenRef.current) {
-        call().onDismissWord()
+      // A popup is open: this click only closes it (spec 2 decision 9).
+      if (popupOpenRef.current || selectionShown) {
+        dismiss()
         return
       }
       tapAt(event.clientX)
@@ -395,24 +529,88 @@ export function ReaderView({
         width: box.width,
         height: box.height,
       })
-      // In order (spec 2 §6.1): links (foliate), a selection, a word, then the zones.
+      const tapOf = (hit: WordHit): WordTap => ({
+        word: hit.word,
+        sentence: hit.sentence,
+        next: hit.next,
+        cfi: cfiOf(index, hit.range),
+        rect: rectInWindow(hit.range.getBoundingClientRect()),
+      })
+
+      // A selection gets its menu once it holds still (spec 2 §6.6).
+      let pointerHeld = false
+      let settle: ReturnType<typeof setTimeout> | undefined
+      const reportSelection = () => {
+        const selected = selectedRange(doc)
+        if (!selected) {
+          if (selectionShown) {
+            selectionShown = false
+            call().onSelection(null)
+          }
+          return
+        }
+        const cfi = cfiOf(index, selected.range)
+        if (!cfi) return
+        selectionShown = true
+        call().onSelection({
+          cfi,
+          text: selected.text,
+          rect: rectInWindow(endRect(selected.range)),
+        })
+      }
+      const reportLater = (ms: number) => {
+        clearTimeout(settle)
+        settle = setTimeout(reportSelection, ms)
+      }
+      doc.addEventListener("pointerdown", () => {
+        pointerHeld = true
+      })
+      doc.addEventListener("pointerup", () => {
+        pointerHeld = false
+        reportLater(0)
+      })
+      doc.addEventListener("pointercancel", () => {
+        pointerHeld = false
+      })
+      // A phone's selection handles send no touch events to the page.
+      doc.addEventListener("selectionchange", () => {
+        if (!pointerHeld) reportLater(SELECTION_SETTLE_MS)
+      })
+
+      // In order (spec 2 §6.1): links (foliate), the selection, a highlight,
+      // a word, then the zones.
       doc.addEventListener("click", (click) => {
         // foliate follows links itself and marks those clicks handled.
-        if (click.defaultPrevented || doc.getSelection()?.toString()) return
+        if (click.defaultPrevented) return
+        // Text is selected (a drag just ended): its menu follows once it holds still.
+        if (doc.getSelection()?.toString()) return
+        // The selection menu is open and this tap undid the selection: it
+        // only puts the menu away (plan 2B, decision 10).
+        if (selectionShown) {
+          dismiss()
+          return
+        }
         const hit = wordAt(doc, click.clientX, click.clientY)
-        if (hit) {
-          showActiveWord(doc, hit.range)
-          call().onWord({
-            word: hit.word,
-            sentence: hit.sentence,
-            next: hit.next,
-            cfi: cfiOf(index, hit.range),
-            rect: rectInWindow(hit.range.getBoundingClientRect()),
+        // The overlay is foliate's; its own click listener comes after this one (plan 2B, decision 8).
+        const overlayer = view?.renderer
+          .getContents?.()
+          .find((content) => content.doc === doc)?.overlayer
+        const [cfi, range] = overlayer?.hitTest(click) ?? []
+        if (cfi && range) {
+          call().onHighlight({
+            cfi,
+            rect: rectInWindow(rectAt(range, click.clientX, click.clientY)),
+            word: hit ? tapOf(hit) : null,
           })
           return
         }
-        if (wordOpenRef.current) {
-          call().onDismissWord()
+        if (hit) {
+          showActiveWord(doc, hit.range)
+          call().onWord(tapOf(hit))
+          return
+        }
+        if (popupOpenRef.current) {
+          dismiss()
           return
         }
         tapAt(inWindow(click.clientX))
@@ -434,6 +632,28 @@ export function ReaderView({
       call().onRelocate(
         toLocation((event as CustomEvent<RelocateDetail>).detail)
       )
+
+    // A section's overlay is new: draw its highlights (spec 2 §6.6).
+    const onCreateOverlay = (event: Event) => {
+      const { index } = (event as CustomEvent<{ index: number }>).detail
+      if (!view) return
+      for (const [cfi, highlight] of highlightsRef.current) {
+        if (view.resolveNavigation(cfi)?.index !== index) continue
+        drawnRef.current.set(cfi, lookOf(highlight))
+        view.addAnnotation({ value: cfi }).catch(drawFailed)
+      }
+    }
+
+    const onDrawAnnotation = (event: Event) => {
+      const { draw, annotation } = (event as CustomEvent<DrawAnnotationDetail>)
+        .detail
+      const highlight = highlightsRef.current.get(annotation.value)
+      if (!highlight) return
+      draw(drawHighlight, {
+        color: HIGHLIGHT_FILL[highlight.color ?? "yellow"],
+        note: highlight.note !== "",
+      })
+    }
 
     document.addEventListener("keydown", onKey)
     host.addEventListener("pointerdown", interact)
@@ -457,6 +677,8 @@ export function ReaderView({
         view.className = "reader-view"
         view.addEventListener("relocate", onRelocate)
         view.addEventListener("load", onSectionLoad)
+        view.addEventListener("create-overlay", onCreateOverlay)
+        view.addEventListener("draw-annotation", onDrawAnnotation)
         host.append(view)
         await view.open(opened.book)
         if (isCancelled()) {
@@ -498,6 +720,9 @@ export function ReaderView({
             },
             goToFraction: (fraction) => current.goToFraction(fraction),
             move,
+            clearSelection,
+            chaptersOf: (cfis) => chaptersOf(current, cfis),
+            canOpen: (cfi) => canOpen(current, cfi),
           },
           toc: opened.book.toc ?? [],
         })
