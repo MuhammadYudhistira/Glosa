@@ -299,19 +299,81 @@ sudo reboot                # semua container kembali sendiri (restart: unless-st
 
 ### 6.5 Kamus
 
-Arti kata di reader berasal dari English Wiktionary, lewat ekstrak kaikki.org (lisensi CC BY-SA). Selama kamus belum diimpor, semua kata tampil "Belum ada arti untuk kata ini". Skrip impor tidak dijalankan CI. Jalankan dari laptop setiap kali kamus perlu diperbarui, misalnya beberapa bulan sekali.
+Arti kata di reader berasal dari tiga sumber, dengan urutan prioritas per kata dan kelas kata:
 
-1. Unduh ekstrak semua kata bahasa Inggris dalam format JSONL dari [kaikki.org/dictionary/English](https://kaikki.org/dictionary/English/). Bagian unduhan ada di bawah halaman. Ukurannya beberapa GB, dan boleh tetap dalam bentuk `.gz`.
-2. Pastikan migrasi kamus sudah ada di proyek tujuan (§7).
-3. Jalankan, misalnya untuk dev:
+1. **English Wiktionary**, lewat ekstrak kaikki.org (CC BY-SA).
+2. **WordNet Bahasa** (MIT), untuk kata yang tidak punya terjemahan Indonesia di Wiktionary.
+3. **Arti buatan AI**, yang dibuat sekali lalu disimpan di tabel `dict_generated`. Belum dipakai (lihat "Mengisi celah dengan AI").
+
+Kedua skrip kamus tidak dijalankan CI. Jalankan dari laptop.
+
+#### Unduhan (sekali, ke `dict/`, tidak masuk git)
+
+- **kaikki:** ekstrak semua kata bahasa Inggris dalam format JSONL dari [kaikki.org/dictionary/English](https://kaikki.org/dictionary/English/). Bagian unduhan ada di bawah halaman. Ukurannya beberapa GB, dan boleh tetap `.gz`.
+- **WordNet Bahasa:** `wn-msa-all.tab` dari [wn-msa.sourceforge.net](https://wn-msa.sourceforge.net/).
+- **Princeton WordNet 3.0:** hanya `index.sense` yang dipakai.
+  ```bash
+  mkdir -p dict/wndb
+  curl -L -o dict/wndb/WNdb-3.0.tar.gz https://wordnetcode.princeton.edu/3.0/WNdb-3.0.tar.gz
+  tar -xzf dict/wndb/WNdb-3.0.tar.gz -C dict/wndb
+  cp dict/wndb/dict/index.sense dict/index.sense
+  ```
+- **Daftar 50.000 kata teratas** (`wordfreq`, data CC BY-SA 4.0), hanya untuk pengisi AI:
+  ```bash
+  python -m pip install --user wordfreq
+  python -c "from wordfreq import top_n_list; open('dict/wordfreq-en-50k.txt','w',encoding='utf-8',newline='\n').write('\n'.join(top_n_list('en', 50000))+'\n')"
+  ```
+
+#### Impor
+
+1. Pastikan migrasi kamus sudah ada di proyek tujuan (§7).
+2. Jalankan, misalnya untuk dev:
    ```bash
-   node scripts/import-dictionary.ts ~/Downloads/kaikki.org-dictionary-English.jsonl --env dev --dump-date 2026-10-20
+   node --max-old-space-size=8192 scripts/import-dictionary.ts dict/kaikki.org-dictionary-English.jsonl --env dev --dump-date 2026-10-20
    ```
    - `--env dev` memakai `.env.local`. `--env prod` memakai `.env.prod`, yang berisi `SUPABASE_URL` dan `SUPABASE_SECRET_KEY` proyek prod. File itu tidak boleh di-commit.
    - `--dump-date` adalah tanggal dump Wiktionary yang tertulis di halaman kaikki. Boleh dikosongkan.
-4. Skrip mencetak jumlah entri, bentuk kata, dan phrasal verb, lalu menukar kamus dalam satu transaksi. Selama penukaran (beberapa detik), pencarian arti menunggu.
-5. Kalau jumlah entri turun lebih dari 20% dari impor sebelumnya, skrip berhenti tanpa mengubah kamus. Periksa file-nya dulu. Kalau memang benar, ulangi dengan `--force`.
-6. Cek hasilnya di SQL editor: `select * from dict_meta;`
+   - `--wordnet-quality YO` (default) atau `YOL` memilih tanda mutu WordNet Bahasa yang dipakai.
+   - `--no-wordnet` mengimpor tanpa WordNet. `--no-generated` mengimpor tanpa arti AI.
+   - `--dry-run` membaca dan menghitung semuanya tanpa mengubah kamus.
+   - `--coverage buku.txt` mencetak berapa persen kata di sebuah teks yang punya arti.
+3. Skrip mencetak jumlah entri per sumber dan jumlah bentuk kata, lalu menukar kamus dalam satu transaksi. Selama penukaran (beberapa detik), pencarian arti menunggu.
+4. Kalau jumlah entri turun lebih dari 20% dari impor sebelumnya, skrip berhenti tanpa mengubah kamus. Periksa file-nya dulu. Kalau memang benar, ulangi dengan `--force`.
+5. Cek hasilnya di SQL editor: `select * from dict_meta;` dan `select source, count(*) from dict_entries group by source;`
+
+#### Mengisi celah dengan AI
+
+> **Belum dipakai.** Bagian ini berbiaya: Anthropic API, dengan kunci milik pemilik. Skripnya disimpan, tetapi belum dijalankan. Saat arti AI pertama ditulis, tambahkan kalimat ini ke paragraf Kamus di Kebijakan Privasi (`src/routes/privacy.tsx`), setelah kalimat WordNet Bahasa:
+>
+> Sebagian arti dibuat dengan AI, sekali saat kamus disusun, dan ditandai “Dibuat AI” di popup arti.
+
+Pengisi AI hanya menanyakan kata yang saat ini tidak menampilkan arti sama sekali: kata itu dan bentuk dasarnya tidak punya arti dari sumber mana pun. Calonnya dipilih dari 50.000 kata teratas dan kata di `dict_misses` (kata yang diketuk member tetapi belum punya arti, dicatat tanpa identitas). Saat ini sekitar 15.000 kata. Kata-kata itu dikirim ke Claude Opus 5.5 lewat Batch API (harga 50%). Kunci API hanya ada di laptop: `ANTHROPIC_API_KEY`, atau profil dari `ant auth login`.
+
+Skrip memakai file unduhan yang sama dengan impor (kaikki, `wn-msa-all.tab`, `index.sense`) ditambah `dict/wordfreq-en-50k.txt`.
+
+1. Lihat calon katanya tanpa biaya dan tanpa kunci API. Skrip mencetak jumlah calon dan 40 yang pertama:
+   ```bash
+   node --max-old-space-size=8192 scripts/fill-dictionary.ts --env dev --dry-run
+   ```
+2. Uji coba 200 kata. Biayanya kecil, dan belum ada yang ditulis ke database:
+   ```bash
+   node --max-old-space-size=8192 scripts/fill-dictionary.ts --env dev --trial 200
+   ```
+   Skrip menunggu batch selesai (biasanya beberapa menit, paling lama 24 jam), lalu mencetak:
+   - biaya nyata;
+   - perkiraan biaya untuk semua kata;
+   - 20 contoh arti.
+
+   Tekan Ctrl+C kapan saja. Menjalankan perintah yang sama lagi akan melanjutkan batch yang sama, karena ID-nya tersimpan di `dict/fill-state.json`, jadi tidak membayar ulang.
+3. Kalau contohnya bagus, simpan hasil uji coba dengan `--commit`, tanpa `--trial`. Kalau tidak, buang dengan `--discard`. Uji coba bisa diulang dengan `--effort low` atau `--effort high` untuk membandingkan biaya dan mutu, tetapi hanya setelah batch yang menunggu di-`--commit` atau di-`--discard`. Selama ada batch yang menunggu, `--trial`, `--limit`, dan `--effort` diabaikan.
+4. Batch penuh. Effort-nya sama dengan uji coba yang dipilih. Pastikan tidak ada batch yang menunggu (langkah 3 selesai), karena kalau ada, `--commit` menulis batch itu, bukan membuat yang baru:
+   ```bash
+   node --max-old-space-size=8192 scripts/fill-dictionary.ts --env dev --commit --effort medium
+   ```
+   `--limit N` membatasi batch penuh ke N kata pertama. Kata yang jawabannya tidak valid dicatat di `dict/fill-problems.log`, lalu ditanyakan lagi pada jalan berikutnya. Kata di `dict_misses` yang sudah terjawab (atau bukan kata) ikut dihapus dari tabel itu.
+5. Terbitkan arti AI dengan menjalankan **Impor** di atas.
+
+Ulangi langkah 1, 4, dan 5 sesekali, misalnya sebulan sekali, untuk kata baru di `dict_misses`.
 
 ## 7. Aturan migrasi
 

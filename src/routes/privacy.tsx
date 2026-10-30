@@ -57,13 +57,16 @@ function PrivacyPage() {
       <h2>Kamus</h2>
       <p>
         Kata yang kamu ketuk saat membaca dikirim ke server kami untuk dicari
-        artinya, dan tidak dibagikan ke pihak lain. Arti kata berasal dari{" "}
+        artinya, dan tidak dibagikan ke pihak lain. Kata yang belum punya arti
+        dicatat tanpa identitas (hanya katanya, berapa kali dicari, dan kapan
+        terakhir) untuk melengkapi kamus. Arti kata berasal dari{" "}
         <a href="https://en.wiktionary.org/">English Wiktionary</a> lewat
         ekstrak <a href="https://kaikki.org/">kaikki.org</a>, dengan lisensi{" "}
         <a href="https://creativecommons.org/licenses/by-sa/4.0/">
           CC BY-SA 4.0
         </a>
-        .
+        , dan dari <a href="https://wn-msa.sourceforge.net/">WordNet Bahasa</a>,
+        dengan lisensi MIT.
       </p>
 
       <h2>Tempat penyimpanan</h2>
