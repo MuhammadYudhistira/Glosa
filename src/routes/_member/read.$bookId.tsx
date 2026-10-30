@@ -448,6 +448,8 @@ function ReaderPage() {
         popupOpen={popupOpen}
         savedForms={savedForms}
         highlights={highlights}
+        onFootnote={() => undefined}
+        onJump={() => undefined}
         onReady={onReady}
         onRelocate={onRelocate}
         onInteract={onInteract}

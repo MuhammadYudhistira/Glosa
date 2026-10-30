@@ -31,6 +31,8 @@ declare module "foliate-js/view.js" {
     tocItem?: { label?: string; href?: string } | null
     /** The text shown now. */
     range?: Range
+    /** Minutes left in the section and the book at foliate's speed (1,600 characters a minute). */
+    time?: { section: number; total: number }
   }
 
   /** foliate asks how to draw an annotation added with addAnnotation. */
@@ -60,6 +62,8 @@ declare module "foliate-js/view.js" {
   export class View extends HTMLElement {
     book: EPUB
     renderer: FoliateRenderer
+    /** The place shown now; set before "relocate" is sent. */
+    lastLocation: RelocateDetail | null
     open(book: EPUB): Promise<void>
     init(options: {
       lastLocation?: string | null

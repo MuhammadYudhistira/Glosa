@@ -10,6 +10,7 @@ import { BOOKMARK_EXCERPT_LENGTH, excerptOf } from "@/lib/annotations/changes"
 import { HIGHLIGHT_FILL, drawHighlight } from "@/lib/annotations/draw"
 import { endRect, rectAt, selectedRange } from "@/lib/annotations/selection"
 import type { Annotation } from "@/lib/annotations/types"
+import { footnoteText, isFootnoteLink } from "@/lib/epub/footnotes"
 import { type OpenedBook, openBookFile } from "@/lib/epub/open-book"
 import {
   type FontSources,
@@ -39,6 +40,7 @@ import {
   swipeVelocity,
   tapAction,
 } from "./reader-input"
+import type { FootnoteTap } from "./FootnotePopup"
 import type { TextSelection } from "./SelectionMenu"
 import type { WordRect, WordTap } from "./WordPopup"
 
@@ -49,6 +51,10 @@ export type ReaderLocation = {
   chapterHref: string | null
   /** The start of the page's text: a bookmark's excerpt. */
   pageText: string
+  /** The member turned the page or scrolled here: not a jump or a new layout. */
+  turned: boolean
+  /** Minutes left in the section and the book at foliate's speed. */
+  time: { section: number; total: number } | null
 }
 
 export type ReaderControls = {
@@ -79,6 +85,10 @@ type Callbacks = {
   onSelection: (selection: TextSelection | null) => void
   /** A tap beside the words while a popup shows: it closes, the page stays. */
   onDismiss: () => void
+  /** A footnote link: its note shows instead of a jump (spec 2 §6.7). */
+  onFootnote: (note: FootnoteTap) => void
+  /** The member follows a link away from this place; called before foliate moves. */
+  onJump: () => void
   /** `target` is not a place in this book (spec 2 §8). */
   onTargetMissing: () => void
   onError: (error: unknown) => void
@@ -89,6 +99,19 @@ const BAR_SPACE = "64px"
 const MAX_LINE_LENGTH = "720px"
 /** A selection that has stopped changing this long gets its menu (plan 2B, decision 9). */
 const SELECTION_SETTLE_MS = 300
+/** foliate's reasons for a relocate the member made by turning or scrolling (plan 2C, decision 5). */
+const TURN_REASONS = new Set(["page", "snap", "scroll"])
+
+/** A box in a section's frame, in this window's coordinates. */
+function rectInWindow(doc: Document, box: DOMRect): WordRect {
+  const frame = doc.defaultView?.frameElement?.getBoundingClientRect()
+  return {
+    left: box.left + (frame?.left ?? 0),
+    top: box.top + (frame?.top ?? 0),
+    width: box.width,
+    height: box.height,
+  }
+}
 
 function applySettings(
   view: View,
@@ -270,7 +293,29 @@ function redrawHighlights(
   }
 }
 
-function toLocation(detail: RelocateDetail): ReaderLocation {
+/**
+ * A footnote's paragraphs (spec 2 §6.7), read from its section's document;
+ * null when the link's place holds no note. Never rejects.
+ */
+async function footnoteOf(
+  view: View,
+  href: string
+): Promise<Array<string> | null> {
+  try {
+    const resolved = view.resolveNavigation(href)
+    if (!resolved || resolved.index < 0 || !resolved.anchor) return null
+    const doc = await view.book.sections[resolved.index]?.createDocument?.()
+    const target = doc ? resolved.anchor(doc) : null
+    return target instanceof Element ? footnoteText(target) : null
+  } catch {
+    return null
+  }
+}
+
+function toLocation(
+  detail: RelocateDetail,
+  reason: string | undefined
+): ReaderLocation {
   const label = detail.tocItem?.label?.trim()
   return {
     fraction: detail.fraction,
@@ -281,6 +326,8 @@ function toLocation(detail: RelocateDetail): ReaderLocation {
       detail.range?.toString() ?? "",
       BOOKMARK_EXCERPT_LENGTH
     ),
+    turned: reason !== undefined && TURN_REASONS.has(reason),
+    time: detail.time ?? null,
   }
 }
 
@@ -530,18 +577,13 @@ export function ReaderView({
       const frameBox = () =>
         doc.defaultView?.frameElement?.getBoundingClientRect()
       const inWindow = (x: number) => x + (frameBox()?.left ?? 0)
-      const rectInWindow = (box: DOMRect): WordRect => ({
-        left: box.left + (frameBox()?.left ?? 0),
-        top: box.top + (frameBox()?.top ?? 0),
-        width: box.width,
-        height: box.height,
-      })
+      const toWindow = (box: DOMRect) => rectInWindow(doc, box)
       const tapOf = (hit: WordHit): WordTap => ({
         word: hit.word,
         sentence: hit.sentence,
         next: hit.next,
         cfi: cfiOf(index, hit.range),
-        rect: rectInWindow(hit.range.getBoundingClientRect()),
+        rect: toWindow(hit.range.getBoundingClientRect()),
       })
 
       // A selection gets its menu once it holds still (spec 2 §6.6).
@@ -561,7 +603,7 @@ export function ReaderView({
         call().onSelection({
           cfi,
           text: selected.text,
-          rect: rectInWindow(endRect(selected.range)),
+          rect: toWindow(endRect(selected.range)),
         })
       }
       const reportLater = (ms: number) => {
@@ -605,7 +647,7 @@ export function ReaderView({
         if (cfi && range) {
           call().onHighlight({
             cfi,
-            rect: rectInWindow(rectAt(range, click.clientX, click.clientY)),
+            rect: toWindow(rectAt(range, click.clientX, click.clientY)),
             word: hit ? tapOf(hit) : null,
           })
           return
@@ -634,10 +676,44 @@ export function ReaderView({
       })
     }
 
-    const onRelocate = (event: Event) =>
-      call().onRelocate(
-        toLocation((event as CustomEvent<RelocateDetail>).detail)
-      )
+    // foliate's view listens to its renderer first and keeps the new place in
+    // lastLocation; the renderer's event also says why it moved (plan 2C,
+    // decision 6).
+    const onRendererRelocate = (event: Event) => {
+      const place = view?.lastLocation
+      if (!place) return
+      const { reason } = (event as CustomEvent<{ reason?: string }>).detail
+      call().onRelocate(toLocation(place, reason))
+    }
+
+    // A link in the book, before foliate follows it: a footnote opens in a
+    // popup (spec 2 §6.7), any other link is a jump the member can come back from.
+    const showFootnote = async (a: Element, href: string) => {
+      const current = view
+      if (!current) return
+      const paragraphs = await footnoteOf(current, href)
+      if (isCancelled()) return
+      if (paragraphs) {
+        call().onFootnote({
+          paragraphs,
+          rect: rectInWindow(a.ownerDocument, a.getBoundingClientRect()),
+        })
+        return
+      }
+      // No note to show there: the link goes where it points (plan 2C, decision 3).
+      call().onJump()
+      await current.goTo(href)
+    }
+    const onLink = (event: Event) => {
+      const { a, href } = (event as CustomEvent<{ a: Element; href: string }>)
+        .detail
+      if (!isFootnoteLink(a)) {
+        call().onJump()
+        return
+      }
+      event.preventDefault()
+      void showFootnote(a, href)
+    }
 
     // A section's overlay is new: draw its highlights (spec 2 §6.6).
     const onCreateOverlay = (event: Event) => {
@@ -681,7 +757,7 @@ export function ReaderView({
         }
         view = document.createElement("foliate-view") as View
         view.className = "reader-view"
-        view.addEventListener("relocate", onRelocate)
+        view.addEventListener("link", onLink)
         view.addEventListener("load", onSectionLoad)
         view.addEventListener("create-overlay", onCreateOverlay)
         view.addEventListener("draw-annotation", onDrawAnnotation)
@@ -692,6 +768,8 @@ export function ReaderView({
           return
         }
         skipLayoutWhileLoading(view.renderer)
+        // After open, which made the renderer and put foliate's listener first.
+        view.renderer.addEventListener("relocate", onRendererRelocate)
         stopAnimating = animateUnlessReduced(view.renderer)
         // Before init, which loads the first section and so fires "load".
         swipes = snapByWholeSwipe(view.renderer)

@@ -8,6 +8,8 @@ const location = {
   chapter: "The Redheaded League",
   chapterHref: "text/the-redheaded-league.xhtml",
   pageText: "",
+  turned: false,
+  time: null,
 }
 
 afterEach(() => {
