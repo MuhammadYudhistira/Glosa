@@ -17,6 +17,19 @@ describe("onPage", () => {
     expect(onPage("epubcfi(/6/6!/4/2/1:0)", PAGE)).toBe(false)
   })
 
+  it("keeps a bookmark on a section's first page as its end settles", () => {
+    // Logged in Chromium: the first page of a section, before and after the
+    // fonts load. The start stays; only the end moves.
+    const first =
+      "epubcfi(/6/6!/4/2[a-scandal-in-bohemia],/2,/4[a-scandal-in-bohemia-1]/8/3:90)"
+    const settled =
+      "epubcfi(/6/6!/4/2[a-scandal-in-bohemia],/2,/4[a-scandal-in-bohemia-1]/6/1:1300)"
+    const bookmark = pageStart(first)
+    expect(bookmark).toBe("epubcfi(/6/6!/4/2[a-scandal-in-bohemia]/2)")
+    expect(onPage(bookmark, first)).toBe(true)
+    expect(onPage(bookmark, settled)).toBe(true)
+  })
+
   it("is false for a place it cannot read", () => {
     expect(onPage("nonsense", PAGE)).toBe(false)
   })

@@ -1,6 +1,6 @@
 import { type Page, expect, test } from "@playwright/test"
 import { annotationsOf, selectWords } from "./helpers/annotations"
-import { startReading } from "./helpers/reading"
+import { startReading, turnPages } from "./helpers/reading"
 
 /** Opens the annotations tab of the reader's panel. */
 async function openAnnotations(page: Page) {
@@ -95,18 +95,22 @@ test("the bookmark button, pressed again, takes the bookmark off", async ({
   page,
 }) => {
   const { userId } = await startReading(page)
-  // Away from the section's first page, where the mark does not hold (see
-  // the task report, "Fixes after review").
-  await page.keyboard.press("PageDown")
-  await page.waitForTimeout(1_500)
+  // The section's first page, where the mark seemed not to hold (a click
+  // made while the turns still slid; see turnPages).
+  await turnPages(page, "PageUp", (await pageInSection(page)) - 1)
   await page.getByRole("button", { name: "Bookmark halaman ini" }).click()
+  // Sent two seconds after the last change (spec 2 §7): the page keeps the
+  // mark that long and more.
   await expect
     .poll(async () => (await annotationsOf(userId)).length, {
       timeout: 20_000,
     })
     .toBe(1)
+  // Saved, and the page still holds it (plan 2B, decision 16).
+  const remove = page.getByRole("button", { name: "Hapus bookmark" })
+  await expect(remove).toHaveAttribute("aria-pressed", "true")
 
-  await page.getByRole("button", { name: "Hapus bookmark" }).click()
+  await remove.click()
   await expect(
     page.getByRole("button", { name: "Bookmark halaman ini" })
   ).toHaveAttribute("aria-pressed", "false")
