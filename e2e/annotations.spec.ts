@@ -43,9 +43,11 @@ test("a selection becomes a highlight with a note, which stays and can be delete
   await popup.getByRole("button", { name: "Catatan" }).click()
   const editor = page.getByRole("dialog", { name: "Catatan" })
   await editor.getByRole("textbox", { name: "Isi catatan" }).fill("Catatan uji")
-  // Pressed, not clicked: on a phone the dev-only devtools button sits over
-  // the sheet's button.
-  await editor.getByRole("button", { name: "Selesai" }).press("Enter")
+  // Pressed on a phone, where the dev-only devtools button sits over the
+  // sheet's button.
+  const done = editor.getByRole("button", { name: "Selesai" })
+  if (isMobile) await done.press("Enter")
+  else await done.click()
   await expect(editor).toBeHidden()
   await expect
     .poll(async () => (await annotationsOf(userId))[0], { timeout: 20_000 })
@@ -87,4 +89,69 @@ test("the bookmark button marks the page, and the panel lists it", async ({
   await expect(
     panel.getByRole("listitem").filter({ hasText: "Bookmark" })
   ).toBeVisible()
+})
+
+test("the bookmark button, pressed again, takes the bookmark off", async ({
+  page,
+}) => {
+  const { userId } = await startReading(page)
+  // Away from the section's first page, where the mark does not hold (see
+  // the task report, "Fixes after review").
+  await page.keyboard.press("PageDown")
+  await page.waitForTimeout(1_500)
+  await page.getByRole("button", { name: "Bookmark halaman ini" }).click()
+  await expect
+    .poll(async () => (await annotationsOf(userId)).length, {
+      timeout: 20_000,
+    })
+    .toBe(1)
+
+  await page.getByRole("button", { name: "Hapus bookmark" }).click()
+  await expect(
+    page.getByRole("button", { name: "Bookmark halaman ini" })
+  ).toHaveAttribute("aria-pressed", "false")
+  // A tombstone, not a missing row (spec 2 §7).
+  await expect
+    .poll(async () => (await annotationsOf(userId))[0]?.deleted_at ?? null, {
+      timeout: 20_000,
+    })
+    .not.toBeNull()
+})
+
+/** The paginator's page within the current section. */
+function pageInSection(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      (
+        document.querySelector("foliate-view") as unknown as {
+          renderer: { page: number }
+        }
+      ).renderer.page
+  )
+}
+
+test("turning the page with a selection leaves nothing to swallow the next tap", async ({
+  page,
+  isMobile,
+}) => {
+  test.setTimeout(120_000)
+  await startReading(page)
+  await page.waitForTimeout(800)
+  await selectWords(page)
+  const menu = page.getByRole("dialog", { name: "Teks terpilih" })
+  await expect(menu).toBeVisible()
+
+  const before = await pageInSection(page)
+  await page.keyboard.press("PageDown")
+  await expect.poll(() => pageInSection(page)).toBeGreaterThan(before)
+  await expect(menu).toBeHidden()
+  // A page turn slides: let it settle.
+  await page.waitForTimeout(800)
+  const turned = await pageInSection(page)
+
+  // The far edge, beside the text: it must turn the page, not be swallowed.
+  const { width, height } = page.viewportSize()!
+  if (isMobile) await page.touchscreen.tap(width - 4, height / 2)
+  else await page.mouse.click(width - 4, height / 2)
+  await expect.poll(() => pageInSection(page)).toBeGreaterThan(turned)
 })

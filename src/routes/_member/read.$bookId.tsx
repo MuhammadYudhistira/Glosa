@@ -153,6 +153,8 @@ function ReaderPage() {
   const saved =
     choice !== null && Object.hasOwn(formsByHeadword, choice.headword)
   const [controls, setControls] = useState<ReaderControls | null>(null)
+  // For callbacks that must not change with the controls (onRelocate).
+  const controlsRef = useRef<ReaderControls | null>(null)
   const [toc, setToc] = useState<Array<TocItem>>([])
   const [location, setLocation] = useState<ReaderLocation | null>(null)
   const annotations = useBookAnnotations(bookId)
@@ -229,6 +231,7 @@ function ReaderPage() {
   const onReady = useCallback(
     (info: ReaderReady) => {
       ready.current = true
+      controlsRef.current = info.controls
       setControls(info.controls)
       setToc(info.toc)
       // Reloading the page opens the last place read, not the word again.
@@ -256,7 +259,12 @@ function ReaderPage() {
       // Not moving is not reading on: a tap at a word's place (spec 2 §6.4)
       // keeps the place read.
       const moved = next.cfi !== shownCfi.current
-      if (moved) setSelection(null)
+      if (moved) {
+        // Hide the menu and drop the reader's own half too: its flag would
+        // swallow the next click, and the text would stay selected.
+        controlsRef.current?.clearSelection()
+        setSelection(null)
+      }
       shownCfi.current = next.cfi
       setLocation(next)
       if (!ready.current || !interacted.current || !moved) return
@@ -361,8 +369,9 @@ function ReaderPage() {
   }
   const copySelection = () => {
     if (!selection) return
-    navigator.clipboard
-      .writeText(selection.text)
+    // Without a secure context there is no clipboard; the menu closes anyway.
+    Promise.resolve()
+      .then(() => navigator.clipboard.writeText(selection.text))
       .catch((error: unknown) =>
         console.error("copying the text failed", error)
       )
