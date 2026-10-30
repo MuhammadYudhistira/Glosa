@@ -29,7 +29,7 @@ Cari teks di dalam buku dicatat di roadmap sebagai tahap tersendiri (2D).
 | 8 | Hapus buku: kata tersimpan tetap ada (judul disalin), anotasi buku itu ikut terhapus. | Kosakata milik user, bukan milik buku. Anotasi tidak berarti tanpa bukunya. |
 | 9 | Anotasi disinkronkan dengan aturan "yang terbaru menang" dan tombstone untuk hapus. | Polanya sama dengan `save_progress`, dan penghapusan tetap sampai ke perangkat yang sedang offline. |
 | 10 | Highlight menang atas kata. Arti kata di dalam highlight dibuka lewat tombol di popup anotasi. | Satu ketukan hanya punya satu arti, jadi tidak ada popup yang saling tumpuk. |
-| 11 | Overlay anotasi, perkiraan waktu, dan catatan kaki memakai fitur bawaan foliate-js (`overlayer.js`, `progress.js`, `footnotes.js`). | Sudah teruji dan bekerja dengan CFI. |
+| 11 | Overlay anotasi dan perkiraan waktu memakai fitur bawaan foliate-js (`overlayer.js`, `progress.js`). Tautan catatan kaki dikenali dengan aturan `footnotes.js`, tetapi isinya dibaca dari dokumen section dan ditampilkan sebagai teks, jadi HTML buku tidak masuk ke halaman aplikasi. | Sudah teruji dan bekerja dengan CFI; `FootnoteHandler` butuh `foliate-view` kedua yang menempel di halaman. |
 | 12 | Batas 20 ketukan/hari, AI konteks, dan batas 100 kata Gratis **tidak** termasuk Tahap 2. | Semuanya bagian dari monetisasi di Tahap 5. Di Tahap 2 penguji memakai tanpa batas, dengan pengaman 5.000 kata dan 10.000 anotasi. |
 
 ## 3. Cakupan
@@ -177,7 +177,10 @@ Semua tabel baru memakai `on delete cascade` dari `profiles`, jadi hapus akun me
 | `src/lib/words/word-at.ts` | `wordAt(doc, x, y)`: mengambil kata di titik ketuk lewat `caretPositionFromPoint` atau `caretRangeFromPoint`, lalu **memastikan titik itu ada di dalam kotak kata**. Mengembalikan `{ word, range, sentence, next }`, atau `null` bila ketukan jatuh di spasi atau margin. |
 | `src/lib/words/lookup.ts` | Mencari di cache Dexie dulu, lalu RPC `lookup_word`. Hasil kosong juga di-cache. |
 | `src/lib/words/saved-marks.ts` | Garis bawah kata tersimpan memakai CSS Custom Highlight API (§6.5). |
-| `src/lib/reading-speed.ts` | Menghitung dan menyimpan kecepatan baca per perangkat (§6.7). |
+| `src/lib/reading-speed.ts` | Sampel per halaman, rasio kecepatan, dan format sisa waktu (§6.7). |
+| `src/lib/local/reading-speed.ts` | Sampel kecepatan di Dexie `meta`, hanya di perangkat. |
+| `src/lib/epub/footnotes.ts` | `isFootnoteLink` (aturan `footnotes.js` foliate) dan `footnoteText`: paragraf catatan, tanpa tautan kembali, maksimal 2.000 karakter. |
+| `src/lib/use-wake-lock.ts` | Wake Lock selama reader terbuka (§6.7). |
 | `src/lib/local/lookups.ts` | Cache arti di Dexie, maksimal 2.000 kata; yang paling lama tidak dipakai dibuang. |
 | `src/lib/local/saved-words.ts` | Salinan Kosakata dan antrean simpan/hapus. |
 | `src/lib/local/annotations.ts` | Anotasi per buku dan antreannya. |
@@ -258,17 +261,22 @@ Swipe, tombol, roda mouse, dan tepi klik di margin tidak berubah.
 
 ### 6.7 Kenyamanan baca (2C)
 
-- **Catatan kaki:** `footnotes.js` foliate mendeteksi tautan catatan kaki (`epub:type="noteref"` dan pola umum lainnya). Isinya ditampilkan di popup yang gayanya sama dengan popup arti, alih-alih melompat ke akhir bab. Tautan biasa tetap melompat.
+- **Catatan kaki:** tautan catatan kaki dikenali dengan aturan `footnotes.js` foliate (`epub:type="noteref"`, `role="doc-noteref"`, atau angka yang dinaikkan). Isinya dibaca dari dokumen section dan ditampilkan sebagai paragraf teks di popup yang gayanya sama dengan popup arti: tanpa tautan kembali, maksimal 2.000 karakter. Catatan yang isinya tidak bisa dibaca berperilaku seperti tautan biasa. Tautan biasa tetap melompat.
 - **Tombol Kembali:** muncul di kiri bawah setelah lompatan lewat daftar isi, tautan, anotasi, atau slider posisi. Tombol ini membawa user kembali ke posisi sebelum lompatan, dan hilang setelah dipakai atau setelah 5 kali balik halaman.
+  - Yang dicatat adalah tempat sebelum lompatan terakhir. Balik halaman dihitung dari `relocate` foliate dengan alasan `page`, `snap`, atau `scroll` yang memindahkan tempat; di mode gulir, tiap kali guliran berhenti dihitung satu. Membuka buku dari Kosakata dan *Lompat* ke posisi perangkat lain bukan lompatan.
+  - Balik halaman juga dihitung untuk tombol atau tombol keyboard di mode gulir (foliate mengirimnya tanpa alasan) dan untuk balik halaman oleh reader yang melewati batas ke section berikutnya; swipe yang melewati batas section tidak dihitung.
+  - Beberapa gerakan slider berturut-turut, tanpa balik halaman di antaranya, mempertahankan tempat baca yang semula untuk Kembali.
 - **Sisa waktu:** footer menampilkan "±8 mnt lagi di bab ini".
   - Angkanya `time.section` dari `relocate` foliate, dikalikan rasio kecepatan user terhadap kecepatan default foliate.
   - Kecepatan diukur dari halaman yang dibaca 5 detik sampai 10 menit, sebagai rata-rata bergerak dari 50 halaman terakhir.
   - Sebelum ada 10 halaman terukur, kecepatan default foliate yang dipakai.
   - Di mode scroll, sisa waktu dihitung dengan cara yang sama dari `relocate`.
+  - Satu halaman memberi sampel menit foliate yang terlewati (turunnya `time.total`) dan menit yang benar-benar dipakai. Rasio = jumlah menit yang dipakai / jumlah menit foliate dari 50 sampel terakhir. Halaman yang dibaca mundur, `relocate` di tempat yang sama, dan halaman saat tab disembunyikan tidak dihitung. Di layar ≥ 1024px footer juga menampilkan sisa waktu buku ("±5 j lagi di buku").
 - **Setelan baru** di `ReaderSettingsPanel`:
   - perataan (*Rata kiri* / *Rata kiri-kanan*);
   - pemenggalan kata, lewat `hyphens: auto` dan atribut `lang` buku;
   - dua halaman (*Otomatis* / *Satu halaman*). Pilihan ini hanya tampil di layar ≥ 1024px dan mode halaman. *Otomatis* membiarkan foliate menampilkan dua kolom bila layar cukup lebar.
+  - Perataan dan pemenggalan dipasang tanpa `!important` pada `p, li, blockquote, dd`, jadi teks yang oleh bukunya dibuat rata tengah atau rata kanan tetap di tempatnya. *Satu halaman* memasang `max-column-count` paginator menjadi 1.
 - **Layar tetap menyala:** Wake Lock diminta saat reader terbuka dan tab terlihat, dilepas saat tab disembunyikan, dan diminta lagi saat tab terlihat kembali. Bila browser tidak mendukung atau menolak, tidak ada pesan apa pun.
 
 ## 7. Offline dan sinkron
