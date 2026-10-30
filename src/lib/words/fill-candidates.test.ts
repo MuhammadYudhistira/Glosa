@@ -14,18 +14,55 @@ const forms = [
 ]
 
 describe("pickCandidates", () => {
-  it("asks each headword's parts of speech that no source fills, in the words' order", () => {
+  it("asks a word with no meaning at all every part of speech Wiktionary gives, in the words' order", () => {
     const requests = pickCandidates({
-      words: ["like", "made", "make", "run"],
+      words: ["run", "made", "make", "like"],
       partsOfSpeech,
       forms,
-      filled: new Set(["like\tverb", "run\tverb"]),
-      generated: new Set(["make\tnoun"]),
+      filled: new Set(),
+      generated: new Set(),
     })
     expect(requests).toEqual([
-      { headword: "like", pos: ["prep", "noun"], from: ["like"] },
-      { headword: "make", pos: ["verb"], from: ["made", "make"] },
+      { headword: "run", pos: ["verb"], from: ["run"] },
+      { headword: "make", pos: ["verb", "noun"], from: ["made", "make"] },
+      { headword: "like", pos: ["verb", "prep", "noun"], from: ["like"] },
     ])
+  })
+
+  it("skips a word whose own headword is filled, even with other parts of speech unfilled", () => {
+    expect(
+      pickCandidates({
+        words: ["like"],
+        partsOfSpeech,
+        forms,
+        filled: new Set(["like	verb"]),
+        generated: new Set(),
+      })
+    ).toEqual([])
+  })
+
+  it("skips a word whose headword was already asked, whatever the part of speech", () => {
+    expect(
+      pickCandidates({
+        words: ["like"],
+        partsOfSpeech,
+        forms,
+        filled: new Set(),
+        generated: new Set(["like	noun"]),
+      })
+    ).toEqual([])
+  })
+
+  it("skips a form whose base is filled", () => {
+    expect(
+      pickCandidates({
+        words: ["made", "makes"],
+        partsOfSpeech,
+        forms,
+        filled: new Set(["make	verb"]),
+        generated: new Set(),
+      })
+    ).toEqual([])
   })
 
   it("asks a word Wiktionary does not know as it is, for the AI to pick its part of speech", () => {

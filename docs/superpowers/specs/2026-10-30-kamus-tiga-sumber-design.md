@@ -98,6 +98,7 @@ Opsi `--no-wordnet` mengimpor tanpa WordNet, dan `--no-generated` mengimpor tanp
    - kata dari daftar frekuensi, ditambah semua `dict_misses`;
    - tiap kata dinormalisasi dan diberi kelas kata dari Wiktionary (keputusan 6);
    - dikurangi pasangan (kata, kelas kata) yang sudah terisi oleh Wiktionary atau WordNet, atau sudah ada di `dict_generated` (termasuk yang kosong);
+   - kata yang sudah punya arti (dirinya atau kata dasarnya, dari sumber mana pun) atau sudah pernah ditanyakan dilewati seluruhnya; hanya kata yang sekarang tampil tanpa arti yang ditanyakan (keputusan pemilik 2026-10-30);
    - kata tanpa kelas kata di Wiktionary diberi satu kelas yang paling mungkin oleh AI dari daftar `DICT_POS`.
 2. **Uji coba** (`--trial 200`): 200 calon pertama dikirim sebagai satu batch kecil. Skrip mencetak biaya nyata dari `usage`, perkiraan biaya batch penuh, dan 20 contoh hasil. Tidak ada yang ditulis ke `dict_generated` sampai pemilik menjalankan ulang dengan `--commit`.
 3. **Batch penuh:**

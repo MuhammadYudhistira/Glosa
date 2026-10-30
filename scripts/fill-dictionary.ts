@@ -34,6 +34,7 @@ import {
   chunk,
   pickCandidates,
 } from "../src/lib/words/fill-candidates.ts"
+import { normalizeWord } from "../src/lib/words/normalize.ts"
 import {
   DEFAULT_FILES,
   type EnvName,
@@ -134,9 +135,9 @@ async function candidates(): Promise<Array<FillRequest>> {
     `${requests.length} headwords to ask (${listed.length} listed words, ${misses.length} tapped words without meanings).`
   )
   // Tapped words that lead to nothing left to ask are answered (or not words at all).
-  if (values.commit) {
+  if (values.commit && !values["dry-run"]) {
     const asked = new Set(requests.flatMap((request) => request.from))
-    const answered = misses.filter((word) => !asked.has(word))
+    const answered = misses.filter((word) => !asked.has(normalizeWord(word)))
     for (const words of chunk(answered, 200)) {
       const { error } = await supabase
         .from("dict_misses")
@@ -180,9 +181,18 @@ async function main() {
 
   const client = new Anthropic()
   if (state) {
-    console.log(
-      `Picking up batch ${state.batchId} (${state.trial ? "trial" : "full"}).`
+    const size = Object.values(state.requests).reduce(
+      (n, group) => n + group.length,
+      0
     )
+    console.log(
+      `Picking up batch ${state.batchId} (${state.trial ? "trial" : "full"}, effort ${state.effort}, ${size} headwords).`
+    )
+    if (trial !== undefined || limit !== undefined || effort !== "medium") {
+      console.log(
+        "--trial, --limit and --effort are ignored for a waiting batch (use --discard to drop it)."
+      )
+    }
   } else {
     const requests = await candidates()
     const chosen = requests.slice(0, trial ?? limit ?? requests.length)
@@ -196,21 +206,27 @@ async function main() {
     chunk(chosen, WORDS_PER_REQUEST).forEach((group, i) => {
       groups[`fill-${String(i).padStart(5, "0")}`] = group
     })
-    const batch = await client.messages.batches.create({
-      requests: Object.entries(groups).map(([custom_id, group]) => ({
-        custom_id,
-        params: {
-          model: FILL_MODEL,
-          max_tokens: FILL_MAX_TOKENS,
-          output_config: {
-            effort,
-            format: { type: "json_schema", schema: FILL_SCHEMA },
+    // No SDK retry: a lost response retried would create a second paid batch.
+    const batch = await client.messages.batches.create(
+      {
+        requests: Object.entries(groups).map(([custom_id, group]) => ({
+          custom_id,
+          params: {
+            model: FILL_MODEL,
+            max_tokens: FILL_MAX_TOKENS,
+            output_config: {
+              effort,
+              format: { type: "json_schema", schema: FILL_SCHEMA },
+            },
+            system: FILL_SYSTEM,
+            messages: [{ role: "user", content: fillPrompt(group) }],
           },
-          system: FILL_SYSTEM,
-          messages: [{ role: "user", content: fillPrompt(group) }],
-        },
-      })),
-    })
+        })),
+      },
+      { maxRetries: 0 }
+    )
+    // Print the id first: if the state file cannot be written, it is not lost.
+    console.log(`Created batch ${batch.id}.`)
     state = {
       env: envName,
       batchId: batch.id,

@@ -1,5 +1,5 @@
 // Extensions spelled out: Node runs this file for scripts/fill-dictionary.ts.
-import { headwordOfKey, keyOf } from "./dict-merge.ts"
+import { headwordOfKey } from "./dict-merge.ts"
 import { isLookupWord, normalizeWord } from "./normalize.ts"
 import type { DictForm, DictPos } from "./types.ts"
 
@@ -19,18 +19,21 @@ export type CandidateSources = {
   partsOfSpeech: ReadonlyMap<string, ReadonlySet<DictPos>>
   /** Wiktionary's forms, of every headword. */
   forms: ReadonlyArray<DictForm>
-  /** keyOf pairs that Wiktionary or WordNet fill. */
+  /** keyOf pairs that Wiktionary or WordNet fill. A word with any of its headwords here is not asked. */
   filled: ReadonlySet<string>
-  /** keyOf pairs already in dict_generated, those without meanings too. */
+  /** keyOf pairs already in dict_generated, those without meanings too. A word with any of its headwords here is not asked again. */
   generated: ReadonlySet<string>
 }
 
 /**
- * What the AI is asked: for each word, its headwords (the word itself and the
- * single words it is a form of) with the parts of speech Wiktionary gives
- * them that no source fills yet and that were never asked. A word Wiktionary
- * does not know, and no source fills, is asked as it is. Phrases never: they
- * come from Wiktionary only. In the order of the words, each headword once.
+ * What the AI is asked: only the words that show no meaning today. A word is
+ * skipped entirely when it, or any single word it is a form of, already has an
+ * entry from any source or was already asked (owner decision 2026-10-30), so
+ * "the" or "made" never get rare parts of speech asked. For a word left, each
+ * headword (the word itself and the single words it is a form of) is asked
+ * with the parts of speech Wiktionary gives it; a word Wiktionary does not
+ * know is asked as it is. Phrases never: they come from Wiktionary only. In
+ * the order of the words, each headword once.
  */
 export function pickCandidates(sources: CandidateSources): Array<FillRequest> {
   const basesOf = new Map<string, Array<string>>()
@@ -40,9 +43,6 @@ export function pickCandidates(sources: CandidateSources): Array<FillRequest> {
     if (!list.includes(headword)) list.push(headword)
     basesOf.set(form, list)
   }
-  const done = (headword: string, pos: DictPos) =>
-    sources.filled.has(keyOf(headword, pos)) ||
-    sources.generated.has(keyOf(headword, pos))
   const touched = new Set(
     [...sources.filled, ...sources.generated].map(headwordOfKey)
   )
@@ -58,19 +58,21 @@ export function pickCandidates(sources: CandidateSources): Array<FillRequest> {
   for (const raw of sources.words) {
     const word = normalizeWord(raw)
     if (!isLookupWord(word)) continue
-    const headwords = [word, ...(basesOf.get(word) ?? [])].filter(
-      (headword, i, all) =>
+    const all = [word, ...(basesOf.get(word) ?? [])]
+    if (all.some((headword) => touched.has(headword))) continue
+    const headwords = all.filter(
+      (headword, i) =>
         all.indexOf(headword) === i && sources.partsOfSpeech.has(headword)
     )
     if (headwords.length === 0) {
-      if (!touched.has(word)) ask(word, [], word)
+      ask(word, [], word)
       continue
     }
     for (const headword of headwords) {
-      const missing = [...(sources.partsOfSpeech.get(headword) ?? [])].filter(
-        (pos) => pos !== "phrase" && !done(headword, pos)
+      const pos = [...(sources.partsOfSpeech.get(headword) ?? [])].filter(
+        (each) => each !== "phrase"
       )
-      if (missing.length > 0) ask(headword, missing, word)
+      if (pos.length > 0) ask(headword, pos, word)
     }
   }
   return [...requests.values()]
