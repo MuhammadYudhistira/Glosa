@@ -100,6 +100,12 @@ function applySettings(
   renderer.setAttribute("gap", MARGIN_GAP[settings.margin])
   renderer.setAttribute("margin", BAR_SPACE)
   renderer.setAttribute("max-inline-size", MAX_LINE_LENGTH)
+  // foliate shows two columns when the page is wide enough; "single" keeps
+  // one (plan 2C, decision 10).
+  renderer.setAttribute(
+    "max-column-count",
+    settings.spread === "single" ? "1" : "2"
+  )
   renderer.setStyles?.(readerCss(settings, fonts))
 }
 

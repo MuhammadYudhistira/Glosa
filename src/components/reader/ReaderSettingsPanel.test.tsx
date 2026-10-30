@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_READER_SETTINGS } from "@/lib/reader-settings"
 import { ReaderSettingsPanel } from "./ReaderSettingsPanel"
 
@@ -15,6 +15,20 @@ function renderPanel(settings = DEFAULT_READER_SETTINGS) {
   )
   return onChange
 }
+
+/** jsdom has no matchMedia: the screen is as wide as the test says. */
+function stubWideScreen(matches: boolean) {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches,
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }))
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe("ReaderSettingsPanel", () => {
   it("changes the theme, font and layout", async () => {
@@ -44,5 +58,38 @@ describe("ReaderSettingsPanel", () => {
     expect(
       screen.getByRole("status", { name: "Ukuran huruf" })
     ).toHaveTextContent("200%")
+  })
+
+  it("changes the alignment and the hyphenation", async () => {
+    const onChange = renderPanel()
+    await screen.findByRole("dialog", { name: "Tampilan" })
+
+    expect(screen.getByLabelText("Rata kiri")).toBeChecked()
+    fireEvent.click(screen.getByLabelText("Rata kiri-kanan"))
+    expect(onChange).toHaveBeenLastCalledWith({ align: "justify" })
+    expect(screen.getByLabelText("Ya")).toBeChecked()
+    fireEvent.click(screen.getByLabelText("Tidak"))
+    expect(onChange).toHaveBeenLastCalledWith({ hyphenate: false })
+  })
+
+  it("offers two pages on a wide screen in the page layout only", async () => {
+    stubWideScreen(true)
+    const onChange = renderPanel()
+    await screen.findByRole("dialog", { name: "Tampilan" })
+    expect(screen.getByLabelText("Otomatis")).toBeChecked()
+    fireEvent.click(screen.getByLabelText("Satu halaman"))
+    expect(onChange).toHaveBeenLastCalledWith({ spread: "single" })
+
+    cleanup()
+    renderPanel({ ...DEFAULT_READER_SETTINGS, flow: "scrolled" })
+    await screen.findByRole("dialog", { name: "Tampilan" })
+    expect(screen.queryByLabelText("Satu halaman")).toBeNull()
+  })
+
+  it("does not offer two pages on a phone", async () => {
+    stubWideScreen(false)
+    renderPanel()
+    await screen.findByRole("dialog", { name: "Tampilan" })
+    expect(screen.queryByLabelText("Otomatis")).toBeNull()
   })
 })

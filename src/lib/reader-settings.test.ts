@@ -49,6 +49,34 @@ describe("parseReaderSettings", () => {
       lineHeight: 1.8,
     })
   })
+
+  it("knows the 2C settings and defaults them for settings saved before", () => {
+    expect(DEFAULT_READER_SETTINGS).toMatchObject({
+      align: "start",
+      hyphenate: true,
+      spread: "auto",
+    })
+    expect(parseReaderSettings({ theme: "dark", fontSize: 120 })).toEqual({
+      ...DEFAULT_READER_SETTINGS,
+      theme: "dark",
+      fontSize: 120,
+    })
+    expect(
+      parseReaderSettings({
+        align: "justify",
+        hyphenate: false,
+        spread: "single",
+      })
+    ).toEqual({
+      ...DEFAULT_READER_SETTINGS,
+      align: "justify",
+      hyphenate: false,
+      spread: "single",
+    })
+    expect(
+      parseReaderSettings({ align: "center", hyphenate: "yes", spread: 2 })
+    ).toEqual(DEFAULT_READER_SETTINGS)
+  })
 })
 
 describe("steppers", () => {
@@ -100,6 +128,20 @@ describe("readerCss", () => {
     )
     expect(css).toContain(
       "::highlight(glosa-active) { background-color: #2a5b52; }"
+    )
+  })
+
+  it("aligns and hyphenates paragraphs as chosen, without forcing it", () => {
+    expect(readerCss(DEFAULT_READER_SETTINGS, fonts)).toContain(
+      "p, li, blockquote, dd { text-align: start; -webkit-hyphens: auto; hyphens: auto; }"
+    )
+    expect(
+      readerCss(
+        { ...DEFAULT_READER_SETTINGS, align: "justify", hyphenate: false },
+        fonts
+      )
+    ).toContain(
+      "p, li, blockquote, dd { text-align: justify; -webkit-hyphens: manual; hyphens: manual; }"
     )
   })
 })

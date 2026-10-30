@@ -5,11 +5,15 @@ export const READER_FONTS = ["serif", "sans", "dyslexic"] as const
 export const READER_THEMES = ["light", "sepia", "dark"] as const
 export const READER_MARGINS = ["narrow", "normal", "wide"] as const
 export const READER_FLOWS = ["paginated", "scrolled"] as const
+export const READER_ALIGNS = ["start", "justify"] as const
+export const READER_SPREADS = ["auto", "single"] as const
 
 export type ReaderFont = (typeof READER_FONTS)[number]
 export type ReaderTheme = (typeof READER_THEMES)[number]
 export type ReaderMargin = (typeof READER_MARGINS)[number]
 export type ReaderFlow = (typeof READER_FLOWS)[number]
+export type ReaderAlign = (typeof READER_ALIGNS)[number]
+export type ReaderSpread = (typeof READER_SPREADS)[number]
 
 export const FONT_SIZE = { min: 80, max: 200, step: 10 } as const
 export const LINE_HEIGHT = { min: 1.2, max: 2, step: 0.1 } as const
@@ -22,6 +26,11 @@ export type ReaderSettings = {
   margin: ReaderMargin
   theme: ReaderTheme
   flow: ReaderFlow
+  align: ReaderAlign
+  /** Words break at line ends, in the book's language. */
+  hyphenate: boolean
+  /** Two pages side by side when the screen is wide enough (`auto`), or always one. */
+  spread: ReaderSpread
 }
 
 export const DEFAULT_READER_SETTINGS: ReaderSettings = {
@@ -31,6 +40,9 @@ export const DEFAULT_READER_SETTINGS: ReaderSettings = {
   margin: "normal",
   theme: "sepia",
   flow: "paginated",
+  align: "start",
+  hyphenate: true,
+  spread: "auto",
 }
 
 export const ReaderSettingsSchema = z.object({
@@ -49,6 +61,9 @@ export const ReaderSettingsSchema = z.object({
   margin: z.enum(READER_MARGINS),
   theme: z.enum(READER_THEMES),
   flow: z.enum(READER_FLOWS),
+  align: z.enum(READER_ALIGNS),
+  hyphenate: z.boolean(),
+  spread: z.enum(READER_SPREADS),
 })
 
 const SETTING_KEYS = Object.keys(DEFAULT_READER_SETTINGS) as Array<
@@ -104,6 +119,14 @@ export const FLOW_LABELS: Record<ReaderFlow, string> = {
   paginated: "Halaman",
   scrolled: "Gulir",
 }
+export const ALIGN_LABELS: Record<ReaderAlign, string> = {
+  start: "Rata kiri",
+  justify: "Rata kiri-kanan",
+}
+export const SPREAD_LABELS: Record<ReaderSpread, string> = {
+  auto: "Otomatis",
+  single: "Satu halaman",
+}
 
 /** `mark` lights the tapped word while its meaning shows (spec 2 §6.2). */
 export const THEME_COLORS: Record<
@@ -156,6 +179,7 @@ export function readerCss(
 ): string {
   const colors = THEME_COLORS[settings.theme]
   const face = fonts[settings.font]
+  const hyphens = settings.hyphenate ? "auto" : "manual"
   const fontFace = (url: string, weight: number, style: string) =>
     `@font-face { font-family: "${face.family}"; src: url("${url}") format("woff2"); font-weight: ${weight}; font-style: ${style}; }`
   return [
@@ -167,6 +191,9 @@ export function readerCss(
     "body *:not(code, kbd, pre, samp, tt, code *, pre *) { font-family: inherit !important; }",
     "body *:not(img, svg, video, canvas) { color: inherit !important; background-color: transparent !important; }",
     `p, li, blockquote, dd, dt, td, th { line-height: ${settings.lineHeight} !important; }`,
+    // Not forced: a book's own centred or right-aligned text keeps its place
+    // (plan 2C, decision 9). foliate gives each section the book's language.
+    `p, li, blockquote, dd { text-align: ${settings.align}; -webkit-hyphens: ${hyphens}; hyphens: ${hyphens}; }`,
     `a:link, a:visited { color: ${colors.link} !important; }`,
     "pre { white-space: pre-wrap !important; }",
     `::highlight(${SAVED_HIGHLIGHT}) { text-decoration: underline dotted 2px ${colors.link}; }`,

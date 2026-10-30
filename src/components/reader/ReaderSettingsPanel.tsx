@@ -6,20 +6,31 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  ALIGN_LABELS,
   FLOW_LABELS,
   FONT_LABELS,
   FONT_SIZE,
   LINE_HEIGHT,
   MARGIN_LABELS,
+  READER_ALIGNS,
   READER_FLOWS,
   READER_FONTS,
   READER_MARGINS,
+  READER_SPREADS,
   READER_THEMES,
   type ReaderSettings,
+  SPREAD_LABELS,
   THEME_LABELS,
   stepFontSize,
   stepLineHeight,
 } from "@/lib/reader-settings"
+import { useWideScreen } from "@/lib/use-wide-screen"
+
+const HYPHENATE_CHOICES = ["on", "off"] as const
+const HYPHENATE_LABELS: Record<(typeof HYPHENATE_CHOICES)[number], string> = {
+  on: "Ya",
+  off: "Tidak",
+}
 
 export function ReaderSettingsPanel({
   open,
@@ -32,6 +43,7 @@ export function ReaderSettingsPanel({
   settings: ReaderSettings
   onChange: (patch: Partial<ReaderSettings>) => void
 }) {
+  const wide = useWideScreen()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
@@ -95,6 +107,33 @@ export function ReaderSettingsPanel({
             value={settings.flow}
             onChange={(flow) => onChange({ flow })}
           />
+          <ChoiceGroup
+            legend="Perataan"
+            name="reader-align"
+            options={READER_ALIGNS}
+            labels={ALIGN_LABELS}
+            value={settings.align}
+            onChange={(align) => onChange({ align })}
+          />
+          <ChoiceGroup
+            legend="Pemenggalan kata"
+            name="reader-hyphenate"
+            options={HYPHENATE_CHOICES}
+            labels={HYPHENATE_LABELS}
+            value={settings.hyphenate ? "on" : "off"}
+            onChange={(choice) => onChange({ hyphenate: choice === "on" })}
+          />
+          {/* Two pages need a wide screen and pages (spec 2 §6.7). */}
+          {wide && settings.flow === "paginated" && (
+            <ChoiceGroup
+              legend="Dua halaman"
+              name="reader-spread"
+              options={READER_SPREADS}
+              labels={SPREAD_LABELS}
+              value={settings.spread}
+              onChange={(spread) => onChange({ spread })}
+            />
+          )}
         </div>
       </DialogContent>
     </Dialog>
