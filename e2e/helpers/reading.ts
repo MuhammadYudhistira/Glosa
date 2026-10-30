@@ -25,6 +25,8 @@ type Landing = { landedPage?: number; watchingLanding?: boolean }
  * landed. Each turn slides for 300 ms and the reader learns the new place
  * only when it ends, so a click made sooner acts on the page being left.
  * The page landed on is the paginator's page at the last relocate.
+ * `count` must be an exact page delta within the section: a turn across a
+ * section boundary lands on another page number and the wait times out.
  */
 export async function turnPages(
   page: Page,

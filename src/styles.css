@@ -805,6 +805,14 @@
     padding: 0.4rem 0.75rem;
     font-size: 0.875rem;
     color: var(--muted-foreground);
+    cursor: pointer;
+  }
+  .reader-tab:hover {
+    color: var(--foreground);
+  }
+  .reader-tab:focus-visible {
+    outline: 2px solid var(--color-mint);
+    outline-offset: -2px;
   }
   .reader-tab[aria-selected="true"] {
     border-color: var(--color-mint);
@@ -1469,6 +1477,13 @@
     outline: 2px solid var(--color-mint);
     outline-offset: 2px;
   }
+  /* Phones: the swatches meet the 44 px touch target. */
+  @media (max-width: 1023px) {
+    .annotation-swatch {
+      width: 2.75rem;
+      height: 2.75rem;
+    }
+  }
   .annotation-note {
     white-space: pre-wrap;
     color: var(--muted-foreground);
@@ -1486,6 +1501,8 @@
     display: grid;
     gap: 0.75rem;
     width: min(32rem, calc(100vw - 2rem));
+    max-height: calc(100dvh - 2rem);
+    overflow: auto;
     translate: -50% -50%;
     border: 1px solid var(--border);
     border-radius: 0.75rem;

@@ -112,6 +112,31 @@ describe("annotations on this device", () => {
     ])
   })
 
+  it("keeps an offline creation the server has not seen, and other books' rows", async () => {
+    // Created offline: waiting here, absent from the server's list.
+    await localAnnotationStore.put(highlight("offline", 1))
+    await localAnnotationStore.put(
+      highlight("elsewhere", 1, { bookId: OTHER_BOOK })
+    )
+
+    await mergeServerAnnotations(BOOK, [highlight("server", 1)])
+
+    expect((await ids()).sort()).toEqual(["offline", "server"])
+    expect(
+      (await localAnnotationStore.pending()).map((a) => a.id).sort()
+    ).toEqual(["elsewhere", "offline"])
+    expect(await localDb().annotations.get("elsewhere")).toBeDefined()
+  })
+
+  it("takes a server tombstone over an older waiting change", async () => {
+    await localAnnotationStore.put(highlight("a", 1))
+    await mergeServerAnnotations(BOOK, [
+      highlight("a", 3, { deletedAt: time(3) }),
+    ])
+    expect(await ids()).toEqual([])
+    expect(await localAnnotationStore.pending()).toEqual([])
+  })
+
   it("compares the server's times as times, not as text", async () => {
     await localAnnotationStore.put(highlight("a", 5, { color: "pink" }))
     // The same moment as minute 5, written the way Postgres writes it.

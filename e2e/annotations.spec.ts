@@ -16,8 +16,7 @@ test("a selection becomes a highlight with a note, which stays and can be delete
 }) => {
   test.setTimeout(120_000)
   const { userId } = await startReading(page)
-  // A page turn slides: let it settle before selecting.
-  await page.waitForTimeout(800)
+  // startReading waits until its page turns have landed.
 
   const picked = await selectWords(page)
   const menu = page.getByRole("dialog", { name: "Teks terpilih" })
@@ -62,7 +61,7 @@ test("a selection becomes a highlight with a note, which stays and can be delete
   const panel = await openAnnotations(page)
   const item = panel.getByRole("listitem").filter({ hasText: "Catatan uji" })
   await expect(item).toContainText(picked.text)
-  await item.getByRole("button", { name: "Hapus anotasi" }).click()
+  await item.getByRole("button", { name: /^Hapus highlight/ }).click()
   await expect(item).toBeHidden()
   await expect
     .poll(async () => (await annotationsOf(userId))[0]?.deleted_at ?? null, {
@@ -94,6 +93,7 @@ test("the bookmark button marks the page, and the panel lists it", async ({
 test("the bookmark button, pressed again, takes the bookmark off", async ({
   page,
 }) => {
+  test.setTimeout(120_000)
   const { userId } = await startReading(page)
   // The section's first page, where the mark seemed not to hold (a click
   // made while the turns still slid; see turnPages).
@@ -140,17 +140,13 @@ test("turning the page with a selection leaves nothing to swallow the next tap",
 }) => {
   test.setTimeout(120_000)
   await startReading(page)
-  await page.waitForTimeout(800)
   await selectWords(page)
   const menu = page.getByRole("dialog", { name: "Teks terpilih" })
   await expect(menu).toBeVisible()
 
-  const before = await pageInSection(page)
-  await page.keyboard.press("PageDown")
-  await expect.poll(() => pageInSection(page)).toBeGreaterThan(before)
+  // Waits until the turn has landed, so the slide is over.
+  await turnPages(page, "PageDown", 1)
   await expect(menu).toBeHidden()
-  // A page turn slides: let it settle.
-  await page.waitForTimeout(800)
   const turned = await pageInSection(page)
 
   // The far edge, beside the text: it must turn the page, not be swallowed.

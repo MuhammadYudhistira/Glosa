@@ -104,3 +104,17 @@ export function isTypingTarget(target: EventTarget | null): boolean {
     ) !== null
   )
 }
+
+/**
+ * What to tell the page about the current selection: show its menu, clear a
+ * menu that is open, or nothing. A selection whose CFI cannot be made counts
+ * as no selection.
+ */
+export function selectionAction(
+  hasSelection: boolean,
+  hasCfi: boolean,
+  menuShown: boolean
+): "show" | "clear" | "none" {
+  if (hasSelection && hasCfi) return "show"
+  return menuShown ? "clear" : "none"
+}

@@ -6,6 +6,20 @@ import { inBookOrder } from "@/lib/annotations/places"
 import type { Annotation } from "@/lib/annotations/types"
 import { COLOR_LABELS } from "./AnnotationPopup"
 
+const NAME_EXCERPT_MAX = 25
+
+/** Accessible name of a delete button: the kind and a short excerpt, so each is distinct. */
+function deleteLabel(annotation: Annotation): string {
+  const kind = annotation.kind === "bookmark" ? "bookmark" : "highlight"
+  const excerpt = annotation.excerpt.trim()
+  if (!excerpt) return `Hapus ${kind}`
+  const short =
+    excerpt.length > NAME_EXCERPT_MAX
+      ? `${excerpt.slice(0, NAME_EXCERPT_MAX).trimEnd()}…`
+      : excerpt
+  return `Hapus ${kind} "${short}"`
+}
+
 type ChaptersOf = (cfis: ReadonlyArray<string>) => Promise<Array<string | null>>
 
 /**
@@ -93,7 +107,7 @@ export function AnnotationList({
               variant="ghost"
               size="icon-lg"
               className="size-10"
-              aria-label="Hapus anotasi"
+              aria-label={deleteLabel(annotation)}
               onClick={() => onDelete(annotation)}
             >
               <Trash2Icon aria-hidden="true" />

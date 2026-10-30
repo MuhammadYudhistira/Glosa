@@ -56,10 +56,40 @@ describe("AnnotationList", () => {
         onDelete={onDelete}
       />
     )
-    fireEvent.click(screen.getByRole("button", { name: /To Sherlock Holmes/ }))
+    fireEvent.click(screen.getByRole("button", { name: /^Highlight/ }))
     expect(onSelect).toHaveBeenCalledWith(base.cfi)
-    fireEvent.click(screen.getByRole("button", { name: "Hapus anotasi" }))
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: 'Hapus highlight "To Sherlock Holmes"',
+      })
+    )
     expect(onDelete).toHaveBeenCalledWith(base)
+  })
+
+  it("gives each delete button its own name, with the excerpt shortened", () => {
+    const long: Annotation = {
+      ...base,
+      id: "c",
+      excerpt: "A very long excerpt that goes on well past the limit",
+    }
+    render(
+      <AnnotationList
+        annotations={[later, long]}
+        chaptersOf={null}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    )
+    expect(
+      screen.getByRole("button", {
+        name: 'Hapus bookmark "Chapter two begins"',
+      })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", {
+        name: 'Hapus highlight "A very long excerpt that…"',
+      })
+    ).toBeInTheDocument()
   })
 
   it("says how to make one when there are none", () => {

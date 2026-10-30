@@ -35,6 +35,7 @@ import {
   isControlTarget,
   isTypingTarget,
   keyMove,
+  selectionAction,
   swipeVelocity,
   tapAction,
 } from "./reader-input"
@@ -542,15 +543,14 @@ export function ReaderView({
       let settle: ReturnType<typeof setTimeout> | undefined
       const reportSelection = () => {
         const selected = selectedRange(doc)
-        if (!selected) {
-          if (selectionShown) {
-            selectionShown = false
-            call().onSelection(null)
-          }
-          return
+        const cfi = selected ? cfiOf(index, selected.range) : null
+        // No CFI means no usable selection: close a menu that is open.
+        const action = selectionAction(!!selected, !!cfi, selectionShown)
+        if (action === "clear") {
+          selectionShown = false
+          call().onSelection(null)
         }
-        const cfi = cfiOf(index, selected.range)
-        if (!cfi) return
+        if (action !== "show" || !selected || !cfi) return
         selectionShown = true
         call().onSelection({
           cfi,

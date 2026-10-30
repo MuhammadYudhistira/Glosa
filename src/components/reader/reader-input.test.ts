@@ -4,6 +4,7 @@ import {
   isControlTarget,
   isTypingTarget,
   keyMove,
+  selectionAction,
   swipeVelocity,
   tapAction,
 } from "./reader-input"
@@ -112,5 +113,22 @@ describe("isTypingTarget", () => {
     expect(isTypingTarget(plain as unknown as EventTarget)).toBe(false)
     expect(isTypingTarget(null)).toBe(false)
     expect(isTypingTarget({} as EventTarget)).toBe(false)
+  })
+})
+
+describe("selectionAction", () => {
+  it("shows the menu for a selection that has a CFI", () => {
+    expect(selectionAction(true, true, false)).toBe("show")
+    expect(selectionAction(true, true, true)).toBe("show")
+  })
+
+  it("clears an open menu when the selection is gone", () => {
+    expect(selectionAction(false, false, true)).toBe("clear")
+    expect(selectionAction(false, false, false)).toBe("none")
+  })
+
+  it("treats a selection without a CFI as no selection", () => {
+    expect(selectionAction(true, false, true)).toBe("clear")
+    expect(selectionAction(true, false, false)).toBe("none")
   })
 })

@@ -46,7 +46,7 @@ Cari teks di dalam buku dicatat di roadmap sebagai tahap tersendiri (2D).
 ### 2B — Anotasi
 1. Seleksi teks dengan menu *Highlight · Catatan · Salin*.
 2. Highlight 4 warna; ketuk highlight untuk mengganti warna, menambah catatan, atau menghapus.
-3. Catatan pada highlight, ditandai ikon kecil di pinggir teks.
+3. Catatan pada highlight, ditandai kotak kecil berwarna sama tepat setelah baris terakhir highlight.
 4. Bookmark lewat tombol di toolbar, dengan pita di pojok halaman yang di-bookmark.
 5. Panel anotasi sebagai tab di samping Daftar isi.
 6. Sinkron antar perangkat dan antrean offline.
@@ -149,7 +149,7 @@ Indeks (`user_id`, `book_id`). Member hanya bisa `select` baris miliknya.
 
 Server function **`syncAnnotationsFn`** membungkus fungsi ini. Reader membaca semua anotasi buku, termasuk tombstone, saat buku dibuka.
 
-Sapuan per jam yang sudah ada menjalankan `purgeTombstones` (`src/server/sweep/tombstones.ts`) setelah `runSweep`, tanpa batas jumlah hapus sapuan; di dry run hanya menghitung.
+Sapuan per jam yang sudah ada menjalankan `purgeTombstones` (`src/server/sweep/tombstones.ts`) setelah `runSweep`, tanpa batas jumlah hapus sapuan; di dry run hanya menghitung. Ronde yang berhenti karena `too_many` juga melewati penghapusan tombstone.
 
 ### 4.4 Kenyamanan baca (2C)
 
@@ -191,8 +191,8 @@ Antrean mengikuti pola `src/lib/local/positions.ts` dan `progress-sync-client.ts
 Klik di dokumen section ([`ReaderView.tsx`](../../../src/components/reader/ReaderView.tsx), handler `click` di `onSectionLoad`) diperiksa berurutan, dan langkah pertama yang cocok menang:
 
 1. **Tautan.** foliate yang menangani, seperti sekarang (`defaultPrevented`). Catatan kaki dibuka di popup (§6.7).
-2. **Highlight** (2B). Klik dibaca lewat `overlayer.hitTest` di handler klik reader (listener overlay foliate terpasang sesudahnya) dan membuka popup anotasi.
-3. **Ada seleksi teks** (2B). Klik diabaikan, menu menyusul. Saat menu seleksi terbuka, ketukan apa pun hanya menutup menu dan seleksinya.
+2. **Ada seleksi teks** (2B). Klik diabaikan, menu menyusul. Saat menu seleksi terbuka, ketukan apa pun hanya menutup menu dan seleksinya.
+3. **Highlight** (2B). Klik dibaca lewat `overlayer.hitTest` di handler klik reader (listener overlay foliate terpasang sesudahnya) dan membuka popup anotasi.
 4. **Kata** (2A). `wordAt` mengembalikan kata, lalu popup arti terbuka.
 5. **Ruang kosong.** `tapAt` seperti sekarang: pinggir membalik halaman, tengah membuka menu.
 
@@ -251,7 +251,7 @@ Swipe, tombol, roda mouse, dan tepi klik di margin tidak berubah.
 
 - **Seleksi:** seret di desktop, tekan lama lalu seret di HP. Menu *Highlight · Catatan · Salin* muncul di dekat seleksi saat jari/mouse diangkat, atau 300 ms setelah seleksi berhenti berubah (gagang seleksi di HP tidak mengirim `touchend`). Saat halaman berpindah, menu menutup dan seleksi teks dihapus, sehingga ketukan berikutnya bekerja normal. Seleksi di luar satu section tidak didukung.
 - **Highlight** digambar lewat `view.addAnnotation` dan event `draw-annotation` dengan `Overlayer.highlight`, sesuai warnanya. Highlight yang punya catatan diberi kotak kecil berwarna sama tepat setelah baris terakhir highlight.
-- **Popup anotasi** (dari `show-annotation`) berisi 4 warna, *Catatan*, *Hapus*, dan *Arti "kata"* untuk kata yang diketuk di dalam highlight (untuk highlight satu kata, kata itu sendiri).
+- **Popup anotasi** (dibuka lewat urutan klik §6.1) berisi 4 warna, *Catatan*, *Hapus*, dan *Arti "kata"* untuk kata yang diketuk di dalam highlight (untuk highlight satu kata, kata itu sendiri).
 - **Catatan** diedit di textarea, dalam dialog di desktop dan sheet di HP. Catatan tersimpan saat ditutup. Catatan kosong menghapus catatan, bukan highlightnya.
 - **Bookmark:** tombol di `ReaderToolbar` menandai awal halaman yang sedang dibaca. Bila halaman ini berisi bookmark, tombolnya aktif dan pita kecil muncul di pojok kanan atas halaman. Ketuk tombol aktif untuk menghapus bookmark. Halaman berisi bookmark bila CFI bookmark ada di antara awal (termasuk) dan akhir (tidak termasuk) halaman. Kutipannya 200 karakter pertama halaman.
 - **Panel:** `TocPanel` mendapat tab **Daftar isi · Anotasi**. Tab Anotasi menampilkan bookmark dan highlight menurut urutan dalam buku, dengan kutipan, warna, catatan, dan nama bab. Ketuk salah satunya untuk melompat ke posisinya. Tiap anotasi punya tombol hapus. Nama bab dihitung saat panel dibuka, tidak disimpan. Panel bernama *Daftar isi dan anotasi*.
