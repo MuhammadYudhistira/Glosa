@@ -31,6 +31,7 @@ export const DEFAULT_FILES = {
   kaikki: "dict/kaikki.org-dictionary-English.jsonl",
   wordnet: "dict/wn-msa-all.tab",
   senses: "dict/index.sense",
+  synsets: "dict/wndb/dict",
   words: "dict/wordfreq-en-50k.txt",
 }
 
@@ -109,17 +110,26 @@ export function parseQualities(raw: string | undefined): Array<WordnetQuality> {
   return letters.filter(valid)
 }
 
-/** The WordNet Bahasa side. */
+/** Princeton's data.* files in the --synsets folder. */
+export function synsetFiles(folder: string): Array<string> {
+  return ["noun", "verb", "adj", "adv"].map((type) => `${folder}/data.${type}`)
+}
+
+/** The WordNet Bahasa side. `lowerCase` is Wiktionary's, from readWiktionary. */
 export async function readWordnet(
-  files: { bahasa: string; senses: string },
-  qualities: ReadonlyArray<WordnetQuality>
+  files: { bahasa: string; senses: string; synsets: string },
+  qualities: ReadonlyArray<WordnetQuality>,
+  lowerCase: ReadonlySet<string>
 ): Promise<Array<DictEntry>> {
   const reader = createWordnetReader(qualities)
   for await (const line of linesOf(files.bahasa)) {
     if (!line.startsWith("#")) reader.addBahasa(line)
   }
+  for (const file of synsetFiles(files.synsets)) {
+    for await (const line of linesOf(file)) reader.addSynset(line)
+  }
   for await (const line of linesOf(files.senses)) reader.addSense(line)
-  const entries = reader.result()
+  const entries = reader.result((word) => lowerCase.has(word))
   console.log(
     `WordNet Bahasa (${qualities.join("")}): ${entries.length} entries.`
   )

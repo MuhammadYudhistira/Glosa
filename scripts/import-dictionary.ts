@@ -2,7 +2,8 @@
 // three sources: English Wiktionary (a kaikki.org extract), WordNet Bahasa,
 // and the AI meanings kept in dict_generated.
 //   node --max-old-space-size=8192 scripts/import-dictionary.ts <kaikki.jsonl[.gz]> --env dev|prod
-//     [--wordnet dict/wn-msa-all.tab] [--senses dict/index.sense] [--wordnet-quality YO]
+//     [--wordnet dict/wn-msa-all.tab] [--senses dict/index.sense] [--synsets dict/wndb/dict]
+//     [--wordnet-quality YO]
 //     [--no-wordnet] [--no-generated] [--coverage book.txt] [--dry-run]
 //     [--dump-date YYYY-MM-DD] [--force]
 // dev reads .env.local, prod reads .env.prod (both kept out of git). The rows
@@ -24,11 +25,12 @@ import {
   readWiktionary,
   readWordnet,
   stop,
+  synsetFiles,
 } from "./dictionary-files.ts"
 
 const BATCH = 1000
 const USAGE =
-  "Usage: node --max-old-space-size=8192 scripts/import-dictionary.ts <kaikki.jsonl[.gz]> --env dev|prod [--wordnet file] [--senses file] [--wordnet-quality YO] [--no-wordnet] [--no-generated] [--coverage book.txt] [--dry-run] [--dump-date YYYY-MM-DD] [--force]"
+  "Usage: node --max-old-space-size=8192 scripts/import-dictionary.ts <kaikki.jsonl[.gz]> --env dev|prod [--wordnet file] [--senses file] [--synsets folder] [--wordnet-quality YO] [--no-wordnet] [--no-generated] [--coverage book.txt] [--dry-run] [--dump-date YYYY-MM-DD] [--force]"
 const WORDNET_HINT =
   "See docs/ops/deploy.md §6.5, or import without it: --no-wordnet."
 
@@ -38,6 +40,7 @@ const { values, positionals } = parseArgs({
     env: { type: "string" },
     wordnet: { type: "string", default: DEFAULT_FILES.wordnet },
     senses: { type: "string", default: DEFAULT_FILES.senses },
+    synsets: { type: "string", default: DEFAULT_FILES.synsets },
     "wordnet-quality": { type: "string" },
     "no-wordnet": { type: "boolean", default: false },
     "no-generated": { type: "boolean", default: false },
@@ -54,6 +57,7 @@ needFile(file, "Download it from kaikki.org (docs/ops/deploy.md §6.5).")
 if (!values["no-wordnet"]) {
   needFile(values.wordnet, WORDNET_HINT)
   needFile(values.senses, WORDNET_HINT)
+  for (const data of synsetFiles(values.synsets)) needFile(data, WORDNET_HINT)
 }
 if (values.coverage) needFile(values.coverage, "Give a plain-text book.")
 const { supabase } = connect(values.env, USAGE)
@@ -63,8 +67,13 @@ if (wiktionary.entries.length === 0) stop("Nothing to import.")
 const wordnet: Array<DictEntry> = values["no-wordnet"]
   ? []
   : await readWordnet(
-      { bahasa: values.wordnet, senses: values.senses },
-      qualities
+      {
+        bahasa: values.wordnet,
+        senses: values.senses,
+        synsets: values.synsets,
+      },
+      qualities,
+      wiktionary.lowerCase
     )
 const generated = values["no-generated"] ? [] : await readGenerated(supabase)
 console.log(
@@ -130,8 +139,14 @@ await loadInBatches("dict_forms_staging", forms, (batch) =>
   supabase.from("dict_forms_staging").insert(batch)
 )
 
+// What dict_meta says the dictionary was made from.
+const sources = [
+  basename(file),
+  ...(values["no-wordnet"] ? [] : [`wn-msa ${qualities.join("")}`]),
+  ...(counts.ai > 0 ? [`AI ${counts.ai}`] : []),
+]
 const { data, error } = await supabase.rpc("dict_swap", {
-  p_source: basename(file),
+  p_source: sources.join(" + "),
   p_dump_date: values["dump-date"],
   p_force: values.force,
 })

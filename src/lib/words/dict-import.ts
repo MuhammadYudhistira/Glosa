@@ -82,6 +82,7 @@ export function createDictionaryBuilder() {
   const entries = new Map<string, DictEntry>()
   const forms = new Map<string, DictForm>()
   const partsOfSpeech = new Map<string, Set<DictPos>>()
+  const lowerCase = new Set<string>()
 
   function addForm(form: string | null, headword: string | null, pos: DictPos) {
     if (!form || !headword || form === headword) return
@@ -95,6 +96,7 @@ export function createDictionaryBuilder() {
       const pos = record.pos ? POS[record.pos] : undefined
       const headword = cleanWord(record.word)
       if (record.lang_code !== "en" || !pos || !headword) return
+      if (record.word === record.word?.toLowerCase()) lowerCase.add(headword)
       // "made", "ran": a record of nothing but form_of senses is no part of
       // speech of its own; the base ("make") has it. A record without senses counts.
       const senses = record.senses ?? []
@@ -144,6 +146,8 @@ export function createDictionaryBuilder() {
       forms: Array<DictForm>
       /** Each English headword's parts of speech, with meanings or without (spec kamus tiga sumber, decision 6); records that only say "form of" another word do not count. */
       partsOfSpeech: Map<string, Set<DictPos>>
+      /** Headwords some record writes in lower case ("he", not "December"): WordNet's capital-only senses of them go. */
+      lowerCase: Set<string>
       phrases: number
     } {
       const list = [...entries.values()]
@@ -151,6 +155,7 @@ export function createDictionaryBuilder() {
         entries: list,
         forms: [...forms.values()],
         partsOfSpeech,
+        lowerCase,
         phrases: list.filter((entry) => entry.headword.includes(" ")).length,
       }
     },

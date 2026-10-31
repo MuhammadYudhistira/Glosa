@@ -311,7 +311,7 @@ Kedua skrip kamus tidak dijalankan CI. Jalankan dari laptop.
 
 - **kaikki:** ekstrak semua kata bahasa Inggris dalam format JSONL dari [kaikki.org/dictionary/English](https://kaikki.org/dictionary/English/). Bagian unduhan ada di bawah halaman. Ukurannya beberapa GB, dan boleh tetap `.gz`.
 - **WordNet Bahasa:** `wn-msa-all.tab` dari [wn-msa.sourceforge.net](https://wn-msa.sourceforge.net/).
-- **Princeton WordNet 3.0:** hanya `index.sense` yang dipakai.
+- **Princeton WordNet 3.0:** yang dipakai `index.sense` (urutan arti) dan `data.noun`, `data.verb`, `data.adj`, `data.adv` di `dict/wndb/dict` (cara kata ditulis, supaya singkatan dan nama seperti *He* untuk helium atau *US* tidak masuk ke kata *he* dan *us*).
   ```bash
   mkdir -p dict/wndb
   curl -L -o dict/wndb/WNdb-3.0.tar.gz https://wordnetcode.princeton.edu/3.0/WNdb-3.0.tar.gz
@@ -334,6 +334,7 @@ Kedua skrip kamus tidak dijalankan CI. Jalankan dari laptop.
    - `--env dev` memakai `.env.local`. `--env prod` memakai `.env.prod`, yang berisi `SUPABASE_URL` dan `SUPABASE_SECRET_KEY` proyek prod. File itu tidak boleh di-commit.
    - `--dump-date` adalah tanggal dump Wiktionary yang tertulis di halaman kaikki. Boleh dikosongkan.
    - `--wordnet-quality YO` (default) atau `YOL` memilih tanda mutu WordNet Bahasa yang dipakai.
+   - `--senses` dan `--synsets` (folder `data.*`, default `dict/wndb/dict`) untuk path WordNet lain.
    - `--no-wordnet` mengimpor tanpa WordNet. `--no-generated` mengimpor tanpa arti AI.
    - `--dry-run` membaca dan menghitung semuanya tanpa mengubah kamus.
    - `--coverage buku.txt` mencetak berapa persen kata di sebuah teks yang punya arti.
@@ -353,13 +354,13 @@ Kedua skrip kamus tidak dijalankan CI. Jalankan dari laptop.
 
 Pengisi AI hanya menanyakan kata yang saat ini tidak menampilkan arti sama sekali: kata itu dan bentuk dasarnya tidak punya arti dari sumber mana pun. Calonnya dipilih dari 50.000 kata teratas dan kata di `dict_misses` (kata yang diketuk member tetapi belum punya arti, dicatat tanpa identitas). Saat ini sekitar 15.000 kata. Kata-kata itu dikirim ke Claude Opus 5.5 lewat Batch API (harga 50%). Kunci API hanya ada di laptop: `ANTHROPIC_API_KEY`, atau profil dari `ant auth login`.
 
-Skrip memakai file unduhan yang sama dengan impor (kaikki, `wn-msa-all.tab`, `index.sense`) ditambah `dict/wordfreq-en-50k.txt`. Impor menerima kaikki yang masih `.gz` (file-nya argumen), tetapi pengisi AI memakai `dict/kaikki.org-dictionary-English.jsonl` secara default. Untuk path lain, pakai `--kaikki <file>`, `--wordnet`, `--senses`, atau `--words`.
+Skrip memakai file unduhan yang sama dengan impor (kaikki, `wn-msa-all.tab`, `index.sense`, `data.*`) ditambah `dict/wordfreq-en-50k.txt`. Impor menerima kaikki yang masih `.gz` (file-nya argumen), tetapi pengisi AI memakai `dict/kaikki.org-dictionary-English.jsonl` secara default. Untuk path lain, pakai `--kaikki <file>`, `--wordnet`, `--senses`, `--synsets`, atau `--words`.
 
 1. Lihat calon katanya tanpa biaya dan tanpa kunci API. Skrip mencetak jumlah calon dan 40 yang pertama:
    ```bash
    node --max-old-space-size=8192 scripts/fill-dictionary.ts --env dev --dry-run
    ```
-2. Uji coba 200 kata. Biayanya kecil, dan belum ada yang ditulis ke database:
+2. Uji coba 200 kata. Biayanya kecil, dan belum ada yang ditulis ke database. `--trial` paling banyak 1000 kata:
    ```bash
    node --max-old-space-size=8192 scripts/fill-dictionary.ts --env dev --trial 200
    ```

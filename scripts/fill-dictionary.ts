@@ -3,11 +3,12 @@
 //   node --max-old-space-size=8192 scripts/fill-dictionary.ts --env dev|prod
 //     [--dry-run] [--trial N] [--commit] [--full] [--discard]
 //     [--effort low|medium|high]
-//     [--limit N] [--kaikki file] [--wordnet file] [--senses file] [--words file]
+//     [--limit N] [--kaikki file] [--wordnet file] [--senses file] [--synsets folder]
+//     [--words file]
 //     [--wordnet-quality YO]
 //   --dry-run  picks the words and prints them, without the API.
-//   --trial N  asks the first N words as one small batch, then prints the
-//              real cost, an estimate for all words and 20 samples.
+//   --trial N  asks the first N words (at most 1000) as one small batch, then
+//              prints the real cost, an estimate for all words and 20 samples.
 //   --commit   writes the valid answers into dict_generated. With a batch
 //              waiting it writes that batch; it never starts a full batch alone.
 //   --full     with --commit and no batch waiting, starts a full (paid) batch.
@@ -49,11 +50,14 @@ import {
   readWiktionary,
   readWordnet,
   stop,
+  synsetFiles,
 } from "./dictionary-files.ts"
 
 const STATE_FILE = "dict/fill-state.json"
 const PROBLEMS_FILE = "dict/fill-problems.log"
 const UPSERT_BATCH = 500
+/** A bigger --trial is a full batch in all but name: that needs --commit --full. */
+const MAX_TRIAL = 1000
 const POLL_MS = 30_000
 const EFFORTS = ["low", "medium", "high"] as const
 type Effort = (typeof EFFORTS)[number]
@@ -83,6 +87,7 @@ const { values } = parseArgs({
     kaikki: { type: "string", default: DEFAULT_FILES.kaikki },
     wordnet: { type: "string", default: DEFAULT_FILES.wordnet },
     senses: { type: "string", default: DEFAULT_FILES.senses },
+    synsets: { type: "string", default: DEFAULT_FILES.synsets },
     words: { type: "string", default: DEFAULT_FILES.words },
     "wordnet-quality": { type: "string" },
   },
@@ -96,6 +101,11 @@ function count(raw: string | undefined, flag: string): number | undefined {
   return n
 }
 const trial = count(values.trial, "--trial")
+if (trial !== undefined && trial > MAX_TRIAL) {
+  stop(
+    `--trial takes at most ${MAX_TRIAL} words. For all of them, use --commit --full.`
+  )
+}
 const limit = count(values.limit, "--limit")
 const effort = values.effort as Effort
 if (!EFFORTS.includes(effort)) stop(`--effort takes ${EFFORTS.join(", ")}`)
@@ -114,14 +124,16 @@ async function candidates(): Promise<Array<FillRequest>> {
     values.kaikki,
     values.wordnet,
     values.senses,
+    ...synsetFiles(values.synsets),
     values.words,
   ]) {
     needFile(file, hint)
   }
   const wiktionary = await readWiktionary(values.kaikki)
   const wordnet = await readWordnet(
-    { bahasa: values.wordnet, senses: values.senses },
-    qualities
+    { bahasa: values.wordnet, senses: values.senses, synsets: values.synsets },
+    qualities,
+    wiktionary.lowerCase
   )
   const generated = await readGenerated(supabase)
   const misses = await readMisses(supabase)

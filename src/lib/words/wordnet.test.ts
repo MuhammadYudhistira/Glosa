@@ -79,6 +79,64 @@ describe("createWordnetReader", () => {
     expect(new Set(word.meanings).size).toBe(8)
   })
 
+  describe("senses WordNet writes with a capital", () => {
+    // data.*: offset, lexicographer file, type, word count (hex), then words.
+    const bahasa = [
+      "14639921-n\tI\tY\thelium",
+      "08000001-n\tI\tY\tAmerika Serikat",
+      "08000002-n\tI\tY\tThomas More",
+      "15000001-n\tI\tY\tApril",
+      "06831177-n\tI\tY\thuruf a",
+      "05000001-a\tI\tY\tlebih",
+      "09000001-n\tI\tY\tInggris",
+    ]
+    const senses = [
+      "he%1:27:00:: 14639921 1 0",
+      "us%1:15:00:: 08000001 1 0",
+      "more%1:18:00:: 08000002 1 0",
+      "more%3:00:00:: 05000001 1 9",
+      "april%1:28:00:: 15000001 1 3",
+      "a%1:10:00:: 06831177 1 1",
+      "english%1:18:00:: 09000001 1 2",
+    ]
+    const synsets = [
+      "  1 This software and database is being provided to you",
+      "14639921 27 n 03 helium 0 He 0 atomic_number_2 0 002 @ 14622893 n 0000 | gloss",
+      "08000001 15 n 02 United_States 0 US 0 000 | gloss",
+      "08000002 18 n 02 More 0 Thomas_More 0 000 | gloss",
+      "05000001 00 s 01 more(a) 0 000 | gloss",
+      "15000001 28 n 01 April 0 000 | gloss",
+      "06831177 10 n 02 A 0 a 0 000 | gloss",
+      "09000001 18 n 01 English 0 000 | gloss",
+    ]
+
+    function readWritten(known?: (word: string) => boolean) {
+      const reader = createWordnetReader()
+      for (const line of bahasa) reader.addBahasa(line)
+      for (const line of synsets) reader.addSynset(line)
+      for (const line of senses) reader.addSense(line)
+      return reader.result(known)
+    }
+
+    it("drops a symbol or name when the word is ordinary English, keeps one that has no other use", () => {
+      expect(readWritten()).toEqual([
+        { headword: "he", pos: "noun", meanings: ["helium"] },
+        { headword: "more", pos: "adj", meanings: ["lebih"] },
+        { headword: "april", pos: "noun", meanings: ["April"] },
+        { headword: "a", pos: "noun", meanings: ["huruf a"] },
+        { headword: "english", pos: "noun", meanings: ["Inggris"] },
+      ])
+    })
+
+    it("drops it as well when Wiktionary knows the word", () => {
+      const known = new Set(["he", "english"])
+      const words = readWritten((word) => known.has(word)).map(
+        (entry) => entry.headword
+      )
+      expect(words).toEqual(["more", "april", "a"])
+    })
+  })
+
   it("leaves out phrases, senses without Indonesian, and lines it cannot read", () => {
     const entries = read(
       ["00000005-n\tI\tY\tkata"],

@@ -23,13 +23,19 @@ const SYNSET_TYPES: Partial<Record<string, { letter: string; pos: DictPos }>> =
     "5": { letter: "a", pos: "adj" },
   }
 const MAX_MEANING_LENGTH = 100
+/** data.adj marks where an adjective may stand: "galore(ip)", "outback(a)". */
+const ADJECTIVE_MARKER = /\([a-z]+\)$/u
 
 type Sense = { synset: string; number: number; tagged: number }
+/** How one synset writes one word: in lower case, all in capitals, or neither ("He"). */
+type Written = { lower: boolean; capitals: boolean }
 
 /**
  * Builds dictionary entries from WordNet Bahasa (wn-msa-all.tab) and Princeton
  * WordNet 3.0's index.sense: each English word's Indonesian lemmas, the most
  * often tagged sense first. Phrases stay out: they come from Wiktionary only.
+ * index.sense writes every word in lower case, so the synsets of data.* tell
+ * "He" (helium), "US" and "More" (Thomas More) apart from he, us and more.
  */
 export function createWordnetReader(
   qualities: ReadonlyArray<WordnetQuality> = DEFAULT_WORDNET_QUALITIES
@@ -40,6 +46,24 @@ export function createWordnetReader(
     string,
     { headword: string; pos: DictPos; senses: Array<Sense> }
   >()
+  const written = new Map<string, Written>()
+  /** Words some synset writes in lower case. */
+  const ordinary = new Set<string>()
+
+  /**
+   * A sense WordNet writes only with a capital is a symbol or a name. It
+   * stays when it is the word's only use (April), and goes when the word is
+   * all capitals (US) or ordinary English elsewhere (he, more).
+   */
+  function isCapitalOnly(
+    word: string,
+    synset: string,
+    known: (word: string) => boolean
+  ): boolean {
+    const how = written.get(`${synset}\t${word}`)
+    if (!how || how.lower) return false
+    return how.capitals || ordinary.has(word) || known(word)
+  }
 
   return {
     /** One line of wn-msa-all.tab: synset, language, quality, lemma. */
@@ -52,6 +76,30 @@ export function createWordnetReader(
       const list = lemmas.get(synset) ?? []
       if (!list.includes(lemma)) list.push(lemma)
       lemmas.set(synset, list)
+    },
+
+    /** One line of data.noun, .verb, .adj or .adv: offset, file, type, word count (hex), words. */
+    addSynset(line: string): void {
+      if (line.startsWith(" ")) return
+      const [offset, , type, count, ...rest] = line.split(" ")
+      const letter = type === "s" ? "a" : type
+      if (!offset || !letter) return
+      const size = parseInt(count, 16)
+      for (let i = 0; i < size; i++) {
+        const raw = rest.at(i * 2)
+        if (!raw) return
+        const form = raw.replace(ADJECTIVE_MARKER, "").replaceAll("_", " ")
+        const word = normalizeWord(form)
+        const id = `${offset}-${letter}\t${word}`
+        const how = written.get(id) ?? { lower: false, capitals: false }
+        if (form === form.toLowerCase()) {
+          how.lower = true
+          ordinary.add(word)
+        } else if (form === form.toUpperCase()) {
+          how.capitals = true
+        }
+        written.set(id, how)
+      }
     },
 
     /** One line of index.sense: sense key, synset offset, sense number, tag count. */
@@ -76,12 +124,14 @@ export function createWordnetReader(
     /**
      * One entry per English word and part of speech that has Indonesian:
      * each sense's first equivalent, the most tagged sense first, then each
-     * sense's second, and so on, at most eight.
+     * sense's second, and so on, at most eight. `known` names the words
+     * Wiktionary has, which keep none of their capital-only senses.
      */
-    result(): Array<DictEntry> {
+    result(known: (word: string) => boolean = () => false): Array<DictEntry> {
       const entries: Array<DictEntry> = []
       for (const { headword, pos, senses } of words.values()) {
-        const ranked = [...senses]
+        const ranked = senses
+          .filter((sense) => !isCapitalOnly(headword, sense.synset, known))
           .sort((a, b) => b.tagged - a.tagged || a.number - b.number)
           .map((sense) => lemmas.get(sense.synset) ?? [])
         const longest = Math.max(0, ...ranked.map((list) => list.length))

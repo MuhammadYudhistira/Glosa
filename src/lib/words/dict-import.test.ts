@@ -81,6 +81,12 @@ describe("createDictionaryBuilder", () => {
     ).toEqual(new Set(["verb", "prep"]))
   })
 
+  it("lists the headwords some record writes in lower case", () => {
+    const record = (word: string) => ({ word, lang_code: "en", pos: "noun" })
+    const result = build(record("he"), record("December"), record("More"))
+    expect(result.lowerCase).toEqual(new Set(["he"]))
+  })
+
   it("does not count a form-of-only record as a part of speech, but keeps its form", () => {
     const result = build(
       {
