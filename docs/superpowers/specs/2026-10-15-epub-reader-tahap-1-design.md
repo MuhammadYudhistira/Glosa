@@ -38,7 +38,7 @@ Rilis publik dilakukan **setelah semua tahap selesai**. Selama pengembangan, 3â€
 | **1** | **Fondasi reader:** auth, upload, kuota, lobi perpustakaan, reader, sinkronisasi, offline | **Dokumen ini** |
 | 2 | Ketuk kata: lematisasi, kamus ENâ€“ID di Postgres, popup arti, simpan kata, halaman Kosakata. Juga anotasi (highlight, catatan, bookmark) dan kenyamanan baca (catatan kaki, tombol Kembali, sisa waktu, perataan, dua halaman, layar tetap menyala). | [Tahap 2](2026-10-22-tahap-2-ketuk-kata-design.md) |
 | 2D | Cari teks di dalam buku | Terpisah |
-| 3 | Flashcard (FSRS) + gamifikasi: streak, level, statistik kosakata, % pemahaman | Terpisah |
+| 3 | Koleksi dan kebiasaan membaca (gamifikasi yang mendorong membaca, tanpa flashcard): koleksi buatan pengguna dan Sudah dibaca, streak dan target membaca, % pemahaman, kartu buku selesai dengan ulasan pribadi, kilas balik | [Tahap 3](2026-10-31-tahap-3-koleksi-dan-kebiasaan-baca-design.md) |
 | 4 | Sosial: katalog `works` (ISBN / Open Library), review + level kesulitan, feed global, suka, moderasi, pembaca online. Subjek dari Open Library juga memperbaiki tebakan genre, tapi tidak pernah menimpa genre yang dipilih user. | Terpisah |
 | 5 | Monetisasi: paket Free/Pro, Midtrans/Xendit, batas harian, AI konteks (LLM) | Terpisah |
 
