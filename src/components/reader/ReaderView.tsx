@@ -70,6 +70,8 @@ export type ReaderControls = {
   canOpen: (cfi: string) => Promise<boolean>
   /** The chapter of each place, for the annotations panel. Never rejects. */
   chaptersOf: (cfis: ReadonlyArray<string>) => Promise<Array<string | null>>
+  /** The book's cover from the EPUB, or null. Never rejects. */
+  cover: () => Promise<Blob | null>
 }
 
 export type ReaderReady = { controls: ReaderControls; toc: Array<TocItem> }
@@ -819,6 +821,7 @@ export function ReaderView({
           return
         }
         const current = view
+        const epub = opened.book
         call().onReady({
           controls: {
             goTo: async (place) => {
@@ -829,6 +832,7 @@ export function ReaderView({
             clearSelection,
             chaptersOf: (cfis) => chaptersOf(current, cfis),
             canOpen: (cfi) => canOpen(current, cfi),
+            cover: () => epub.getCover().catch(() => null),
           },
           toc: opened.book.toc ?? [],
         })

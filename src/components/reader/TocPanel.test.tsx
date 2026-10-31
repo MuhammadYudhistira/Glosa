@@ -25,6 +25,7 @@ describe("TocPanel", () => {
         chaptersOf={null}
         onSelectPlace={() => undefined}
         onDeleteAnnotation={() => undefined}
+        onShareAnnotation={() => undefined}
       />
     )
     await screen.findByRole("dialog", { name: "Daftar isi dan anotasi" })
@@ -51,6 +52,7 @@ describe("TocPanel", () => {
         chaptersOf={null}
         onSelectPlace={() => undefined}
         onDeleteAnnotation={() => undefined}
+        onShareAnnotation={() => undefined}
       />
     )
     expect(
@@ -70,6 +72,7 @@ describe("TocPanel", () => {
         chaptersOf={null}
         onSelectPlace={() => undefined}
         onDeleteAnnotation={() => undefined}
+        onShareAnnotation={() => undefined}
       />
     )
     fireEvent.click(await screen.findByRole("tab", { name: "Anotasi" }))

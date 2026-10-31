@@ -15,6 +15,7 @@ export function TocPanel({
   chaptersOf,
   onSelectPlace,
   onDeleteAnnotation,
+  onShareAnnotation,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -25,6 +26,7 @@ export function TocPanel({
   chaptersOf: Parameters<typeof AnnotationList>[0]["chaptersOf"]
   onSelectPlace: (cfi: string) => void
   onDeleteAnnotation: (annotation: Annotation) => void
+  onShareAnnotation: (annotation: Annotation) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -58,6 +60,7 @@ export function TocPanel({
               chaptersOf={chaptersOf}
               onSelect={onSelectPlace}
               onDelete={onDeleteAnnotation}
+              onShare={onShareAnnotation}
             />
           </Tabs.Panel>
         </Tabs.Root>

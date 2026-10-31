@@ -20,7 +20,7 @@ export const COLOR_LABELS: Record<HighlightColor, string> = {
 
 /**
  * What a tapped highlight can do (spec 2 §6.6): another colour, its note,
- * deletion, and the meaning of the word tapped inside it.
+ * sharing it as a card, deletion, and the meaning of the word tapped inside it.
  */
 export function AnnotationPopup({
   tap,
@@ -29,6 +29,7 @@ export function AnnotationPopup({
   onNote,
   onDelete,
   onMeaning,
+  onShare,
   onClose,
   finalFocus,
 }: {
@@ -39,6 +40,7 @@ export function AnnotationPopup({
   onNote: () => void
   onDelete: () => void
   onMeaning: () => void
+  onShare: () => void
   onClose: () => void
   finalFocus: () => HTMLElement | null
 }) {
@@ -71,6 +73,11 @@ export function AnnotationPopup({
           <Button size="lg" variant="outline" onClick={onNote}>
             Catatan
           </Button>
+          {annotation.excerpt.trim() && (
+            <Button size="lg" variant="outline" onClick={onShare}>
+              Bagikan
+            </Button>
+          )}
           <Button size="lg" variant="destructive" onClick={onDelete}>
             Hapus
           </Button>

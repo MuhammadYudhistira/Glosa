@@ -1,5 +1,10 @@
 import { Popover } from "@base-ui/react/popover"
-import { CopyIcon, HighlighterIcon, StickyNoteIcon } from "lucide-react"
+import {
+  CopyIcon,
+  HighlighterIcon,
+  Share2Icon,
+  StickyNoteIcon,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { type WordRect, anchorAt } from "./ReaderPopup"
 
@@ -7,7 +12,7 @@ import { type WordRect, anchorAt } from "./ReaderPopup"
 export type TextSelection = { cfi: string; text: string; rect: WordRect }
 
 /**
- * Highlight · Catatan · Salin beside a selection (spec 2 §6.6). It leaves the
+ * Highlight · Catatan · Salin · Bagikan beside a selection (spec 2 §6.6; spec kartu kutipan §5). It leaves the
  * focus in the book, so a phone keeps the selection's handles.
  */
 export function SelectionMenu({
@@ -15,12 +20,14 @@ export function SelectionMenu({
   onHighlight,
   onNote,
   onCopy,
+  onShare,
   onClose,
 }: {
   selection: TextSelection | null
   onHighlight: () => void
   onNote: () => void
   onCopy: () => void
+  onShare: () => void
   onClose: () => void
 }) {
   if (!selection) return null
@@ -57,6 +64,12 @@ export function SelectionMenu({
               <CopyIcon aria-hidden="true" />
               Salin
             </Button>
+            {/[\p{L}\p{N}]/u.test(selection.text) && (
+              <Button size="lg" variant="ghost" onClick={onShare}>
+                <Share2Icon aria-hidden="true" />
+                Bagikan
+              </Button>
+            )}
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

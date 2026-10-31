@@ -11,6 +11,7 @@ import {
   type FootnoteTap,
 } from "@/components/reader/FootnotePopup"
 import { NoteEditor } from "@/components/reader/NoteEditor"
+import { QuoteCardDialog } from "@/components/reader/QuoteCardDialog"
 import { ReaderBack } from "@/components/reader/ReaderBack"
 import {
   SelectionMenu,
@@ -162,6 +163,10 @@ function ReaderPage() {
   const saved =
     choice !== null && Object.hasOwn(formsByHeadword, choice.headword)
   const [controls, setControls] = useState<ReaderControls | null>(null)
+  const loadCover = useCallback(
+    () => (controls ? controls.cover() : Promise.resolve(null)),
+    [controls]
+  )
   // For callbacks that must not change with the controls (onRelocate).
   const controlsRef = useRef<ReaderControls | null>(null)
   const [toc, setToc] = useState<Array<TocItem>>([])
@@ -187,6 +192,8 @@ function ReaderPage() {
   const [marked, setMarked] = useState<HighlightTap | null>(null)
   const [noteFor, setNoteFor] = useState<Annotation | null>(null)
   const [footnote, setFootnote] = useState<FootnoteTap | null>(null)
+  // The text being made into a quote card (spec kartu kutipan §5).
+  const [sharing, setSharing] = useState<string | null>(null)
   // The place left by the last jump, and the page turns since (spec 2 §6.7).
   const [backTo, setBackTo] = useState<string | null>(null)
   const turnsSinceJump = useRef(0)
@@ -414,6 +421,15 @@ function ReaderPage() {
     dropSelection()
     if (withNote) setNoteFor(highlight)
   }
+  const shareSelection = () => {
+    if (!selection) return
+    setSharing(selection.text)
+    dropSelection()
+  }
+  const shareMarked = () => {
+    if (markedHighlight) setSharing(markedHighlight.excerpt)
+    setMarked(null)
+  }
   const copySelection = () => {
     if (!selection) return
     // Without a secure context there is no clipboard; the menu closes anyway.
@@ -550,6 +566,7 @@ function ReaderPage() {
         onHighlight={() => highlightSelection(false)}
         onNote={() => highlightSelection(true)}
         onCopy={copySelection}
+        onShare={shareSelection}
         onClose={dropSelection}
       />
       <AnnotationPopup
@@ -564,6 +581,7 @@ function ReaderPage() {
         onNote={editNote}
         onDelete={removeMarked}
         onMeaning={meaningOfMarked}
+        onShare={shareMarked}
         onClose={() => setMarked(null)}
         finalFocus={bookFocus}
       />
@@ -571,6 +589,15 @@ function ReaderPage() {
         key={noteFor?.id ?? "no-note"}
         annotation={noteFor}
         onClose={saveNote}
+        finalFocus={bookFocus}
+      />
+      <QuoteCardDialog
+        key={sharing ?? "no-quote"}
+        quote={sharing}
+        book={data.book}
+        savedForms={savedForms}
+        loadCover={loadCover}
+        onClose={() => setSharing(null)}
         finalFocus={bookFocus}
       />
       <FootnotePopup
@@ -633,6 +660,10 @@ function ReaderPage() {
           })
         }}
         onDeleteAnnotation={(annotation) => putAnnotation(deleted(annotation))}
+        onShareAnnotation={(annotation) => {
+          setPanel(null)
+          setSharing(annotation.excerpt)
+        }}
       />
       <ReaderSettingsPanel
         open={panel === "settings"}

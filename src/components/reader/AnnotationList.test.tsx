@@ -36,6 +36,7 @@ describe("AnnotationList", () => {
         chaptersOf={chaptersOf}
         onSelect={vi.fn()}
         onDelete={vi.fn()}
+        onShare={vi.fn()}
       />
     )
     const items = screen.getAllByRole("listitem")
@@ -54,6 +55,7 @@ describe("AnnotationList", () => {
         chaptersOf={null}
         onSelect={onSelect}
         onDelete={onDelete}
+        onShare={vi.fn()}
       />
     )
     fireEvent.click(screen.getByRole("button", { name: /^Highlight/ }))
@@ -78,6 +80,7 @@ describe("AnnotationList", () => {
         chaptersOf={null}
         onSelect={vi.fn()}
         onDelete={vi.fn()}
+        onShare={vi.fn()}
       />
     )
     expect(
@@ -99,8 +102,31 @@ describe("AnnotationList", () => {
         chaptersOf={null}
         onSelect={vi.fn()}
         onDelete={vi.fn()}
+        onShare={vi.fn()}
       />
     )
     expect(screen.getByText(/Belum ada anotasi/)).toBeInTheDocument()
+  })
+
+  it("shares a highlight, and offers no sharing for a bookmark", () => {
+    const onShare = vi.fn()
+    render(
+      <AnnotationList
+        annotations={[base, later]}
+        chaptersOf={null}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onShare={onShare}
+      />
+    )
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: 'Bagikan highlight "To Sherlock Holmes"',
+      })
+    )
+    expect(onShare).toHaveBeenCalledWith(base)
+    expect(
+      screen.queryByRole("button", { name: /^Bagikan bookmark/ })
+    ).toBeNull()
   })
 })

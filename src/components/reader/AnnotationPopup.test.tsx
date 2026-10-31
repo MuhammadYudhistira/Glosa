@@ -31,6 +31,7 @@ const tap: HighlightTap = {
 
 function show(extra: Partial<Parameters<typeof AnnotationPopup>[0]> = {}) {
   const props = {
+    onShare: vi.fn(),
     tap,
     annotation,
     onColor: vi.fn(),
@@ -76,5 +77,12 @@ describe("AnnotationPopup", () => {
   it("shows nothing once the highlight is gone", () => {
     show({ annotation: null })
     expect(screen.queryByRole("dialog")).toBeNull()
+  })
+
+  it("shares the highlight", async () => {
+    const props = show()
+    await screen.findByRole("dialog", { name: "Highlight" })
+    fireEvent.click(screen.getByRole("button", { name: "Bagikan" }))
+    expect(props.onShare).toHaveBeenCalledTimes(1)
   })
 })
