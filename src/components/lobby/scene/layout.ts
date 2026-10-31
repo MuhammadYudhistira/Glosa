@@ -60,7 +60,7 @@ export const CARD_CATALOG: Point2 = [1.0, 22.5]
  * left wall by the front corner: nothing tall stands between it and the
  * camera. It faces +X, into the room.
  */
-export const SHOWCASE: Point2 = [0.9, 26]
+export const SHOWCASE: Point2 = [30, 14]
 export const SHOWCASE_SIZE = { width: 2.6, height: 2.3, depth: 0.6 } as const
 /** The top of each shelf a cover stands on, from the floor up. */
 export const SHOWCASE_SHELVES = [0.12, 0.86, 1.6] as const
@@ -242,7 +242,7 @@ export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   { id: "troli", label: [9, 1.9, 26.8], stand: [10.5, 28.3] },
   { id: "meja-admin", label: [5.5, 2.8, 25.5], stand: [7.5, 27.8] },
   { id: "katalog", label: [1.0, 2.1, 22.5], stand: [2.8, 23.4] },
-  { id: "lemari", label: [0.9, 2.9, 26], stand: [2.6, 26] },
+  { id: "lemari", label: [30, 2.9, 14], stand: [32, 14] },
 ]
 
 export function spotOf(id: HotspotId): HotspotSpot {
