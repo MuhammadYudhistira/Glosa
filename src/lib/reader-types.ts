@@ -18,7 +18,7 @@ export type ReaderBook = {
   id: string
   title: string
   author: string
-  /** Finished, or answered "Belum": either way the reader does not ask (spec Tahap 3 ง4.4). */
+  /** Finished, or answered "Belum": either way the reader does not ask (spec Tahap 3 ยง4.4). */
   finished: boolean
   finishDeclined: boolean
 }
