@@ -5,7 +5,10 @@ import sharp from "sharp"
 const escapeXml = (text: string) =>
   text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 
-/** A small valid EPUB 3 for tests: one chapter, a navigation document and an optional cover. */
+/**
+ * A small valid EPUB 3 for tests: one chapter (or `chapters`), a navigation
+ * document and an optional cover.
+ */
 export async function makeEpub(book: {
   title: string
   author: string
@@ -13,7 +16,15 @@ export async function makeEpub(book: {
   cover?: boolean
   /** The chapter's body (XHTML, epub: namespace available); by default a heading and the title. */
   body?: string
+  /** Several chapters instead, each its own file and entry in the contents. */
+  chapters?: ReadonlyArray<{ title: string; body: string }>
 }): Promise<Buffer> {
+  const chapters = book.chapters ?? [
+    {
+      title: "Bab 1",
+      body: book.body ?? `<h1>Bab 1</h1><p>${escapeXml(book.title)}</p>`,
+    },
+  ]
   const cover =
     book.cover === false
       ? null
@@ -42,10 +53,10 @@ export async function makeEpub(book: {
   </metadata>
   <manifest>
     <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
-    <item id="bab1" href="bab1.xhtml" media-type="application/xhtml+xml"/>
+    ${chapters.map((_, i) => `<item id="bab${i + 1}" href="bab${i + 1}.xhtml" media-type="application/xhtml+xml"/>`).join("")}
     ${cover ? '<item id="cover" href="cover.png" media-type="image/png" properties="cover-image"/>' : ""}
   </manifest>
-  <spine><itemref idref="bab1"/></spine>
+  <spine>${chapters.map((_, i) => `<itemref idref="bab${i + 1}"/>`).join("")}</spine>
 </package>`
   const xhtml = (title: string, body: string) =>
     `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>${escapeXml(title)}</title></head><body>${body}</body></html>`
@@ -59,16 +70,19 @@ export async function makeEpub(book: {
     "OEBPS/nav.xhtml": strToU8(
       xhtml(
         "Daftar isi",
-        '<nav epub:type="toc"><ol><li><a href="bab1.xhtml">Bab 1</a></li></ol></nav>'
-      )
-    ),
-    "OEBPS/bab1.xhtml": strToU8(
-      xhtml(
-        "Bab 1",
-        book.body ?? `<h1>Bab 1</h1><p>${escapeXml(book.title)}</p>`
+        `<nav epub:type="toc"><ol>${chapters
+          .map(
+            (chapter, i) =>
+              `<li><a href="bab${i + 1}.xhtml">${escapeXml(chapter.title)}</a></li>`
+          )
+          .join("")}</ol></nav>`
       )
     ),
   }
+  for (const [i, chapter] of chapters.entries())
+    files[`OEBPS/bab${i + 1}.xhtml`] = strToU8(
+      xhtml(chapter.title, chapter.body)
+    )
   if (cover) files["OEBPS/cover.png"] = cover
   return Buffer.from(zipSync(files))
 }
