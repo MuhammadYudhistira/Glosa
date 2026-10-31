@@ -100,3 +100,12 @@ export async function markOpened(bookId: string): Promise<void> {
     .eq("id", bookId)
   if (error) throw error
 }
+
+/** Marks the book finished just now, as "Ya, selesai" does. */
+export async function markFinished(bookId: string): Promise<void> {
+  const { error } = await admin()
+    .from("books")
+    .update({ finished_at: new Date().toISOString() })
+    .eq("id", bookId)
+  if (error) throw error
+}

@@ -104,9 +104,9 @@ describe("collections", () => {
     expect((await rename(ani, "klasik")).data).toBe("duplicate")
     expect((await rename(ani, "")).data).toBe("invalid")
     expect((await rename(budi, "Punya Budi")).data).toBe("not_found")
-    expect(
-      (await budi.rpc("delete_collection", { p_id: id })).data
-    ).toBe("not_found")
+    expect((await budi.rpc("delete_collection", { p_id: id })).data).toBe(
+      "not_found"
+    )
     // Budi does not see Ani's collections at all.
     const { data: seen } = await budi
       .from("collections")
@@ -134,9 +134,7 @@ describe("collections", () => {
     expect((await set(ani, books.ani, [theirs])).data).toBe("invalid")
     expect((await set(budi, books.budi, [b])).data).toBe("invalid")
     // Members read the rows of their own collections only.
-    const { data: rows } = await budi
-      .from("collection_books")
-      .select("book_id")
+    const { data: rows } = await budi.from("collection_books").select("book_id")
     expect(rows).toEqual([])
   })
 
@@ -169,9 +167,9 @@ describe("collections", () => {
         p_book_id: books.ani,
         p_finished: finished,
       })
-    expect((await ani.rpc("decline_finish", { p_book_id: books.ani })).data).toBe(
-      "ok"
-    )
+    expect(
+      (await ani.rpc("decline_finish", { p_book_id: books.ani })).data
+    ).toBe("ok")
     expect(await finishOf(books.ani)).toMatchObject({
       finished_at: null,
       finish_declined: true,

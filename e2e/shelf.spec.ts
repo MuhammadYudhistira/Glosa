@@ -63,17 +63,17 @@ test("a Standard Ebooks EPUB lands in its guessed genre and frees its space when
   await acceptAll(dialog)
   await dialog.getByRole("button", { name: "Tutup" }).click()
 
-  const filters = page.getByRole("navigation", { name: "Filter genre" })
+  const genre = page.getByLabel("Tampilkan genre")
   const book = page.getByRole("button", {
     name: /The Adventures of Sherlock Holmes/,
   })
-  await filters.getByRole("link", { name: /Misteri & Thriller/ }).click()
+  await genre.selectOption("misteri_thriller")
   await expect(book).toBeVisible()
-  await filters.getByRole("link", { name: /Fiksi & Sastra/ }).click()
+  await genre.selectOption("fiksi_sastra")
   await expect(book).toHaveCount(0)
   await expect(page.getByText(/^0\.[78] MB \/ 100 MB$/)).toBeVisible()
 
-  await filters.getByRole("link", { name: /Semua/ }).click()
+  await genre.selectOption("semua")
   await book.click()
   const detail = page.getByRole("dialog", {
     name: "The Adventures of Sherlock Holmes",
@@ -105,8 +105,8 @@ test("a book without subjects waits in the trolley until it gets a genre", async
   await acceptAll(dialog)
   await dialog.getByRole("button", { name: "Tutup" }).click()
 
-  const filters = page.getByRole("navigation", { name: "Filter genre" })
-  await filters.getByRole("link", { name: /Troli Buku Baru/ }).click()
+  const genre = page.getByLabel("Tampilkan genre")
+  await genre.selectOption("troli")
   await page
     .getByLabel("Genre untuk Catatan Tanpa Subjek")
     .selectOption("sejarah_budaya")
@@ -114,7 +114,7 @@ test("a book without subjects waits in the trolley until it gets a genre", async
   await expect(
     page.getByRole("button", { name: /Catatan Tanpa Subjek/ })
   ).toHaveCount(0)
-  await filters.getByRole("link", { name: /Sejarah & Budaya/ }).click()
+  await genre.selectOption("sejarah_budaya")
   await expect(
     page.getByRole("button", { name: /Catatan Tanpa Subjek/ })
   ).toBeVisible()

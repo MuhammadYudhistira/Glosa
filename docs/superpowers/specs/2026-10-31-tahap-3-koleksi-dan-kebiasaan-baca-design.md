@@ -127,3 +127,15 @@ books + finished_at timestamptz null
 ## 8. Di luar 3A
 
 Streak dan target (3B), % pemahaman (3C), kartu buku selesai, ulasan, dan kilas balik (3D), urutan koleksi yang bisa diatur tangan, ikon/warna koleksi, koleksi bersama antarpengguna.
+
+## 9. Penyimpangan saat implementasi
+
+1. Fungsi DB menjawab dengan kode teks (`ok`, `not_found`, `invalid`, `duplicate`, `limit_reached`; `create_collection` menjawab id baru); hanya sesi yang hilang menjadi exception, seperti `save_word`.
+2. Kode pesan baru untuk `bookMessage`: `collections_full`, `collection_duplicate`, `collection_invalid`, diterjemahkan server function dari jawaban DB.
+3. Daftar centang koleksi menyimpan setiap kali dicentang (tanpa tombol Simpan); bila gagal, centang kembali seperti semula dan pesan error tampil.
+4. "Sedang dibaca" memakai `progress` dari server (`> 0`), bukan persentase lokal perangkat, supaya isi koleksi sama di semua perangkat.
+5. Urutan `finished` ("Terakhir selesai") menjadi pilihan urutan untuk semua koleksi; bawaannya `finished` di Sudah dibaca dan `opened` di tempat lain, dan `?sort=` hanya masuk URL bila berbeda dari bawaan.
+6. Label pilihan genre di rak adalah "Tampilkan genre", bukan "Genre", karena label "Genre" sudah dipakai di detail buku.
+7. Letak akhir lemari pajang: berdiri bebas di `[30, 14]` menghadap +X, utuh di pandangan awal (titik awal `[0.9, 28.5]` dan `[0.9, 26]` jatuh di luar bingkai); hotspot terakhir dalam urutan tab.
+8. Tekstur sampul dimuat ulang hanya bila daftar buku berubah (urutan id), bukan saat signed URL diperbarui.
+9. Ajakan selesai dan penanda bab (mode Gulir) tidak tampil bersamaan: penanda disembunyikan selama ajakan tampil.
