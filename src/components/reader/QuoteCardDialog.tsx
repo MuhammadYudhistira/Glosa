@@ -18,6 +18,7 @@ import {
   saveCardPrefs,
 } from "@/lib/quote-card/prefs"
 import {
+  MAX_QUOTE_LENGTH,
   defaultWord,
   prepareQuote,
   quoteTokens,
@@ -45,6 +46,10 @@ const MAX_CARD_MEANINGS = 3
 const PNG_DELAY_MS = 250
 /** The cover is shrunk to this many pixels a side to read its colours. */
 const PALETTE_SIZE = 12
+/** The decoded cover is kept this wide: a card draws it small. */
+const COVER_WIDTH = 200
+const IMAGE_FAILED = "Gambar belum bisa dibuat. Coba lagi."
+const LINK_COPIED = "Link Glosa sudah disalin, tempel di stiker Link Instagram."
 
 const LAYOUT_OPTIONS: ReadonlyArray<[CardLayoutKind, string]> = [
   ["glosa", "Glosa"],
@@ -55,29 +60,46 @@ const SIZE_OPTIONS: ReadonlyArray<[CardSize, string]> = [
   ["square", "Persegi"],
 ]
 
+type ReadyWord = {
+  kind: "ready"
+  token: number
+  entries: Array<LookupEntry>
+  /** The entry (part of speech) the meanings come from. */
+  entry: number
+  meanings: Array<string>
+}
 type WordState =
   | { kind: "none" }
-  | { kind: "loading"; token: number }
-  | {
-      kind: "ready"
-      token: number
-      entries: Array<LookupEntry>
-      /** The entry (part of speech) the meanings come from. */
-      entry: number
-      meanings: Array<string>
-    }
-type Art = { cover: ImageBitmap | null; palette: Array<string> | null }
+  /** `previous` is the word to go back to when this one gives nothing. */
+  | { kind: "loading"; token: number; previous: ReadyWord | null }
+  | ReadyWord
+type Art = { cover: CanvasImageSource | null; palette: Array<string> | null }
+
+const NO_ART: Art = { cover: null, palette: null }
 
 const lookUpWord = (word: string) => lookUp(word, [])
 
-function paletteOf(bitmap: ImageBitmap): Array<string> | null {
+/** The decoded cover redrawn small, so the full-size bitmap can be closed. */
+function shrunk(bitmap: ImageBitmap): HTMLCanvasElement | null {
+  const scale = Math.min(1, COVER_WIDTH / bitmap.width)
+  const canvas = document.createElement("canvas")
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+  const context = canvas.getContext("2d")
+  if (!context) return null
+  context.imageSmoothingQuality = "high"
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  return canvas
+}
+
+function paletteOf(source: CanvasImageSource): Array<string> | null {
   try {
     const small = document.createElement("canvas")
     small.width = PALETTE_SIZE
     small.height = PALETTE_SIZE
     const context = small.getContext("2d")
     if (!context) return null
-    context.drawImage(bitmap, 0, 0, PALETTE_SIZE, PALETTE_SIZE)
+    context.drawImage(source, 0, 0, PALETTE_SIZE, PALETTE_SIZE)
     const { data } = context.getImageData(0, 0, PALETTE_SIZE, PALETTE_SIZE)
     return coverPalette(data, PALETTE_SIZE, PALETTE_SIZE)
   } catch {
@@ -129,7 +151,7 @@ export function QuoteCardDialog({
   finalFocus,
   lookup = lookUpWord,
 }: {
-  quote: string | null
+  quote: string
   book: ReaderBook
   savedForms: SavedForms
   loadCover: () => Promise<Blob | null>
@@ -138,15 +160,18 @@ export function QuoteCardDialog({
   lookup?: (word: string) => Promise<LookupOutcome>
 }) {
   const wide = useWideScreen()
-  const prepared = useMemo(() => prepareQuote(quote ?? ""), [quote])
+  const prepared = useMemo(() => prepareQuote(quote), [quote])
   const tokens = useMemo(() => quoteTokens(prepared.text), [prepared])
   const [prefs, setPrefs] = useState<CardPrefs>(loadCardPrefs)
   const [word, setWord] = useState<WordState>(() => {
     const token = defaultWord(tokens, savedForms)
-    return token === null ? { kind: "none" } : { kind: "loading", token }
+    return token === null
+      ? { kind: "none" }
+      : { kind: "loading", token, previous: null }
   })
   const [notice, setNotice] = useState<string | null>(null)
-  const [art, setArt] = useState<Art>({ cover: null, palette: null })
+  const [art, setArt] = useState<Art>(NO_ART)
+  const [sharePending, setSharePending] = useState(false)
   const [fontsReady, setFontsReady] = useState(false)
   const [png, setPng] = useState<Blob | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -166,18 +191,22 @@ export function QuoteCardDialog({
 
   useEffect(() => {
     let live = true
-    let bitmap: ImageBitmap | null = null
     loadCover()
       .then(async (blob) => {
         if (!blob || !("createImageBitmap" in globalThis)) return
-        bitmap = await createImageBitmap(blob)
-        if (live) setArt({ cover: bitmap, palette: paletteOf(bitmap) })
-        else bitmap.close()
+        const bitmap = await createImageBitmap(blob)
+        let small: HTMLCanvasElement | null = null
+        try {
+          small = shrunk(bitmap)
+        } finally {
+          bitmap.close()
+        }
+        if (small && live) setArt({ cover: small, palette: paletteOf(small) })
       })
       .catch(() => undefined)
     return () => {
       live = false
-      bitmap?.close()
+      setArt(NO_ART)
     }
   }, [loadCover])
 
@@ -188,7 +217,7 @@ export function QuoteCardDialog({
       if (!live) return
       if (outcome.kind !== "result") {
         setNotice("Arti belum bisa dimuat.")
-        setWord({ kind: "none" })
+        setWord(word.previous ?? { kind: "none" })
         return
       }
       const entries = outcome.result.entries.filter(
@@ -196,7 +225,7 @@ export function QuoteCardDialog({
       )
       if (entries.length === 0) {
         setNotice("Belum ada arti untuk kata ini.")
-        setWord({ kind: "none" })
+        setWord(word.previous ?? { kind: "none" })
         return
       }
       setWord({
@@ -268,7 +297,9 @@ export function QuoteCardDialog({
       canvas.toBlob((blob) => {
         if (!live) return
         setPng(blob)
-        if (!blob) setNotice("Gambar belum bisa dibuat. Coba lagi.")
+        setNotice((current) =>
+          blob ? (current === IMAGE_FAILED ? null : current) : IMAGE_FAILED
+        )
       }, "image/png")
     }, PNG_DELAY_MS)
     return () => {
@@ -276,8 +307,6 @@ export function QuoteCardDialog({
       clearTimeout(timer)
     }
   }, [input, prefs.theme, art, fontsReady, book.id])
-
-  if (quote === null) return null
 
   const change = (next: Partial<CardPrefs>) => {
     const merged = { ...prefs, ...next }
@@ -287,7 +316,16 @@ export function QuoteCardDialog({
   const pick = (token: number | null) => {
     setNotice(null)
     if (token === null) setWord({ kind: "none" })
-    else if (tokens[token]?.word) setWord({ kind: "loading", token })
+    else if (tokens[token]?.word) {
+      if (word.kind !== "none" && word.token === token) return
+      const previous =
+        word.kind === "ready"
+          ? word
+          : word.kind === "loading"
+            ? word.previous
+            : null
+      setWord({ kind: "loading", token, previous })
+    }
   }
   const toggleMeaning = (entry: number, meaning: string) => {
     if (word.kind !== "ready") return
@@ -327,13 +365,16 @@ export function QuoteCardDialog({
   const fileOf = (blob: Blob) =>
     new File([blob], cardFileName(book.title), { type: "image/png" })
   const share = () => {
-    if (!png) return
-    setNotice("Link Glosa sudah disalin, tempel di stiker Link Instagram.")
+    if (!png || sharePending) return
+    setSharePending(true)
     void shareCard(
       fileOf(png),
       shareText(book.title, location.origin),
-      location.origin
+      location.origin,
+      navigator,
+      () => setNotice(LINK_COPIED)
     ).then((result) => {
+      setSharePending(false)
       if (result === "failed")
         setNotice("Gagal membagikan. Coba Simpan gambar.")
     })
@@ -463,7 +504,8 @@ export function QuoteCardDialog({
                   )}
                 </div>
                 {word.kind === "loading" && (
-                  <div className="word-skeleton" aria-label="Memuat arti">
+                  <div className="word-skeleton">
+                    <p className="sr-only">Memuat arti…</p>
                     <span />
                     <span />
                   </div>
@@ -510,7 +552,7 @@ export function QuoteCardDialog({
               </div>
               {prepared.cut && (
                 <p className="quote-note">
-                  Kutipan dipendekkan menjadi 300 karakter.
+                  Kutipan dipendekkan menjadi {MAX_QUOTE_LENGTH} karakter.
                 </p>
               )}
               <p role="status" className="quote-note">
@@ -533,7 +575,7 @@ export function QuoteCardDialog({
               Simpan gambar
             </Button>
             {shareable && (
-              <Button size="lg" disabled={!png} onClick={share}>
+              <Button size="lg" disabled={!png || sharePending} onClick={share}>
                 Bagikan
               </Button>
             )}

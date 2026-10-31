@@ -591,15 +591,17 @@ function ReaderPage() {
         onClose={saveNote}
         finalFocus={bookFocus}
       />
-      <QuoteCardDialog
-        key={sharing ?? "no-quote"}
-        quote={sharing}
-        book={data.book}
-        savedForms={savedForms}
-        loadCover={loadCover}
-        onClose={() => setSharing(null)}
-        finalFocus={bookFocus}
-      />
+      {sharing !== null && (
+        <QuoteCardDialog
+          key={sharing}
+          quote={sharing}
+          book={data.book}
+          savedForms={savedForms}
+          loadCover={loadCover}
+          onClose={() => setSharing(null)}
+          finalFocus={bookFocus}
+        />
+      )}
       <FootnotePopup
         key={
           footnote

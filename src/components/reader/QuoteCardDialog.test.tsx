@@ -286,8 +286,179 @@ describe("QuoteCardDialog", () => {
     expect(props.onClose).toHaveBeenCalled()
   })
 
-  it("shows nothing without a quote", () => {
-    show({ quote: null })
-    expect(screen.queryByRole("dialog")).toBeNull()
+  it("keeps the word it had when the next one has no meaning", async () => {
+    const props = show({ savedForms: SAVED_CAPITAL })
+    await screen.findByRole("group", { name: MEANINGS })
+    fireEvent.click(screen.getByRole("button", { name: "utama" }))
+    fireEvent.click(screen.getByRole("button", { name: "data" }))
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Belum ada arti untuk kata ini."
+      )
+    )
+    expect(screen.getByRole("button", { name: "capital" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    )
+    expect(screen.getByRole("button", { name: "utama" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    )
+    expect(props.lookup).toHaveBeenCalledTimes(2)
+  })
+
+  it("keeps the word it had when a lookup fails", async () => {
+    const lookup = vi.fn(async (word: string): Promise<LookupOutcome> =>
+      word === "capital" ? CAPITAL : { kind: "offline" }
+    )
+    show({ savedForms: SAVED_CAPITAL, lookup })
+    await screen.findByRole("group", { name: MEANINGS })
+    fireEvent.click(screen.getByRole("button", { name: "data" }))
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Arti belum bisa dimuat."
+      )
+    )
+    expect(screen.getByRole("group", { name: MEANINGS })).toBeInTheDocument()
+  })
+
+  it("does nothing when the word already shown is tapped again", async () => {
+    const props = show({ savedForms: SAVED_CAPITAL })
+    await screen.findByRole("group", { name: MEANINGS })
+    fireEvent.click(screen.getByRole("button", { name: "utama" }))
+    fireEvent.click(screen.getByRole("button", { name: "capital" }))
+    expect(screen.getByRole("group", { name: MEANINGS })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "utama" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    )
+    expect(props.lookup).toHaveBeenCalledTimes(1)
+  })
+
+  it("announces the loading of meanings to a screen reader", async () => {
+    let finish: (outcome: LookupOutcome) => void = () => undefined
+    show({
+      savedForms: SAVED_CAPITAL,
+      lookup: () => new Promise((resolve) => (finish = resolve)),
+    })
+    expect(await screen.findByText("Memuat arti…")).toBeInTheDocument()
+    finish(CAPITAL)
+    await screen.findByRole("group", { name: MEANINGS })
+    expect(screen.queryByText("Memuat arti…")).toBeNull()
+  })
+
+  it("drops the image error once an image is made", async () => {
+    const toBlob = vi
+      .spyOn(HTMLCanvasElement.prototype, "toBlob")
+      .mockImplementationOnce((callback: BlobCallback) => callback(null))
+    show()
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Gambar belum bisa dibuat. Coba lagi."
+      )
+    )
+    toBlob.mockImplementation((callback: BlobCallback) =>
+      callback(new Blob(["png"], { type: "image/png" }))
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Persegi" }))
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Simpan gambar" })
+      ).toBeEnabled()
+    )
+    expect(screen.getByRole("status")).toBeEmptyDOMElement()
+  })
+
+  it("keeps another notice when an image is made", async () => {
+    show({ lookup: vi.fn(async (word: string) => EMPTY(word)) })
+    fireEvent.click(await screen.findByRole("button", { name: "capital" }))
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Belum ada arti untuk kata ini."
+      )
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Persegi" }))
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Simpan gambar" })
+      ).toBeEnabled()
+    )
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Belum ada arti untuk kata ini."
+    )
+  })
+
+  it("shrinks the cover once and closes the full-size bitmap", async () => {
+    const close = vi.fn()
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn(async () => ({ width: 2000, height: 3000, close }))
+    )
+    try {
+      show({ loadCover: () => Promise.resolve(new Blob(["cover"])) })
+      await waitFor(() => expect(close).toHaveBeenCalledTimes(1))
+      expect(
+        canvas.calls.some(
+          (call) =>
+            call.name === "drawImage" &&
+            call.args[3] === 200 &&
+            call.args[4] === 300
+        )
+      ).toBe(true)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("opens the share sheet once when Bagikan is tapped twice", async () => {
+    let finishShare: () => void = () => undefined
+    const share = vi.fn(
+      () => new Promise<void>((resolve) => (finishShare = resolve))
+    )
+    const restore = stubNavigator({
+      canShare: () => true,
+      share,
+      clipboard: { writeText: async () => undefined },
+    })
+    try {
+      show()
+      const button = await screen.findByRole("button", { name: "Bagikan" })
+      await waitFor(() => expect(button).toBeEnabled())
+      fireEvent.click(button)
+      expect(button).toBeDisabled()
+      fireEvent.click(button)
+      expect(share).toHaveBeenCalledTimes(1)
+      finishShare()
+      await waitFor(() => expect(button).toBeEnabled())
+    } finally {
+      restore()
+    }
+  })
+
+  it("only says the link was copied once it was", async () => {
+    let copied: () => void = () => undefined
+    const restore = stubNavigator({
+      canShare: () => true,
+      share: async () => undefined,
+      clipboard: {
+        writeText: () => new Promise<void>((resolve) => (copied = resolve)),
+      },
+    })
+    try {
+      show()
+      const button = await screen.findByRole("button", { name: "Bagikan" })
+      await waitFor(() => expect(button).toBeEnabled())
+      fireEvent.click(button)
+      await waitFor(() => expect(button).toBeEnabled())
+      expect(screen.getByRole("status")).toBeEmptyDOMElement()
+      copied()
+      await waitFor(() =>
+        expect(screen.getByRole("status")).toHaveTextContent(
+          "Link Glosa sudah disalin, tempel di stiker Link Instagram."
+        )
+      )
+    } finally {
+      restore()
+    }
   })
 })
