@@ -56,9 +56,9 @@ export const TROLLEY: Point2 = [9, 26.8]
 export const CARD_CATALOG: Point2 = [1.0, 22.5]
 
 /**
- * The display cabinet of finished books (spec Tahap 3 §4.5), against the
- * left wall by the front corner: nothing tall stands between it and the
- * camera. It faces +X, into the room.
+ * The display cabinet of finished books (spec Tahap 3 §4.5). It stands free
+ * on open floor, whole inside the start view, with nothing tall between it
+ * and the camera. It faces +X, into the room.
  */
 export const SHOWCASE: Point2 = [30, 14]
 export const SHOWCASE_SIZE = { width: 2.6, height: 2.3, depth: 0.6 } as const

@@ -41,6 +41,11 @@ async function openShelf(page: Page, query = "") {
 
 async function openAtTheEnd(page: Page, bookId: string) {
   await page.goto(`/read/${bookId}`)
+  await toTheEnd(page)
+}
+
+/** On the reader's page: waits for the book, then slides to its last page. */
+async function toTheEnd(page: Page) {
   const place = page.getByRole("status", {
     name: "Posisi baca",
     includeHidden: true,
@@ -69,8 +74,11 @@ test("a collection gathers the books put in it", async ({ page }) => {
   const detail = page.getByRole("dialog", { name: SHERLOCK.title })
   await detail.getByLabel("Bacaan santai").check()
   await expect(detail.getByText("Koleksi disimpan.")).toBeVisible()
-  await detail.getByRole("button", { name: "Tutup" }).click()
+  // Escape closes the details and nothing more: the shelf stays open.
+  await page.keyboard.press("Escape")
   await expect(detail).toBeHidden()
+  await expect(chips).toBeVisible()
+  await expect(page).toHaveURL(/\/shelf/)
 
   await chips.getByRole("link", { name: "Bacaan santai · 1" }).click()
   await expect(
@@ -83,15 +91,26 @@ test("a collection gathers the books put in it", async ({ page }) => {
 
 test("finishing a book puts it on Sudah dibaca", async ({ page }) => {
   test.setTimeout(90_000)
-  const { short } = await memberWithBooks(page)
-  await openAtTheEnd(page, short)
+  await memberWithBooks(page)
+  // The shelf is loaded first, so the way back finds it cached.
+  await openShelf(page)
+  await page.getByRole("button", { name: new RegExp(SHORT.title) }).click()
+  await page
+    .getByRole("dialog", { name: SHORT.title })
+    .getByRole("link", { name: "Mulai membaca" })
+    .click()
+  await toTheEnd(page)
   const prompt = page.getByRole("complementary", { name: "Buku selesai" })
   await expect(prompt).toBeVisible()
   await prompt.getByRole("button", { name: "Ya, selesai" }).click()
   await expect(page.getByText("Masuk ke koleksi Sudah dibaca")).toBeVisible()
   await expect(prompt).toHaveCount(0)
 
-  await openShelf(page, "?koleksi=selesai")
+  // Back like the Android gesture does, which preloads nothing.
+  await page.goBack()
+  const chips = page.getByRole("navigation", { name: "Koleksi" })
+  await expect(chips).toBeVisible({ timeout: 30_000 })
+  await chips.getByRole("link", { name: "Sudah dibaca · 1" }).click()
   await expect(
     page.getByRole("button", { name: new RegExp(SHORT.title) })
   ).toBeVisible()
@@ -113,6 +132,20 @@ test("Belum is remembered: the reader does not ask again", async ({ page }) => {
   // Give the prompt every chance to come back before saying it did not.
   await page.waitForTimeout(1500)
   await expect(prompt).toHaveCount(0)
+})
+
+test("Nanti hides the prompt for this visit only", async ({ page }) => {
+  test.setTimeout(90_000)
+  const { short } = await memberWithBooks(page)
+  await openAtTheEnd(page, short)
+  const prompt = page.getByRole("complementary", { name: "Buku selesai" })
+  await expect(prompt).toBeVisible()
+  await prompt.getByRole("button", { name: "Nanti" }).click()
+  await expect(prompt).toHaveCount(0)
+
+  // Opened again: nothing was saved, so it asks again.
+  await openAtTheEnd(page, short)
+  await expect(prompt).toBeVisible()
 })
 
 test("the display cabinet opens Sudah dibaca", async ({ page }) => {
