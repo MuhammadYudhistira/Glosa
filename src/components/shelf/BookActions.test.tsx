@@ -17,6 +17,10 @@ vi.mock("@/server/books", () => ({
   updateBookGenreFn: mocks.updateBookGenreFn,
   deleteBookFn: mocks.deleteBookFn,
 }))
+vi.mock("@/server/collections", () => ({
+  setBookCollectionsFn: vi.fn(),
+  setBookFinishedFn: vi.fn(),
+}))
 vi.mock("@/lib/book-download", () => ({
   saveBookOffline: mocks.saveBookOffline,
   BookLoadError: class BookLoadError extends Error {
@@ -198,6 +202,29 @@ describe("BookActions", () => {
     expect(mocks.removeLocalBook).toHaveBeenCalledWith(sherlock.id)
     expect(mocks.removeLocalPosition).toHaveBeenCalledWith(sherlock.id)
     expect(mocks.removeLocalAnnotations).toHaveBeenCalledWith(sherlock.id)
+  })
+
+  it("holds the collections and the finished mark", () => {
+    render(
+      <BookActions
+        book={sherlock}
+        saved={false}
+        collections={[
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            name: "Bacaan santai",
+            createdAt: "2026-10-20T00:00:00+00:00",
+          },
+        ]}
+        onGenreSaved={vi.fn()}
+        onShelved={vi.fn()}
+        onDeleted={vi.fn()}
+      />
+    )
+    expect(screen.getByLabelText("Bacaan santai")).not.toBeChecked()
+    expect(
+      screen.getByRole("button", { name: "Tandai selesai" })
+    ).toBeInTheDocument()
   })
 
   it("needs a connection for changes, deletion and offline copies", () => {

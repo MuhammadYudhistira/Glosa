@@ -33,6 +33,7 @@ export function LobbyStage({
   user,
   books,
   usage,
+  collections,
   offline,
   popup,
 }: {
@@ -184,6 +185,7 @@ export function LobbyStage({
               <BookDetailPanel
                 book={selected}
                 local={local}
+                collections={collections}
                 onClose={closeDetail}
                 onChanged={refresh}
                 onDeleted={onDeleted}
@@ -207,6 +209,7 @@ export function LobbyStage({
             book={summary.lastRead}
             empty={books.length === 0}
             local={local}
+            collections={collections}
             onChanged={refresh}
             onDeleted={onDeleted}
           />

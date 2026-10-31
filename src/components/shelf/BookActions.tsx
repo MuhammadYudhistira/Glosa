@@ -17,6 +17,8 @@ import { removeLocalPosition } from "@/lib/local/positions"
 import { formatBytes } from "@/lib/member"
 import { useOnline } from "@/lib/use-online"
 import { deleteBookFn } from "@/server/books"
+import { BookCollections } from "./BookCollections"
+import { FinishToggle } from "./FinishToggle"
 import { announceLocalChange } from "./useLocalShelf"
 import { useSaveGenre } from "./useSaveGenre"
 
@@ -25,6 +27,8 @@ type CopyState = "idle" | "saved" | "removed" | { code: string }
 export function BookActions({
   book,
   saved,
+  collections,
+  onShelved,
   onGenreSaved,
   onDeleted,
 }: {
@@ -158,6 +162,14 @@ export function BookActions({
           </p>
         )}
       </div>
+
+      <BookCollections
+        book={book}
+        collections={collections}
+        onSaved={onShelved}
+      />
+
+      <FinishToggle book={book} onSaved={onShelved} />
 
       <div className="space-y-1">
         <p className="text-sm font-bold">Di perangkat ini</p>

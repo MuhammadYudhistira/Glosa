@@ -45,6 +45,7 @@ function Lobby() {
         <BookDetailPanel
           book={selected}
           local={local}
+          collections={[]}
           onClose={() => setSelected(null)}
           onChanged={vi.fn()}
           onDeleted={vi.fn()}

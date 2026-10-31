@@ -10,13 +10,14 @@ import {
 } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
 import { Panel } from "@/components/ui/panel"
-import type { ShelfBook } from "@/lib/book-types"
+import type { Collection, ShelfBook } from "@/lib/book-types"
 import { cn } from "@/lib/utils"
 
 /** The book picked from the search or "Baru Dibuka", beside the scene. */
 export function BookDetailPanel({
   book,
   local,
+  collections,
   onClose,
   onChanged,
   onDeleted,
@@ -24,6 +25,7 @@ export function BookDetailPanel({
 }: {
   book: ShelfBook
   local: LocalShelf
+  collections: ReadonlyArray<Collection>
   onClose: () => void
   onChanged: () => void
   onDeleted: (book: ShelfBook) => void
@@ -72,7 +74,7 @@ export function BookDetailPanel({
         key={book.id}
         book={book}
         saved={local.saved.has(book.id)}
-        collections={[]}
+        collections={collections}
         onGenreSaved={onChanged}
         onShelved={onChanged}
         onDeleted={onDeleted}

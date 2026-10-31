@@ -8,7 +8,7 @@ import {
   shelfPercentage,
 } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
-import type { ShelfBook } from "@/lib/book-types"
+import type { Collection, ShelfBook } from "@/lib/book-types"
 import { LibrarianWelcome, ReadingHint } from "./LobbyBubbles"
 
 /**
@@ -20,12 +20,14 @@ export function ContinueSheet({
   book,
   empty,
   local,
+  collections,
   onChanged,
   onDeleted,
 }: {
   book: ShelfBook | null
   empty: boolean
   local: LocalShelf
+  collections: ReadonlyArray<Collection>
   onChanged: () => void
   onDeleted: (book: ShelfBook) => void
 }) {
@@ -68,7 +70,7 @@ export function ContinueSheet({
               key={book.id}
               book={book}
               saved={local.saved.has(book.id)}
-              collections={[]}
+              collections={collections}
               onGenreSaved={onChanged}
               onShelved={onChanged}
               onDeleted={onDeleted}

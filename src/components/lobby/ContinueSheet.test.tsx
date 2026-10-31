@@ -15,6 +15,7 @@ function renderSheet(props: Partial<Parameters<typeof ContinueSheet>[0]>) {
       book={null}
       empty={false}
       local={local}
+      collections={[]}
       onChanged={vi.fn()}
       onDeleted={vi.fn()}
       {...props}
