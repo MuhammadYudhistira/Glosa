@@ -689,6 +689,7 @@ function ReaderPage() {
         <FinishPrompt
           busy={finishBusy}
           error={finishError}
+          raised={backTo !== null}
           onAnswer={(finished) => void answerFinish(finished)}
         />
       )}

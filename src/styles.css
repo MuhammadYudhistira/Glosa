@@ -836,6 +836,9 @@
   .chapter-edge[data-side="end"][data-back="true"] {
     bottom: 9rem;
   }
+  .reader-toast[data-raised="true"] {
+    bottom: 9rem;
+  }
   .chapter-edge[data-side="start"] {
     top: max(1rem, env(safe-area-inset-top));
   }

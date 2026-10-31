@@ -138,6 +138,12 @@ test("the marker moves on when pressed, and says where the book ends", async ({
 
   const { x, y } = await overText(page)
   await page.mouse.move(x, y)
+  const finishPrompt = page.getByRole("complementary", { name: "Buku selesai" })
+  await expect(async () => {
+    await page.mouse.wheel(0, 2000)
+    await expect(finishPrompt).toBeVisible({ timeout: 500 })
+  }).toPass({ timeout: 20_000 })
+  await finishPrompt.getByRole("button", { name: "Belum" }).click()
   await expect(async () => {
     await page.mouse.wheel(0, 2000)
     await expect(page.getByText("Akhir buku", { exact: true })).toBeVisible({
