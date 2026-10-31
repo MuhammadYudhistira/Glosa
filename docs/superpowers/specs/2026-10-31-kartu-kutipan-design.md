@@ -44,14 +44,14 @@ Dari atas ke bawah:
 **Kutipan:**
 
 - Kutipan ditulis besar dalam Libre Caslon, dengan baris yang diseimbangkan. Kata sorotan tebal dan berwarna aksen tema.
-- Di bawahnya ada garis aksen pendek, lalu kata sorotan (Libre Caslon tebal), kelas katanya dalam bahasa Indonesia (*adjektiva*, *nomina*, …, Atkinson miring), dan arti yang dipilih (Caveat, warna aksen).
+- Di bawahnya ada garis aksen pendek, lalu kata sorotan dalam bentuk kamusnya (Libre Caslon tebal; *hundred* untuk *hundreds*, seperti popup arti), kelas katanya dengan label yang sama seperti popup dan Kosakata (*kata sifat*, *kata benda*, …, Atkinson miring), dan arti yang dipilih (Caveat, warna aksen).
 - Tanpa kata sorotan: hanya kutipan.
 
 **Glosa:**
 
 - Kutipan ditulis dalam Libre Caslon dengan jarak antarbaris yang lebar.
 - Kata sorotan diberi stabilo, yaitu persegi panjang sedikit miring di belakang kata, dengan warna aksen agak transparan.
-- Arti yang dipilih ditulis dengan Caveat di atas kata itu, sedikit miring, diikuti singkatan kelas kata (*adj*, *n*, …) yang lebih kecil. Kalau tulisan tangan itu akan melewati tepi kartu, posisinya digeser masuk.
+- Arti yang dipilih ditulis dengan Caveat di atas kata itu, sedikit miring, diikuti kelas katanya dalam kurung dengan huruf lebih kecil, misalnya *(kata sifat)*. Kalau tulisan tangan itu akan melewati tepi kartu, posisinya digeser masuk.
 - Tanpa kata sorotan: kutipan saja dengan jarak antarbaris biasa.
 
 Pada kedua layout, kutipan diberi tanda kutip pembuka dan penutup.
@@ -125,13 +125,13 @@ Semua bagian berjalan di klien. Tidak ada perubahan server, database, migrasi, a
 | `draw.ts` | `drawCard(ctx, layout, theme, cover)` menggambar `CardLayout` ke canvas. Isinya tipis, karena semua keputusan posisi sudah diambil `layout.ts`. |
 | `share.ts` | `cardBlob(canvas)` mengubah canvas menjadi PNG. `shareCard(blob, { title, url })`: menyalin link ke clipboard (kegagalan diabaikan), lalu memanggil `navigator.share({ files, text })`. Pembatalan (`AbortError`) tidak dianggap error. `saveCard(blob, name)` mengunduh lewat `<a download>`. `copyCard(blob)` memakai `ClipboardItem`. Fungsi `canShareFiles()` dan `canCopyImage()` memberi tahu tombol mana yang ditampilkan. |
 | `fonts.ts` | `cardFontsReady()` menunggu `document.fonts.load` untuk Libre Caslon (400, 400 miring, 700), Atkinson (400, 700), dan Caveat, paling lama ±3 detik. |
-| `cover.ts` | `loadCover(url)` mengambil sampul sebagai blob (lewat cache service worker sampul yang sudah ada), lalu `createImageBitmap`. Membaca dari blob menjaga canvas tidak "tercemar" CORS. Kalau gagal, hasilnya `null`. |
+| (sampul) | Sampul diambil dari file EPUB yang sedang dibuka, lewat `getCover()` milik foliate, yang ditambahkan ke `ReaderControls` sebagai `cover()`. Hasilnya blob lalu `createImageBitmap`, jadi canvas tidak "tercemar" CORS dan cara ini berjalan offline. Cache sampul Rak tidak bisa dipakai karena berisi respons *opaque* dari `<img>`. Kalau gagal, hasilnya `null`. |
 
 ### 6.3 Komponen
 
 - `src/components/reader/QuoteCardDialog.tsx`: layar §4. Komponen ini menyimpan pilihan, memuat arti dengan `lookUp` yang sudah ada (cache dan offline-nya ikut), menggambar pratinjau, dan **menyiapkan PNG ukuran penuh lebih dulu** setiap kali pilihan berubah (dengan jeda singkat). Dengan begitu, ketukan *Bagikan* langsung memanggil `navigator.share` tanpa menunggu, karena Safari iOS hanya membuka jendela berbagi dari ketukan pengguna.
 - `SelectionMenu`, `AnnotationPopup`, dan `AnnotationList` mendapat callback `onShare`.
-- Rute baca (`src/routes/_member/read.$bookId.tsx`) menyimpan satu state, yaitu kutipan yang sedang dibagikan (teks, judul, pengarang, dan URL sampul), lalu membuka dialog.
+- Rute baca (`src/routes/_member/read.$bookId.tsx`) menyimpan satu state, yaitu teks kutipan yang sedang dibagikan, lalu membuka dialog dengan buku (id, judul, pengarang) dan `controls.cover`.
 
 ### 6.4 Alur data
 
