@@ -1457,6 +1457,182 @@
       animation: none;
     }
   }
+  /* A quote card to share (spec kartu kutipan §4). */
+  .quote-sheet,
+  .quote-dialog {
+    position: fixed;
+    z-index: 50;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    border: 1px solid var(--border);
+    background: var(--background);
+    color: var(--foreground);
+    outline: none;
+  }
+  .quote-sheet {
+    inset: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .quote-dialog {
+    top: 50%;
+    left: 50%;
+    width: min(56rem, calc(100vw - 2rem));
+    max-height: min(46rem, calc(100dvh - 2rem));
+    transform: translate(-50%, -50%);
+    border-radius: 1rem;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
+  }
+  .quote-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+  }
+  .quote-body {
+    display: grid;
+    overflow-y: auto;
+  }
+  .quote-dialog .quote-body {
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+  }
+  .quote-preview {
+    display: grid;
+    align-content: start;
+    justify-items: center;
+    gap: 0.5rem;
+    background: rgb(0 0 0 / 0.25);
+    padding: 1rem;
+  }
+  .quote-canvas {
+    display: block;
+    max-width: 100%;
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+    cursor: pointer;
+  }
+  .quote-canvas-story {
+    height: min(48dvh, 36rem);
+    aspect-ratio: 9 / 16;
+  }
+  .quote-canvas-square {
+    height: min(40dvh, 22rem);
+    aspect-ratio: 1;
+  }
+  .quote-hint,
+  .quote-note {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+  .quote-words {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  .quote-words button,
+  .quote-chip {
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.8rem;
+  }
+  .quote-words button[aria-pressed="true"],
+  .quote-chip[aria-pressed="true"] {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
+  }
+  .quote-chip:disabled {
+    opacity: 0.45;
+  }
+  .quote-controls {
+    display: grid;
+    align-content: start;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  .quote-label {
+    margin-bottom: 0.35rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .quote-segment {
+    display: flex;
+    gap: 0.25rem;
+    border-radius: 0.6rem;
+    background: var(--muted);
+    padding: 0.2rem;
+  }
+  .quote-segment button {
+    flex: 1;
+    border-radius: 0.45rem;
+    padding: 0.4rem 0;
+    font-size: 0.85rem;
+    color: var(--muted-foreground);
+  }
+  .quote-segment button[aria-pressed="true"] {
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+  .quote-themes {
+    display: flex;
+    gap: 0.6rem;
+  }
+  .quote-swatch {
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+  }
+  .quote-swatch[aria-pressed="true"] {
+    border-color: var(--primary);
+    box-shadow: inset 0 0 0 2px var(--background);
+  }
+  .quote-swatch-sampul {
+    background: linear-gradient(160deg, #1f4e5a, #3b2f5c, #7a2e3a);
+  }
+  .quote-swatch-kertas {
+    background: #f3ead6;
+  }
+  .quote-swatch-malam {
+    background:
+      radial-gradient(1px 1px at 30% 30%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 70% 60%, #fff 50%, transparent 51%), #0a0f24;
+  }
+  .quote-word-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+  .quote-sense {
+    display: grid;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+  }
+  .quote-pos {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: var(--muted-foreground);
+  }
+  .quote-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .quote-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    border-top: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+  }
+
   /* Annotations (spec 2 §6.6). */
   .selection-menu {
     display: flex;
