@@ -48,11 +48,13 @@ Di mode Gulir, foliate memuat satu bagian (file spine) EPUB saja. Di dasar bagia
 ### 4.1 `src/components/reader/chapter-edge.ts` (murni)
 
 `createEdgePull({ threshold, gapMs })` → objek dengan:
-- `wheel(delta, at: { start: boolean; end: boolean }, time)` dan `touchStart(y, at)`, `touchMove(y, at)`, `touchEnd()`;
+- `wheel(delta, before, at, time)` dan `touchStart(y, at)`, `touchMove(y, at)`, `touchEnd()`; `at` adalah `{ start: boolean; end: boolean }`;
 - masing-masing mengembalikan `{ side: "start" | "end"; progress: number } | null` atau `"next" | "prev"` saat tarikan penuh;
-- `reset()`.
+- `reset()` saat bagian baru dimuat: tarikan dilepas dan gesture yang sedang berjalan dianggap selesai, supaya sisa inersia tidak melompati bagian pendek berikutnya.
 
-Aturan di dalamnya: rangkaian roda baru dimulai setelah `gapMs` tanpa gulir; rangkaian/sentuhan dihitung hanya bila dimulai di tepi yang dituju; gerak menjauh mengurangi tarikan; arah berlawanan mengganti sisi; setelah pindah, sisa rangkaian diabaikan. Ambang: sentuh 96 px gerak jari, roda 320 px (baris = 16 px). Pengosongan setelah diam ditangani `ReaderView` dengan timer (roda), dan `touchEnd` (sentuh).
+Aturan di dalamnya: rangkaian roda baru dimulai setelah `gapMs` tanpa gulir; rangkaian/sentuhan dihitung hanya bila dimulai di tepi yang dituju; gerak menjauh mengurangi tarikan; arah berlawanan mengganti sisi; setelah pindah, sisa rangkaian diabaikan.
+
+**Catatan roda:** pendengar roda bersifat *passive*, jadi browser sudah menggulir sebelum handler mendengar event-nya. Posisi saat event (`at`) bisa sudah di dasar karena roda itu sendiri. Awal rangkaian karena itu dinilai dari `before`, posisi terakhir yang diukur `ReaderView` (laporan gulir per frame), bukan dari `at`. Ambang: sentuh 96 px gerak jari, roda 320 px (baris = 16 px). Pengosongan setelah diam ditangani `ReaderView` dengan timer (roda), dan `touchEnd` (sentuh).
 
 ### 4.2 `chapterLabel` dan `adjacentSection` (murni, di modul yang sama)
 

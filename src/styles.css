@@ -362,7 +362,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .reader-bar,
-  .reader-turn {
+  .reader-turn,
+  .chapter-edge-fill {
     transition: none;
   }
 }
@@ -780,6 +781,60 @@
     top: 4.5rem;
     display: block;
     font-size: 0.8rem;
+  }
+  /* The way on at a section's edge, scrolled flow (spec pindah bab §3.4). */
+  .chapter-edge {
+    position: absolute;
+    inset-inline: 1rem;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: fit-content;
+    max-width: min(28rem, calc(100% - 2rem));
+    min-height: 2.75rem;
+    margin-inline: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--color-panel);
+    padding: 0.55rem 1rem;
+    color: var(--foreground);
+    font-size: 0.8rem;
+    text-align: center;
+    backdrop-filter: blur(8px);
+  }
+  .chapter-edge[data-side="end"] {
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .chapter-edge[data-side="end"][data-chrome="shown"] {
+    bottom: 5.5rem;
+  }
+  .chapter-edge[data-side="end"][data-back="true"] {
+    bottom: 9rem;
+  }
+  .chapter-edge[data-side="start"] {
+    top: max(1rem, env(safe-area-inset-top));
+  }
+  .chapter-edge[data-side="start"][data-chrome="shown"] {
+    top: 4.5rem;
+  }
+  .chapter-edge:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  .chapter-edge-bar {
+    display: block;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 9999px;
+    background: color-mix(in srgb, currentColor 15%, transparent);
+  }
+  .chapter-edge-fill {
+    display: block;
+    height: 100%;
+    background: var(--color-mint);
+    transform-origin: left;
+    transition: transform 150ms ease-out;
   }
   /* Back to the place before a jump (spec 2 §6.7), above the bottom bar. */
   .reader-back {

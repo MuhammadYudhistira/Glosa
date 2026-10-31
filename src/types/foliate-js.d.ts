@@ -12,7 +12,11 @@ declare module "foliate-js/epub.js" {
     init(): Promise<EPUB>
     /** Readium-webpub-like metadata; values may be strings, language maps or arrays. */
     metadata: unknown
-    sections: Array<{ createDocument?: () => Promise<Document> }>
+    sections: Array<{
+      createDocument?: () => Promise<Document>
+      /** "no" for a section out of the reading order. */
+      linear?: string
+    }>
     toc?: Array<TocItem> | null
     dir?: string
     getCover(): Promise<Blob | null>
@@ -29,6 +33,8 @@ declare module "foliate-js/view.js" {
     fraction: number
     cfi: string
     tocItem?: { label?: string; href?: string } | null
+    /** The section shown now, by its index in the spine. */
+    section?: { current: number; total: number }
     /** The text shown now. */
     range?: Range
     /** Minutes left in the section and the book at foliate's speed (1,600 characters a minute). */
@@ -56,6 +62,13 @@ declare module "foliate-js/view.js" {
     }>
     /** Settles a swipe on a page; the paginator calls it when a touch ends. */
     snap?: (vx: number, vy: number) => void
+    /** The paginator's scroll, in pixels along its scrolling side. */
+    start?: number
+    end?: number
+    /** The whole section's length along that side. */
+    viewSize?: number
+    /** "height" when it scrolls down the page, "width" for vertical writing. */
+    sideProp?: string
   }
 
   /** The <foliate-view> element; importing the module defines it. */

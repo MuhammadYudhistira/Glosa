@@ -30,6 +30,17 @@ import {
 } from "@/lib/words/saved-marks"
 import { type WordHit, wordAt } from "@/lib/words/word-at"
 import type { HighlightTap } from "./AnnotationPopup"
+import {
+  type AtEdge,
+  type EdgeSide,
+  type Pull,
+  type PullStep,
+  WHEEL_IDLE_MS,
+  WHEEL_LINE,
+  adjacentSection,
+  chapterLabel,
+  createEdgePull,
+} from "./chapter-edge"
 import { loadReaderFonts } from "./reader-fonts"
 import {
   type ReaderMove,
@@ -76,6 +87,17 @@ export type ReaderControls = {
 
 export type ReaderReady = { controls: ReaderControls; toc: Array<TocItem> }
 
+/** The scroll at a section's edge, in the scrolled flow (spec pindah bab §3). */
+export type ChapterEdgeState = {
+  side: EdgeSide
+  /** How far the member has pulled past it, 0–1. */
+  progress: number
+  /** The contents' name for where the move lands, or null for the plain words. */
+  label: string | null
+  /** The end of the last section: nowhere to move on to. */
+  bookEnd: boolean
+}
+
 type Callbacks = {
   onReady: (ready: ReaderReady) => void
   onRelocate: (location: ReaderLocation) => void
@@ -96,6 +118,8 @@ type Callbacks = {
   onJump: () => void
   /** `target` is not a place in this book (spec 2 §8). */
   onTargetMissing: () => void
+  /** The scroll reached a section's edge, is pulled past it, or left it. */
+  onChapterEdge: (edge: ChapterEdgeState | null) => void
   onError: (error: unknown) => void
 }
 
@@ -264,6 +288,43 @@ async function chaptersOf(
       }
     })
   )
+}
+
+/**
+ * The contents in order, each entry with its section (spec pindah bab §4.2).
+ * An entry whose place the book lacks is left out.
+ */
+function tocBySection(
+  view: View,
+  toc: ReadonlyArray<TocItem>
+): Array<{ label: string; index: number }> {
+  return toc.flatMap((item) => {
+    let index: number | undefined
+    try {
+      index = view.resolveNavigation(item.href)?.index
+    } catch {
+      index = undefined
+    }
+    const own =
+      index !== undefined && index >= 0 ? [{ label: item.label, index }] : []
+    return [...own, ...tocBySection(view, item.subitems ?? [])]
+  })
+}
+
+/** A wheel's distance in pixels, whichever unit it came in. */
+function wheelPixels(event: WheelEvent, page: number): number {
+  if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return WHEEL_LINE
+  if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) return page
+  return 1
+}
+
+/**
+ * A wheel event's time. timeStamp counts from its own window's start, and
+ * every section has its own frame: made absolute, times from any of them
+ * compare.
+ */
+function wheelTime(event: WheelEvent): number {
+  return (event.view ?? window).performance.timeOrigin + event.timeStamp
 }
 
 /** How a highlight looks: drawn again when this changes. */
@@ -521,6 +582,13 @@ export function ReaderView({
       host.removeEventListener("click", onHostClick)
       host.removeEventListener("pointermove", onHostPointerMove)
       host.removeEventListener("pointerleave", onHostPointerLeave)
+      host.removeEventListener("touchstart", onPullStart)
+      host.removeEventListener("touchmove", onPullMove)
+      host.removeEventListener("touchend", onPullEnd)
+      host.removeEventListener("touchcancel", onPullEnd)
+      scrolling?.removeEventListener("scroll", onRendererScroll)
+      clearTimeout(wheelIdle)
+      cancelAnimationFrame(edgeFrame)
       stopAnimating()
       if (swipes) {
         host.removeEventListener("touchstart", swipes.touchstart)
@@ -548,24 +616,154 @@ export function ReaderView({
 
     // In paginated flow foliate ignores the wheel; scrolled flow scrolls natively.
     const onWheel = (event: WheelEvent) => {
-      if (settingsRef.current.flow !== "paginated" || event.ctrlKey) return
-      const unit =
-        event.deltaMode === WheelEvent.DOM_DELTA_LINE
-          ? 16
-          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-            ? host.clientHeight
-            : 1
-      // timeStamp counts from its own window's start, and every section has
-      // its own frame: made absolute, times from any of them compare.
-      const origin = (event.view ?? window).performance.timeOrigin
+      if (event.ctrlKey) return
+      if (settingsRef.current.flow !== "paginated") {
+        pullByWheel(event)
+        return
+      }
+      const unit = wheelPixels(event, host.clientHeight)
       const direction = wheelPager(
         event.deltaX * unit,
         event.deltaY * unit,
-        origin + event.timeStamp
+        wheelTime(event)
       )
       if (!direction) return
       interact()
       void move(direction)
+    }
+
+    // Scrolling on past a section's edge moves to the next or the previous
+    // one (spec pindah bab §3).
+    const edgePull = createEdgePull()
+    let tocEntries: Array<{ label: string; index: number }> = []
+    // The pull shown, and the edge the page was last told about.
+    let shownPull: Pull | null = null
+    let toldEdge = "null"
+    // Where the scroll stood when last measured: a wheel's own scroll is
+    // already done when the wheel is heard.
+    let knownAt: AtEdge = { start: false, end: false }
+    let wheelIdle: ReturnType<typeof setTimeout> | undefined
+    let edgeFrame = 0
+    // The renderer heard for scrolls; it exists only once the book has opened.
+    let scrolling: FoliateRenderer | null = null
+
+    /**
+     * Where the scroll stands; null where no pull applies: the paged flow, a
+     * fixed layout and vertical writing.
+     */
+    const edgeOf = (): AtEdge | null => {
+      const renderer = view?.renderer
+      if (settingsRef.current.flow !== "scrolled" || !renderer) return null
+      const { start: top, end: bottom, viewSize, sideProp } = renderer
+      if (sideProp !== "height") return null
+      if (top === undefined || bottom === undefined || viewSize === undefined)
+        return null
+      // The same measure foliate turns by.
+      return { start: top <= 0, end: viewSize - bottom <= 2 }
+    }
+
+    /** The section a move toward `side` lands on, or null at the book's ends. */
+    const targetOf = (side: EdgeSide): number | null => {
+      const index = view?.lastLocation?.section?.current
+      if (!view || index === undefined) return null
+      const linear = view.book.sections.map((section) => section.linear)
+      return adjacentSection(linear, index, side === "end" ? 1 : -1)
+    }
+
+    const reportEdge = () => {
+      const at = edgeOf()
+      knownAt = at ?? { start: false, end: false }
+      // The end shows once reached; the start only while pulled (spec §3.2).
+      const side = at ? (shownPull?.side ?? (at.end ? "end" : null)) : null
+      let edge: ChapterEdgeState | null = null
+      if (side) {
+        const landing = targetOf(side)
+        const dir = side === "end" ? 1 : -1
+        if (landing !== null || side === "end") {
+          edge = {
+            side,
+            progress: landing === null ? 0 : (shownPull?.progress ?? 0),
+            label:
+              landing === null
+                ? null
+                : chapterLabel(
+                    tocEntries,
+                    landing,
+                    dir,
+                    view?.lastLocation?.tocItem?.label ?? null
+                  ),
+            bookEnd: landing === null,
+          }
+        }
+      }
+      const told = JSON.stringify(edge)
+      if (told === toldEdge) return
+      toldEdge = told
+      call().onChapterEdge(edge)
+    }
+
+    const forgetPull = () => {
+      clearTimeout(wheelIdle)
+      edgePull.reset()
+      shownPull = null
+    }
+
+    const onPull = (step: PullStep) => {
+      if (step === "next" || step === "prev") {
+        shownPull = null
+        reportEdge()
+        if (targetOf(step === "next" ? "end" : "start") === null) return
+        interact()
+        void move(step)
+        return
+      }
+      shownPull = step
+      reportEdge()
+    }
+
+    /** A pull counts only over the text, with nothing open over it. */
+    const pullableEdge = () =>
+      popupOpenRef.current || selectionShown ? null : edgeOf()
+
+    const pullByWheel = (event: WheelEvent) => {
+      const at = pullableEdge()
+      if (!at) return
+      const pixels = event.deltaY * wheelPixels(event, host.clientHeight)
+      onPull(edgePull.wheel(pixels, knownAt, at, wheelTime(event)))
+      clearTimeout(wheelIdle)
+      wheelIdle = setTimeout(() => {
+        shownPull = null
+        reportEdge()
+      }, WHEEL_IDLE_MS)
+    }
+
+    const onPullStart = (event: TouchEvent) => {
+      const at = pullableEdge()
+      if (!at || event.touches.length !== 1) {
+        edgePull.touchEnd()
+        return
+      }
+      edgePull.touchStart(event.touches[0].screenY, at)
+    }
+    const onPullMove = (event: TouchEvent) => {
+      const at = pullableEdge()
+      if (!at || event.touches.length !== 1) return
+      onPull(edgePull.touchMove(event.touches[0].screenY, at))
+    }
+    const onPullEnd = () => {
+      edgePull.touchEnd()
+      if (!shownPull) return
+      shownPull = null
+      reportEdge()
+    }
+
+    // foliate scrolls many times a frame: the edge is read once per frame.
+    const onRendererScroll = () => {
+      if (edgeFrame) return
+      edgeFrame = requestAnimationFrame(() => {
+        edgeFrame = 0
+        reportEdge()
+      })
     }
 
     const onSectionLoad = (event: Event) => {
@@ -583,6 +781,12 @@ export function ReaderView({
         doc.addEventListener("touchstart", swipes.touchstart, { passive: true })
         doc.addEventListener("touchend", swipes.touchend)
       }
+      // A new section: a pull past the last one's edge is over.
+      forgetPull()
+      doc.addEventListener("touchstart", onPullStart, { passive: true })
+      doc.addEventListener("touchmove", onPullMove, { passive: true })
+      doc.addEventListener("touchend", onPullEnd)
+      doc.addEventListener("touchcancel", onPullEnd)
       // The frame's own coordinates, moved into this window's.
       const frameBox = () =>
         doc.defaultView?.frameElement?.getBoundingClientRect()
@@ -703,6 +907,7 @@ export function ReaderView({
           turning && settingsRef.current.flow === "scrolled"
         )
       )
+      reportEdge()
     }
 
     // A link in the book, before foliate follows it: a footnote opens in a
@@ -768,6 +973,10 @@ export function ReaderView({
     host.addEventListener("click", onHostClick)
     host.addEventListener("pointermove", onHostPointerMove)
     host.addEventListener("pointerleave", onHostPointerLeave)
+    host.addEventListener("touchstart", onPullStart, { passive: true })
+    host.addEventListener("touchmove", onPullMove, { passive: true })
+    host.addEventListener("touchend", onPullEnd)
+    host.addEventListener("touchcancel", onPullEnd)
 
     void (async () => {
       try {
@@ -794,6 +1003,9 @@ export function ReaderView({
         skipLayoutWhileLoading(view.renderer)
         // After open, which made the renderer and put foliate's listener first.
         view.renderer.addEventListener("relocate", onRendererRelocate)
+        scrolling = view.renderer
+        scrolling.addEventListener("scroll", onRendererScroll)
+        tocEntries = tocBySection(view, opened.book.toc ?? [])
         stopAnimating = animateUnlessReduced(view.renderer)
         // Before init, which loads the first section and so fires "load".
         swipes = snapByWholeSwipe(view.renderer)

@@ -33,12 +33,14 @@ import type { Annotation, HighlightColor } from "@/lib/annotations/types"
 import { WordPopup, type WordTap } from "@/components/reader/WordPopup"
 import { useWordLookup } from "@/components/reader/useWordLookup"
 import { VocabularyNotice } from "@/components/vocabulary/VocabularyNotice"
+import { ChapterEdge } from "@/components/reader/ChapterEdge"
 import { JumpOffer } from "@/components/reader/JumpOffer"
 import { ReaderFooter } from "@/components/reader/ReaderFooter"
 import { ReaderProblem } from "@/components/reader/ReaderProblem"
 import { ReaderSettingsPanel } from "@/components/reader/ReaderSettingsPanel"
 import { ReaderToolbar } from "@/components/reader/ReaderToolbar"
 import {
+  type ChapterEdgeState,
   type ReaderControls,
   type ReaderLocation,
   type ReaderReady,
@@ -171,6 +173,8 @@ function ReaderPage() {
   const controlsRef = useRef<ReaderControls | null>(null)
   const [toc, setToc] = useState<Array<TocItem>>([])
   const [location, setLocation] = useState<ReaderLocation | null>(null)
+  // The scroll at a section's edge (spec pindah bab §3).
+  const [edge, setEdge] = useState<ChapterEdgeState | null>(null)
   const annotations = useBookAnnotations(bookId)
   const highlights = useMemo(
     () => annotations.filter((annotation) => annotation.kind === "highlight"),
@@ -536,6 +540,7 @@ function ReaderPage() {
         onSelection={showSelection}
         onDismiss={closePopups}
         onTargetMissing={onTargetMissing}
+        onChapterEdge={setEdge}
         onError={onError}
       />
       <ReaderToolbar
@@ -629,6 +634,22 @@ function ReaderPage() {
           setOffer(null)
         }}
         onDismiss={() => setOffer(null)}
+      />
+      <ChapterEdge
+        // Out of the way of anything open over the book (spec pindah bab §3.4).
+        edge={
+          settings.flow === "scrolled" &&
+          !popupOpen &&
+          panel === null &&
+          noteFor === null &&
+          sharing === null &&
+          offer === null
+            ? edge
+            : null
+        }
+        chromeShown={!chromeHidden}
+        backShown={backTo !== null}
+        onMove={(direction) => go((current) => current.move(direction))}
       />
       <ReaderBack shown={backTo !== null} onBack={goBack} />
       <ReaderFooter
