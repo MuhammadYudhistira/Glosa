@@ -67,6 +67,8 @@ export type ReaderLocation = {
   pageText: string
   /** The member turned the page or scrolled here: not a jump or a new layout. */
   turned: boolean
+  /** At the end of the last section in the reading order (spec Tahap 3 §4.4). */
+  atBookEnd: boolean
   /** Minutes left in the section and the book at foliate's speed. */
   time: { section: number; total: number } | null
 }
@@ -382,7 +384,8 @@ async function footnoteOf(
 function toLocation(
   detail: RelocateDetail,
   reason: string | null | undefined,
-  readerTurning: boolean
+  readerTurning: boolean,
+  atBookEnd: boolean
 ): ReaderLocation {
   const label = detail.tocItem?.label?.trim()
   return {
@@ -395,6 +398,7 @@ function toLocation(
       BOOKMARK_EXCERPT_LENGTH
     ),
     turned: isTurn(reason, readerTurning),
+    atBookEnd,
     time: finiteTime(detail.time),
   }
 }
@@ -904,7 +908,8 @@ export function ReaderView({
           reason,
           // Paged turns always relocate once on their own (the padding page);
           // only the scrolled flow can cross a section by navigation alone.
-          turning && settingsRef.current.flow === "scrolled"
+          turning && settingsRef.current.flow === "scrolled",
+          view?.renderer.atEnd === true
         )
       )
       reportEdge()

@@ -20,6 +20,7 @@ const place = (
   chapterHref: null,
   pageText: "",
   turned,
+  atBookEnd: false,
   time: { section: minutesLeft, total: minutesLeft },
 })
 

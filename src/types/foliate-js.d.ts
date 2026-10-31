@@ -69,6 +69,8 @@ declare module "foliate-js/view.js" {
     viewSize?: number
     /** "height" when it scrolls down the page, "width" for vertical writing. */
     sideProp?: string
+    /** At the last page of the last section in the reading order (the paginator only). */
+    atEnd?: boolean
   }
 
   /** The <foliate-view> element; importing the module defines it. */

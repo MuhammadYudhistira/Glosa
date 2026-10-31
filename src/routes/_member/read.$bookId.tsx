@@ -34,6 +34,7 @@ import { WordPopup, type WordTap } from "@/components/reader/WordPopup"
 import { useWordLookup } from "@/components/reader/useWordLookup"
 import { VocabularyNotice } from "@/components/vocabulary/VocabularyNotice"
 import { ChapterEdge } from "@/components/reader/ChapterEdge"
+import { FinishPrompt } from "@/components/reader/FinishPrompt"
 import { JumpOffer } from "@/components/reader/JumpOffer"
 import { ReaderFooter } from "@/components/reader/ReaderFooter"
 import { ReaderProblem } from "@/components/reader/ReaderProblem"
@@ -52,6 +53,7 @@ import { useReaderSettings } from "@/components/reader/useReaderSettings"
 import { useReadingSpeed } from "@/components/reader/useReadingSpeed"
 import { BookLoadError } from "@/lib/book-download"
 import { bookMessage } from "@/lib/book-messages"
+import { shouldAskFinish } from "@/lib/finish"
 import { claimLocalData } from "@/lib/local/device"
 import { EpubError } from "@/lib/epub/zip-loader"
 import { MAX_CFI_LENGTH, jumpOffer, toPercentage } from "@/lib/progress"
@@ -67,6 +69,7 @@ import {
   useSavedForms,
   wordSync,
 } from "@/lib/words/word-sync-client"
+import { declineFinishFn, setBookFinishedFn } from "@/server/collections"
 import { markBookOpenedFn } from "@/server/reading"
 
 type ReaderSearch = { cfi?: string }
@@ -142,6 +145,8 @@ function ReaderPage() {
   const { settings, update } = useReaderSettings(data.settings, data.online)
   const syncStatus = useSyncStatus()
   const markOpened = useServerFn(markBookOpenedFn)
+  const markFinished = useServerFn(setBookFinishedFn)
+  const declineFinish = useServerFn(declineFinishFn)
   const search = Route.useSearch()
   const navigate = useNavigate()
   // Read once: the place asked for applies only when the book opens.
@@ -175,6 +180,15 @@ function ReaderPage() {
   const [location, setLocation] = useState<ReaderLocation | null>(null)
   // The scroll at a section's edge (spec pindah bab §3).
   const [edge, setEdge] = useState<ChapterEdgeState | null>(null)
+  // The finished question (spec Tahap 3 §4.4): what the server knew when the
+  // book opened, then the member's answer.
+  const [finish, setFinish] = useState(() => ({
+    finished: data.book.finished,
+    finishDeclined: data.book.finishDeclined,
+  }))
+  const [finishBusy, setFinishBusy] = useState(false)
+  const [finishError, setFinishError] = useState<string | null>(null)
+  const [finishedNote, setFinishedNote] = useState(false)
   const annotations = useBookAnnotations(bookId)
   const highlights = useMemo(
     () => annotations.filter((annotation) => annotation.kind === "highlight"),
@@ -216,6 +230,16 @@ function ReaderPage() {
   const [offer, setOffer] = useState<Position | null>(() =>
     target ? null : jumpOffer(data.local, data.server)
   )
+  // Online only, and never over anything open (spec Tahap 3 §4.4).
+  const askFinish =
+    data.online &&
+    location !== null &&
+    shouldAskFinish(finish, location) &&
+    !popupOpen &&
+    panel === null &&
+    noteFor === null &&
+    sharing === null &&
+    offer === null
   const [viewError, setViewError] = useState<string | null>(null)
   // Positions are saved only once the book is open and the member has moved
   // in it (plan 1C, decision 8).
@@ -381,6 +405,32 @@ function ReaderPage() {
     const timer = setTimeout(() => setTargetMissing(false), NOTE_MS)
     return () => clearTimeout(timer)
   }, [targetMissing])
+  useEffect(() => {
+    if (!finishedNote) return
+    const timer = setTimeout(() => setFinishedNote(false), NOTE_MS)
+    return () => clearTimeout(timer)
+  }, [finishedNote])
+
+  const answerFinish = async (finished: boolean) => {
+    setFinishBusy(true)
+    setFinishError(null)
+    try {
+      const result = finished
+        ? await markFinished({ data: { bookId, finished: true } })
+        : await declineFinish({ data: { bookId } })
+      if (!result.ok) {
+        setFinishError(result.code)
+      } else if (finished) {
+        setFinish((current) => ({ ...current, finished: true }))
+        setFinishedNote(true)
+      } else {
+        setFinish((current) => ({ ...current, finishDeclined: true }))
+      }
+    } catch {
+      setFinishError("unknown")
+    }
+    setFinishBusy(false)
+  }
   const onTargetMissing = useCallback(() => {
     setTargetMissing(true)
     // The place asked for is gone, so the other device's place is offered after all.
@@ -635,10 +685,21 @@ function ReaderPage() {
         }}
         onDismiss={() => setOffer(null)}
       />
+      {askFinish && (
+        <FinishPrompt
+          busy={finishBusy}
+          error={finishError}
+          onAnswer={(finished) => void answerFinish(finished)}
+        />
+      )}
+      {finishedNote && (
+        <output className="reader-note">Masuk ke koleksi Sudah dibaca</output>
+      )}
       <ChapterEdge
         // Out of the way of anything open over the book (spec pindah bab §3.4).
         edge={
           settings.flow === "scrolled" &&
+          !askFinish &&
           !popupOpen &&
           panel === null &&
           noteFor === null &&

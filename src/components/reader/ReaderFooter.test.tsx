@@ -9,6 +9,7 @@ const location = {
   chapterHref: "text/the-redheaded-league.xhtml",
   pageText: "",
   turned: false,
+  atBookEnd: false,
   time: null,
 }
 
