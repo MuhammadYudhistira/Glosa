@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Collection } from "@/lib/book-types"
 import { BookCollections } from "./BookCollections"
@@ -70,5 +70,96 @@ describe("BookCollections", () => {
     expect(
       screen.getByText("Belum ada koleksi. Buat koleksi dari Rak Saya.")
     ).toBeInTheDocument()
+  })
+
+  it("sends only collections the shelf still shows", async () => {
+    mocks.setBookCollectionsFn.mockResolvedValueOnce({ ok: true })
+    const gone = "33333333-3333-4333-8333-333333333333"
+    render(
+      <BookCollections
+        book={{ ...sherlock, collectionIds: [gone, santai.id] }}
+        collections={[santai, klasik]}
+        onSaved={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getByLabelText("Klasik"))
+    await waitFor(() => expect(mocks.setBookCollectionsFn).toHaveBeenCalled())
+    expect(mocks.setBookCollectionsFn).toHaveBeenCalledWith({
+      data: { bookId: sherlock.id, collectionIds: [santai.id, klasik.id] },
+    })
+  })
+
+  it("takes the shelf's membership again when it changes", () => {
+    const { rerender } = render(
+      <BookCollections
+        book={{ ...sherlock, collectionIds: [] }}
+        collections={[santai, klasik]}
+        onSaved={vi.fn()}
+      />
+    )
+    expect(screen.getByLabelText("Klasik")).not.toBeChecked()
+    rerender(
+      <BookCollections
+        book={{ ...sherlock, collectionIds: [klasik.id] }}
+        collections={[santai, klasik]}
+        onSaved={vi.fn()}
+      />
+    )
+    expect(screen.getByLabelText("Klasik")).toBeChecked()
+  })
+
+  it("does not say the name is wrong when the list changed", async () => {
+    mocks.setBookCollectionsFn.mockResolvedValueOnce({
+      ok: false,
+      code: "collections_changed",
+    })
+    render(
+      <BookCollections
+        book={sherlock}
+        collections={[santai]}
+        onSaved={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getByLabelText("Bacaan santai"))
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Daftar koleksi berubah. Muat ulang rak, lalu coba lagi."
+    )
+  })
+
+  it("ignores a click while saving, and keeps the box focusable", async () => {
+    let finish: (value: { ok: true }) => void = () => undefined
+    mocks.setBookCollectionsFn.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve
+      })
+    )
+    render(
+      <BookCollections
+        book={sherlock}
+        collections={[santai, klasik]}
+        onSaved={vi.fn()}
+      />
+    )
+    const box = screen.getByLabelText("Bacaan santai")
+    fireEvent.click(box)
+    fireEvent.click(screen.getByLabelText("Klasik"))
+    expect(mocks.setBookCollectionsFn).toHaveBeenCalledOnce()
+    expect(box).toBeEnabled()
+    expect(box).toHaveAttribute("aria-disabled", "true")
+    expect(screen.getByLabelText("Klasik")).not.toBeChecked()
+    await act(async () => finish({ ok: true }))
+    expect(box).toHaveAttribute("aria-disabled", "false")
+  })
+
+  it("is locked when the shelf came from the offline copy", () => {
+    render(
+      <BookCollections
+        book={sherlock}
+        collections={[santai]}
+        offline
+        onSaved={vi.fn()}
+      />
+    )
+    expect(screen.getByLabelText("Bacaan santai")).toBeDisabled()
   })
 })

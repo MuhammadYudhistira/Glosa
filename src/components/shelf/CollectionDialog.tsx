@@ -67,6 +67,8 @@ function CollectionForm({
   const [confirming, setConfirming] = useState(false)
 
   async function run(action: () => Promise<void>) {
+    // Ignored while busy: the buttons stay focusable meanwhile.
+    if (busy) return
     setBusy(true)
     setError(null)
     try {
@@ -104,7 +106,9 @@ function CollectionForm({
     if (!editing) return
     void run(async () => {
       const result = await remove({ data: { id: editing.id } })
-      if (!result.ok) return setError(result.code)
+      // Already gone (deleted elsewhere): the aim is met.
+      if (!result.ok && result.code !== "collection_missing")
+        return setError(result.code)
       onDone({ notice: `Koleksi “${editing.name}” dihapus.`, koleksi: null })
     })
   }
@@ -134,18 +138,19 @@ function CollectionForm({
             {bookMessage(error)}
           </p>
         )}
-        <Button type="submit" disabled={busy}>
+        <Button
+          type="submit"
+          aria-disabled={busy}
+          aria-busy={busy}
+          className="aria-busy:opacity-50"
+        >
           {editing ? "Simpan" : "Buat"}
         </Button>
       </form>
       {editing && (
         <div className="space-y-2 border-t pt-4">
           {!confirming ? (
-            <Button
-              variant="destructive"
-              disabled={busy}
-              onClick={() => setConfirming(true)}
-            >
+            <Button variant="destructive" onClick={() => setConfirming(true)}>
               Hapus koleksi
             </Button>
           ) : (
@@ -156,15 +161,19 @@ function CollectionForm({
               <div className="flex gap-2">
                 <Button
                   variant="destructive"
-                  disabled={busy}
+                  aria-disabled={busy}
+                  aria-busy={busy}
+                  className="aria-busy:opacity-50"
                   onClick={onDelete}
                 >
                   Ya, hapus
                 </Button>
                 <Button
                   variant="ghost"
-                  disabled={busy}
-                  onClick={() => setConfirming(false)}
+                  aria-disabled={busy}
+                  onClick={() => {
+                    if (!busy) setConfirming(false)
+                  }}
                 >
                   Batal
                 </Button>

@@ -161,6 +161,7 @@ function ShelfPage() {
               book={selected}
               saved={local.saved.has(selected.id)}
               collections={collections}
+              offline={offline}
               onGenreSaved={refresh}
               onShelved={refresh}
               onDeleted={(book) => {

@@ -28,6 +28,7 @@ export function BookActions({
   book,
   saved,
   collections,
+  offline = false,
   onShelved,
   onGenreSaved,
   onDeleted,
@@ -37,6 +38,8 @@ export function BookActions({
   saved: boolean
   /** The member's collections, for the checklist (spec Tahap 3 §4.1). */
   collections: ReadonlyArray<Collection>
+  /** The shelf came from the snapshot kept on this device. */
+  offline?: boolean
   /** A collection or the finished mark changed: the shelf loads again. */
   onShelved: () => void
   onGenreSaved: (genre: Genre) => void
@@ -166,10 +169,11 @@ export function BookActions({
       <BookCollections
         book={book}
         collections={collections}
+        offline={offline}
         onSaved={onShelved}
       />
 
-      <FinishToggle book={book} onSaved={onShelved} />
+      <FinishToggle book={book} offline={offline} onSaved={onShelved} />
 
       <div className="space-y-1">
         <p className="text-sm font-bold">Di perangkat ini</p>

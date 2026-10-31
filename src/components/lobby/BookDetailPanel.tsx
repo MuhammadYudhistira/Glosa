@@ -18,6 +18,7 @@ export function BookDetailPanel({
   book,
   local,
   collections,
+  offline = false,
   onClose,
   onChanged,
   onDeleted,
@@ -26,6 +27,7 @@ export function BookDetailPanel({
   book: ShelfBook
   local: LocalShelf
   collections: ReadonlyArray<Collection>
+  offline?: boolean
   onClose: () => void
   onChanged: () => void
   onDeleted: (book: ShelfBook) => void
@@ -75,6 +77,7 @@ export function BookDetailPanel({
         book={book}
         saved={local.saved.has(book.id)}
         collections={collections}
+        offline={offline}
         onGenreSaved={onChanged}
         onShelved={onChanged}
         onDeleted={onDeleted}

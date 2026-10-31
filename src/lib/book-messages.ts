@@ -30,6 +30,9 @@ const MESSAGES: Record<string, string> = {
     "Koleksi sudah penuh (50). Hapus koleksi lain dulu untuk membuat yang baru.",
   collection_duplicate: "Sudah ada koleksi dengan nama itu.",
   collection_invalid: "Nama koleksi harus 1–40 karakter.",
+  collection_missing: "Koleksi ini sudah tidak ada.",
+  collections_changed:
+    "Daftar koleksi berubah. Muat ulang rak, lalu coba lagi.",
   position_missing: "Posisi itu tidak ditemukan di buku ini",
 }
 

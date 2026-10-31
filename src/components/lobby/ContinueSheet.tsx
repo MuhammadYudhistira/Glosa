@@ -21,6 +21,7 @@ export function ContinueSheet({
   empty,
   local,
   collections,
+  offline = false,
   onChanged,
   onDeleted,
 }: {
@@ -28,6 +29,7 @@ export function ContinueSheet({
   empty: boolean
   local: LocalShelf
   collections: ReadonlyArray<Collection>
+  offline?: boolean
   onChanged: () => void
   onDeleted: (book: ShelfBook) => void
 }) {
@@ -71,6 +73,7 @@ export function ContinueSheet({
               book={book}
               saved={local.saved.has(book.id)}
               collections={collections}
+              offline={offline}
               onGenreSaved={onChanged}
               onShelved={onChanged}
               onDeleted={onDeleted}

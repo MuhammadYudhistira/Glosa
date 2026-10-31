@@ -42,6 +42,13 @@ function answerOf(
   return fail(CODES[answer ?? ""] ?? "unknown")
 }
 
+/** For rename and delete, "not found" is the collection, not a book. */
+function aboutCollection(result: ActionResult): ActionResult {
+  return !result.ok && result.code === "not_found"
+    ? fail("collection_missing")
+    : result
+}
+
 export const createCollectionFn = createServerFn({ method: "POST" })
   .validator((data: { name: string }) =>
     z.object({ name: NameSchema }).parse(data)
@@ -72,7 +79,7 @@ export const renameCollectionFn = createServerFn({ method: "POST" })
       p_id: data.id,
       p_name: data.name,
     })
-    return answerOf(answer, error, "renaming a collection")
+    return aboutCollection(answerOf(answer, error, "renaming a collection"))
   })
 
 export const deleteCollectionFn = createServerFn({ method: "POST" })
@@ -83,7 +90,7 @@ export const deleteCollectionFn = createServerFn({ method: "POST" })
     const { data: answer, error } = await supabase.rpc("delete_collection", {
       p_id: data.id,
     })
-    return answerOf(answer, error, "deleting a collection")
+    return aboutCollection(answerOf(answer, error, "deleting a collection"))
   })
 
 export const setBookCollectionsFn = createServerFn({ method: "POST" })
@@ -102,7 +109,12 @@ export const setBookCollectionsFn = createServerFn({ method: "POST" })
       p_book_id: data.bookId,
       p_collection_ids: data.collectionIds,
     })
-    return answerOf(answer, error, "saving a book's collections")
+    const result = answerOf(answer, error, "saving a book's collections")
+    // "Invalid" here is a collection id that is not the member's (any more),
+    // not a bad name; "not found" stays the book.
+    return !result.ok && result.code === "collection_invalid"
+      ? fail("collections_changed")
+      : result
   })
 
 export const setBookFinishedFn = createServerFn({ method: "POST" })

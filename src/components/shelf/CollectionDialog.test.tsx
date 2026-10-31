@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Collection } from "@/lib/book-types"
 import { CollectionDialog } from "./CollectionDialog"
@@ -104,5 +104,51 @@ describe("CollectionDialog", () => {
         koleksi: null,
       })
     )
+  })
+
+  it("counts a collection already gone as deleted", async () => {
+    mocks.deleteCollectionFn.mockResolvedValueOnce({
+      ok: false,
+      code: "collection_missing",
+    })
+    const onDone = renderDialog(santai)
+    fireEvent.click(screen.getByRole("button", { name: "Hapus koleksi" }))
+    fireEvent.click(screen.getByRole("button", { name: "Ya, hapus" }))
+    await waitFor(() =>
+      expect(onDone).toHaveBeenCalledWith({
+        notice: "Koleksi “Bacaan santai” dihapus.",
+        koleksi: null,
+      })
+    )
+  })
+
+  it("says a renamed collection is gone", async () => {
+    mocks.renameCollectionFn.mockResolvedValueOnce({
+      ok: false,
+      code: "collection_missing",
+    })
+    const onDone = renderDialog(santai)
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }))
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Koleksi ini sudah tidak ada."
+    )
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
+  it("ignores a second submit while saving, and keeps the button focusable", async () => {
+    let finish: (value: { ok: true }) => void = () => undefined
+    mocks.renameCollectionFn.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve
+      })
+    )
+    renderDialog(santai)
+    const save = screen.getByRole("button", { name: "Simpan" })
+    fireEvent.click(save)
+    fireEvent.click(save)
+    expect(mocks.renameCollectionFn).toHaveBeenCalledOnce()
+    expect(save).toBeEnabled()
+    expect(save).toHaveAttribute("aria-busy", "true")
+    await act(async () => finish({ ok: true }))
   })
 })

@@ -202,6 +202,7 @@ export function LobbyStage({
                 book={selected}
                 local={local}
                 collections={collections}
+                offline={offline}
                 onClose={closeDetail}
                 onChanged={refresh}
                 onDeleted={onDeleted}
@@ -226,6 +227,7 @@ export function LobbyStage({
             empty={books.length === 0}
             local={local}
             collections={collections}
+            offline={offline}
             onChanged={refresh}
             onDeleted={onDeleted}
           />

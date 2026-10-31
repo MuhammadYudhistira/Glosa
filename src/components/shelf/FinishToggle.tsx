@@ -10,9 +10,12 @@ import { setBookFinishedFn } from "@/server/collections"
 /** "Tandai selesai" / "Tandai belum selesai" in the book's details (spec Tahap 3 §4.4). */
 export function FinishToggle({
   book,
+  offline = false,
   onSaved,
 }: {
   book: ShelfBook
+  /** The shelf came from the snapshot kept on this device. */
+  offline?: boolean
   onSaved: () => void
 }) {
   const save = useServerFn(setBookFinishedFn)
@@ -23,6 +26,8 @@ export function FinishToggle({
   const finished = finishedAt !== null
 
   async function onToggle() {
+    // Ignored while saving: the button stays focusable meanwhile.
+    if (busy) return
     setBusy(true)
     setError(null)
     try {
@@ -50,7 +55,10 @@ export function FinishToggle({
       )}
       <Button
         variant="outline"
-        disabled={busy || !online}
+        disabled={!online || offline}
+        aria-disabled={busy}
+        aria-busy={busy}
+        className="aria-busy:opacity-50"
         onClick={() => void onToggle()}
       >
         {finished ? "Tandai belum selesai" : "Tandai selesai"}

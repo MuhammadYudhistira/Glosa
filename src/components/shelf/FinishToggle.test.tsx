@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { FinishToggle } from "./FinishToggle"
 import { sherlock } from "./fixtures"
@@ -54,5 +54,30 @@ describe("FinishToggle", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Ada yang tidak beres."
     )
+  })
+
+  it("ignores a click while saving, and keeps the button focusable", async () => {
+    let finish: (value: { ok: true }) => void = () => undefined
+    mocks.setBookFinishedFn.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve
+      })
+    )
+    render(<FinishToggle book={sherlock} onSaved={vi.fn()} />)
+    const button = screen.getByRole("button", { name: "Tandai selesai" })
+    fireEvent.click(button)
+    fireEvent.click(button)
+    expect(mocks.setBookFinishedFn).toHaveBeenCalledOnce()
+    expect(button).toBeEnabled()
+    expect(button).toHaveAttribute("aria-busy", "true")
+    await act(async () => finish({ ok: true }))
+    expect(button).toHaveAttribute("aria-busy", "false")
+  })
+
+  it("is locked when the shelf came from the offline copy", () => {
+    render(<FinishToggle book={sherlock} offline onSaved={vi.fn()} />)
+    expect(
+      screen.getByRole("button", { name: "Tandai selesai" })
+    ).toBeDisabled()
   })
 })
