@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest"
-import type { ShelfBook } from "./book-types"
-import { countBooks, parseShelfSearch, shelfBooks } from "./shelf"
+import type { Collection, ShelfBook } from "./book-types"
+import {
+  activeCollection,
+  countBooks,
+  countCollections,
+  defaultSort,
+  parseShelfSearch,
+  shelfBooks,
+} from "./shelf"
 
 function book(overrides: Partial<ShelfBook>): ShelfBook {
   return {
@@ -69,7 +76,7 @@ describe("parseShelfSearch", () => {
     })
     expect(
       parseShelfSearch({ genre: "horor", q: "   ", sort: "opened" })
-    ).toEqual({})
+    ).toEqual({ sort: "opened" })
     expect(parseShelfSearch({ sort: "random", q: 5 })).toEqual({})
   })
 
@@ -130,5 +137,102 @@ describe("countBooks", () => {
     expect(counts.troli).toBe(1)
     expect(counts.misteri_thriller).toBe(1)
     expect(counts.fiksi_sastra).toBe(0)
+  })
+})
+
+const santai: Collection = {
+  id: "11111111-1111-4111-8111-111111111111",
+  name: "Bacaan santai",
+  createdAt: "2026-10-20T00:00:00+00:00",
+}
+
+const shelved = [
+  book({
+    title: "Sedang",
+    progress: 40,
+    lastOpenedAt: "2026-10-12T00:00:00+00:00",
+  }),
+  book({ title: "Belum dibuka" }),
+  book({
+    title: "Selesai lama",
+    progress: 100,
+    finishedAt: "2026-10-05T00:00:00+00:00",
+    lastOpenedAt: "2026-10-20T00:00:00+00:00",
+    collectionIds: [santai.id],
+  }),
+  book({
+    title: "Selesai baru",
+    progress: 90,
+    genre: "misteri_thriller",
+    finishedAt: "2026-10-15T00:00:00+00:00",
+    collectionIds: [santai.id],
+  }),
+]
+
+describe("collections on the shelf", () => {
+  it("keeps the automatic collections and ids, and drops anything else", () => {
+    expect(parseShelfSearch({ koleksi: "selesai" })).toEqual({
+      koleksi: "selesai",
+    })
+    expect(parseShelfSearch({ koleksi: santai.id })).toEqual({
+      koleksi: santai.id,
+    })
+    expect(parseShelfSearch({ koleksi: "favorit" })).toEqual({})
+    expect(parseShelfSearch({ sort: "finished" })).toEqual({
+      sort: "finished",
+    })
+  })
+
+  it("falls back to Semua for a collection that is gone", () => {
+    expect(activeCollection(santai.id, [santai])).toBe(santai.id)
+    expect(activeCollection(santai.id, [])).toBeUndefined()
+    expect(activeCollection("sedang", [])).toBe("sedang")
+    expect(activeCollection(undefined, [santai])).toBeUndefined()
+  })
+
+  it("lists what is being read: started and not finished", () => {
+    expect(titles(shelfBooks(shelved, { koleksi: "sedang" }))).toEqual([
+      "Sedang",
+    ])
+  })
+
+  it("lists finished books, last finished first by default", () => {
+    expect(defaultSort("selesai")).toBe("finished")
+    expect(defaultSort(undefined)).toBe("opened")
+    expect(
+      titles(
+        shelfBooks(shelved, {
+          koleksi: "selesai",
+          sort: defaultSort("selesai"),
+        })
+      )
+    ).toEqual(["Selesai baru", "Selesai lama"])
+    // The member's own choice wins.
+    expect(
+      titles(shelfBooks(shelved, { koleksi: "selesai", sort: "opened" }))
+    ).toEqual(["Selesai lama", "Selesai baru"])
+  })
+
+  it("filters a member's collection, together with a genre", () => {
+    expect(titles(shelfBooks(shelved, { koleksi: santai.id }))).toEqual([
+      "Selesai lama",
+      "Selesai baru",
+    ])
+    expect(
+      titles(
+        shelfBooks(shelved, { koleksi: santai.id, genre: "misteri_thriller" })
+      )
+    ).toEqual(["Selesai baru"])
+  })
+
+  it("counts every collection, the empty ones too", () => {
+    const empty: Collection = { ...santai, id: "kosong", name: "Kosong" }
+    expect(countCollections(shelved, [santai, empty])).toEqual({
+      semua: 4,
+      sedang: 1,
+      selesai: 2,
+      [santai.id]: 2,
+      kosong: 0,
+    })
   })
 })
