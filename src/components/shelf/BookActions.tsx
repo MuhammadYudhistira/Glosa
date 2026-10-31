@@ -3,7 +3,7 @@ import { useId, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { BookLoadError, saveBookOffline } from "@/lib/book-download"
 import { bookMessage } from "@/lib/book-messages"
-import type { ShelfBook } from "@/lib/book-types"
+import type { Collection, ShelfBook } from "@/lib/book-types"
 import {
   GENRE_LABELS,
   GENRE_VALUES,
@@ -31,6 +31,10 @@ export function BookActions({
   book: ShelfBook
   /** Whether this device holds the EPUB for offline reading. */
   saved: boolean
+  /** The member's collections, for the checklist (spec Tahap 3 §4.1). */
+  collections: ReadonlyArray<Collection>
+  /** A collection or the finished mark changed: the shelf loads again. */
+  onShelved: () => void
   onGenreSaved: (genre: Genre) => void
   onDeleted: (book: ShelfBook) => void
 }) {

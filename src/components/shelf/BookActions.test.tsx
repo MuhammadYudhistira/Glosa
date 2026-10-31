@@ -52,6 +52,8 @@ describe("BookActions", () => {
       <BookActions
         book={sherlock}
         saved={false}
+        collections={[]}
+        onShelved={vi.fn()}
         onGenreSaved={onGenreSaved}
         onDeleted={vi.fn()}
       />
@@ -75,6 +77,8 @@ describe("BookActions", () => {
       <BookActions
         book={sherlock}
         saved={false}
+        collections={[]}
+        onShelved={vi.fn()}
         onGenreSaved={vi.fn()}
         onDeleted={onDeleted}
       />
@@ -97,6 +101,8 @@ describe("BookActions", () => {
       <BookActions
         book={sherlock}
         saved={false}
+        collections={[]}
+        onShelved={vi.fn()}
         onGenreSaved={vi.fn()}
         onDeleted={vi.fn()}
       />
@@ -117,6 +123,8 @@ describe("BookActions", () => {
       <BookActions
         book={sherlock}
         saved={false}
+        collections={[]}
+        onShelved={vi.fn()}
         onGenreSaved={vi.fn()}
         onDeleted={vi.fn()}
       />
@@ -134,6 +142,8 @@ describe("BookActions", () => {
       <BookActions
         book={sherlock}
         saved={false}
+        collections={[]}
+        onShelved={vi.fn()}
         onGenreSaved={vi.fn()}
         onDeleted={vi.fn()}
       />
@@ -150,6 +160,8 @@ describe("BookActions", () => {
       <BookActions
         book={sherlock}
         saved
+        collections={[]}
+        onShelved={vi.fn()}
         onGenreSaved={vi.fn()}
         onDeleted={vi.fn()}
       />
@@ -174,6 +186,8 @@ describe("BookActions", () => {
       <BookActions
         book={sherlock}
         saved
+        collections={[]}
+        onShelved={vi.fn()}
         onGenreSaved={vi.fn()}
         onDeleted={onDeleted}
       />
@@ -192,6 +206,8 @@ describe("BookActions", () => {
       <BookActions
         book={sherlock}
         saved={false}
+        collections={[]}
+        onShelved={vi.fn()}
         onGenreSaved={vi.fn()}
         onDeleted={vi.fn()}
       />

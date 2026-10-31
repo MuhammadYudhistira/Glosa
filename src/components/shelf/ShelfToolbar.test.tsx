@@ -18,10 +18,12 @@ describe("ShelfToolbar", () => {
   })
 
   it("follows ?q= changes that did not come from typing", () => {
-    const { rerender } = render(<ShelfToolbar q="alice" sort="opened" />)
+    const { rerender } = render(
+      <ShelfToolbar q="alice" sort="opened" defaultSort="opened" />
+    )
     const input = screen.getByLabelText("Cari judul atau penulis")
     expect(input).toHaveValue("alice")
-    rerender(<ShelfToolbar q="bob" sort="opened" />)
+    rerender(<ShelfToolbar q="bob" sort="opened" defaultSort="opened" />)
     expect(input).toHaveValue("bob")
     act(() => {
       vi.advanceTimersByTime(300)
@@ -30,7 +32,7 @@ describe("ShelfToolbar", () => {
   })
 
   it("pushes typed text to the URL once after the debounce", () => {
-    render(<ShelfToolbar q="" sort="opened" />)
+    render(<ShelfToolbar q="" sort="opened" defaultSort="opened" />)
     const input = screen.getByLabelText("Cari judul atau penulis")
     fireEvent.change(input, { target: { value: "emma" } })
     expect(navigate).not.toHaveBeenCalled()
@@ -38,5 +40,20 @@ describe("ShelfToolbar", () => {
       vi.advanceTimersByTime(250)
     })
     expect(navigate).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the collection's own order out of the URL", () => {
+    render(<ShelfToolbar q="" sort="finished" defaultSort="finished" />)
+    const select = screen.getByLabelText("Urutkan")
+    fireEvent.change(select, { target: { value: "opened" } })
+    const first = navigate.mock.calls[0][0] as {
+      search: (prev: object) => object
+    }
+    expect(first.search({})).toEqual({ sort: "opened" })
+    fireEvent.change(select, { target: { value: "finished" } })
+    const second = navigate.mock.calls[1][0] as {
+      search: (prev: object) => object
+    }
+    expect(second.search({ sort: "opened" })).toEqual({ sort: undefined })
   })
 })

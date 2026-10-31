@@ -632,6 +632,26 @@
     background: rgb(47 224 184 / 0.12);
     color: var(--color-mint);
   }
+  /* Collections (spec Tahap 3 §4.3): the new-collection chip and the edit button. */
+  .collection-new {
+    border-style: dashed;
+  }
+  .collection-new:disabled,
+  .collection-edit:disabled {
+    opacity: 0.5;
+  }
+  .collection-edit {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+  }
+  .collection-edit svg {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
   .native-select {
     border: 1px solid var(--border);
     border-radius: 0.375rem;

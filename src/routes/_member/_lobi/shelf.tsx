@@ -4,8 +4,13 @@ import { useMemo, useState } from "react"
 import { BookActions } from "@/components/shelf/BookActions"
 import { BookDetail } from "@/components/shelf/BookDetail"
 import { BookGrid } from "@/components/shelf/BookGrid"
+import { CollectionBar } from "@/components/shelf/CollectionBar"
+import {
+  CollectionDialog,
+  type CollectionDone,
+} from "@/components/shelf/CollectionDialog"
 import { EmptyShelf } from "@/components/shelf/EmptyShelf"
-import { GenreFilter } from "@/components/shelf/GenreFilter"
+import { GenreSelect } from "@/components/shelf/GenreSelect"
 import { ReadLink } from "@/components/shelf/ReadLink"
 import { ShelfHeader } from "@/components/shelf/ShelfHeader"
 import { ShelfToolbar } from "@/components/shelf/ShelfToolbar"
@@ -16,8 +21,17 @@ import {
   useLocalShelf,
 } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
+import type { Collection } from "@/lib/book-types"
 import { genreLabel } from "@/lib/genre"
-import { countBooks, parseShelfSearch, shelfBooks } from "@/lib/shelf"
+import {
+  activeCollection,
+  countBooks,
+  countCollections,
+  defaultSort,
+  parseShelfSearch,
+  shelfBooks,
+} from "@/lib/shelf"
+import { useOnline } from "@/lib/use-online"
 
 const lobi = getRouteApi("/_member/_lobi")
 
@@ -28,20 +42,48 @@ export const Route = createFileRoute("/_member/_lobi/shelf")({
 })
 
 function ShelfPage() {
-  const { books, usage, offline } = lobi.useLoaderData()
+  const { books, usage, collections, offline } = lobi.useLoaderData()
   const search = Route.useSearch()
+  const navigate = Route.useNavigate()
   const router = useRouter()
+  const online = useOnline()
   const local = useLocalShelf()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [notice, setNotice] = useState("")
-  const visible = useMemo(() => shelfBooks(books, search), [books, search])
+  // The collection dialog: closed, a new collection, or one to edit.
+  const [editing, setEditing] = useState<Collection | "new" | null>(null)
+  const koleksi = activeCollection(search.koleksi, collections)
+  const ordering = defaultSort(koleksi)
+  const visible = useMemo(
+    () => shelfBooks(books, { ...search, koleksi }),
+    [books, search, koleksi]
+  )
   const counts = useMemo(() => countBooks(books), [books])
+  const collectionCounts = useMemo(
+    () => countCollections(books, collections),
+    [books, collections]
+  )
   const selected = books.find((book) => book.id === selectedId) ?? null
   const inTrolley = search.genre === "troli"
+  const refresh = () => void router.invalidate()
   const bringButton = (
     <Button onClick={() => setUploading(true)}>Bawa buku</Button>
   )
+
+  const onCollectionDone = ({
+    notice: text,
+    koleksi: next,
+  }: CollectionDone) => {
+    setEditing(null)
+    setNotice(text)
+    refresh()
+    if (next !== undefined) {
+      void navigate({
+        search: (prev) => ({ ...prev, koleksi: next ?? undefined }),
+      })
+    }
+  }
 
   return (
     <LobbyPopup label="Rak Saya" className="max-w-5xl" bodyClassName="gap-5">
@@ -60,8 +102,21 @@ function ShelfPage() {
         <EmptyShelf action={bringButton} />
       ) : (
         <>
-          <GenreFilter active={search.genre ?? "semua"} counts={counts} />
-          <ShelfToolbar q={search.q ?? ""} sort={search.sort ?? "opened"} />
+          <CollectionBar
+            active={koleksi}
+            collections={collections}
+            counts={collectionCounts}
+            canEdit={online && !offline}
+            onCreate={() => setEditing("new")}
+            onEdit={setEditing}
+          />
+          <ShelfToolbar
+            q={search.q ?? ""}
+            sort={search.sort ?? ordering}
+            defaultSort={ordering}
+          >
+            <GenreSelect value={search.genre ?? "semua"} counts={counts} />
+          </ShelfToolbar>
           {visible.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {search.q
@@ -80,7 +135,7 @@ function ShelfPage() {
                         book={book}
                         onSaved={(genre) => {
                           setNotice(`Dipindahkan ke ${genreLabel(genre)}.`)
-                          void router.invalidate()
+                          refresh()
                         }}
                       />
                     )
@@ -105,16 +160,26 @@ function ShelfPage() {
               key={selected.id}
               book={selected}
               saved={local.saved.has(selected.id)}
-              onGenreSaved={() => void router.invalidate()}
+              collections={collections}
+              onGenreSaved={refresh}
+              onShelved={refresh}
               onDeleted={(book) => {
                 setSelectedId(null)
                 setNotice(`“${book.title}” dihapus dari rak.`)
-                void router.invalidate()
+                refresh()
               }}
             />
           </>
         )}
       </BookDetail>
+      <CollectionDialog
+        open={editing !== null}
+        editing={editing === "new" ? null : editing}
+        onOpenChange={(open) => {
+          if (!open) setEditing(null)
+        }}
+        onDone={onCollectionDone}
+      />
       <UploadPanel open={uploading} onOpenChange={setUploading} usage={usage} />
     </LobbyPopup>
   )

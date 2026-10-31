@@ -1,9 +1,21 @@
 import { useNavigate } from "@tanstack/react-router"
-import { useEffect, useId, useRef, useState } from "react"
+import { type ReactNode, useEffect, useId, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
-import { SHELF_SORTS, type ShelfSort } from "@/lib/shelf"
+import { SHELF_SORTS, type ShelfSort, isShelfSort } from "@/lib/shelf"
 
-export function ShelfToolbar({ q, sort }: { q: string; sort: ShelfSort }) {
+export function ShelfToolbar({
+  q,
+  sort,
+  defaultSort,
+  children,
+}: {
+  q: string
+  sort: ShelfSort
+  /** The collection's own order, which stays out of the URL. */
+  defaultSort: ShelfSort
+  /** More choices between the search and the order (the genre). */
+  children?: ReactNode
+}) {
   const navigate = useNavigate({ from: "/shelf" })
   const [text, setText] = useState(q)
   const searchId = useId()
@@ -50,6 +62,7 @@ export function ShelfToolbar({ q, sort }: { q: string; sort: ShelfSort }) {
           maxLength={100}
         />
       </div>
+      {children}
       <div>
         <label
           htmlFor={sortId}
@@ -66,7 +79,9 @@ export function ShelfToolbar({ q, sort }: { q: string; sort: ShelfSort }) {
               search: (prev) => ({
                 ...prev,
                 sort:
-                  value === "title" || value === "added" ? value : undefined,
+                  isShelfSort(value) && value !== defaultSort
+                    ? value
+                    : undefined,
               }),
               replace: true,
             })

@@ -72,7 +72,9 @@ export function BookDetailPanel({
         key={book.id}
         book={book}
         saved={local.saved.has(book.id)}
+        collections={[]}
         onGenreSaved={onChanged}
+        onShelved={onChanged}
         onDeleted={onDeleted}
       />
     </Panel>
