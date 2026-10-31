@@ -1479,7 +1479,9 @@
     top: 50%;
     left: 50%;
     width: min(56rem, calc(100vw - 2rem));
-    max-height: min(46rem, calc(100dvh - 2rem));
+    /* A fixed height: the word list and the meanings come and go without
+       moving the buttons from under the pointer. */
+    height: min(46rem, calc(100dvh - 2rem));
     transform: translate(-50%, -50%);
     border-radius: 1rem;
     box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);

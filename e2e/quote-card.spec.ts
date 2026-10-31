@@ -132,6 +132,14 @@ test("a word of the quote gets its meanings, on both layouts", async ({
     ).toBeVisible()
   }
 
+  // The word list shows only while it has the focus. Leaving it must not
+  // move the buttons, or a click that moves the focus lands beside them.
+  const save = dialog.getByRole("button", { name: "Simpan gambar" })
+  await words.first().focus()
+  const inList = await save.boundingBox()
+  await save.focus()
+  expect(await save.boundingBox()).toEqual(inList)
+
   expect(await pngSize(await saveImage(page))).toEqual({
     width: 1080,
     height: 1920,
