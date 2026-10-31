@@ -1471,6 +1471,7 @@
   }
   .quote-sheet {
     inset: 0;
+    padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
   }
   .quote-dialog {
@@ -1513,11 +1514,13 @@
     cursor: pointer;
   }
   .quote-canvas-story {
-    height: min(48dvh, 36rem);
+    width: min(100%, calc(min(48dvh, 36rem) * 9 / 16));
+    height: auto;
     aspect-ratio: 9 / 16;
   }
   .quote-canvas-square {
-    height: min(40dvh, 22rem);
+    width: min(100%, 40dvh, 22rem);
+    height: auto;
     aspect-ratio: 1;
   }
   .quote-hint,

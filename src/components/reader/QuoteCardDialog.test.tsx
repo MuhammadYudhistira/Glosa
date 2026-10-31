@@ -143,8 +143,10 @@ describe("QuoteCardDialog", () => {
   it("says when a word has no meaning, and picks another", async () => {
     show()
     fireEvent.click(await screen.findByRole("button", { name: "data" }))
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Belum ada arti untuk kata ini."
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Belum ada arti untuk kata ini."
+      )
     )
     expect(screen.getByRole("button", { name: "data" })).toHaveAttribute(
       "aria-pressed",
@@ -161,9 +163,24 @@ describe("QuoteCardDialog", () => {
       lookup: vi.fn(async (): Promise<LookupOutcome> => ({ kind: "offline" })),
     })
     fireEvent.click(await screen.findByRole("button", { name: "capital" }))
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Arti belum bisa dimuat."
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Arti belum bisa dimuat."
+      )
     )
+  })
+
+  it("says so when the image cannot be made", async () => {
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(
+      (callback: BlobCallback) => callback(null)
+    )
+    show()
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Gambar belum bisa dibuat. Coba lagi."
+      )
+    )
+    expect(screen.getByRole("button", { name: "Simpan gambar" })).toBeDisabled()
   })
 
   it("Tanpa kata takes the word off the card", async () => {

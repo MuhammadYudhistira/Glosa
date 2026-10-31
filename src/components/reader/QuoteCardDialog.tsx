@@ -266,7 +266,9 @@ export function QuoteCardDialog({
     let live = true
     const timer = setTimeout(() => {
       canvas.toBlob((blob) => {
-        if (live) setPng(blob)
+        if (!live) return
+        setPng(blob)
+        if (!blob) setNotice("Gambar belum bisa dibuat. Coba lagi.")
       }, "image/png")
     }, PNG_DELAY_MS)
     return () => {
@@ -511,11 +513,9 @@ export function QuoteCardDialog({
                   Kutipan dipendekkan menjadi 300 karakter.
                 </p>
               )}
-              {notice && (
-                <p role="status" className="quote-note">
-                  {notice}
-                </p>
-              )}
+              <p role="status" className="quote-note">
+                {notice}
+              </p>
             </div>
           </div>
           <div className="quote-actions">
