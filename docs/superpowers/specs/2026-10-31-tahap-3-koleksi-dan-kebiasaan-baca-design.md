@@ -139,3 +139,4 @@ Streak dan target (3B), % pemahaman (3C), kartu buku selesai, ulasan, dan kilas 
 7. Letak akhir lemari pajang: berdiri bebas di `[30, 14]` menghadap +X, utuh di pandangan awal (titik awal `[0.9, 28.5]` dan `[0.9, 26]` jatuh di luar bingkai); hotspot terakhir dalam urutan tab.
 8. Tekstur sampul dimuat ulang hanya bila daftar buku berubah (urutan id), bukan saat signed URL diperbarui.
 9. Ajakan selesai dan penanda bab (mode Gulir) tidak tampil bersamaan: penanda disembunyikan selama ajakan tampil.
+10. Ajakan selesai punya jawaban ketiga, "Nanti": ajakan disembunyikan hanya selama kunjungan baca itu dan tidak ada yang disimpan; membuka bukunya lagi menanyakan lagi (keputusan pemilik A).

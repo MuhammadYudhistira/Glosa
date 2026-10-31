@@ -149,6 +149,7 @@ function ReaderPage() {
   const declineFinish = useServerFn(declineFinishFn)
   const search = Route.useSearch()
   const navigate = useNavigate()
+  const router = useRouter()
   // Read once: the place asked for applies only when the book opens.
   const [target] = useState(() => search.cfi ?? null)
   const [targetMissing, setTargetMissing] = useState(false)
@@ -189,6 +190,8 @@ function ReaderPage() {
   const [finishBusy, setFinishBusy] = useState(false)
   const [finishError, setFinishError] = useState<string | null>(null)
   const [finishedNote, setFinishedNote] = useState(false)
+  // "Nanti": hidden for this visit only, nothing saved (spec Tahap 3 §9).
+  const [finishSnoozed, setFinishSnoozed] = useState(false)
   const annotations = useBookAnnotations(bookId)
   const highlights = useMemo(
     () => annotations.filter((annotation) => annotation.kind === "highlight"),
@@ -234,6 +237,7 @@ function ReaderPage() {
   const askFinish =
     data.online &&
     location !== null &&
+    !finishSnoozed &&
     shouldAskFinish(finish, location) &&
     !popupOpen &&
     panel === null &&
@@ -411,6 +415,11 @@ function ReaderPage() {
     return () => clearTimeout(timer)
   }, [finishedNote])
 
+  // An old failure does not wait behind a prompt that is gone.
+  useEffect(() => {
+    if (!askFinish) setFinishError(null)
+  }, [askFinish])
+
   const answerFinish = async (finished: boolean) => {
     setFinishBusy(true)
     setFinishError(null)
@@ -420,11 +429,19 @@ function ReaderPage() {
         : await declineFinish({ data: { bookId } })
       if (!result.ok) {
         setFinishError(result.code)
-      } else if (finished) {
-        setFinish((current) => ({ ...current, finished: true }))
-        setFinishedNote(true)
       } else {
-        setFinish((current) => ({ ...current, finishDeclined: true }))
+        if (finished) {
+          setFinish((current) => ({ ...current, finished: true }))
+          setFinishedNote(true)
+        } else {
+          setFinish((current) => ({ ...current, finishDeclined: true }))
+        }
+        // The shelf, its Sudah dibaca collection and the lobby cabinet load
+        // again when the member goes back: the back gesture preloads
+        // nothing. This reader's own match is left alone.
+        void router.invalidate({
+          filter: (match) => match.routeId === "/_member/_lobi",
+        })
       }
     } catch {
       setFinishError("unknown")
@@ -691,6 +708,7 @@ function ReaderPage() {
           error={finishError}
           raised={backTo !== null}
           onAnswer={(finished) => void answerFinish(finished)}
+          onLater={() => setFinishSnoozed(true)}
         />
       )}
       {finishedNote && (

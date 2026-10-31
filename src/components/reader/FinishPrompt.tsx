@@ -7,12 +7,15 @@ export function FinishPrompt({
   error,
   raised,
   onAnswer,
+  onLater,
 }: {
   busy: boolean
   error: string | null
   /** Kembali shows above the bottom bar: the prompt goes above it. */
   raised: boolean
   onAnswer: (finished: boolean) => void
+  /** Hide the prompt for this visit only; nothing is saved. */
+  onLater: () => void
 }) {
   return (
     <aside
@@ -32,6 +35,9 @@ export function FinishPrompt({
           onClick={() => onAnswer(false)}
         >
           Belum
+        </Button>
+        <Button size="lg" variant="ghost" disabled={busy} onClick={onLater}>
+          Nanti
         </Button>
       </div>
       {error && (
