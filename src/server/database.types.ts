@@ -118,6 +118,8 @@ export type Database = {
           created_at: string
           description: string | null
           file_path: string
+          finish_declined: boolean
+          finished_at: string | null
           genre: string | null
           genre_source: string | null
           id: string
@@ -137,6 +139,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           file_path: string
+          finish_declined?: boolean
+          finished_at?: string | null
           genre?: string | null
           genre_source?: string | null
           id?: string
@@ -156,6 +160,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           file_path?: string
+          finish_declined?: boolean
+          finished_at?: string | null
           genre?: string | null
           genre_source?: string | null
           id?: string
@@ -172,6 +178,68 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "books_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collection_books: {
+        Row: {
+          added_at: string
+          book_id: string
+          collection_id: string
+        }
+        Insert: {
+          added_at?: string
+          book_id: string
+          collection_id: string
+        }
+        Update: {
+          added_at?: string
+          book_id?: string
+          collection_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_books_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_books_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collections: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collections_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -490,6 +558,9 @@ export type Database = {
     }
     Functions: {
       before_user_created: { Args: { event: Json }; Returns: Json }
+      create_collection: { Args: { p_name: string }; Returns: string }
+      decline_finish: { Args: { p_book_id: string }; Returns: string }
+      delete_collection: { Args: { p_id: string }; Returns: string }
       delete_word: { Args: { p_headword: string }; Returns: undefined }
       dict_note_miss: { Args: { p_word: string }; Returns: undefined }
       dict_pos_rank: { Args: { p_pos: string }; Returns: number }
@@ -507,6 +578,10 @@ export type Database = {
         Returns: boolean
       }
       normalize_username: { Args: { raw: string }; Returns: string }
+      rename_collection: {
+        Args: { p_id: string; p_name: string }
+        Returns: string
+      }
       reserve_book_upload: {
         Args: {
           p_author: string
@@ -550,6 +625,14 @@ export type Database = {
         Returns: string
       }
       saved_word_forms: { Args: never; Returns: Json }
+      set_book_collections: {
+        Args: { p_book_id: string; p_collection_ids: string[] }
+        Returns: string
+      }
+      set_book_finished: {
+        Args: { p_book_id: string; p_finished: boolean }
+        Returns: string
+      }
       unique_username: { Args: { base: string }; Returns: string }
       username_available: { Args: { candidate: string }; Returns: boolean }
       visitors_today: { Args: never; Returns: number }
