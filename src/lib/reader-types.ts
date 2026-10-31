@@ -14,7 +14,14 @@ export type PositionStore = {
   markSynced: (entries: ReadonlyArray<ProgressEntry>) => Promise<void>
 }
 
-export type ReaderBook = { id: string; title: string; author: string }
+export type ReaderBook = {
+  id: string
+  title: string
+  author: string
+  /** Finished, or answered "Belum": either way the reader does not ask (spec Tahap 3 §4.4). */
+  finished: boolean
+  finishDeclined: boolean
+}
 
 export type ReadingState =
   | {

@@ -42,6 +42,7 @@ const usage: StorageUsage = {
 function renderStage(popup: boolean, url = popup ? "/shelf" : "/lobby") {
   return renderWithRouter(
     <LobbyStage
+      collections={[]}
       user={member}
       books={[sherlock]}
       usage={usage}
@@ -59,6 +60,7 @@ function RoutedStage() {
   })
   return (
     <LobbyStage
+      collections={[]}
       user={member}
       books={[sherlock]}
       usage={usage}

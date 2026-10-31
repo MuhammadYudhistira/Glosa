@@ -36,7 +36,7 @@ export const readingStateFn = createServerFn({ method: "GET" })
     const [bookResult, progressResult, profileResult] = await Promise.all([
       supabase
         .from("books")
-        .select("id, title, author")
+        .select("id, title, author, finished_at, finish_declined")
         .eq("id", data.bookId)
         .eq("status", "ready")
         .maybeSingle(),
@@ -62,7 +62,13 @@ export const readingStateFn = createServerFn({ method: "GET" })
     const progress = progressResult.data
     return {
       ok: true,
-      book: bookResult.data,
+      book: {
+        id: bookResult.data.id,
+        title: bookResult.data.title,
+        author: bookResult.data.author,
+        finished: bookResult.data.finished_at !== null,
+        finishDeclined: bookResult.data.finish_declined,
+      },
       progress: progress
         ? {
             cfi: progress.cfi,

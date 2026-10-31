@@ -16,11 +16,28 @@ export type ShelfBook = {
   coverUrl: string | null
   /** Last percentage read, as stored on the server (0â€“100), or null when never read. */
   progress: number | null
+  /** When the member said they finished it (spec Tahap 3 §4.4), or null. */
+  finishedAt: string | null
+  /** The member answered "Belum" when the reader asked: it asks no more. */
+  finishDeclined: boolean
+  /** The member's collections this book is in. */
+  collectionIds: Array<string>
 }
 
 export type StorageUsage = { usedBytes: number; limitBytes: number; plan: Plan }
 
-export type ShelfData = { books: Array<ShelfBook>; usage: StorageUsage }
+/** A collection the member made (spec Tahap 3 §4.1). */
+export type Collection = { id: string; name: string; createdAt: string }
+
+/** Collections per member, and the length of a name once trimmed (spec Tahap 3 §4.1). */
+export const MAX_COLLECTIONS = 50
+export const MAX_COLLECTION_NAME = 40
+
+export type ShelfData = {
+  books: Array<ShelfBook>
+  usage: StorageUsage
+  collections: Array<Collection>
+}
 
 export type CoverInfo = { bytes: number; type: "image/webp" | "image/jpeg" }
 

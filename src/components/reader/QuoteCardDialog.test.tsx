@@ -21,6 +21,8 @@ const book = {
   id: "3c2b1a09-8f7e-4d6c-b5a4-938271605f4e",
   title: "A Scandal in Bohemia",
   author: "Arthur Conan Doyle",
+  finished: false,
+  finishDeclined: false,
 }
 const CAPITAL: LookupOutcome = {
   kind: "result",

@@ -26,6 +26,10 @@ const MESSAGES: Record<string, string> = {
   annotations_full:
     "Anotasi sudah penuh (10.000). Hapus beberapa anotasi untuk membuat yang baru.",
   annotation_invalid: "Anotasi ini tidak bisa disimpan.",
+  collections_full:
+    "Koleksi sudah penuh (50). Hapus koleksi lain dulu untuk membuat yang baru.",
+  collection_duplicate: "Sudah ada koleksi dengan nama itu.",
+  collection_invalid: "Nama koleksi harus 1–40 karakter.",
   position_missing: "Posisi itu tidak ditemukan di buku ini",
 }
 

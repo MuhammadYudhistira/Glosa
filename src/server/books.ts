@@ -278,11 +278,11 @@ export const listBooksFn = createServerFn({ method: "GET" }).handler(
     } = await supabase.auth.getUser()
     if (!user) throw new Error("not_authenticated")
 
-    const [booksResult, profileResult] = await Promise.all([
+    const [booksResult, profileResult, collectionsResult] = await Promise.all([
       supabase
         .from("books")
         .select(
-          "id, title, author, description, language, genre, genre_source, size_bytes, status, created_at, last_opened_at, cover_path, reading_progress(percentage)"
+          "id, title, author, description, language, genre, genre_source, size_bytes, status, created_at, last_opened_at, cover_path, finished_at, finish_declined, reading_progress(percentage), collection_books(collection_id)"
         )
         .order("created_at", { ascending: false }),
       supabase
@@ -290,9 +290,14 @@ export const listBooksFn = createServerFn({ method: "GET" }).handler(
         .select("plan, storage_limit_bytes")
         .eq("id", user.id)
         .single(),
+      supabase
+        .from("collections")
+        .select("id, name, created_at")
+        .order("created_at", { ascending: true }),
     ])
     if (booksResult.error) throw booksResult.error
     if (profileResult.error) throw profileResult.error
+    if (collectionsResult.error) throw collectionsResult.error
     const rows = booksResult.data
 
     const ready = rows.filter((row) => row.status === "ready")
@@ -324,6 +329,12 @@ export const listBooksFn = createServerFn({ method: "GET" }).handler(
         coverUrl: row.cover_path ? (covers.get(row.cover_path) ?? null) : null,
         // RLS returns only this member's row, so there is at most one.
         progress: row.reading_progress[0]?.percentage ?? null,
+        finishedAt: row.finished_at,
+        finishDeclined: row.finish_declined,
+        // RLS returns only the rows of this member's collections.
+        collectionIds: row.collection_books.map(
+          (membership) => membership.collection_id
+        ),
       })),
       usage: {
         usedBytes: usedBytes(
@@ -336,6 +347,11 @@ export const listBooksFn = createServerFn({ method: "GET" }).handler(
         limitBytes: profileResult.data.storage_limit_bytes,
         plan: toPlan(profileResult.data.plan),
       },
+      collections: collectionsResult.data.map((row) => ({
+        id: row.id,
+        name: row.name,
+        createdAt: row.created_at,
+      })),
     }
   }
 )

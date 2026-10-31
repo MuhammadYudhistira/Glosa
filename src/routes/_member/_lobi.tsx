@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_member/_lobi")({
 
 /** The lobby stays mounted under Rak Saya and Pengaturan (spec 1F §3). */
 function LobiLayout() {
-  const { books, usage, offline } = Route.useLoaderData()
+  const { books, usage, collections, offline } = Route.useLoaderData()
   const { user } = Route.useRouteContext()
   // From the child matches, which the Outlet renders from too: the scene
   // stops being inert in the same commit that removes the popup, so the
@@ -29,7 +29,7 @@ function LobiLayout() {
   const popup = useChildMatches({
     select: (matches) => matches.some((match) => isPopupPath(match.pathname)),
   })
-  useShelfSnapshot(user.id, books, usage, offline)
+  useShelfSnapshot(user.id, books, usage, collections, offline)
 
   return (
     <>
@@ -37,6 +37,7 @@ function LobiLayout() {
         user={user}
         books={books}
         usage={usage}
+        collections={collections}
         offline={offline}
         popup={popup}
       />

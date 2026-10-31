@@ -30,6 +30,7 @@ const entry = (bookId: string, updatedAt: string) => ({
 const shelf: ShelfData = {
   books: [],
   usage: { usedBytes: 0, limitBytes: 104857600, plan: "free" },
+  collections: [],
 }
 
 beforeEach(async () => {
@@ -106,6 +107,36 @@ describe("shelf snapshot and device owner", () => {
     await saveShelfSnapshot("u1", shelf)
     expect(await loadShelfSnapshot("u1")).toEqual(shelf)
     expect(await loadShelfSnapshot("u2")).toBeNull()
+  })
+
+  it("reads a snapshot saved before collections came", async () => {
+    const old = {
+      books: [
+        {
+          id: "a",
+          title: "Lama",
+          author: "",
+          description: null,
+          language: null,
+          genre: null,
+          genreSource: null,
+          sizeBytes: 1,
+          createdAt: "2026-10-01T00:00:00+00:00",
+          lastOpenedAt: null,
+          coverUrl: null,
+          progress: null,
+        },
+      ],
+      usage: shelf.usage,
+    } as unknown as ShelfData
+    await saveShelfSnapshot("u1", old)
+    const loaded = await loadShelfSnapshot("u1")
+    expect(loaded?.collections).toEqual([])
+    expect(loaded?.books[0]).toMatchObject({
+      finishedAt: null,
+      finishDeclined: false,
+      collectionIds: [],
+    })
   })
 
   it("wipes another member's copies when a new member claims the device", async () => {

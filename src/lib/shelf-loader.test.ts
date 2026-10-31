@@ -16,6 +16,7 @@ vi.mock("@/lib/local/shelf-snapshot", () => ({
 const shelf: ShelfData = {
   books: [],
   usage: { usedBytes: 0, limitBytes: 104857600, plan: "free" },
+  collections: [],
 }
 
 beforeEach(() => {

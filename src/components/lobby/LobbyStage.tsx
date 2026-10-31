@@ -19,7 +19,7 @@ import { useAndaSpot } from "@/components/lobby/useAndaSpot"
 import { UploadPanel } from "@/components/shelf/UploadPanel"
 import { useLocalShelf } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
-import type { ShelfBook, StorageUsage } from "@/lib/book-types"
+import type { Collection, ShelfBook, StorageUsage } from "@/lib/book-types"
 import type { SessionUser } from "@/lib/session-types"
 import { useWideScreen } from "@/lib/use-wide-screen"
 
@@ -39,6 +39,8 @@ export function LobbyStage({
   user: SessionUser
   books: Array<ShelfBook>
   usage: StorageUsage
+  /** The member's collections, for the book details' checklist. */
+  collections: Array<Collection>
   offline: boolean
   /** Rak Saya or Pengaturan is open over the lobby. */
   popup: boolean

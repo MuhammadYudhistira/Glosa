@@ -16,6 +16,9 @@ function book(overrides: Partial<ShelfBook>): ShelfBook {
     lastOpenedAt: null,
     coverUrl: null,
     progress: null,
+    finishedAt: null,
+    finishDeclined: false,
+    collectionIds: [],
     ...overrides,
   }
 }

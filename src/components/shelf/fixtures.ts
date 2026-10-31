@@ -13,4 +13,7 @@ export const sherlock: ShelfBook = {
   lastOpenedAt: null,
   coverUrl: null,
   progress: null,
+  finishedAt: null,
+  finishDeclined: false,
+  collectionIds: [],
 }

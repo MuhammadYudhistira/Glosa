@@ -38,8 +38,20 @@ async function offlineBook(
   const shelf = await loadShelfSnapshot(userId)
   const entry = shelf?.books.find((candidate) => candidate.id === bookId)
   return entry
-    ? { id: entry.id, title: entry.title, author: entry.author }
-    : { id: bookId, title: "Buku", author: "" }
+    ? {
+        id: entry.id,
+        title: entry.title,
+        author: entry.author,
+        finished: entry.finishedAt !== null,
+        finishDeclined: entry.finishDeclined,
+      }
+    : {
+        id: bookId,
+        title: "Buku",
+        author: "",
+        finished: false,
+        finishDeclined: false,
+      }
 }
 
 /**
