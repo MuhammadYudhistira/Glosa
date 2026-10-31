@@ -158,6 +158,7 @@ describe("LobbyScene", () => {
         setView: vi.fn(),
         walkTo: vi.fn(),
         setPaused: vi.fn(),
+        setShowcase: vi.fn(),
         dispose: vi.fn(),
       }
       act(() => {
@@ -234,6 +235,7 @@ describe("LobbyScene", () => {
           setView: vi.fn(),
           walkTo: vi.fn(),
           setPaused: vi.fn(),
+          setShowcase: vi.fn(),
           dispose: vi.fn(),
         })
       })

@@ -1,7 +1,7 @@
 import type { ShelfBook } from "@/lib/book-types"
 import { GENRE_LABELS, TROLLEY_LABEL } from "@/lib/genre"
 import { type ShelfFilter, countBooks } from "@/lib/shelf"
-import { HOTSPOT_SPOTS, type HotspotId } from "./scene/layout"
+import { HOTSPOT_SPOTS, type HotspotId, SHOWCASE_SLOTS } from "./scene/layout"
 
 export const RECENT_LIMIT = 5
 
@@ -13,17 +13,25 @@ export type LobbySummary = {
   recent: Array<ShelfBook>
   /** The book the reading table opens: the one opened last on the server. */
   lastRead: ShelfBook | null
+  /** Finished books for the display cabinet, the last finished first. */
+  finished: Array<ShelfBook>
+  finishedCount: number
 }
 
 export function summarizeLobby(books: ReadonlyArray<ShelfBook>): LobbySummary {
   const opened = books
     .filter((book) => book.lastOpenedAt !== null)
     .sort((a, b) => (b.lastOpenedAt ?? "").localeCompare(a.lastOpenedAt ?? ""))
+  const finished = books
+    .filter((book) => book.finishedAt !== null)
+    .sort((a, b) => (b.finishedAt ?? "").localeCompare(a.finishedAt ?? ""))
   return {
     counts: countBooks(books),
     trolley: books.filter((book) => book.genre === null),
     recent: opened.slice(0, RECENT_LIMIT),
     lastRead: opened.length > 0 ? opened[0] : null,
+    finished: finished.slice(0, SHOWCASE_SLOTS),
+    finishedCount: finished.length,
   }
 }
 
@@ -40,13 +48,22 @@ export type HotspotModel = {
 }
 
 export function lobbyHotspots(
-  counts: Record<ShelfFilter, number>
+  counts: Record<ShelfFilter, number>,
+  finishedCount = 0
 ): Array<HotspotModel> {
   return HOTSPOT_SPOTS.map(({ id }): HotspotModel => {
     const plain = { id, count: null, badge: null, dim: false }
     if (id === "meja-baca") return { ...plain, label: "Meja Baca" }
     if (id === "meja-admin") return { ...plain, label: "Meja Admin" }
     if (id === "katalog") return { ...plain, label: "Kosakata" }
+    if (id === "lemari") {
+      return {
+        ...plain,
+        label: "Sudah dibaca",
+        count: finishedCount,
+        dim: finishedCount === 0,
+      }
+    }
     if (id === "troli") {
       return {
         ...plain,

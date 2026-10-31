@@ -9,6 +9,7 @@ const stage = vi.hoisted(() => ({
   setView: vi.fn(),
   walkTo: vi.fn(),
   setPaused: vi.fn(),
+  setShowcase: vi.fn(),
   dispose: vi.fn(),
 }))
 vi.mock("./scene/stage", () => ({ createStage: vi.fn(() => stage) }))
@@ -20,6 +21,7 @@ function canvasWith(paused: boolean, onReady = vi.fn()) {
       test={false}
       anda={ANDA_START}
       paused={paused}
+      showcase={[]}
       onReady={onReady}
       onView={vi.fn()}
       onQuality={vi.fn()}
@@ -40,5 +42,40 @@ describe("LobbyCanvas", () => {
 
     unmount()
     expect(stage.dispose).toHaveBeenCalled()
+  })
+
+  it("hands the finished books to the stage, now and when they change", async () => {
+    const books = [{ id: "a", coverUrl: null, hue: 120 }]
+    const { rerender } = render(
+      <LobbyCanvas
+        quality="tinggi"
+        test={false}
+        anda={ANDA_START}
+        paused={false}
+        showcase={books}
+        onReady={vi.fn()}
+        onView={vi.fn()}
+        onQuality={vi.fn()}
+        onFail={vi.fn()}
+      />
+    )
+    await vi.waitFor(() =>
+      expect(stage.setShowcase).toHaveBeenCalledWith(books)
+    )
+    const more = [...books, { id: "b", coverUrl: null, hue: 40 }]
+    rerender(
+      <LobbyCanvas
+        quality="tinggi"
+        test={false}
+        anda={ANDA_START}
+        paused={false}
+        showcase={more}
+        onReady={vi.fn()}
+        onView={vi.fn()}
+        onQuality={vi.fn()}
+        onFail={vi.fn()}
+      />
+    )
+    expect(stage.setShowcase).toHaveBeenLastCalledWith(more)
   })
 })

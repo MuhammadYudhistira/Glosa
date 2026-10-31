@@ -7,7 +7,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { buildFurniture } from "./furniture"
 import { createKit } from "./kit"
-import { type Point2, SHELF_FACES } from "./layout"
+import { type Point2, SHELF_FACES, type ShowcaseBook } from "./layout"
 import { createMotion } from "./motion"
 import { buildPeople } from "./people"
 import {
@@ -22,6 +22,7 @@ import {
 import { MEASURE_MS, type Quality, nextQuality, walkerShare } from "./quality"
 import { buildRoom } from "./room"
 import { buildShelves } from "./shelves"
+import { buildShowcase } from "./showcase"
 import { buildSkyline } from "./skyline"
 
 /**
@@ -51,6 +52,8 @@ export type Stage = {
   walkTo: (spot: Point2) => void
   /** Stops the animation behind a popup; it goes on from the same moment (spec 1F §4.5). */
   setPaused: (paused: boolean) => void
+  /** The finished books in the display cabinet (spec Tahap 3 §4.5). */
+  setShowcase: (books: ReadonlyArray<ShowcaseBook>) => void
   dispose: () => void
 }
 
@@ -170,6 +173,7 @@ function buildStage(
   const skyline = buildSkyline(kit)
   const books = buildShelves(kit, SHELF_FACES)
   const furniture = buildFurniture(kit)
+  const showcase = buildShowcase(kit, () => requestRender())
   const people = buildPeople(
     kit,
     { stairs: stairSeats, lounges: furniture.loungeSeats },
@@ -368,6 +372,9 @@ function buildStage(
       motion.walkTo(spot, !animates())
       requestRender()
     },
+    setShowcase(list) {
+      showcase.set(list)
+    },
     setPaused(next) {
       if (next === paused) return
       paused = next
@@ -384,6 +391,7 @@ function buildStage(
       canvas.removeEventListener("webglcontextlost", onContextLost)
       controls.removeEventListener("change", onControlsChange)
       controls.dispose()
+      showcase.dispose()
       disposeTree(scene)
       environment.dispose()
       bloom.dispose()

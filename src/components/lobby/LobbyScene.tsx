@@ -12,7 +12,12 @@ import { HotspotLayer } from "./HotspotLayer"
 import { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyStill, STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import type { HotspotModel } from "./lobby-data"
-import { type HotspotId, type Point2, spotOf } from "./scene/layout"
+import {
+  type HotspotId,
+  type Point2,
+  type ShowcaseBook,
+  spotOf,
+} from "./scene/layout"
 import {
   type View,
   type Viewport,
@@ -63,6 +68,7 @@ export function LobbyScene({
   onActivate,
   onLiveChange,
   paused = false,
+  showcase = [],
   allow3d = true,
   ref,
 }: {
@@ -74,6 +80,8 @@ export function LobbyScene({
   onLiveChange?: (live: boolean) => void
   /** Behind a popup: the 3D scene keeps its last frame (spec 1F §4.5). */
   paused?: boolean
+  /** The finished books for the display cabinet. */
+  showcase?: ReadonlyArray<ShowcaseBook>
   /** False keeps WebGL off, e.g. while the lobby is hidden behind a page on phones (spec 1F §5). */
   allow3d?: boolean
   ref?: Ref<LobbySceneHandle>
@@ -160,6 +168,7 @@ export function LobbyScene({
           test={test}
           anda={anda}
           paused={paused}
+          showcase={showcase}
           onReady={(stage) => {
             stageRef.current = stage
             setMode("3d")

@@ -3,9 +3,13 @@ import { GENRE_VALUES } from "@/lib/genre"
 import {
   ATRIUM,
   HOTSPOT_SPOTS,
+  SHOWCASE,
+  SHOWCASE_SIZE,
+  SHOWCASE_SLOTS,
   TOWER,
   WALKER_ROUTES,
   ZONES,
+  showcaseSlots,
   type Point2,
 } from "./layout"
 
@@ -36,7 +40,22 @@ describe("lobby layout", () => {
       "troli",
       "meja-admin",
       "katalog",
+      "lemari",
     ])
+  })
+
+  it("stands twelve covers inside the display cabinet", () => {
+    const slots = showcaseSlots()
+    expect(slots).toHaveLength(SHOWCASE_SLOTS)
+    const [cx, cz] = SHOWCASE
+    for (const [x, y, z] of slots) {
+      expect(Math.abs(x - cx)).toBeLessThan(SHOWCASE_SIZE.depth / 2)
+      expect(Math.abs(z - cz)).toBeLessThan(SHOWCASE_SIZE.width / 2)
+      expect(y).toBeGreaterThan(0)
+      expect(y).toBeLessThan(SHOWCASE_SIZE.height)
+    }
+    // The newest book first: top shelf, then down.
+    expect(slots[0][1]).toBeGreaterThan(slots[11][1])
   })
 
   it("lets 'Anda' stand on the floor, clear of the towers", () => {

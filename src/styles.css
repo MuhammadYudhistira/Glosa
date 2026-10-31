@@ -440,6 +440,10 @@
   .lobby-map-mark[data-kind="katalog"] {
     background: #ff8fa3;
   }
+  .lobby-map-spot[data-kind="lemari"],
+  .lobby-map-mark[data-kind="lemari"] {
+    background: #ffd166;
+  }
   .lobby-legend {
     display: grid;
     gap: 0.4rem;

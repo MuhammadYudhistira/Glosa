@@ -83,14 +83,39 @@ describe("lobbyHotspots", () => {
     ).toBeNull()
   })
 
-  it("ends with the card catalogue, which opens Kosakata", () => {
+  it("has the card catalogue, which opens Kosakata", () => {
     const hotspots = lobbyHotspots(summarizeLobby([]).counts)
-    expect(hotspots.at(-1)).toEqual({
+    expect(hotspots.find(({ id }) => id === "katalog")).toEqual({
       id: "katalog",
       label: "Kosakata",
       count: null,
       badge: null,
       dim: false,
     })
+  })
+})
+
+describe("finished books", () => {
+  it("shows the last twelve finished, newest first, and counts them all", () => {
+    const finished = Array.from({ length: 14 }, (_, i) =>
+      book(`f${i}`, {
+        finishedAt: `2026-10-${String(i + 10).padStart(2, "0")}T08:00:00+00:00`,
+      })
+    )
+    const summary = summarizeLobby([...finished, book("open")])
+    expect(summary.finishedCount).toBe(14)
+    expect(summary.finished).toHaveLength(12)
+    expect(summary.finished[0].id).toBe("f13")
+    expect(summary.finished.at(-1)?.id).toBe("f2")
+  })
+
+  it("names the cabinet Sudah dibaca with its count, dim when empty", () => {
+    const { counts } = summarizeLobby([book("a")])
+    expect(
+      lobbyHotspots(counts, 3).find(({ id }) => id === "lemari")
+    ).toMatchObject({ label: "Sudah dibaca", count: 3, dim: false })
+    expect(
+      lobbyHotspots(counts).find(({ id }) => id === "lemari")
+    ).toMatchObject({ count: 0, dim: true })
   })
 })

@@ -16,6 +16,7 @@ import { TrolleyPanel } from "@/components/lobby/TrolleyPanel"
 import { lobbyHotspots, summarizeLobby } from "@/components/lobby/lobby-data"
 import { type HotspotId, spotOf } from "@/components/lobby/scene/layout"
 import { useAndaSpot } from "@/components/lobby/useAndaSpot"
+import { coverHue } from "@/components/shelf/BookCover"
 import { UploadPanel } from "@/components/shelf/UploadPanel"
 import { useLocalShelf } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
@@ -52,7 +53,19 @@ export function LobbyStage({
   const wide = useWideScreen()
   const local = useLocalShelf()
   const summary = useMemo(() => summarizeLobby(books), [books])
-  const hotspots = useMemo(() => lobbyHotspots(summary.counts), [summary])
+  const hotspots = useMemo(
+    () => lobbyHotspots(summary.counts, summary.finishedCount),
+    [summary]
+  )
+  const showcase = useMemo(
+    () =>
+      summary.finished.map((book) => ({
+        id: book.id,
+        coverUrl: book.coverUrl,
+        hue: coverHue(book.title),
+      })),
+    [summary]
+  )
   const [anda, moveAnda] = useAndaSpot()
   const sceneRef = useRef<LobbySceneHandle>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -113,6 +126,8 @@ export function LobbyStage({
       setSorting(true)
     } else if (id === "katalog") {
       void navigate({ to: "/vocabulary" })
+    } else if (id === "lemari") {
+      void navigate({ to: "/shelf", search: { koleksi: "selesai" } })
     } else {
       void navigate({ to: "/shelf", search: { genre: id } })
     }
@@ -142,6 +157,7 @@ export function LobbyStage({
         <LobbyScene
           ref={sceneRef}
           hotspots={hotspots}
+          showcase={showcase}
           anda={anda}
           bubbles={bubbles}
           onActivate={activate}

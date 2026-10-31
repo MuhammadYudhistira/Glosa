@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react"
-import type { Point2 } from "./scene/layout"
+import type { Point2, ShowcaseBook } from "./scene/layout"
 import { type View, type Viewport, startView } from "./scene/projection"
 import type { Quality } from "./scene/quality"
 import type { Stage } from "./scene/stage"
@@ -14,6 +14,7 @@ export function LobbyCanvas({
   test,
   anda,
   paused,
+  showcase,
   onReady,
   onView,
   onQuality,
@@ -25,6 +26,8 @@ export function LobbyCanvas({
   anda: Point2
   /** Behind a popup: the stage keeps its last frame (spec 1F §4.5). */
   paused: boolean
+  /** The finished books for the display cabinet. */
+  showcase: ReadonlyArray<ShowcaseBook>
   onReady: (stage: Stage) => void
   onView: (view: View, viewport: Viewport) => void
   onQuality: (quality: Quality) => void
@@ -34,6 +37,7 @@ export function LobbyCanvas({
   const stageRef = useRef<Stage | null>(null)
   const andaRef = useRef(anda)
   const pausedRef = useRef(paused)
+  const showcaseRef = useRef(showcase)
   const callbacks = useRef({ onReady, onView, onQuality, onFail })
   const initial = useRef({ quality, test })
 
@@ -60,6 +64,7 @@ export function LobbyCanvas({
           onLost: () => callbacks.current.onFail(),
         })
         stage.setPaused(pausedRef.current)
+        stage.setShowcase(showcaseRef.current)
         stageRef.current = stage
         callbacks.current.onReady(stage)
       })
@@ -84,6 +89,11 @@ export function LobbyCanvas({
     pausedRef.current = paused
     stageRef.current?.setPaused(paused)
   }, [paused])
+
+  useEffect(() => {
+    showcaseRef.current = showcase
+    stageRef.current?.setShowcase(showcase)
+  }, [showcase])
 
   return <div ref={hostRef} className="lobby-canvas-host" />
 }
