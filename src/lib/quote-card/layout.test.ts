@@ -1,20 +1,16 @@
 import { describe, expect, it } from "vitest"
 import { SITE_TAGLINE } from "@/lib/site"
+import { fakeMeasure } from "@/test/canvas"
 import { HAND } from "./fonts"
 import {
   CARD_LAYOUTS,
   CARD_SIZES,
   type CardInput,
   type CardItem,
-  type Measure,
   breakLines,
   layoutCard,
 } from "./layout"
 import { prepareQuote, quoteTokens } from "./quote-text"
-
-/** Half the font size per character, like the canvas stub in src/test/canvas.ts. */
-const measure: Measure = (text, fontName) =>
-  text.length * Number(/([\d.]+)px/.exec(fontName)?.[1] ?? 10) * 0.5
 
 const SHORT = "It is a capital mistake to theorize before one has data."
 const LONG = prepareQuote(
@@ -66,7 +62,7 @@ describe("breakLines", () => {
 
 describe("layoutCard", () => {
   it("draws a short quote at the largest size", () => {
-    const card = layoutCard(input(), measure)
+    const card = layoutCard(input(), fakeMeasure)
     expect(card).toMatchObject({
       width: 1080,
       height: 1920,
@@ -84,13 +80,13 @@ describe("layoutCard", () => {
   )("fits a 300-character quote in %s, %s", (layout, size) => {
     const card = layoutCard(
       input({ layout, size, tokens: quoteTokens(LONG), highlight: 2 }),
-      measure
+      fakeMeasure
     )
     expect(card.fits).toBe(true)
   })
 
   it("Kutipan: the word stands out in the quote, and its meaning sits below", () => {
-    const card = layoutCard(input(), measure)
+    const card = layoutCard(input(), fakeMeasure)
     const inQuote = textsOf(card.items).filter(
       (item) => item.text === "capital"
     )
@@ -106,7 +102,7 @@ describe("layoutCard", () => {
   })
 
   it("Glosa: a highlighter behind the word, the meaning written above it", () => {
-    const card = layoutCard(input({ layout: "glosa" }), measure)
+    const card = layoutCard(input({ layout: "glosa" }), fakeMeasure)
     const mark = card.items.find((item) => item.kind === "mark")
     const hit = card.hits.find((candidate) => candidate.token === 3)
     if (mark?.kind !== "mark" || !hit) throw new Error("no mark or hit")
@@ -127,20 +123,20 @@ describe("layoutCard", () => {
     const tokens = quoteTokens(SHORT)
     const card = layoutCard(
       input({ layout: "glosa", word, highlight: tokens.length - 1 }),
-      measure
+      fakeMeasure
     )
     const hand = textsOf(card.items).filter((item) => item.font.endsWith(HAND))
     expect(hand).toHaveLength(2)
     for (const item of hand) {
       expect(item.x).toBeGreaterThanOrEqual(96)
-      expect(item.x + measure(item.text, item.font)).toBeLessThanOrEqual(
+      expect(item.x + fakeMeasure(item.text, item.font)).toBeLessThanOrEqual(
         1080 - 96 + 0.5
       )
     }
   })
 
   it("knows where each word is, for a tap", () => {
-    const card = layoutCard(input(), measure)
+    const card = layoutCard(input(), fakeMeasure)
     expect(card.hits.map((hit) => hit.token)).toEqual(
       quoteTokens(SHORT).map((_, i) => i)
     )
@@ -149,7 +145,7 @@ describe("layoutCard", () => {
 
   it("without a word: no highlighter, no rule, no meaning", () => {
     for (const layout of CARD_LAYOUTS) {
-      const card = layoutCard(input({ layout, highlight: null }), measure)
+      const card = layoutCard(input({ layout, highlight: null }), fakeMeasure)
       expect(
         card.items.some((item) => item.kind === "mark" || item.kind === "rule")
       ).toBe(false)
@@ -158,7 +154,7 @@ describe("layoutCard", () => {
   })
 
   it("puts the title beside the cover, or at the edge without one", () => {
-    const withCover = layoutCard(input(), measure)
+    const withCover = layoutCard(input(), fakeMeasure)
     expect(withCover.items.find((item) => item.kind === "cover")).toMatchObject(
       {
         x: 96,
@@ -168,7 +164,7 @@ describe("layoutCard", () => {
     expect(textOf(withCover.items, "A Scandal in Bohemia")?.x).toBe(
       96 + 64 + 28
     )
-    const without = layoutCard(input({ hasCover: false }), measure)
+    const without = layoutCard(input({ hasCover: false }), fakeMeasure)
     expect(without.items.some((item) => item.kind === "cover")).toBe(false)
     expect(textOf(without.items, "A Scandal in Bohemia")?.x).toBe(96)
   })
@@ -176,29 +172,32 @@ describe("layoutCard", () => {
   it("shortens a long title with an ellipsis", () => {
     const card = layoutCard(
       input({ title: "Supercalifragilistic ".repeat(10) }),
-      measure
+      fakeMeasure
     )
     const title = textsOf(card.items)[0]
     expect(title.text.endsWith("…")).toBe(true)
-    expect(title.x + measure(title.text, title.font)).toBeLessThanOrEqual(
+    expect(title.x + fakeMeasure(title.text, title.font)).toBeLessThanOrEqual(
       1080 - 96
     )
   })
 
   it("signs with Glosa and the site, the tagline only on a Kutipan story", () => {
-    const story = layoutCard(input(), measure)
+    const story = layoutCard(input(), fakeMeasure)
     expect(textOf(story.items, "Glosa")).toMatchObject({ x: 96, y: 1920 - 90 })
     const host = textOf(story.items, "glos-a.tech")
-    expect(host && host.x + measure(host.text, host.font)).toBeCloseTo(
+    expect(host && host.x + fakeMeasure(host.text, host.font)).toBeCloseTo(
       1080 - 96
     )
     expect(textOf(story.items, SITE_TAGLINE)).toBeDefined()
     expect(
-      textOf(layoutCard(input({ size: "square" }), measure).items, SITE_TAGLINE)
+      textOf(
+        layoutCard(input({ size: "square" }), fakeMeasure).items,
+        SITE_TAGLINE
+      )
     ).toBeUndefined()
     expect(
       textOf(
-        layoutCard(input({ layout: "glosa" }), measure).items,
+        layoutCard(input({ layout: "glosa" }), fakeMeasure).items,
         SITE_TAGLINE
       )
     ).toBeUndefined()

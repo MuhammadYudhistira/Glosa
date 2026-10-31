@@ -9,6 +9,11 @@ const MIN_CUT = 200
 const OUTER_QUOTES = /^["“”„«»]+|["“”„«»]+$/gu
 const TRAILING = /[\s,;:—–-]+$/u
 
+/** Whether a text has a letter or a digit: only then is it worth a card. */
+export function isQuotable(text: string): boolean {
+  return /[\p{L}\p{N}]/u.test(text)
+}
+
 export type PreparedQuote = { text: string; cut: boolean }
 
 /**

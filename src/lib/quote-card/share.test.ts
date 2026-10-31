@@ -72,6 +72,46 @@ describe("shareCard", () => {
     await expect(shareCard(file, "t", "l", { share })).resolves.toBe("shared")
   })
 
+  it("tells when the link was copied, and not when it was refused", async () => {
+    const share = vi.fn(async () => undefined)
+    const copied = vi.fn()
+    const clipboard = { writeText: vi.fn(async () => undefined) }
+    await shareCard(
+      file,
+      "t",
+      "l",
+      { clipboard: clipboard as unknown as Clipboard, share },
+      copied
+    )
+    await vi.waitFor(() => expect(copied).toHaveBeenCalledTimes(1))
+    const refused = vi.fn()
+    const denied = {
+      writeText: vi.fn(async () => {
+        throw new Error("denied")
+      }),
+    }
+    await shareCard(
+      file,
+      "t",
+      "l",
+      { clipboard: denied as unknown as Clipboard, share },
+      refused
+    )
+    await Promise.resolve()
+    expect(refused).not.toHaveBeenCalled()
+  })
+
+  it("fails, not throws, when the sheet rejects with nothing", async () => {
+    await expect(
+      shareCard(file, "t", "l", {
+        share: vi.fn(() => Promise.reject(undefined)),
+      })
+    ).resolves.toBe("failed")
+    await expect(
+      shareCard(file, "t", "l", { share: vi.fn(() => Promise.reject(null)) })
+    ).resolves.toBe("failed")
+  })
+
   it("tells a closed sheet from a failure", async () => {
     const cancel = vi.fn(async () => {
       throw new DOMException("closed", "AbortError")

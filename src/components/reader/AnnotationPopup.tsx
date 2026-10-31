@@ -5,6 +5,7 @@ import {
   HIGHLIGHT_COLORS,
   type HighlightColor,
 } from "@/lib/annotations/types"
+import { isQuotable } from "@/lib/quote-card/quote-text"
 import { ReaderPopup, type WordRect } from "./ReaderPopup"
 import type { WordTap } from "./WordPopup"
 
@@ -73,7 +74,7 @@ export function AnnotationPopup({
           <Button size="lg" variant="outline" onClick={onNote}>
             Catatan
           </Button>
-          {annotation.excerpt.trim() && (
+          {isQuotable(annotation.excerpt) && (
             <Button size="lg" variant="outline" onClick={onShare}>
               Bagikan
             </Button>

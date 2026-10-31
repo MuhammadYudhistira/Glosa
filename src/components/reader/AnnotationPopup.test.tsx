@@ -79,6 +79,12 @@ describe("AnnotationPopup", () => {
     expect(screen.queryByRole("dialog")).toBeNull()
   })
 
+  it("offers no Bagikan for a highlight without words", async () => {
+    show({ annotation: { ...annotation, excerpt: " — … " } })
+    await screen.findByRole("dialog", { name: "Highlight" })
+    expect(screen.queryByRole("button", { name: "Bagikan" })).toBeNull()
+  })
+
   it("shares the highlight", async () => {
     const props = show()
     await screen.findByRole("dialog", { name: "Highlight" })

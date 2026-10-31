@@ -108,6 +108,19 @@ describe("AnnotationList", () => {
     expect(screen.getByText(/Belum ada anotasi/)).toBeInTheDocument()
   })
 
+  it("offers no sharing for a highlight without words", () => {
+    render(
+      <AnnotationList
+        annotations={[{ ...base, excerpt: " — … " }]}
+        chaptersOf={null}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onShare={vi.fn()}
+      />
+    )
+    expect(screen.queryByRole("button", { name: /^Bagikan/ })).toBeNull()
+  })
+
   it("shares a highlight, and offers no sharing for a bookmark", () => {
     const onShare = vi.fn()
     render(

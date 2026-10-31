@@ -33,10 +33,14 @@ export async function shareCard(
   file: File,
   text: string,
   link: string,
-  nav: Sharing = navigator
+  nav: Sharing = navigator,
+  onLinkCopied?: () => void
 ): Promise<ShareResult> {
   try {
-    nav.clipboard?.writeText(link).catch(() => undefined)
+    nav.clipboard
+      ?.writeText(link)
+      .then(onLinkCopied)
+      .catch(() => undefined)
   } catch {
     // No clipboard: the card goes anyway.
   }
@@ -45,7 +49,8 @@ export async function shareCard(
     await nav.share({ files: [file], text })
     return "shared"
   } catch (error) {
-    return (error as { name?: unknown }).name === "AbortError"
+    return (error as { name?: unknown } | null | undefined)?.name ===
+      "AbortError"
       ? "cancelled"
       : "failed"
   }

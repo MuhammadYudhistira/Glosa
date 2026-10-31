@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { HIGHLIGHT_FILL } from "@/lib/annotations/draw"
 import { inBookOrder } from "@/lib/annotations/places"
 import type { Annotation } from "@/lib/annotations/types"
+import { isQuotable } from "@/lib/quote-card/quote-text"
 import { COLOR_LABELS } from "./AnnotationPopup"
 
 const NAME_EXCERPT_MAX = 25
@@ -108,7 +109,7 @@ export function AnnotationList({
                 <span className="annotation-note">{annotation.note}</span>
               )}
             </button>
-            {!bookmark && annotation.excerpt.trim() && (
+            {!bookmark && isQuotable(annotation.excerpt) && (
               <Button
                 variant="ghost"
                 size="icon-lg"

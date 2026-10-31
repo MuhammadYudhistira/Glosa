@@ -3,6 +3,7 @@ import { savedFormsOf } from "@/lib/words/saved-marks"
 import {
   MAX_QUOTE_LENGTH,
   defaultWord,
+  isQuotable,
   prepareQuote,
   quoteTokens,
 } from "./quote-text"
@@ -59,5 +60,15 @@ describe("defaultWord", () => {
 
   it("picks none when no word is saved", () => {
     expect(defaultWord(tokens, savedFormsOf({}))).toBeNull()
+  })
+})
+
+describe("isQuotable", () => {
+  it("needs a letter or a digit", () => {
+    expect(isQuotable("Holmes")).toBe(true)
+    expect(isQuotable("221B")).toBe(true)
+    expect(isQuotable("— … !")).toBe(false)
+    expect(isQuotable("   ")).toBe(false)
+    expect(isQuotable("")).toBe(false)
   })
 })

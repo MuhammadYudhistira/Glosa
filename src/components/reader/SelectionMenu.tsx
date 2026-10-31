@@ -6,6 +6,7 @@ import {
   StickyNoteIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { isQuotable } from "@/lib/quote-card/quote-text"
 import { type WordRect, anchorAt } from "./ReaderPopup"
 
 /** Text selected in the book, and where the selection ends. */
@@ -64,7 +65,7 @@ export function SelectionMenu({
               <CopyIcon aria-hidden="true" />
               Salin
             </Button>
-            {/[\p{L}\p{N}]/u.test(selection.text) && (
+            {isQuotable(selection.text) && (
               <Button size="lg" variant="ghost" onClick={onShare}>
                 <Share2Icon aria-hidden="true" />
                 Bagikan
