@@ -84,3 +84,65 @@ test("a highlight in the annotations panel can be made into a card", async ({
     height: 1920,
   })
 })
+
+test("a word of the quote gets its meanings, on both layouts", async ({
+  page,
+}) => {
+  test.setTimeout(180_000)
+  await startReading(page)
+  await selectWords(page, 4)
+  await page
+    .getByRole("dialog", { name: "Teks terpilih" })
+    .getByRole("button", { name: "Bagikan" })
+    .click()
+
+  const dialog = page.getByRole("dialog", { name: "Bagikan kutipan" })
+  const words = dialog
+    .getByRole("group", { name: "Kata di kutipan" })
+    .getByRole("button")
+  const meanings = dialog.getByRole("group", {
+    name: "Arti di kartu (pilih 1–3)",
+  })
+
+  // The words come from the seeded book, the meanings from the shared
+  // dictionary: take the first word that has some (by keyboard, as the
+  // buttons are visually hidden).
+  const count = await words.count()
+  let found = false
+  for (let i = 0; i < count && !found; i += 1) {
+    const word = words.nth(i)
+    await word.focus()
+    await word.press("Enter")
+    found = await meanings
+      .waitFor({ timeout: 5000 })
+      .then(() => true)
+      .catch(() => false)
+  }
+  expect(found, "one of the quote's words has a meaning").toBe(true)
+
+  const spare = meanings
+    .locator('button[aria-pressed="false"]:not([disabled])')
+    .first()
+  if ((await spare.count()) > 0) {
+    const name = (await spare.textContent()) ?? ""
+    await spare.click()
+    // The same meaning may sit under two parts of speech.
+    await expect(
+      meanings.locator('button[aria-pressed="true"]', { hasText: name }).first()
+    ).toBeVisible()
+  }
+
+  expect(await pngSize(await saveImage(page))).toEqual({
+    width: 1080,
+    height: 1920,
+  })
+
+  await dialog
+    .getByRole("group", { name: "Layout" })
+    .getByRole("button", { name: "Glosa" })
+    .click()
+  expect(await pngSize(await saveImage(page))).toEqual({
+    width: 1080,
+    height: 1920,
+  })
+})
