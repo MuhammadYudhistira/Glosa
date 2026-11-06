@@ -10,7 +10,12 @@ import {
 } from "@/components/ui/dialog"
 import type { ActionResult } from "@/lib/action-result"
 import { bookMessage } from "@/lib/book-messages"
-import { SHOP_ITEMS, SLOTS, type ShopItem, type SlotId } from "@/lib/shop/catalog"
+import {
+  SHOP_ITEMS,
+  SLOTS,
+  type ShopItem,
+  type SlotId,
+} from "@/lib/shop/catalog"
 import type { ShopView } from "@/lib/shop/types"
 
 const OFFLINE_NOTE = "Perlu koneksi internet"
@@ -103,7 +108,9 @@ export function ShopPanel({
                   />
                   <div className="shop-item-body">
                     <p className="font-medium">{item.name}</p>
-                    <p className="text-sm text-muted-foreground">{coins(item.price)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {coins(item.price)}
+                    </p>
                     <div className="shop-actions">
                       {placed ? (
                         <>
@@ -112,7 +119,9 @@ export function ShopPanel({
                             size="sm"
                             variant="outline"
                             disabled={locked}
-                            onClick={() => void act(() => onPlace(slot.id, null))}
+                            onClick={() =>
+                              void act(() => onPlace(slot.id, null))
+                            }
                           >
                             Lepas
                           </Button>
@@ -121,7 +130,9 @@ export function ShopPanel({
                         <Button
                           size="sm"
                           disabled={locked}
-                          onClick={() => void act(() => onPlace(slot.id, item.id))}
+                          onClick={() =>
+                            void act(() => onPlace(slot.id, item.id))
+                          }
                         >
                           Pasang
                         </Button>
@@ -170,7 +181,9 @@ export function ShopPanel({
       >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="font-heading text-xl">Beli barang</DialogTitle>
+            <DialogTitle className="font-heading text-xl">
+              Beli barang
+            </DialogTitle>
             <DialogDescription>
               {asking && `Beli ${asking.name} seharga ${coins(asking.price)}?`}
             </DialogDescription>

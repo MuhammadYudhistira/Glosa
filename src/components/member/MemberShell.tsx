@@ -37,7 +37,14 @@ const isCurrent = (pathname: string, to: string) =>
   pathname === to || pathname.startsWith(`${to}/`)
 
 /** Pages with the lobby behind them on desktop (spec 1F §3, spec 2 §6.4). */
-const OVER_LOBBY = ["/lobby", "/shelf", "/vocabulary", "/settings", "/habits", "/shop"]
+const OVER_LOBBY = [
+  "/lobby",
+  "/shelf",
+  "/vocabulary",
+  "/settings",
+  "/habits",
+  "/shop",
+]
 
 /** Sidebar from 1024 px, tab bar below (spec 1D §5.3). */
 export function MemberShell({ children }: { children: ReactNode }) {
