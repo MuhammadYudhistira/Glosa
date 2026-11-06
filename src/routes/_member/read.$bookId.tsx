@@ -12,6 +12,11 @@ import {
 } from "@/components/reader/FootnotePopup"
 import { NoteEditor } from "@/components/reader/NoteEditor"
 import { QuoteCardDialog } from "@/components/reader/QuoteCardDialog"
+import { GoalToast, useGoalToast } from "@/components/reader/GoalToast"
+import { HabitRing } from "@/components/reader/HabitRing"
+import { useReadingClock } from "@/components/reader/useReadingClock"
+import { refreshHabit, useReadingHabit } from "@/lib/habit/habit-client"
+import { useQueueFlush } from "@/lib/sync/use-queue-flush"
 import { ReaderBack } from "@/components/reader/ReaderBack"
 import {
   SelectionMenu,
@@ -230,6 +235,21 @@ function ReaderPage() {
   const tappedAtCfi = useRef<string | null>(null)
   const [chromeHidden, setChromeHidden] = useState(false)
   const [panel, setPanel] = useState<"toc" | "settings" | null>(null)
+  // A panel over the book stops the reading clock (spec 3B §3.1); word and
+  // footnote popups do not.
+  const clockPaused = panel !== null || noteFor !== null || sharing !== null
+  const readingClock = useReadingClock(bookId, clockPaused)
+  const { onPage: onReadingPage } = readingClock
+  const habit = useReadingHabit()
+  // Today's numbers and goals, and the waiting time sent (plan 3B, decision 10).
+  useQueueFlush(user.id, refreshHabit)
+  const goalToast = useGoalToast({
+    done: habit.summary.todayDone,
+    hasGoal: habit.goals.dailyGoalMinutes !== null,
+    today: habit.today,
+    settled: habit.status !== "loading",
+    barsShown: !chromeHidden,
+  })
   const [offer, setOffer] = useState<Position | null>(() =>
     target ? null : jumpOffer(data.local, data.server)
   )
@@ -320,6 +340,7 @@ function ReaderPage() {
         // swallow the next click, and the text would stay selected.
         controlsRef.current?.clearSelection()
         setSelection(null)
+        onReadingPage()
       }
       shownCfi.current = next.cfi
       recordSpeed(next)
@@ -342,7 +363,7 @@ function ReaderPage() {
           console.error("saving the position failed", error)
         )
     },
-    [bookId, recordSpeed]
+    [bookId, recordSpeed, onReadingPage]
   )
 
   const onInteract = useCallback(() => {
@@ -614,6 +635,13 @@ function ReaderPage() {
         title={data.book.title}
         hidden={chromeHidden}
         syncStatus={syncStatus}
+        habit={
+          <HabitRing
+            seconds={habit.summary.todaySeconds}
+            goalSeconds={habit.summary.todayGoalSeconds}
+            hasGoal={habit.goals.dailyGoalMinutes !== null}
+          />
+        }
         bookmarked={pageBookmarks.length > 0}
         onBookmark={toggleBookmark}
         onToc={() => setPanel("toc")}
@@ -714,6 +742,7 @@ function ReaderPage() {
       {finishedNote && (
         <output className="reader-note">Masuk ke koleksi Sudah dibaca</output>
       )}
+      {goalToast && <GoalToast />}
       <ChapterEdge
         // Out of the way of anything open over the book (spec pindah bab §3.4).
         edge={

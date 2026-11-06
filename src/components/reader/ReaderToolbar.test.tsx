@@ -37,4 +37,16 @@ describe("ReaderToolbar", () => {
       screen.getByRole("button", { name: "Daftar isi dan anotasi" })
     ).toBeInTheDocument()
   })
+
+  it("shows the habit ring it is given", async () => {
+    renderWithRouter(
+      <ReaderToolbar
+        {...props}
+        bookmarked={false}
+        onBookmark={() => undefined}
+        habit={<span>cincin</span>}
+      />
+    )
+    expect(await screen.findByText("cincin")).toBeInTheDocument()
+  })
 })

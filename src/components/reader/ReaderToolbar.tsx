@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { ArrowLeft, Bookmark, BookmarkCheck, List, Type } from "lucide-react"
+import type { ReactNode } from "react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import type { SyncStatus } from "@/lib/progress-sync"
 import { cn } from "@/lib/utils"
@@ -8,6 +9,7 @@ export function ReaderToolbar({
   title,
   hidden,
   syncStatus,
+  habit,
   bookmarked,
   onBookmark,
   onToc,
@@ -16,6 +18,8 @@ export function ReaderToolbar({
   title: string
   hidden: boolean
   syncStatus: SyncStatus
+  /** Today's reading against the goal (spec 3B §4.3). */
+  habit?: ReactNode
   bookmarked: boolean
   onBookmark: () => void
   onToc: () => void
@@ -43,6 +47,7 @@ export function ReaderToolbar({
           Belum tersinkron
         </output>
       )}
+      {habit}
       <Button
         variant="ghost"
         size="icon-lg"

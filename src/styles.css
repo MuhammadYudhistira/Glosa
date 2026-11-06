@@ -806,6 +806,35 @@
     display: block;
     font-size: 0.8rem;
   }
+  /* Today's reading in the reader's top bar (spec 3B §4.3). */
+  .habit-ring {
+    position: relative;
+    display: inline-grid;
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+  }
+  .habit-ring svg {
+    position: absolute;
+    inset: 0;
+    rotate: -90deg;
+  }
+  .habit-ring circle {
+    fill: none;
+    stroke-width: 3;
+  }
+  .habit-ring-track {
+    stroke: color-mix(in oklab, currentColor 20%, transparent);
+  }
+  .habit-ring-fill {
+    stroke: var(--color-mint);
+    stroke-linecap: round;
+  }
+  .habit-ring-minutes {
+    font-size: 0.65rem;
+    font-weight: 700;
+  }
   /* The way on at a section's edge, scrolled flow (spec pindah bab §3.4). */
   .chapter-edge {
     position: absolute;
