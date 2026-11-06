@@ -1,5 +1,6 @@
 import type { Genre } from "@/lib/genre"
 import type { PlantStage } from "@/lib/reading-habit"
+import type { SlotId } from "@/lib/shop/catalog"
 
 /**
  * The lobby's world, in metres (spec 1D §4). X runs along the glass wall
@@ -88,6 +89,45 @@ export const PLANT_SHAPES: Record<
   kuncup: { stem: 0.7, leaves: 9, buds: 3, flowers: 0 },
   berbunga: { stem: 0.75, leaves: 10, buds: 0, flowers: 4 },
 }
+
+/**
+ * The shop's slots (spec 3C §4, plan 3C decision 10). `at`: the item's
+ * origin, on the floor, the wall or under the ceiling; `turn`: its turn
+ * about Y (items are built facing +Z); `flat`: lies or hangs out of the
+ * walkers' way; `focus`: where the camera looks for a preview.
+ */
+export const DECOR_SLOTS: Record<
+  SlotId,
+  { at: Point3; turn: number; flat: boolean; focus: Point3 }
+> = {
+  rug: { at: [19.5, 0, 26], turn: 0, flat: true, focus: [19.5, 0.5, 26] },
+  lamp: { at: [14.6, 0, 26.4], turn: 0, flat: false, focus: [14.6, 1.5, 26.4] },
+  seat: {
+    at: [31.5, 0, 3.2],
+    turn: Math.PI,
+    flat: false,
+    focus: [31.5, 0.8, 3.2],
+  },
+  wall: {
+    at: [0.55, 10.4, 22],
+    turn: Math.PI / 2,
+    flat: true,
+    focus: [0.55, 11.4, 22],
+  },
+  pet: {
+    at: [30.5, 0, 22],
+    turn: -Math.PI / 4,
+    flat: false,
+    focus: [30.5, 0.6, 22],
+  },
+  ceiling: { at: [22, 9.5, 19], turn: 0, flat: true, focus: [22, 9.5, 19] },
+}
+
+/** The shop's kiosk (spec 3C §6.2): open floor near the front, clear of walkers. */
+export const KIOSK: Point2 = [24.6, 31.6]
+
+/** How far right the camera moves past a slot, so it shows beside the shop panel. */
+export const PREVIEW_SHIFT = 0.16
 
 /** Where each cover stands, the newest first: top shelf, left to right. Pure. */
 export function showcaseSlots(): Array<Point3> {
@@ -255,10 +295,11 @@ export type HotspotId =
   | "katalog"
   | "lemari"
   | "tanaman"
+  | "toko"
 /** `label`: where the hotspot's label floats. `stand`: where "Anda" walks to. */
 export type HotspotSpot = { id: HotspotId; label: Point3; stand: Point2 }
 
-/** In tab order (spec 1D §6): reading table, zones, trolley, admin desk, card catalogue, display cabinet, habit plant. */
+/** In tab order (spec 1D §6): reading table, zones, trolley, admin desk, card catalogue, display cabinet, habit plant, shop kiosk. */
 export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   { id: "meja-baca", label: [19.5, 2.2, 26], stand: [19.5, 28.2] },
   ...ZONES.map(({ genre, at: [x, z] }): HotspotSpot => ({
@@ -271,6 +312,7 @@ export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   { id: "katalog", label: [1.0, 2.1, 22.5], stand: [2.8, 23.4] },
   { id: "lemari", label: [30, 2.9, 14], stand: [32, 14] },
   { id: "tanaman", label: [23.4, 2.4, 25.4], stand: [24.9, 26.9] },
+  { id: "toko", label: [24.6, 2.6, 31.6], stand: [23, 30.2] },
 ]
 
 export function spotOf(id: HotspotId): HotspotSpot {

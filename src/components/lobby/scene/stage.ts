@@ -6,6 +6,8 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js"
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import type { PlantStage } from "@/lib/reading-habit"
+import type { Placements } from "@/lib/shop/types"
+import { buildDecor, buildKiosk } from "./decor"
 import { buildFurniture } from "./furniture"
 import { createKit } from "./kit"
 import { type Point2, SHELF_FACES, type ShowcaseBook } from "./layout"
@@ -58,6 +60,8 @@ export type Stage = {
   setShowcase: (books: ReadonlyArray<ShowcaseBook>) => void
   /** The habit plant's stage (spec 3B §4.1). */
   setPlant: (stage: PlantStage) => void
+  /** The shop's items in their slots (spec 3C §6.3). */
+  setDecor: (placed: Placements) => void
   dispose: () => void
 }
 
@@ -179,6 +183,8 @@ function buildStage(
   const furniture = buildFurniture(kit)
   const showcase = buildShowcase(kit, () => requestRender())
   const plant = buildPlant(kit, () => requestRender())
+  buildKiosk(kit)
+  const decor = buildDecor(scene, () => requestRender())
   const people = buildPeople(
     kit,
     { stairs: stairSeats, lounges: furniture.loungeSeats },
@@ -384,6 +390,9 @@ function buildStage(
     setPlant(stage) {
       plant.set(stage)
     },
+    setDecor(placed) {
+      decor.set(placed)
+    },
     setShowcase(list) {
       showcase.set(list)
     },
@@ -405,6 +414,7 @@ function buildStage(
       controls.dispose()
       showcase.dispose()
       plant.dispose()
+      decor.dispose()
       disposeTree(scene)
       environment.dispose()
       bloom.dispose()

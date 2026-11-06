@@ -9,12 +9,16 @@ import {
 } from "react"
 import { Button } from "@/components/ui/button"
 import type { PlantStage } from "@/lib/reading-habit"
+import type { SlotId } from "@/lib/shop/catalog"
+import type { Placements } from "@/lib/shop/types"
 import { HotspotLayer } from "./HotspotLayer"
 import { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyStill, STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import type { HotspotModel } from "./lobby-data"
 import {
+  DECOR_SLOTS,
   type HotspotId,
+  PREVIEW_SHIFT,
   type Point2,
   type ShowcaseBook,
   spotOf,
@@ -37,6 +41,8 @@ import type { Stage } from "./scene/stage"
 export type LobbySceneHandle = {
   /** Moves the camera to a hotspot (the map's spots). */
   showSpot: (id: HotspotId) => void
+  /** Brings a shop slot into view, a little aside for the shop panel. */
+  showDecor: (slot: SlotId) => void
 }
 
 type Camera = { view: View; viewport: Viewport }
@@ -71,6 +77,7 @@ export function LobbyScene({
   paused = false,
   showcase = [],
   plant = "tunas",
+  decor = {},
   allow3d = true,
   ref,
 }: {
@@ -86,6 +93,8 @@ export function LobbyScene({
   showcase?: ReadonlyArray<ShowcaseBook>
   /** The habit plant's stage. */
   plant?: PlantStage
+  /** The shop's items, placed or tried on. */
+  decor?: Placements
   /** False keeps WebGL off, e.g. while the lobby is hidden behind a page on phones (spec 1F §5). */
   allow3d?: boolean
   ref?: Ref<LobbySceneHandle>
@@ -130,6 +139,15 @@ export function LobbyScene({
   useImperativeHandle(ref, () => ({
     showSpot: (id) =>
       moveCamera((current) => centerOn(current.view, spotOf(id).label)),
+    showDecor: (slot) =>
+      moveCamera((current) =>
+        panBy(
+          centerOn(current.view, DECOR_SLOTS[slot].focus),
+          PREVIEW_SHIFT,
+          0,
+          current.viewport
+        )
+      ),
   }))
 
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -174,6 +192,7 @@ export function LobbyScene({
           paused={paused}
           showcase={showcase}
           plant={plant}
+          decor={decor}
           onReady={(stage) => {
             stageRef.current = stage
             setMode("3d")

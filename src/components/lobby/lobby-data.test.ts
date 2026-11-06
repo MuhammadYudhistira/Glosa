@@ -122,6 +122,19 @@ describe("finished books", () => {
     })
   })
 
+  it("names the shop kiosk without a count", () => {
+    const kiosk = lobbyHotspots(summarizeLobby([]).counts).find(
+      (h) => h.id === "toko"
+    )
+    expect(kiosk).toEqual({
+      id: "toko",
+      label: "Toko lobi",
+      count: null,
+      badge: null,
+      dim: false,
+    })
+  })
+
   it("names the cabinet Sudah dibaca with its count, dim when empty", () => {
     const { counts } = summarizeLobby([book("a")])
     expect(

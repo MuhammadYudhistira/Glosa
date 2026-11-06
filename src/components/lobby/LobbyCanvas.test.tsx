@@ -11,6 +11,7 @@ const stage = vi.hoisted(() => ({
   setPaused: vi.fn(),
   setShowcase: vi.fn(),
   setPlant: vi.fn(),
+  setDecor: vi.fn(),
   dispose: vi.fn(),
 }))
 vi.mock("./scene/stage", () => ({ createStage: vi.fn(() => stage) }))
@@ -24,6 +25,7 @@ function canvasWith(paused: boolean, onReady = vi.fn()) {
       paused={paused}
       showcase={[]}
       plant="tunas"
+      decor={{}}
       onReady={onReady}
       onView={vi.fn()}
       onQuality={vi.fn()}
@@ -56,6 +58,7 @@ describe("LobbyCanvas", () => {
         paused={false}
         showcase={books}
         plant="tunas"
+        decor={{}}
         onReady={vi.fn()}
         onView={vi.fn()}
         onQuality={vi.fn()}
@@ -74,6 +77,7 @@ describe("LobbyCanvas", () => {
         paused={false}
         showcase={more}
         plant="berbunga"
+        decor={{}}
         onReady={vi.fn()}
         onView={vi.fn()}
         onQuality={vi.fn()}
@@ -83,5 +87,32 @@ describe("LobbyCanvas", () => {
     expect(stage.setShowcase).toHaveBeenLastCalledWith(more)
     expect(stage.setPlant).toHaveBeenCalledWith("tunas")
     expect(stage.setPlant).toHaveBeenLastCalledWith("berbunga")
+  })
+
+  it("passes the shop's items to the stage, at start and on change", async () => {
+    const canvas = (decor: Record<string, string>) => (
+      <LobbyCanvas
+        quality="tinggi"
+        test={false}
+        anda={ANDA_START}
+        paused={false}
+        showcase={[]}
+        plant="tunas"
+        decor={decor}
+        onReady={vi.fn()}
+        onView={vi.fn()}
+        onQuality={vi.fn()}
+        onFail={vi.fn()}
+      />
+    )
+    const { rerender } = render(canvas({ rug: "rug_woven" }))
+    await vi.waitFor(() =>
+      expect(stage.setDecor).toHaveBeenCalledWith({ rug: "rug_woven" })
+    )
+    rerender(canvas({ rug: "rug_round", pet: "pet_cat" }))
+    expect(stage.setDecor).toHaveBeenLastCalledWith({
+      rug: "rug_round",
+      pet: "pet_cat",
+    })
   })
 })

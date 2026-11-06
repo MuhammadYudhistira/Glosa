@@ -24,6 +24,7 @@ type MapKind =
   | "katalog"
   | "lemari"
   | "tanaman"
+  | "toko"
 const kindOf = (id: HotspotId, count: number | null): MapKind =>
   id === "lemari"
     ? "lemari"
@@ -39,6 +40,7 @@ const LEGEND: ReadonlyArray<[MapKind | "anda", string]> = [
   ["katalog", "Kosakata"],
   ["lemari", "Sudah dibaca"],
   ["tanaman", "Kebiasaan baca"],
+  ["toko", "Toko lobi"],
   ["anda", "Posisi Anda"],
 ]
 

@@ -20,14 +20,14 @@ const GL_ARGS = [
 const STILL = { width: 2560, height: 1440 }
 const STILL_MAX_BYTES = 250 * 1024
 
-async function render(viewport) {
+async function render(viewport, query = "mode=still") {
   const browser = await chromium.launch({ args: GL_ARGS })
   try {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 1 })
     const errors = []
     page.on("pageerror", (error) => errors.push(error.message))
     const failed = new Promise((resolve) => page.once("pageerror", resolve))
-    await page.goto(`${PAGE}?mode=still`, { timeout: 120_000 })
+    await page.goto(`${PAGE}?${query}`, { timeout: 120_000 })
     const ready = page
       .waitForSelector("body[data-ready]", { timeout: 300_000 })
       .then(() => null)
@@ -43,9 +43,14 @@ async function render(viewport) {
   }
 }
 
-async function shot(path) {
+async function shot(path, decor) {
   mkdirSync(dirname(path), { recursive: true })
-  await sharp(await render({ width: 1440, height: 900 })).toFile(path)
+  await sharp(
+    await render(
+      { width: 1440, height: 900 },
+      decor === "all" ? "mode=still&decor=all" : "mode=still"
+    )
+  ).toFile(path)
   console.log(`wrote ${path}`)
 }
 
@@ -71,7 +76,7 @@ async function still() {
   }
 }
 
-const [command, file] = process.argv.slice(2)
+const [command, file, extra] = process.argv.slice(2)
 const server = await createServer({
   configFile: false,
   root: process.cwd(),
@@ -85,7 +90,7 @@ if (command === "serve") {
   console.log(`${PAGE}   (?mode=still or ?mode=test)`)
 } else {
   try {
-    if (command === "shot") await shot(file ?? "lobby.png")
+    if (command === "shot") await shot(file ?? "lobby.png", extra)
     else if (command === "still") await still()
     else throw new Error(`Unknown command: ${command}`)
   } finally {

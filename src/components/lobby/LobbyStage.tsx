@@ -1,6 +1,6 @@
 import { useNavigate, useRouter, useSearch } from "@tanstack/react-router"
 import { PlusIcon } from "lucide-react"
-import { type ReactNode, useMemo, useRef, useState } from "react"
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { AdminDeskCard } from "@/components/lobby/AdminDeskCard"
 import { BookDetailPanel } from "@/components/lobby/BookDetailPanel"
 import { ContinueSheet } from "@/components/lobby/ContinueSheet"
@@ -22,6 +22,8 @@ import { useLocalShelf } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
 import type { Collection, ShelfBook, StorageUsage } from "@/lib/book-types"
 import { useReadingHabit } from "@/lib/habit/habit-client"
+import { itemOf } from "@/lib/shop/catalog"
+import { useLobbyDecor, useShop } from "@/lib/shop/shop-client"
 import type { SessionUser } from "@/lib/session-types"
 import { useWideScreen } from "@/lib/use-wide-screen"
 
@@ -54,6 +56,8 @@ export function LobbyStage({
   const wide = useWideScreen()
   const local = useLocalShelf()
   const habit = useReadingHabit()
+  const decor = useLobbyDecor()
+  const shop = useShop()
   const summary = useMemo(() => summarizeLobby(books), [books])
   const hotspots = useMemo(
     () => lobbyHotspots(summary.counts, summary.finishedCount),
@@ -70,6 +74,12 @@ export function LobbyStage({
   )
   const [anda, moveAnda] = useAndaSpot()
   const sceneRef = useRef<LobbySceneHandle>(null)
+
+  // A preview from the shop brings its slot into view beside the panel (plan 3C, decision 5).
+  const previewSlot = shop.preview ? (itemOf(shop.preview)?.slot ?? null) : null
+  useEffect(() => {
+    if (previewSlot && wide) sceneRef.current?.showDecor(previewSlot)
+  }, [previewSlot, wide])
   const searchRef = useRef<HTMLInputElement>(null)
   // What had the focus when a book was picked; "Tutup detail" returns there.
   const openerRef = useRef<HTMLElement | null>(null)
@@ -130,6 +140,8 @@ export function LobbyStage({
       void navigate({ to: "/vocabulary" })
     } else if (id === "tanaman") {
       void navigate({ to: "/habits" })
+    } else if (id === "toko") {
+      // The /shop route arrives in plan 3C Task 4; until then the kiosk opens nothing.
     } else if (id === "lemari") {
       void navigate({ to: "/shelf", search: { koleksi: "selesai" } })
     } else {
@@ -163,6 +175,7 @@ export function LobbyStage({
           hotspots={hotspots}
           showcase={showcase}
           plant={habit.summary.stage}
+          decor={decor}
           anda={anda}
           bubbles={bubbles}
           onActivate={activate}

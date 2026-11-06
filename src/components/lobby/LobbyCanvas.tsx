@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react"
 import type { PlantStage } from "@/lib/reading-habit"
+import type { Placements } from "@/lib/shop/types"
 import type { Point2, ShowcaseBook } from "./scene/layout"
 import { type View, type Viewport, startView } from "./scene/projection"
 import type { Quality } from "./scene/quality"
@@ -17,6 +18,7 @@ export function LobbyCanvas({
   paused,
   showcase,
   plant,
+  decor,
   onReady,
   onView,
   onQuality,
@@ -32,6 +34,8 @@ export function LobbyCanvas({
   showcase: ReadonlyArray<ShowcaseBook>
   /** The habit plant's stage. */
   plant: PlantStage
+  /** The shop's items, placed or tried on. */
+  decor: Placements
   onReady: (stage: Stage) => void
   onView: (view: View, viewport: Viewport) => void
   onQuality: (quality: Quality) => void
@@ -43,6 +47,7 @@ export function LobbyCanvas({
   const pausedRef = useRef(paused)
   const showcaseRef = useRef(showcase)
   const plantRef = useRef(plant)
+  const decorRef = useRef(decor)
   const callbacks = useRef({ onReady, onView, onQuality, onFail })
   const initial = useRef({ quality, test })
 
@@ -71,6 +76,7 @@ export function LobbyCanvas({
         stage.setPaused(pausedRef.current)
         stage.setShowcase(showcaseRef.current)
         stage.setPlant(plantRef.current)
+        stage.setDecor(decorRef.current)
         stageRef.current = stage
         callbacks.current.onReady(stage)
       })
@@ -105,6 +111,11 @@ export function LobbyCanvas({
     plantRef.current = plant
     stageRef.current?.setPlant(plant)
   }, [plant])
+
+  useEffect(() => {
+    decorRef.current = decor
+    stageRef.current?.setDecor(decor)
+  }, [decor])
 
   return <div ref={hostRef} className="lobby-canvas-host" />
 }

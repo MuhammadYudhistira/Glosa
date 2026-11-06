@@ -5,7 +5,7 @@ import { sherlock } from "@/components/shelf/fixtures"
 import type { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyScene, type LobbySceneHandle } from "./LobbyScene"
 import { lobbyHotspots, summarizeLobby } from "./lobby-data"
-import { ANDA_START, spotOf } from "./scene/layout"
+import { ANDA_START, DECOR_SLOTS, spotOf } from "./scene/layout"
 import {
   MAX_ZOOM,
   centerOn,
@@ -160,6 +160,7 @@ describe("LobbyScene", () => {
         setPaused: vi.fn(),
         setShowcase: vi.fn(),
         setPlant: vi.fn(),
+        setDecor: vi.fn(),
         dispose: vi.fn(),
       }
       act(() => {
@@ -194,6 +195,16 @@ describe("LobbyScene", () => {
       act(() => ref.current?.showSpot("meja-baca"))
       expect(stage.setView).toHaveBeenCalledWith(
         centerOn(view, spotOf("meja-baca").label)
+      )
+    })
+
+    it("brings a shop slot into view, shifted aside for the panel", async () => {
+      const { stage, view, ref } = await goLive()
+      act(() => ref.current?.showDecor("pet"))
+      expect(stage.setView).toHaveBeenCalledTimes(1)
+      const [shown] = stage.setView.mock.calls[0]
+      expect(shown.target).not.toEqual(
+        centerOn(view, DECOR_SLOTS.pet.focus).target
       )
     })
 
@@ -238,6 +249,7 @@ describe("LobbyScene", () => {
           setPaused: vi.fn(),
           setShowcase: vi.fn(),
           setPlant: vi.fn(),
+          setDecor: vi.fn(),
           dispose: vi.fn(),
         })
       })

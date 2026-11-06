@@ -25,6 +25,17 @@ const stage = createStage({
     document.body.dataset.lost = "true"
   },
 })
+const decorParam = new URLSearchParams(window.location.search).get("decor")
+if (decorParam === "all") {
+  stage.setDecor({
+    rug: "rug_pattern",
+    lamp: "lamp_arc",
+    seat: "seat_sofa",
+    wall: "wall_painting",
+    pet: "pet_cat",
+    ceiling: "ceiling_lights",
+  })
+}
 document.body.dataset.books = String(stage.books)
 // The first frame draws the scene; the second shows it.
 requestAnimationFrame(() =>

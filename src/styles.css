@@ -448,6 +448,10 @@
   .lobby-map-mark[data-kind="tanaman"] {
     background: #8bd17c;
   }
+  .lobby-map-spot[data-kind="toko"],
+  .lobby-map-mark[data-kind="toko"] {
+    background: #f2a65a;
+  }
   .lobby-legend {
     display: grid;
     gap: 0.4rem;

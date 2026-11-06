@@ -12,7 +12,7 @@ describe("LibraryMap", () => {
     render(
       <LibraryMap hotspots={hotspots} anda={[17, 17]} onSelect={onSelect} />
     )
-    expect(screen.getAllByRole("button")).toHaveLength(14)
+    expect(screen.getAllByRole("button")).toHaveLength(15)
     fireEvent.click(screen.getByRole("button", { name: "Meja Baca di peta" }))
     expect(onSelect).toHaveBeenCalledWith("meja-baca")
   })
@@ -31,9 +31,10 @@ describe("LibraryMap", () => {
     expect(kindOf("Kosakata di peta")).toBe("katalog")
     expect(kindOf("Sudah dibaca di peta")).toBe("lemari")
     expect(kindOf("Kebiasaan baca di peta")).toBe("tanaman")
+    expect(kindOf("Toko lobi di peta")).toBe("toko")
     const legend = container.querySelector(".lobby-legend")
     expect(legend).toHaveTextContent(
-      "Rak bukuMeja BacaMeja AdminTroli Buku BaruKosakataSudah dibacaKebiasaan bacaPosisi Anda"
+      "Rak bukuMeja BacaMeja AdminTroli Buku BaruKosakataSudah dibacaKebiasaan bacaToko lobiPosisi Anda"
     )
   })
 

@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { GENRE_VALUES } from "@/lib/genre"
+import { SLOT_IDS } from "@/lib/shop/catalog"
 import {
   ATRIUM,
+  DECOR_SLOTS,
   HOTSPOT_SPOTS,
+  KIOSK,
+  LOUNGES,
   PLANT,
   PLANT_POT,
   PLANT_SHAPES,
@@ -46,6 +50,7 @@ describe("lobby layout", () => {
       "katalog",
       "lemari",
       "tanaman",
+      "toko",
     ])
   })
 
@@ -123,6 +128,41 @@ describe("lobby layout", () => {
           )
         }
       })
+    }
+  })
+
+  it("gives every shop slot a place, and keeps standing items clear", () => {
+    const distance = (a: Point2, b: Point2) =>
+      Math.hypot(a[0] - b[0], a[1] - b[1])
+    expect(Object.keys(DECOR_SLOTS).sort()).toEqual([...SLOT_IDS].sort())
+    const standing: Array<[string, Point2]> = [
+      ...Object.entries(DECOR_SLOTS)
+        .filter(([, slot]) => !slot.flat)
+        .map(([id, { at }]): [string, Point2] => [id, [at[0], at[2]]]),
+      ["kiosk", KIOSK],
+    ]
+    for (const [id, at] of standing) {
+      expect(onFloor(at), id).toBe(true)
+      expect(towerClearance(at), id).toBeGreaterThan(1)
+      expect(distance(at, PLANT), id).toBeGreaterThan(2)
+      expect(distance(at, SHOWCASE), id).toBeGreaterThan(2.5)
+      for (const { at: seat } of READERS) {
+        expect(distance(at, seat), id).toBeGreaterThan(1.5)
+      }
+      for (const { at: lounge } of LOUNGES) {
+        expect(distance(at, lounge), id).toBeGreaterThan(2)
+      }
+      for (const [index, { points }] of WALKER_ROUTES.entries()) {
+        points.forEach(([x, z], i) => {
+          const [nx, nz] = points[(i + 1) % points.length]
+          for (let t = 0; t <= 1; t += 0.01) {
+            const on: Point2 = [x + (nx - x) * t, z + (nz - z) * t]
+            expect(distance(at, on), `${id} route ${index}`).toBeGreaterThan(
+              1.5
+            )
+          }
+        })
+      }
     }
   })
 })
