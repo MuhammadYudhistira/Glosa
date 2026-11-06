@@ -45,11 +45,12 @@ describe("HotspotLayer", () => {
     ).toBeInTheDocument()
   })
 
-  it("starts at the reading table and ends at the display cabinet", () => {
+  it("starts at the reading table and ends at the habit plant", () => {
     renderLayer([sherlock])
     const buttons = screen.getAllByRole("button")
     expect(buttons[0]).toHaveAccessibleName("Meja Baca")
-    expect(buttons.at(-1)).toHaveAccessibleName("Sudah dibaca · 0 buku")
+    expect(buttons.at(-2)).toHaveAccessibleName("Sudah dibaca · 0 buku")
+    expect(buttons.at(-1)).toHaveAccessibleName("Kebiasaan baca")
   })
 
   it("puts each hotspot where its spot appears on screen", () => {

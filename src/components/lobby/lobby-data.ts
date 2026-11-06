@@ -56,6 +56,7 @@ export function lobbyHotspots(
     if (id === "meja-baca") return { ...plain, label: "Meja Baca" }
     if (id === "meja-admin") return { ...plain, label: "Meja Admin" }
     if (id === "katalog") return { ...plain, label: "Kosakata" }
+    if (id === "tanaman") return { ...plain, label: "Kebiasaan baca" }
     if (id === "lemari") {
       return {
         ...plain,

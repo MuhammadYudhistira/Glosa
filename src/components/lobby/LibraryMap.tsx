@@ -17,7 +17,13 @@ function onMap([x, z]: Point2): CSSProperties {
 
 /** How a place shows on the map; the legend uses the same marks. */
 type MapKind =
-  "zone" | "meja-baca" | "meja-admin" | "troli" | "katalog" | "lemari"
+  | "zone"
+  | "meja-baca"
+  | "meja-admin"
+  | "troli"
+  | "katalog"
+  | "lemari"
+  | "tanaman"
 const kindOf = (id: HotspotId, count: number | null): MapKind =>
   id === "lemari"
     ? "lemari"
@@ -32,6 +38,7 @@ const LEGEND: ReadonlyArray<[MapKind | "anda", string]> = [
   ["troli", "Troli Buku Baru"],
   ["katalog", "Kosakata"],
   ["lemari", "Sudah dibaca"],
+  ["tanaman", "Kebiasaan baca"],
   ["anda", "Posisi Anda"],
 ]
 

@@ -3,6 +3,10 @@ import { GENRE_VALUES } from "@/lib/genre"
 import {
   ATRIUM,
   HOTSPOT_SPOTS,
+  PLANT,
+  PLANT_POT,
+  PLANT_SHAPES,
+  READERS,
   SHOWCASE,
   SHOWCASE_SIZE,
   SHOWCASE_SLOTS,
@@ -41,7 +45,49 @@ describe("lobby layout", () => {
       "meja-admin",
       "katalog",
       "lemari",
+      "tanaman",
     ])
+  })
+
+  it("stands the plant on open floor, clear of walkers, readers and the cabinet", () => {
+    expect(onFloor(PLANT)).toBe(true)
+    expect(towerClearance(PLANT)).toBeGreaterThan(1)
+    const distance = (a: Point2, b: Point2) =>
+      Math.hypot(a[0] - b[0], a[1] - b[1])
+    for (const { at } of READERS) {
+      expect(distance(PLANT, at)).toBeGreaterThan(1.2)
+    }
+    expect(distance(PLANT, SHOWCASE)).toBeGreaterThan(3)
+    for (const [index, { points }] of WALKER_ROUTES.entries()) {
+      points.forEach(([x, z], i) => {
+        const [nx, nz] = points[(i + 1) % points.length]
+        for (let t = 0; t <= 1; t += 0.01) {
+          const at: Point2 = [x + (nx - x) * t, z + (nz - z) * t]
+          expect(distance(PLANT, at), `route ${index}`).toBeGreaterThan(
+            PLANT_POT.width / 2 + 0.6
+          )
+        }
+      })
+    }
+  })
+
+  it("grows the plant at every stage", () => {
+    const order = [
+      "biji",
+      "tunas",
+      "daun",
+      "rimbun",
+      "kuncup",
+      "berbunga",
+    ] as const
+    const shapes = order.map((stage) => PLANT_SHAPES[stage])
+    expect(shapes[0]).toEqual({ stem: 0, leaves: 0, buds: 0, flowers: 0 })
+    for (let i = 1; i < shapes.length; i++) {
+      expect(shapes[i].stem).toBeGreaterThanOrEqual(shapes[i - 1].stem)
+      expect(shapes[i].leaves).toBeGreaterThanOrEqual(shapes[i - 1].leaves)
+    }
+    expect(shapes[4].buds).toBeGreaterThan(0)
+    expect(shapes[5].flowers).toBeGreaterThan(0)
   })
 
   it("stands twelve covers inside the display cabinet", () => {

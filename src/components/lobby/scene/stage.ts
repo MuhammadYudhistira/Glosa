@@ -5,6 +5,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js"
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js"
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
+import type { PlantStage } from "@/lib/reading-habit"
 import { buildFurniture } from "./furniture"
 import { createKit } from "./kit"
 import { type Point2, SHELF_FACES, type ShowcaseBook } from "./layout"
@@ -22,6 +23,7 @@ import {
 import { MEASURE_MS, type Quality, nextQuality, walkerShare } from "./quality"
 import { buildRoom } from "./room"
 import { buildShelves } from "./shelves"
+import { buildPlant } from "./plant"
 import { buildShowcase } from "./showcase"
 import { buildSkyline } from "./skyline"
 
@@ -54,6 +56,8 @@ export type Stage = {
   setPaused: (paused: boolean) => void
   /** The finished books in the display cabinet (spec Tahap 3 §4.5). */
   setShowcase: (books: ReadonlyArray<ShowcaseBook>) => void
+  /** The habit plant's stage (spec 3B §4.1). */
+  setPlant: (stage: PlantStage) => void
   dispose: () => void
 }
 
@@ -174,6 +178,7 @@ function buildStage(
   const books = buildShelves(kit, SHELF_FACES)
   const furniture = buildFurniture(kit)
   const showcase = buildShowcase(kit, () => requestRender())
+  const plant = buildPlant(kit, () => requestRender())
   const people = buildPeople(
     kit,
     { stairs: stairSeats, lounges: furniture.loungeSeats },
@@ -360,6 +365,10 @@ function buildStage(
   document.addEventListener("visibilitychange", onVisibility)
   canvas.addEventListener("webglcontextlost", onContextLost)
 
+  // The still image shows a sprout (plan 3B, decision 5). Set only here: the
+  // render flag that onChange flips is declared above this point.
+  plant.set("tunas")
+
   return {
     books,
     setView(next) {
@@ -371,6 +380,9 @@ function buildStage(
     walkTo(spot) {
       motion.walkTo(spot, !animates())
       requestRender()
+    },
+    setPlant(stage) {
+      plant.set(stage)
     },
     setShowcase(list) {
       showcase.set(list)
@@ -392,6 +404,7 @@ function buildStage(
       controls.removeEventListener("change", onControlsChange)
       controls.dispose()
       showcase.dispose()
+      plant.dispose()
       disposeTree(scene)
       environment.dispose()
       bloom.dispose()

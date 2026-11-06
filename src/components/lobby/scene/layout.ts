@@ -1,4 +1,5 @@
 import type { Genre } from "@/lib/genre"
+import type { PlantStage } from "@/lib/reading-habit"
 
 /**
  * The lobby's world, in metres (spec 1D §4). X runs along the glass wall
@@ -67,6 +68,26 @@ export const SHOWCASE_SHELVES = [0.12, 0.86, 1.6] as const
 export const SHOWCASE_SLOTS = 12
 /** A finished book on display: its cover, or a coloured face without one. */
 export type ShowcaseBook = { id: string; coverUrl: string | null; hue: number }
+
+/**
+ * The habit plant (spec 3B §4.1): a pot on open floor in front of the
+ * reading table, nearer the camera than the table, clear of the walkers.
+ */
+export const PLANT: Point2 = [23.4, 25.4]
+export const PLANT_POT = { width: 0.7, height: 0.6 } as const
+
+/** What grows on the stem at each stage, in metres before the plant's scale. */
+export const PLANT_SHAPES: Record<
+  PlantStage,
+  { stem: number; leaves: number; buds: number; flowers: number }
+> = {
+  biji: { stem: 0, leaves: 0, buds: 0, flowers: 0 },
+  tunas: { stem: 0.18, leaves: 2, buds: 0, flowers: 0 },
+  daun: { stem: 0.4, leaves: 4, buds: 0, flowers: 0 },
+  rimbun: { stem: 0.6, leaves: 8, buds: 0, flowers: 0 },
+  kuncup: { stem: 0.7, leaves: 9, buds: 3, flowers: 0 },
+  berbunga: { stem: 0.75, leaves: 10, buds: 0, flowers: 4 },
+}
 
 /** Where each cover stands, the newest first: top shelf, left to right. Pure. */
 export function showcaseSlots(): Array<Point3> {
@@ -227,11 +248,17 @@ export const SHELF_FACES: ReadonlyArray<ShelfFace> = [
 ]
 
 export type HotspotId =
-  Genre | "meja-baca" | "meja-admin" | "troli" | "katalog" | "lemari"
+  | Genre
+  | "meja-baca"
+  | "meja-admin"
+  | "troli"
+  | "katalog"
+  | "lemari"
+  | "tanaman"
 /** `label`: where the hotspot's label floats. `stand`: where "Anda" walks to. */
 export type HotspotSpot = { id: HotspotId; label: Point3; stand: Point2 }
 
-/** In tab order (spec 1D §6): reading table, zones, trolley, admin desk, card catalogue, display cabinet. */
+/** In tab order (spec 1D §6): reading table, zones, trolley, admin desk, card catalogue, display cabinet, habit plant. */
 export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   { id: "meja-baca", label: [19.5, 2.2, 26], stand: [19.5, 28.2] },
   ...ZONES.map(({ genre, at: [x, z] }): HotspotSpot => ({
@@ -243,6 +270,7 @@ export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   { id: "meja-admin", label: [5.5, 2.8, 25.5], stand: [7.5, 27.8] },
   { id: "katalog", label: [1.0, 2.1, 22.5], stand: [2.8, 23.4] },
   { id: "lemari", label: [30, 2.9, 14], stand: [32, 14] },
+  { id: "tanaman", label: [23.4, 2.4, 25.4], stand: [24.9, 26.9] },
 ]
 
 export function spotOf(id: HotspotId): HotspotSpot {

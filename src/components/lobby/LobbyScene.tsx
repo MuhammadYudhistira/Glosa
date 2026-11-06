@@ -8,6 +8,7 @@ import {
   useState,
 } from "react"
 import { Button } from "@/components/ui/button"
+import type { PlantStage } from "@/lib/reading-habit"
 import { HotspotLayer } from "./HotspotLayer"
 import { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyStill, STILL_SIZE, STILL_VIEW } from "./LobbyStill"
@@ -69,6 +70,7 @@ export function LobbyScene({
   onLiveChange,
   paused = false,
   showcase = [],
+  plant = "tunas",
   allow3d = true,
   ref,
 }: {
@@ -82,6 +84,8 @@ export function LobbyScene({
   paused?: boolean
   /** The finished books for the display cabinet. */
   showcase?: ReadonlyArray<ShowcaseBook>
+  /** The habit plant's stage. */
+  plant?: PlantStage
   /** False keeps WebGL off, e.g. while the lobby is hidden behind a page on phones (spec 1F §5). */
   allow3d?: boolean
   ref?: Ref<LobbySceneHandle>
@@ -169,6 +173,7 @@ export function LobbyScene({
           anda={anda}
           paused={paused}
           showcase={showcase}
+          plant={plant}
           onReady={(stage) => {
             stageRef.current = stage
             setMode("3d")

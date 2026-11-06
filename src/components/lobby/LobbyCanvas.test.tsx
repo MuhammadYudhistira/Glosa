@@ -10,6 +10,7 @@ const stage = vi.hoisted(() => ({
   walkTo: vi.fn(),
   setPaused: vi.fn(),
   setShowcase: vi.fn(),
+  setPlant: vi.fn(),
   dispose: vi.fn(),
 }))
 vi.mock("./scene/stage", () => ({ createStage: vi.fn(() => stage) }))
@@ -22,6 +23,7 @@ function canvasWith(paused: boolean, onReady = vi.fn()) {
       anda={ANDA_START}
       paused={paused}
       showcase={[]}
+      plant="tunas"
       onReady={onReady}
       onView={vi.fn()}
       onQuality={vi.fn()}
@@ -53,6 +55,7 @@ describe("LobbyCanvas", () => {
         anda={ANDA_START}
         paused={false}
         showcase={books}
+        plant="tunas"
         onReady={vi.fn()}
         onView={vi.fn()}
         onQuality={vi.fn()}
@@ -70,6 +73,7 @@ describe("LobbyCanvas", () => {
         anda={ANDA_START}
         paused={false}
         showcase={more}
+        plant="berbunga"
         onReady={vi.fn()}
         onView={vi.fn()}
         onQuality={vi.fn()}
@@ -77,5 +81,7 @@ describe("LobbyCanvas", () => {
       />
     )
     expect(stage.setShowcase).toHaveBeenLastCalledWith(more)
+    expect(stage.setPlant).toHaveBeenCalledWith("tunas")
+    expect(stage.setPlant).toHaveBeenLastCalledWith("berbunga")
   })
 })

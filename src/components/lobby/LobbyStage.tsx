@@ -21,6 +21,7 @@ import { UploadPanel } from "@/components/shelf/UploadPanel"
 import { useLocalShelf } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
 import type { Collection, ShelfBook, StorageUsage } from "@/lib/book-types"
+import { useReadingHabit } from "@/lib/habit/habit-client"
 import type { SessionUser } from "@/lib/session-types"
 import { useWideScreen } from "@/lib/use-wide-screen"
 
@@ -52,6 +53,7 @@ export function LobbyStage({
   const router = useRouter()
   const wide = useWideScreen()
   const local = useLocalShelf()
+  const habit = useReadingHabit()
   const summary = useMemo(() => summarizeLobby(books), [books])
   const hotspots = useMemo(
     () => lobbyHotspots(summary.counts, summary.finishedCount),
@@ -126,6 +128,8 @@ export function LobbyStage({
       setSorting(true)
     } else if (id === "katalog") {
       void navigate({ to: "/vocabulary" })
+    } else if (id === "tanaman") {
+      void navigate({ to: "/habits" })
     } else if (id === "lemari") {
       void navigate({ to: "/shelf", search: { koleksi: "selesai" } })
     } else {
@@ -158,6 +162,7 @@ export function LobbyStage({
           ref={sceneRef}
           hotspots={hotspots}
           showcase={showcase}
+          plant={habit.summary.stage}
           anda={anda}
           bubbles={bubbles}
           onActivate={activate}

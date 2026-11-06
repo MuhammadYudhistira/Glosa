@@ -444,6 +444,10 @@
   .lobby-map-mark[data-kind="lemari"] {
     background: #ffd166;
   }
+  .lobby-map-spot[data-kind="tanaman"],
+  .lobby-map-mark[data-kind="tanaman"] {
+    background: #8bd17c;
+  }
   .lobby-legend {
     display: grid;
     gap: 0.4rem;

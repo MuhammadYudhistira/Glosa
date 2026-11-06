@@ -109,6 +109,19 @@ describe("finished books", () => {
     expect(summary.finished.at(-1)?.id).toBe("f2")
   })
 
+  it("names the habit plant without a count", () => {
+    const plant = lobbyHotspots(summarizeLobby([]).counts).find(
+      (h) => h.id === "tanaman"
+    )
+    expect(plant).toEqual({
+      id: "tanaman",
+      label: "Kebiasaan baca",
+      count: null,
+      badge: null,
+      dim: false,
+    })
+  })
+
   it("names the cabinet Sudah dibaca with its count, dim when empty", () => {
     const { counts } = summarizeLobby([book("a")])
     expect(
