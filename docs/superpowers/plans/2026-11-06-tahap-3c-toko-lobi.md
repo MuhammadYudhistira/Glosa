@@ -51,8 +51,8 @@
 8. **Cache perangkat berisi seluruh `LobbyState`** (bukan hanya barang terpasang) di `meta` dengan kunci `lobbyShop`, supaya panel offline menampilkan saldo terakhir dan barang milik dengan tombol nonaktif. `meta` sudah dihapus oleh `wipeMemberData`.
 9. **Status dimuat ulang di layout `_lobi`** lewat `useQueueFlush(user.id, refreshShop)`, seperti `refreshHabit`. `refreshShop` mengirim antrean waktu baca dulu (`habitSync().flush()`).
 10. **Letak slot dan kios** (diperiksa screenshot harness di Task 3, boleh digeser bila tertutup):
-    - `rug` [19.5, 0, 26] di bawah meja baca (rata lantai); `lamp` [14.6, 0, 26.4]; `seat` [31.5, 0, 3.2] menghadap kaca; `wall` [0.55, 10.4, 22] di dinding kiri di atas balkon atas (dipindah di Task 3: posisi lama tertanam di rak dan tertutup balkon); `pet` [30.5, 0, 22]; `ceiling` [22, 9.5, 19] menggantung;
-    - kios `KIOSK` [24.6, 31.6], hotspot `toko` terakhir dalam urutan tab, label "Toko lobi".
+    - `rug` [19.5, 0, 26] di bawah meja baca (rata lantai); `lamp` [14.6, 0, 26.4]; `seat` [31.5, 0, 3.2] menghadap kaca; `wall` [0.55, 3.4, 8.6] di dinding kiri (fokus [0.55, 4.4, 8.6]; dipindah di Task 3 lalu Task 5); `pet` [30.5, 0, 22]; `ceiling` [22, 9.5, 19] menggantung;
+    - kios `KIOSK` [29, 19.2] (stand [28, 21]; dipindah dari [24.6, 31.6] yang di luar pandangan awal), hotspot `toko` terakhir dalam urutan tab, label "Toko lobi".
 11. **Gambar kecil** dibuat oleh perintah harness baru `thumbs` (480 × 360, webp) dari adegan dengan satu barang terpasang dan kamera di slotnya. Katalog dibaca lewat `server.ssrLoadModule`.
 
 ## Struktur file

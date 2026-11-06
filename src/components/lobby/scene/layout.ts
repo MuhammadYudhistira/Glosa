@@ -124,7 +124,7 @@ export const DECOR_SLOTS: Record<
 }
 
 /** The shop's kiosk (spec 3C §6.2): open floor near the front, clear of walkers. */
-export const KIOSK: Point2 = [24.6, 31.6]
+export const KIOSK: Point2 = [29, 19.2]
 
 /** How far right the camera moves past a slot, so it shows beside the shop panel. */
 export const PREVIEW_SHIFT = 0.16
@@ -312,7 +312,7 @@ export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   { id: "katalog", label: [1.0, 2.1, 22.5], stand: [2.8, 23.4] },
   { id: "lemari", label: [30, 2.9, 14], stand: [32, 14] },
   { id: "tanaman", label: [23.4, 2.4, 25.4], stand: [24.9, 26.9] },
-  { id: "toko", label: [24.6, 2.6, 31.6], stand: [23, 30.2] },
+  { id: "toko", label: [29, 2.6, 19.2], stand: [28, 21] },
 ]
 
 export function spotOf(id: HotspotId): HotspotSpot {
