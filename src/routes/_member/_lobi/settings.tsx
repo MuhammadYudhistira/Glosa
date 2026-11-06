@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Panel } from "@/components/ui/panel"
 import { authMessage } from "@/lib/auth-messages"
+import { useReadingHabit } from "@/lib/habit/habit-client"
 import { clearLocalData } from "@/lib/local/device"
 import { normalizeUsername } from "@/lib/username"
 import { deleteAccountFn, updateProfileFn } from "@/server/profile"
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/_member/_lobi/settings")({
 function SettingsPage() {
   const { user } = Route.useRouteContext()
   const router = useRouter()
+  const habit = useReadingHabit()
   const updateProfile = useServerFn(updateProfileFn)
   const deleteAccount = useServerFn(deleteAccountFn)
 
@@ -94,7 +96,18 @@ function SettingsPage() {
       <h1 className="font-heading text-3xl font-bold">Pengaturan</h1>
 
       <Panel className="flex flex-col items-center gap-6 p-6 sm:flex-row sm:items-start">
-        <MembershipCard member={user} className="shrink-0" />
+        <MembershipCard
+          member={user}
+          className="shrink-0"
+          habit={
+            habit.summary.hasHistory
+              ? {
+                  streak: habit.summary.streak,
+                  record: habit.summary.record,
+                }
+              : null
+          }
+        />
         <form
           method="post"
           onSubmit={onSaveProfile}

@@ -31,4 +31,16 @@ describe("MembershipCard", () => {
     render(<MembershipCard member={member} />)
     expect(screen.queryByText(/yudhis@contoh\.com/)).toBeNull()
   })
+
+  it("shows the streak and record when given", () => {
+    render(
+      <MembershipCard member={member} habit={{ streak: 12, record: 31 }} />
+    )
+    expect(screen.getByText("Streak 12 hari · Rekor 31")).toBeInTheDocument()
+  })
+
+  it("leaves the streak out without one", () => {
+    render(<MembershipCard member={member} />)
+    expect(screen.queryByText(/Streak/)).toBeNull()
+  })
 })

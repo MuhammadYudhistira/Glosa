@@ -12,10 +12,12 @@ export function MembershipCard({
   member,
   className,
   animate = false,
+  habit,
 }: {
   member: SessionUser
   className?: string
   animate?: boolean
+  habit?: { streak: number; record: number } | null
 }) {
   return (
     <figure
@@ -54,6 +56,11 @@ export function MembershipCard({
           </dd>
         </dl>
       </div>
+      {habit && (
+        <p className="text-[10px] font-bold tracking-wide text-mint">
+          Streak {habit.streak} hari · Rekor {habit.record}
+        </p>
+      )}
       <div className="flex items-end justify-between">
         <span className="rounded-full border border-mint/50 px-2 py-0.5 text-[9px] tracking-[0.15em] text-mint">
           {planLabel(member.plan)} · {formatBytes(member.storageLimitBytes)}

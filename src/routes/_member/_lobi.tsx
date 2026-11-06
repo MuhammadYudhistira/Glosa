@@ -7,7 +7,9 @@ import { isPopupPath } from "@/components/lobby/LobbyPopup"
 import { LobbyStage } from "@/components/lobby/LobbyStage"
 import { ShelfLoadError } from "@/components/shelf/ShelfLoadError"
 import { useShelfSnapshot } from "@/components/shelf/useShelfSnapshot"
+import { refreshHabit } from "@/lib/habit/habit-client"
 import { loadShelf } from "@/lib/shelf-loader"
+import { useQueueFlush } from "@/lib/sync/use-queue-flush"
 
 export const Route = createFileRoute("/_member/_lobi")({
   // One shelf for the lobby and the pages over it, so all three open
@@ -30,6 +32,8 @@ function LobiLayout() {
     select: (matches) => matches.some((match) => isPopupPath(match.pathname)),
   })
   useShelfSnapshot(user.id, books, usage, collections, offline)
+  // The reading habit for the plant, the panel and the member card (plan 3B, decision 10).
+  useQueueFlush(user.id, refreshHabit)
 
   return (
     <>

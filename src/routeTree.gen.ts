@@ -23,6 +23,7 @@ import { Route as MemberWelcomeRouteImport } from './routes/_member/welcome'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
+import { Route as MemberLobiHabitsRouteImport } from './routes/_member/_lobi/habits'
 import { Route as MemberLobiLobbyRouteImport } from './routes/_member/_lobi/lobby'
 import { Route as MemberLobiSettingsRouteImport } from './routes/_member/_lobi/settings'
 import { Route as MemberLobiShelfRouteImport } from './routes/_member/_lobi/shelf'
@@ -97,6 +98,11 @@ const AuthConfirmRoute = AuthConfirmRouteImport.update({
   path: '/auth/confirm',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MemberLobiHabitsRoute = MemberLobiHabitsRouteImport.update({
+  id: '/habits',
+  path: '/habits',
+  getParentRoute: () => MemberLobiRoute,
+} as any)
 const MemberLobiLobbyRoute = MemberLobiLobbyRouteImport.update({
   id: '/lobby',
   path: '/lobby',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/habits': typeof MemberLobiHabitsRoute
   '/lobby': typeof MemberLobiLobbyRoute
   '/settings': typeof MemberLobiSettingsRoute
   '/shelf': typeof MemberLobiShelfRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/habits': typeof MemberLobiHabitsRoute
   '/lobby': typeof MemberLobiLobbyRoute
   '/settings': typeof MemberLobiSettingsRoute
   '/shelf': typeof MemberLobiShelfRoute
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/_member/_lobi/habits': typeof MemberLobiHabitsRoute
   '/_member/_lobi/lobby': typeof MemberLobiLobbyRoute
   '/_member/_lobi/settings': typeof MemberLobiSettingsRoute
   '/_member/_lobi/shelf': typeof MemberLobiShelfRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/auth/callback'
     | '/auth/confirm'
+    | '/habits'
     | '/lobby'
     | '/settings'
     | '/shelf'
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/auth/callback'
     | '/auth/confirm'
+    | '/habits'
     | '/lobby'
     | '/settings'
     | '/shelf'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/auth/callback'
     | '/auth/confirm'
+    | '/_member/_lobi/habits'
     | '/_member/_lobi/lobby'
     | '/_member/_lobi/settings'
     | '/_member/_lobi/shelf'
@@ -360,6 +372,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthConfirmRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_member/_lobi/habits': {
+      id: '/_member/_lobi/habits'
+      path: '/habits'
+      fullPath: '/habits'
+      preLoaderRoute: typeof MemberLobiHabitsRouteImport
+      parentRoute: typeof MemberLobiRoute
+    }
     '/_member/_lobi/lobby': {
       id: '/_member/_lobi/lobby'
       path: '/lobby'
@@ -399,6 +418,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface MemberLobiRouteChildren {
+  MemberLobiHabitsRoute: typeof MemberLobiHabitsRoute
   MemberLobiLobbyRoute: typeof MemberLobiLobbyRoute
   MemberLobiSettingsRoute: typeof MemberLobiSettingsRoute
   MemberLobiShelfRoute: typeof MemberLobiShelfRoute
@@ -406,6 +426,7 @@ interface MemberLobiRouteChildren {
 }
 
 const MemberLobiRouteChildren: MemberLobiRouteChildren = {
+  MemberLobiHabitsRoute: MemberLobiHabitsRoute,
   MemberLobiLobbyRoute: MemberLobiLobbyRoute,
   MemberLobiSettingsRoute: MemberLobiSettingsRoute,
   MemberLobiShelfRoute: MemberLobiShelfRoute,
@@ -448,13 +469,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

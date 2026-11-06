@@ -9,7 +9,7 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyPage() {
   return (
-    <LegalPage title="Kebijakan Privasi" updated="24 Oktober 2026">
+    <LegalPage title="Kebijakan Privasi" updated="6 November 2026">
       <p>
         Glosa menghormati privasimu. Halaman ini menjelaskan data apa yang kami
         kumpulkan, untuk apa, dan apa hakmu sesuai Undang-Undang Pelindungan
@@ -29,6 +29,11 @@ function PrivacyPage() {
           termasuk kata yang kamu simpan di Kosakata beserta artinya, kalimat
           asalnya, dan judul bukunya, serta highlight, catatan, dan bookmark di
           bukumu beserta kutipan teksnya.
+        </li>
+        <li>
+          Waktu membaca: berapa lama kamu membaca setiap hari dan di buku apa,
+          untuk streak dan target bacaanmu. Data ini tidak dibagikan dan ikut
+          terhapus saat akunmu dihapus.
         </li>
         <li>
           Data teknis: waktu masuk terakhir dan laporan error untuk memperbaiki
