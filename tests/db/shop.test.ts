@@ -1,10 +1,16 @@
 import { randomUUID } from "node:crypto"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { SHOP_ITEMS } from "@/lib/shop/catalog"
+import {
+  COINS_PER_BOOK,
+  DAILY_COIN_CAP,
+  MIN_BOOK_SECONDS,
+  SHOP_ITEMS,
+} from "@/lib/shop/catalog"
 import {
   adminClient,
   createTestMember,
   deleteTestMembers,
+  forgetTestMember,
   newTestBook,
   signedInClient,
 } from "./helpers"
@@ -14,6 +20,7 @@ const emails = {
   ani: `db-shop-ani-${run}@glosa.test`,
   budi: `db-shop-budi-${run}@glosa.test`,
   cita: `db-shop-cita-${run}@glosa.test`,
+  dora: `db-shop-dora-${run}@glosa.test`,
 }
 type Client = Awaited<ReturnType<typeof signedInClient>>
 type State = {
@@ -64,7 +71,7 @@ async function place(client: Client, slot: string, item: string | null) {
 }
 
 describe("lobby shop", () => {
-  const ids = { ani: "", budi: "", cita: "" }
+  const ids = { ani: "", budi: "", cita: "", dora: "" }
   const books = { ani: "", budi: "", budi2: "", cita: "" }
   let ani: Client
   let budi: Client
@@ -74,6 +81,7 @@ describe("lobby shop", () => {
     ids.ani = (await createTestMember({ email: emails.ani })).id
     ids.budi = (await createTestMember({ email: emails.budi })).id
     ids.cita = (await createTestMember({ email: emails.cita })).id
+    ids.dora = (await createTestMember({ email: emails.dora })).id
     books.ani = await newTestBook(ids.ani)
     books.budi = await newTestBook(ids.budi)
     books.budi2 = await newTestBook(ids.budi)
@@ -107,12 +115,12 @@ describe("lobby shop", () => {
     })
   })
 
-  it("pays a coin per whole minute, at most 240 a day, over every device", async () => {
+  it("pays a coin per whole minute, at most the daily cap, over every device", async () => {
     await seed(ids.ani, books.ani, "2026-01-01", 59)
     await seed(ids.ani, books.ani, "2026-01-01", 62) // same day: 121 s = 2
-    await seed(ids.ani, books.ani, "2026-01-02", 20_000) // capped at 240
+    await seed(ids.ani, books.ani, "2026-01-02", 20_000) // capped
     await seed(ids.ani, books.ani, "2026-01-03", 599) // 9
-    expect((await state(ani)).earned).toBe(2 + 240 + 9)
+    expect((await state(ani)).earned).toBe(2 + DAILY_COIN_CAP + 9)
   })
 
   it("buys, places in the slot, and refuses what it cannot pay", async () => {
@@ -168,19 +176,19 @@ describe("lobby shop", () => {
     const finish = (bookId: string, at: string | null) =>
       adminClient().from("books").update({ finished_at: at }).eq("id", bookId)
     await finish(books.budi, new Date().toISOString())
-    await seed(ids.budi, books.budi, "2026-01-01", 3599)
+    await seed(ids.budi, books.budi, "2026-01-01", MIN_BOOK_SECONDS - 1)
     // 59 minutes: no bonus yet.
     expect((await state(budi)).earned).toBe(59)
     await seed(ids.budi, books.budi, "2026-01-02", 1) // the last second arrives
-    expect((await state(budi)).earned).toBe(59 + 0 + 50)
-    expect((await state(budi)).earned).toBe(109) // once
+    expect((await state(budi)).earned).toBe(59 + COINS_PER_BOOK)
+    expect((await state(budi)).earned).toBe(59 + COINS_PER_BOOK) // once
     await finish(books.budi, null)
-    expect((await state(budi)).earned).toBe(109)
+    expect((await state(budi)).earned).toBe(59 + COINS_PER_BOOK)
     await adminClient().from("books").delete().eq("id", books.budi)
-    expect((await state(budi)).earned).toBe(109)
+    expect((await state(budi)).earned).toBe(59 + COINS_PER_BOOK)
     // Read an hour but not finished: no bonus.
-    await seed(ids.budi, books.budi2, "2026-01-03", 3600)
-    expect((await state(budi)).earned).toBe(109 + 60)
+    await seed(ids.budi, books.budi2, "2026-01-03", MIN_BOOK_SECONDS)
+    expect((await state(budi)).earned).toBe(59 + COINS_PER_BOOK + 60)
   })
 
   it("adds coins granted from outside reading", async () => {
@@ -215,5 +223,53 @@ describe("lobby shop", () => {
       } as never
     )
     expect(error).not.toBeNull()
+    const totals = await ani.rpc(
+      "coin_totals" as never,
+      { p_user_id: ids.ani } as never
+    )
+    expect(totals.error).not.toBeNull()
+  })
+
+  it("deletes the shop rows with the account", async () => {
+    const book = await newTestBook(ids.dora)
+    await seed(ids.dora, book, "2026-01-01", 120 * 60)
+    await adminClient()
+      .from("books")
+      .update({ finished_at: new Date().toISOString() })
+      .eq("id", book)
+    await seed(ids.dora, book, "2026-01-02", MIN_BOOK_SECONDS)
+    const { error: grant } = await adminClient()
+      .from("coin_grants")
+      .insert({ user_id: ids.dora, coins: 5, reason: "test" })
+    if (grant) throw grant
+    const dora = await signedInClient(emails.dora)
+    expect(await buy(dora, "rug_woven")).toBe("ok") // also awards the book
+    const rows = async () => {
+      const counts: Record<string, number> = {}
+      for (const table of [
+        "lobby_purchases",
+        "lobby_placements",
+        "coin_awards",
+        "coin_grants",
+      ] as const) {
+        const { count, error } = await adminClient()
+          .from(table)
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", ids.dora)
+        if (error) throw error
+        counts[table] = count ?? 0
+      }
+      return counts
+    }
+    expect(Object.values(await rows()).every((n) => n > 0)).toBe(true)
+    const { error } = await adminClient().auth.admin.deleteUser(ids.dora)
+    expect(error).toBeNull()
+    forgetTestMember(ids.dora)
+    expect(await rows()).toEqual({
+      lobby_purchases: 0,
+      lobby_placements: 0,
+      coin_awards: 0,
+      coin_grants: 0,
+    })
   })
 })

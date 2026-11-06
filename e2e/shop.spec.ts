@@ -11,7 +11,9 @@ import { placedItems } from "./helpers/shop"
 
 test.use({ timezoneId: HABIT_ZONE })
 
-test("reading pays for a rug that then lies in the lobby", async ({ page }) => {
+test("buying a rug places it on the server, and taking it off removes it", async ({
+  page,
+}) => {
   const member = await createConfirmedMember()
   await signInAndOnboard(page, member)
   const userId = await userIdOf(member.email)
