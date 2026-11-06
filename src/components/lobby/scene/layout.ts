@@ -109,10 +109,10 @@ export const DECOR_SLOTS: Record<
     focus: [31.5, 0.8, 3.2],
   },
   wall: {
-    at: [0.55, 10.4, 22],
+    at: [0.55, 3.4, 8.6],
     turn: Math.PI / 2,
     flat: true,
-    focus: [0.55, 11.4, 22],
+    focus: [0.55, 4.4, 8.6],
   },
   pet: {
     at: [30.5, 0, 22],

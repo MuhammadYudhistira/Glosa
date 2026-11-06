@@ -2,6 +2,7 @@
 //   node scripts/lobby-harness.mjs serve         open it in a browser
 //   node scripts/lobby-harness.mjs shot <file>   1440 × 900 screenshot (PNG)
 //   node scripts/lobby-harness.mjs still         public/lobby/lobby-still*.{avif,webp}
+//   node scripts/lobby-harness.mjs thumbs        public/lobby/shop/<id>.webp
 import { mkdirSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { chromium } from "@playwright/test"
@@ -40,6 +41,22 @@ async function render(viewport, query = "mode=still") {
     return await page.screenshot({ timeout: 300_000 })
   } finally {
     await browser.close()
+  }
+}
+
+const THUMB = { width: 480, height: 360 }
+const THUMB_MAX_BYTES = 60 * 1024
+
+async function thumbs(only) {
+  const { SHOP_ITEMS } = await server.ssrLoadModule("/src/lib/shop/catalog.ts")
+  mkdirSync("public/lobby/shop", { recursive: true })
+  for (const { id } of SHOP_ITEMS) {
+    if (only && id !== only) continue
+    const png = await render(THUMB, `mode=still&decor=${id}`)
+    const file = `public/lobby/shop/${id}.webp`
+    const out = await sharp(png).webp({ quality: 75 }).toFile(file)
+    console.log(`${file}: ${Math.round(out.size / 1024)} kB`)
+    if (out.size > THUMB_MAX_BYTES) throw new Error(`${file} is over 60 kB`)
   }
 }
 
@@ -92,6 +109,7 @@ if (command === "serve") {
   try {
     if (command === "shot") await shot(file ?? "lobby.png", extra)
     else if (command === "still") await still()
+    else if (command === "thumbs") await thumbs(file)
     else throw new Error(`Unknown command: ${command}`)
   } finally {
     await server.close()

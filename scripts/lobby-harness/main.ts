@@ -1,8 +1,13 @@
 // The 3D lobby on a page of its own, served by scripts/lobby-harness.mjs: for
 // looking at the scene while working on it, and for rendering the still image.
 // Not part of the app.
-import { ANDA_START } from "@/components/lobby/scene/layout"
-import { startView } from "@/components/lobby/scene/projection"
+import { ANDA_START, DECOR_SLOTS } from "@/components/lobby/scene/layout"
+import {
+  MAX_ZOOM,
+  centerOn,
+  startView,
+} from "@/components/lobby/scene/projection"
+import { itemOf } from "@/lib/shop/catalog"
 import { type StageMode, createStage } from "@/components/lobby/scene/stage"
 
 const requested = new URLSearchParams(window.location.search).get("mode")
@@ -25,6 +30,8 @@ const stage = createStage({
     document.body.dataset.lost = "true"
   },
 })
+// ?decor=all: one item in every slot, to check where they stand.
+// ?decor=<id>: that item alone, the camera close on its slot (the shop's pictures).
 const decorParam = new URLSearchParams(window.location.search).get("decor")
 if (decorParam === "all") {
   stage.setDecor({
@@ -34,6 +41,15 @@ if (decorParam === "all") {
     wall: "wall_painting",
     pet: "pet_cat",
     ceiling: "ceiling_lights",
+  })
+} else if (decorParam) {
+  const item = itemOf(decorParam)
+  if (!item) throw new Error(`No shop item ${decorParam}`)
+  stage.setDecor({ [item.slot]: item.id })
+  const view = startView({ width: host.clientWidth, height: host.clientHeight })
+  stage.setView({
+    ...centerOn(view, DECOR_SLOTS[item.slot].focus),
+    zoom: MAX_ZOOM,
   })
 }
 document.body.dataset.books = String(stage.books)
