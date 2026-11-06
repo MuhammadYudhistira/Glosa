@@ -112,6 +112,38 @@ describe("HabitPanel", () => {
         "Ada yang tidak beres."
       )
     )
+    // The store reverts the goal, so the view still holds the old one.
+    expect(select).toHaveValue("20")
+  })
+
+  it("clears the number error when the field is set right again", () => {
+    panel()
+    const field = screen.getByLabelText("Target buku per tahun")
+    fireEvent.change(field, { target: { value: "400" } })
+    fireEvent.blur(field)
+    expect(screen.getByRole("alert")).toBeInTheDocument()
+    fireEvent.change(field, { target: { value: "12" } })
+    fireEvent.blur(field)
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("clears the number error when the field is emptied with no goal", () => {
+    panel({
+      view: ready({
+        cache: {
+          days: [],
+          goals: { dailyGoalMinutes: 20, yearlyGoalBooks: null },
+          sentAtFetch: {},
+        },
+      }),
+    })
+    const field = screen.getByLabelText("Target buku per tahun")
+    fireEvent.change(field, { target: { value: "0" } })
+    fireEvent.blur(field)
+    expect(screen.getByRole("alert")).toBeInTheDocument()
+    fireEvent.change(field, { target: { value: "" } })
+    fireEvent.blur(field)
+    expect(screen.queryByRole("alert")).toBeNull()
   })
 
   it("saves the yearly goal when the field is left, and checks it", async () => {

@@ -11,12 +11,15 @@ export const ReadingTimeEntrySchema = z.object({
   goalMinutes: DailyGoalSchema,
 })
 
-export const RecordReadingTimeSchema = z.object({
-  deviceId: z.uuid(),
-  entries: z.array(ReadingTimeEntrySchema).min(1).max(MAX_READING_TIME_BATCH),
-})
-
 export const GoalsSchema = z.object({
   dailyGoalMinutes: DailyGoalSchema,
   yearlyGoalBooks: z.number().int().min(1).max(365).nullable(),
+})
+
+export const GoalsWithDaySchema = GoalsSchema.extend({ today: DaySchema })
+
+/** The batch's envelope; each entry is checked on its own (spec 3B §5.2). */
+export const RecordEnvelopeSchema = z.object({
+  deviceId: z.uuid(),
+  entries: z.array(z.unknown()).min(1).max(MAX_READING_TIME_BATCH),
 })

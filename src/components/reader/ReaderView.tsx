@@ -63,6 +63,8 @@ export type ReaderLocation = {
   cfi: string
   chapter: string | null
   chapterHref: string | null
+  /** The section's index in the spine; null when foliate does not say. */
+  section: number | null
   /** The start of the page's text: a bookmark's excerpt. */
   pageText: string
   /** The member turned the page or scrolled here: not a jump or a new layout. */
@@ -381,7 +383,7 @@ async function footnoteOf(
   }
 }
 
-function toLocation(
+export function toLocation(
   detail: RelocateDetail,
   reason: string | null | undefined,
   readerTurning: boolean,
@@ -389,10 +391,12 @@ function toLocation(
 ): ReaderLocation {
   const label = detail.tocItem?.label?.trim()
   return {
-    fraction: detail.fraction,
+    // foliate gives NaN for a one-page section in paged flow.
+    fraction: Number.isFinite(detail.fraction) ? detail.fraction : 0,
     cfi: detail.cfi,
     chapter: label ? label : null,
     chapterHref: detail.tocItem?.href ?? null,
+    section: detail.section?.current ?? null,
     pageText: excerptOf(
       detail.range?.toString() ?? "",
       BOOKMARK_EXCERPT_LENGTH

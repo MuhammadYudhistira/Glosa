@@ -11,6 +11,7 @@ import {
   localSentTotals,
   pruneReadingTime,
   saveHabitCache,
+  setTodayGoal,
 } from "./reading-time"
 
 const BOOK = "3c2b1a09-8f7e-4d6c-b5a4-938271605f4e"
@@ -90,5 +91,19 @@ describe("reading time on this device", () => {
     await clearLocalData()
     expect(await deviceId()).not.toBe(first)
     expect(await localDb().readingTime.count()).toBe(0)
+  })
+
+  it("gives today's rows a new goal and leaves other days alone", async () => {
+    await addReadingTime(BOOK, [{ day: "2026-11-05", ms: 9_000 }], 10)
+    await addReadingTime(BOOK, [{ day: "2026-11-06", ms: 9_000 }], 10)
+    await addReadingTime(OTHER, [{ day: "2026-11-06", ms: 9_000 }], 10)
+    await setTodayGoal("2026-11-06", 30)
+    expect(await localReadingTimeStore.pending()).toEqual([
+      { day: "2026-11-05", bookId: BOOK, seconds: 9, goalMinutes: 10 },
+      { day: "2026-11-06", bookId: BOOK, seconds: 9, goalMinutes: 30 },
+      { day: "2026-11-06", bookId: OTHER, seconds: 9, goalMinutes: 30 },
+    ])
+    await setTodayGoal("2026-11-06", null)
+    expect((await localDayTotals())["2026-11-06"].goalMinutes).toBeNull()
   })
 })

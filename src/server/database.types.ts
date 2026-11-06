@@ -686,6 +686,10 @@ export type Database = {
         Args: { p_book_id: string; p_finished: boolean }
         Returns: string
       }
+      set_reading_goals: {
+        Args: { p_daily: number; p_today: string; p_yearly: number }
+        Returns: string
+      }
       unique_username: { Args: { base: string }; Returns: string }
       username_available: { Args: { candidate: string }; Returns: boolean }
       visitors_today: { Args: never; Returns: number }

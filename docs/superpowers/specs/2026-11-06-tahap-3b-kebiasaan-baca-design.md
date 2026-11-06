@@ -26,7 +26,8 @@ Prinsip Tahap 3 tetap berlaku: semua hadiah datang dari halaman yang dibaca. Tid
 
 ### 3.1 Waktu baca aktif
 
-- Waktu dihitung per halaman, mulai saat halaman tampil sampai halaman berpindah. Untuk mode Gulir, "berpindah" berarti `relocate` foliate.
+- Waktu dihitung per halaman, mulai saat halaman tampil sampai halaman berpindah. Pada mode Halaman, "berpindah" berarti `relocate` foliate.
+- **Mode Gulir:** menggulir adalah tanda aktivitas, bukan halaman baru. Waktu terus dihitung selama anggota menggulir dan berhenti dihitung hanya setelah 10 menit tanpa gerakan: plafon 10 menit berlaku untuk waktu sejak aktivitas terakhir, bukan untuk seluruh halaman. Batas 5 detik tetap berlaku sekali per halaman. Pindah ke bagian lain (bab) tetap halaman baru.
 - Halaman yang tampil kurang dari **5 detik** tidak dihitung, karena itu membalik halaman, bukan membaca.
 - Halaman yang tampil lebih dari **10 menit** hanya dihitung 10 menit (plafon). Ini berbeda dengan pengukur kecepatan, yang membuang sampel seperti itu: untuk waktu baca, 10 menit pertama tetap dianggap membaca.
 - Jam berhenti saat tab tersembunyi, reader ditutup, atau panel reader terbuka (daftar isi, pengaturan, Anotasi, kartu kutipan). Popup kata dan popup catatan kaki **tidak** menghentikan jam, karena itu bagian dari membaca.
@@ -37,7 +38,7 @@ Prinsip Tahap 3 tetap berlaku: semua hadiah datang dari halaman yang dibaca. Tid
 
 - Total sehari = jumlah detik dari semua buku dan semua perangkat.
 - Hari membaca: total ≥ `goal_minutes` hari itu × 60, atau ≥ 300 detik bila `goal_minutes` kosong.
-- Target **dibekukan per hari**. Setiap catatan waktu ikut menyimpan target saat itu, dan target sebuah hari diambil dari catatan terbaru hari itu. Menaikkan target hari ini tidak mengubah status hari yang sudah lewat. Hari tanpa catatan tidak butuh target, karena hari itu pasti bukan hari membaca.
+- Target **dibekukan per hari**. Setiap catatan waktu ikut menyimpan target saat itu, dan target sebuah hari diambil dari catatan terbaru hari itu. Menaikkan target hari ini tidak mengubah status hari yang sudah lewat. Target yang disimpan di tengah hari berlaku juga untuk hari itu: catatan hari ini ikut memakai target baru (di server lewat `set_reading_goals`, dan di perangkat ini), jadi status hari ini sama sekarang dan besok. Hari-hari sebelumnya tetap memakai targetnya sendiri. Hari tanpa catatan tidak butuh target, karena hari itu pasti bukan hari membaca.
 
 ### 3.3 Streak dengan jeda gratis
 
@@ -56,6 +57,7 @@ Contoh: membaca Senin–Jumat lalu libur Sabtu–Minggu tidak memutus streak (st
 
 Keduanya opsional dan diatur di panel lobi.
 
+- Target yang disimpan hari ini berlaku untuk hari ini juga (§3.2).
 - **Menit per hari:** mati, 5, 10, 15, 20, 30, 45, atau 60.
 - **Buku per tahun:** mati atau 1–365. Yang dihitung adalah buku dengan `finished_at` (3A) dalam tahun berjalan, menurut tanggal lokal. Buku yang dihapus dari rak tidak ikut dihitung lagi.
 
@@ -92,7 +94,7 @@ Tanaman tidak pernah layu. Setelah streak putus, tahapnya mengikuti streak baru,
 
 ### 4.3 Reader
 
-- `HabitRing` di `ReaderToolbar`: cincin kecil berisi menit hari ini dibanding target, dengan `aria-label` "12 dari 20 menit hari ini". Tanpa target, cincin memakai batas 5 menit dan labelnya "12 menit hari ini".
+- `HabitRing` di `ReaderToolbar`: cincin kecil berisi menit hari ini dibanding target, dengan `aria-label` "12 dari 20 menit hari ini". Tanpa target, cincin memakai batas 5 menit dan labelnya "12 menit hari ini". Cincin diperbarui saat waktu disimpan (halaman berpindah, gulir, setiap 30 detik), bukan setiap detik.
 - Toast lembut **sekali per hari** saat batas hari itu tercapai di reader: "Target hari ini tercapai. Selamat membaca terus." Tanpa target, toast ini tidak muncul. Penanda "sudah tampil" disimpan di localStorage per tanggal. Toast tidak menghalangi halaman, hilang sendiri, dan tidak muncul saat bilah reader tersembunyi (mode fokus); dalam keadaan itu, toast menunggu sampai bilah tampil lagi di hari yang sama.
 
 ### 4.4 Kartu anggota

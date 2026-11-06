@@ -17,7 +17,7 @@ export const TICK_MS = 30_000
 export function useReadingClock(
   bookId: string,
   paused: boolean
-): { onPage: () => void } {
+): { onPage: () => void; onActivity: () => void } {
   const clockRef = useRef<ReadingClock | null>(null)
   clockRef.current ??= createReadingClock()
 
@@ -70,5 +70,11 @@ export function useReadingClock(
     if (clock) void save(clock.show(Date.now()))
   }, [save])
 
-  return { onPage }
+  // A scroll in scrolled flow: the same page goes on (spec 3B §3.1).
+  const onActivity = useCallback(() => {
+    const clock = clockRef.current
+    if (clock) void save(clock.touch(Date.now()))
+  }, [save])
+
+  return { onPage, onActivity }
 }

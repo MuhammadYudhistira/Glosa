@@ -18,6 +18,7 @@ const place = (
   cfi,
   chapter: null,
   chapterHref: null,
+  section: null,
   pageText: "",
   turned,
   atBookEnd: false,

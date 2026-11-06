@@ -259,6 +259,71 @@ describe("reading habits", () => {
     ).toBeNull()
   })
 
+  it("gives a saved daily goal to today's rows only", async () => {
+    const entry = (day: string, book: string, goal: number | null): Entry => ({
+      day,
+      device_id: phone,
+      book_id: book,
+      seconds: 120,
+      goal_minutes: goal,
+    })
+    await record(ani, [
+      entry(utcDay(0), books.ani, 10),
+      entry(utcDay(-1), books.ani, 10),
+    ])
+    await record(budi, [entry(utcDay(0), books.budi, 10)])
+
+    const saved = await ani.rpc("set_reading_goals", {
+      p_daily: 30,
+      p_yearly: 12,
+      p_today: utcDay(0),
+    })
+    expect(saved).toMatchObject({ data: "ok", error: null })
+    const goalOf = async (id: string, book: string, day: string) =>
+      (await rowsOf(id)).find(
+        (row) =>
+          row.day === day && row.book_id === book && row.device_id === phone
+      )?.goal_minutes
+    expect(await goalOf(ids.ani, books.ani, utcDay(0))).toBe(30)
+    expect(await goalOf(ids.ani, books.ani, utcDay(-1))).toBe(10)
+    expect(await goalOf(ids.budi, books.budi, utcDay(0))).toBe(10)
+    const profile = await adminClient()
+      .from("profiles")
+      .select("daily_goal_minutes, yearly_goal_books")
+      .eq("id", ids.ani)
+      .single()
+    expect(profile.data).toEqual({
+      daily_goal_minutes: 30,
+      yearly_goal_books: 12,
+    })
+  })
+
+  it("answers invalid, changing nothing, for a bad day or goal", async () => {
+    const set = async (
+      daily: number | null,
+      yearly: number | null,
+      day: string
+    ) =>
+      (
+        await ani.rpc("set_reading_goals", {
+          p_daily: daily as number,
+          p_yearly: yearly as number,
+          p_today: day,
+        })
+      ).data
+    expect(await set(5, 1, utcDay(-3))).toBe("invalid")
+    expect(await set(5, 1, utcDay(2))).toBe("invalid")
+    expect(await set(7, 1, utcDay(0))).toBe("invalid")
+    expect(await set(5, 0, utcDay(0))).toBe("invalid")
+    expect(await set(5, 366, utcDay(0))).toBe("invalid")
+    const row = (await rowsOf(ids.ani)).find((r) => r.day === utcDay(0))
+    expect(row?.goal_minutes).toBe(30)
+    expect(await set(null, null, utcDay(0))).toBe("ok")
+    expect(
+      (await rowsOf(ids.ani)).find((r) => r.day === utcDay(0))?.goal_minutes
+    ).toBeNull()
+  })
+
   it("refuses a caller without a session", async () => {
     const { anonClient } = await import("./helpers")
     const { error } = await anonClient().rpc("record_reading_time", {

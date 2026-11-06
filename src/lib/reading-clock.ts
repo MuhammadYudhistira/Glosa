@@ -24,6 +24,11 @@ export type ReadingClock = {
   resume: (at: number) => void
   /** Hands over what the page shown has counted so far (saved every 30 s). */
   tick: (at: number) => Array<ClockPiece>
+  /**
+   * Activity on the same page (a scroll): the cap restarts from here, so
+   * time counts until PAGE_READ_MS.max passes with no activity.
+   */
+  touch: (at: number) => Array<ClockPiece>
 }
 
 const LOCAL_DAYS: DayFns = { dayOf: localDay, nextDayAt }
@@ -42,12 +47,16 @@ export function createReadingClock(days: DayFns = LOCAL_DAYS): ReadingClock {
   let countedMs = 0
   // Stretches of this page not handed over yet: kept until the page counts.
   let held: Array<readonly [number, number]> = []
+  // How much more time in sight counts before the next activity (the cap).
+  let budget: number = PAGE_READ_MS.max
 
   function stop(at: number) {
     if (since === null) return
     if (at > since) {
-      held.push([since, at])
-      pageMs += at - since
+      const ms = Math.min(at - since, budget)
+      if (ms > 0) held.push([since, since + ms])
+      pageMs += ms
+      budget -= ms
     }
     since = null
   }
@@ -56,10 +65,10 @@ export function createReadingClock(days: DayFns = LOCAL_DAYS): ReadingClock {
     if (shown && !paused && since === null) since = at
   }
 
-  /** The held time once the page counts, up to the cap, split at midnights. */
+  /** The held time (already within the cap) once the page counts, split at midnights. */
   function release(): Array<ClockPiece> {
     if (pageMs < PAGE_READ_MS.min) return []
-    let left = Math.min(pageMs, PAGE_READ_MS.max) - countedMs
+    let left = pageMs - countedMs
     const byDay = new Map<string, number>()
     for (const [from, to] of held) {
       let start = from
@@ -84,6 +93,7 @@ export function createReadingClock(days: DayFns = LOCAL_DAYS): ReadingClock {
       pageMs = 0
       countedMs = 0
       held = []
+      budget = PAGE_READ_MS.max
       run(at)
       return pieces
     },
@@ -101,6 +111,14 @@ export function createReadingClock(days: DayFns = LOCAL_DAYS): ReadingClock {
         stop(at)
         run(at)
       }
+      return release()
+    },
+    touch(at) {
+      if (since !== null) {
+        stop(at)
+        run(at)
+      }
+      budget = PAGE_READ_MS.max
       return release()
     },
   }

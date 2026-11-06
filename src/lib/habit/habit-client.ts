@@ -11,6 +11,7 @@ import {
   pruneReadingTime,
   readingTimeKey,
   saveHabitCache,
+  setTodayGoal,
 } from "@/lib/local/reading-time"
 import type { ClockPiece } from "@/lib/reading-clock"
 import { type QueueSync, createQueueSync } from "@/lib/sync/queue-sync"
@@ -137,6 +138,8 @@ export async function refreshHabit(): Promise<void> {
         ? savedGoals
         : answer.goals
     const cache = { days: answer.days, goals, sentAtFetch }
+    // A wipe since the answer came must not get the old member's copy back.
+    if (seq !== refreshSeq) return
     await saveHabitCache(cache)
     await pruneReadingTime(localDay())
     if (seq !== refreshSeq) return
@@ -150,6 +153,7 @@ export async function refreshHabit(): Promise<void> {
 /** Saves both goals; shown at once, put back when the server refuses. */
 export async function saveGoals(goals: HabitGoals): Promise<ActionResult> {
   const before = state.cache
+  const today = localDay()
   if (!before) return { ok: false, code: "offline" }
   setState({ cache: { ...before, goals } })
   goalsEpoch++
@@ -157,7 +161,7 @@ export async function saveGoals(goals: HabitGoals): Promise<ActionResult> {
   savesInFlight++
   let result: ActionResult
   try {
-    result = await updateGoalsFn({ data: goals })
+    result = await updateGoalsFn({ data: { ...goals, today } })
   } catch {
     result = { ok: false, code: "unknown" }
   } finally {
@@ -165,8 +169,30 @@ export async function saveGoals(goals: HabitGoals): Promise<ActionResult> {
   }
   if (!result.ok) {
     if (savedGoals === goals) savedGoals = null
-    if (state.cache?.goals === goals) setState({ cache: before })
+    // Only the goals go back: a refresh may have landed new days meanwhile.
+    if (state.cache?.goals === goals) {
+      setState({ cache: { ...state.cache, goals: before.goals } })
+    }
     return result
+  }
+  // The new daily goal applies to today too: on this device and in the cache.
+  try {
+    await setTodayGoal(today, goals.dailyGoalMinutes)
+    await reloadLocal()
+  } catch (error) {
+    console.error("updating today's goal on this device failed", error)
+  }
+  if (state.cache) {
+    setState({
+      cache: {
+        ...state.cache,
+        days: state.cache.days.map((day) =>
+          day.day === today
+            ? { ...day, goalMinutes: goals.dailyGoalMinutes }
+            : day
+        ),
+      },
+    })
   }
   // A refresh that began before the save landed may have put old goals back.
   if (savedGoals === goals && state.cache && state.cache.goals !== goals) {

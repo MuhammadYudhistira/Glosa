@@ -65,6 +65,22 @@ describe("habitSummary", () => {
     })
   })
 
+  it("keeps the streak when the next Monday is empty too (spec example)", () => {
+    // Read Monday to Friday; Saturday and Sunday off (2 gaps of the old week)
+    // and Monday off (1 gap of the new one). Today is Tuesday, still empty.
+    const days = [
+      "2026-10-26",
+      "2026-10-27",
+      "2026-10-28",
+      "2026-10-29",
+      "2026-10-30",
+    ].map((day) => read(day))
+    expect(habitSummary(days, "2026-11-03", null)).toMatchObject({
+      streak: 5,
+      gapsLeft: 1,
+    })
+  })
+
   it("breaks the streak when the third empty day of a week ends", () => {
     const days = [read("2026-11-02")]
     // Tuesday, Wednesday and Thursday empty.

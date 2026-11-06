@@ -202,4 +202,77 @@ describe("habit client", () => {
       goalMinutes: 15,
     })
   })
+
+  it("sends today with the goals, and today's rows take the new goal", async () => {
+    mocks.loadHabitFn.mockResolvedValueOnce({
+      ok: true,
+      days: [
+        { day: "2000-01-01", seconds: 400, goalMinutes: 5 },
+        { day: TODAY, seconds: 400, goalMinutes: 5 },
+      ],
+      goals: { dailyGoalMinutes: 5, yearlyGoalBooks: null },
+    })
+    await client.refreshHabit()
+    await client.recordReadingTime(BOOK, [{ day: TODAY, ms: 10_000 }])
+    mocks.updateGoalsFn.mockResolvedValueOnce({ ok: true })
+    await client.saveGoals({ dailyGoalMinutes: 30, yearlyGoalBooks: null })
+    expect(mocks.updateGoalsFn).toHaveBeenCalledWith({
+      data: { dailyGoalMinutes: 30, yearlyGoalBooks: null, today: TODAY },
+    })
+    const state = client.habitStateForTests()
+    expect(state.local[TODAY].goalMinutes).toBe(30)
+    expect(state.cache?.days.map((day) => day.goalMinutes)).toEqual([5, 30])
+    const store = await import("@/lib/local/reading-time")
+    expect((await store.loadHabitCache())?.days[1]?.goalMinutes).toBe(30)
+  })
+
+  it("keeps the days a refresh landed while a save failed", async () => {
+    mocks.loadHabitFn.mockResolvedValueOnce({
+      ok: true,
+      days: [],
+      goals: { dailyGoalMinutes: 10, yearlyGoalBooks: null },
+    })
+    await client.refreshHabit()
+    let refuse: (value: unknown) => void = () => undefined
+    mocks.updateGoalsFn.mockReturnValueOnce(
+      new Promise((resolve) => {
+        refuse = resolve
+      })
+    )
+    const saving = client.saveGoals({
+      dailyGoalMinutes: 30,
+      yearlyGoalBooks: null,
+    })
+    mocks.loadHabitFn.mockResolvedValueOnce({
+      ok: true,
+      days: [{ day: TODAY, seconds: 60, goalMinutes: 10 }],
+      goals: { dailyGoalMinutes: 10, yearlyGoalBooks: null },
+    })
+    await client.refreshHabit()
+    refuse({ ok: false, code: "unknown" })
+    await saving
+    expect(current().goals.dailyGoalMinutes).toBe(10)
+    expect(client.habitStateForTests().cache?.days).toHaveLength(1)
+  })
+
+  it("does not write the old member's cache back after a wipe", async () => {
+    let answer: (value: unknown) => void = () => undefined
+    mocks.loadHabitFn.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    )
+    const refresh = client.refreshHabit()
+    await vi.waitFor(() => expect(mocks.loadHabitFn).toHaveBeenCalled())
+    const device = await import("@/lib/local/device")
+    await device.clearLocalData()
+    answer({
+      ok: true,
+      days: [{ day: TODAY, seconds: 400, goalMinutes: null }],
+      goals: { dailyGoalMinutes: 5, yearlyGoalBooks: null },
+    })
+    await refresh
+    const store = await import("@/lib/local/reading-time")
+    expect(await store.loadHabitCache()).toBeNull()
+  })
 })

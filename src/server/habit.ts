@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import type { ActionResult } from "@/lib/action-result"
-import { GoalsSchema, RecordReadingTimeSchema } from "@/lib/habit/schemas"
+import { screenEntries } from "@/lib/habit/screen-entries"
+import { GoalsWithDaySchema, RecordEnvelopeSchema } from "@/lib/habit/schemas"
 import type {
   DailyGoal,
   HabitAnswer,
@@ -22,7 +23,7 @@ const PAGE = 1000
  */
 export const recordReadingTimeFn = createServerFn({ method: "POST" })
   .validator((data: { deviceId: string; entries: Array<ReadingTimeEntry> }) =>
-    RecordReadingTimeSchema.parse(data)
+    RecordEnvelopeSchema.parse(data)
   )
   .handler(async ({ data }): Promise<QueueAnswer> => {
     const supabase = getSupabaseServerClient()
@@ -31,8 +32,12 @@ export const recordReadingTimeFn = createServerFn({ method: "POST" })
     } = await supabase.auth.getUser()
     if (!user) return fail("not_authenticated")
 
+    const { valid, merge } = screenEntries(data.entries)
+    if (valid.length === 0) {
+      return { ok: true, results: merge([]) }
+    }
     const { data: results, error } = await supabase.rpc("record_reading_time", {
-      p_entries: data.entries.map((entry) => ({
+      p_entries: valid.map((entry) => ({
         day: entry.day,
         device_id: data.deviceId,
         book_id: entry.bookId,
@@ -47,7 +52,7 @@ export const recordReadingTimeFn = createServerFn({ method: "POST" })
       logServerError("record_reading_time failed", error)
       return fail("unknown")
     }
-    return { ok: true, results: results as Array<QueueResult> }
+    return { ok: true, results: merge(results as Array<QueueResult>) }
   })
 
 /** Every day read and the member's goals (spec 3B §5.2, §5.3). */
@@ -97,7 +102,9 @@ export const loadHabitFn = createServerFn({ method: "GET" }).handler(
 
 /** Sets both goals at once; null is no goal (spec 3B §3.4). */
 export const updateGoalsFn = createServerFn({ method: "POST" })
-  .validator((data: HabitGoals) => GoalsSchema.parse(data))
+  .validator((data: HabitGoals & { today: string }) =>
+    GoalsWithDaySchema.parse(data)
+  )
   .handler(async ({ data }): Promise<ActionResult> => {
     const supabase = getSupabaseServerClient()
     const {
@@ -105,16 +112,15 @@ export const updateGoalsFn = createServerFn({ method: "POST" })
     } = await supabase.auth.getUser()
     if (!user) return fail("not_authenticated")
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        daily_goal_minutes: data.dailyGoalMinutes,
-        yearly_goal_books: data.yearlyGoalBooks,
-      })
-      .eq("id", user.id)
+    // The goals, and today's rows with them (spec 3B §3.2): one call.
+    const { data: answer, error } = await supabase.rpc("set_reading_goals", {
+      p_daily: data.dailyGoalMinutes as number,
+      p_yearly: data.yearlyGoalBooks as number,
+      p_today: data.today,
+    })
     if (error) {
       logServerError("saving reading goals failed", error)
       return fail("unknown")
     }
-    return { ok: true }
+    return answer === "ok" ? { ok: true } : fail("unknown")
   })

@@ -59,6 +59,9 @@
 10. **Data kebiasaan dimuat ulang di layout `_lobi` dan di reader** lewat `useQueueFlush(user.id, refreshHabit)`: saat dibuka dan saat koneksi kembali. Pemuatan ulang selalu mengirim antrean dulu.
 11. **Target ikut dalam jawaban `loadHabitFn`**, bukan masuk `SessionUser`, supaya sesi tidak berubah.
 12. **Hari ini memakai target sekarang.** Hari lalu memakai target yang dibekukan di barisnya. Baris lokal untuk hari ini menyimpan target yang berlaku saat potongan dicatat.
+13. **Mode Gulir: menggulir adalah aktivitas.** `ReadingClock.touch` memulai ulang plafon 10 menit dari aktivitas terakhir; pindah bagian (`ReaderLocation.section`) tetap `show`. Mode Halaman tidak berubah.
+14. **Target baru berlaku untuk hari ini.** RPC baru `set_reading_goals(p_daily, p_yearly, p_today)` (migrasi `20261106000200`) menyimpan target dan menyamakan `goal_minutes` baris hari ini; perangkat dan cache ikut. Hari lalu tidak berubah.
+15. **Cincin diperbarui saat disimpan,** bukan setiap detik (halaman berpindah, gulir, setiap 30 detik).
 
 ## Struktur file
 
@@ -4084,7 +4087,7 @@ git commit -m "test(e2e): reading time, the plant and its panel, the goal toast,
 
 - [ ] **Step 6: Owner checks after deploy (tulis di progres, tidak dijalankan agen)**
 
-1. **Reader di HP:** baca beberapa menit, lalu pastikan cincin naik dan toast muncul sekali ketika target 5 menit tercapai.
+1. **Reader di HP:** baca beberapa menit, lalu pastikan cincin naik dan toast muncul sekali ketika target 5 menit tercapai. Baca di mode Gulir 5 menit; cincin naik.
 2. **Lobi desktop:** tanaman tampil di dekat meja baca, dan hotspot "Kebiasaan baca" membuka panel. Tahap tanaman mengikuti streak; untuk mencobanya, isi `reading_time` di dev lewat SQL untuk beberapa hari ke belakang.
 3. **Dua perangkat:** baca di HP dan laptop pada hari yang sama, lalu pastikan menit di panel adalah jumlah keduanya, tanpa terhitung ganda setelah muat ulang.
 4. **Offline:** baca saat offline, lalu online lagi, dan pastikan menit sampai ke server.

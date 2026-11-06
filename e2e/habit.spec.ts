@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test"
 import { seedBook } from "./helpers/books"
+import { makeEpub } from "./helpers/epub"
 import {
   HABIT_ZONE,
   seedReadingTime,
@@ -99,4 +100,51 @@ test("the goals set in the panel are kept", async ({ page }) => {
   await hydrated(page)
   await expect(page.getByLabel("Target menit per hari")).toHaveValue("20")
   await expect(page.getByLabel("Target buku per tahun")).toHaveValue("12")
+})
+
+test("scrolling in the Gulir flow keeps counting reading time", async ({
+  page,
+}) => {
+  const member = await createConfirmedMember()
+  await signInAndOnboard(page, member)
+  const userId = await userIdOf(member.email)
+  const book = { title: "Buku Gulir", author: "Penguji" }
+  const paragraph =
+    "Kalimat ini mengisi halaman supaya bab ini lebih panjang dari layar, sehingga pembaca harus menggulir. "
+  const bookId = await seedBook(userId, {
+    ...book,
+    file: await makeEpub({
+      ...book,
+      subjects: [],
+      cover: false,
+      chapters: [
+        {
+          title: "Bab 1",
+          body: `<h1>Bab 1</h1>${`<p>${paragraph.repeat(4)}</p>`.repeat(40)}`,
+        },
+      ],
+    }),
+  })
+  await page.goto(`/read/${bookId}`)
+  await expect(
+    page.getByRole("status", { name: "Posisi baca", includeHidden: true })
+  ).toHaveText(/^\d+%$/, { timeout: 30_000 })
+  await page.getByRole("button", { name: "Tampilan" }).click()
+  const panel = page.getByRole("dialog", { name: "Tampilan" })
+  await panel.getByText("Gulir", { exact: true }).click()
+  await page.keyboard.press("Escape")
+  await expect(panel).toBeHidden()
+
+  const size = page.viewportSize()
+  if (!size) throw new Error("no viewport")
+  await page.mouse.move(size.width / 2, size.height / 2)
+  // A few lines every two seconds: each stop is a relocate, none a new page.
+  for (let i = 0; i < 6; i++) {
+    await page.mouse.wheel(0, 60)
+    await page.waitForTimeout(2_000)
+  }
+  await page.goto("/lobby")
+  await expect
+    .poll(() => storedSeconds(userId, todayInZone()), { timeout: 20_000 })
+    .toBeGreaterThanOrEqual(8)
 })

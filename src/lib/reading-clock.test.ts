@@ -90,4 +90,51 @@ describe("createReadingClock", () => {
     c.show(T0)
     expect(c.show(T0 - s(30))).toEqual([])
   })
+
+  describe("touch (activity on the same page)", () => {
+    it("keeps counting while activity goes on", () => {
+      const c = clock()
+      c.show(T0)
+      let total = 0
+      for (let t = 3; t <= 60; t += 3) {
+        for (const piece of c.touch(T0 + s(t))) total += piece.ms
+      }
+      for (const piece of c.show(T0 + s(63))) total += piece.ms
+      expect(total).toBe(s(63))
+    })
+
+    it("caps the time since the last activity, not the whole page", () => {
+      const c = clock()
+      c.show(T0)
+      let total = 0
+      for (const piece of c.touch(T0 + s(30))) total += piece.ms
+      for (const piece of c.show(T0 + s(30 + 25 * 60))) total += piece.ms
+      expect(total).toBe(s(30) + PAGE_READ_MS.max)
+    })
+
+    it("still needs five seconds in all for a page", () => {
+      const c = clock()
+      c.show(T0)
+      expect(c.touch(T0 + s(2))).toEqual([])
+      expect(c.show(T0 + s(4))).toEqual([])
+    })
+
+    it("does not start the clock while paused", () => {
+      const c = clock()
+      c.show(T0)
+      c.pause(T0 + s(10))
+      expect(c.touch(T0 + s(100))).toEqual([])
+      expect(c.show(T0 + s(200))).toEqual([])
+    })
+
+    it("splits days when midnight passes between touches", () => {
+      const c = clock()
+      const late = Date.UTC(2026, 10, 6, 23, 59, 40)
+      c.show(late)
+      expect(c.touch(late + s(50))).toEqual([
+        { day: "2026-11-06", ms: s(20) },
+        { day: "2026-11-07", ms: s(30) },
+      ])
+    })
+  })
 })

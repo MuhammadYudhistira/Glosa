@@ -88,4 +88,16 @@ describe("useReadingClock", () => {
     act(() => result.current.onPage())
     expect(total()).toBe(12_000)
   })
+
+  it("counts a scroll as activity on the same page", () => {
+    const { result } = renderHook(() => useReadingClock(BOOK, false))
+    act(() => result.current.onPage())
+    for (let t = 3; t <= 60; t += 3) {
+      vi.setSystemTime(T0 + t * 1000)
+      act(() => result.current.onActivity())
+    }
+    vi.setSystemTime(T0 + 63_000)
+    act(() => result.current.onPage())
+    expect(total()).toBe(63_000)
+  })
 })

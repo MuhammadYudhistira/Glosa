@@ -239,7 +239,11 @@ function ReaderPage() {
   // footnote popups do not.
   const clockPaused = panel !== null || noteFor !== null || sharing !== null
   const readingClock = useReadingClock(bookId, clockPaused)
-  const { onPage: onReadingPage } = readingClock
+  const { onPage: onReadingPage, onActivity: onReadingActivity } = readingClock
+  // For onRelocate, which must not change with the settings.
+  const flowRef = useRef(settings.flow)
+  flowRef.current = settings.flow
+  const shownSection = useRef<number | null>(null)
   const habit = useReadingHabit()
   // Today's numbers and goals, and the waiting time sent (plan 3B, decision 10).
   useQueueFlush(user.id, refreshHabit)
@@ -340,9 +344,20 @@ function ReaderPage() {
         // swallow the next click, and the text would stay selected.
         controlsRef.current?.clearSelection()
         setSelection(null)
-        onReadingPage()
+        // In scrolled flow a scroll within a section is activity on the same
+        // page; a new section is a new page (spec 3B §3.1).
+        if (
+          flowRef.current === "scrolled" &&
+          next.section !== null &&
+          next.section === shownSection.current
+        ) {
+          onReadingActivity()
+        } else {
+          onReadingPage()
+        }
       }
       shownCfi.current = next.cfi
+      shownSection.current = next.section
       recordSpeed(next)
       if (moved && next.turned) {
         turnsSinceJump.current += 1
@@ -363,7 +378,7 @@ function ReaderPage() {
           console.error("saving the position failed", error)
         )
     },
-    [bookId, recordSpeed, onReadingPage]
+    [bookId, recordSpeed, onReadingPage, onReadingActivity]
   )
 
   const onInteract = useCallback(() => {

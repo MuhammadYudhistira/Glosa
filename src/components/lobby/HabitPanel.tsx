@@ -62,6 +62,8 @@ export function HabitPanel({
       setBooksDraft(null)
       if (goals.yearlyGoalBooks !== null) {
         void save({ ...goals, yearlyGoalBooks: null })
+      } else {
+        setError(null)
       }
       return
     }
@@ -73,6 +75,8 @@ export function HabitPanel({
     setBooksDraft(null)
     if (value !== goals.yearlyGoalBooks) {
       void save({ ...goals, yearlyGoalBooks: value })
+    } else {
+      setError(null)
     }
   }
 

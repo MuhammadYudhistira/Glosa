@@ -45,6 +45,15 @@ export async function addReadingTime(
   })
 }
 
+/** A goal saved today applies to today's rows on this device too (spec 3B �3.2). */
+export async function setTodayGoal(
+  day: string,
+  goalMinutes: DailyGoal | null
+): Promise<void> {
+  const db = localDb()
+  await db.readingTime.where("day").equals(day).modify({ goalMinutes })
+}
+
 async function markSent(entries: ReadonlyArray<ReadingTimeEntry>) {
   const db = localDb()
   await db.transaction("rw", db.readingTime, async () => {
