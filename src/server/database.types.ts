@@ -185,6 +185,67 @@ export type Database = {
           },
         ]
       }
+      coin_awards: {
+        Row: {
+          awarded_at: string
+          book_id: string
+          coins: number
+          user_id: string
+        }
+        Insert: {
+          awarded_at?: string
+          book_id: string
+          coins: number
+          user_id: string
+        }
+        Update: {
+          awarded_at?: string
+          book_id?: string
+          coins?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coin_awards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coin_grants: {
+        Row: {
+          coins: number
+          created_at: string
+          id: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          coins: number
+          created_at?: string
+          id?: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          coins?: number
+          created_at?: string
+          id?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coin_grants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection_books: {
         Row: {
           added_at: string
@@ -402,6 +463,93 @@ export type Database = {
         }
         Relationships: []
       }
+      lobby_items: {
+        Row: {
+          id: string
+          price: number
+          slot: string
+        }
+        Insert: {
+          id: string
+          price: number
+          slot: string
+        }
+        Update: {
+          id?: string
+          price?: number
+          slot?: string
+        }
+        Relationships: []
+      }
+      lobby_placements: {
+        Row: {
+          item_id: string
+          slot: string
+          user_id: string
+        }
+        Insert: {
+          item_id: string
+          slot: string
+          user_id: string
+        }
+        Update: {
+          item_id?: string
+          slot?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lobby_placements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lobby_placements_user_id_item_id_fkey"
+            columns: ["user_id", "item_id"]
+            isOneToOne: false
+            referencedRelation: "lobby_purchases"
+            referencedColumns: ["user_id", "item_id"]
+          },
+        ]
+      }
+      lobby_purchases: {
+        Row: {
+          bought_at: string
+          item_id: string
+          price: number
+          user_id: string
+        }
+        Insert: {
+          bought_at?: string
+          item_id: string
+          price: number
+          user_id: string
+        }
+        Update: {
+          bought_at?: string
+          item_id?: string
+          price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lobby_purchases_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "lobby_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lobby_purchases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -601,7 +749,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      award_book_coins: { Args: { p_user_id: string }; Returns: undefined }
       before_user_created: { Args: { event: Json }; Returns: Json }
+      buy_lobby_item: { Args: { p_item: string }; Returns: string }
+      coin_totals: {
+        Args: { p_user_id: string }
+        Returns: {
+          earned: number
+          spent: number
+        }[]
+      }
       create_collection: { Args: { p_name: string }; Returns: string }
       decline_finish: { Args: { p_book_id: string }; Returns: string }
       delete_collection: { Args: { p_id: string }; Returns: string }
@@ -613,6 +770,7 @@ export type Database = {
         Args: { p_dump_date?: string; p_force?: boolean; p_source: string }
         Returns: Json
       }
+      lobby_state: { Args: never; Returns: Json }
       lookup_word: {
         Args: { p_next?: string[]; p_word: string }
         Returns: Json
@@ -622,6 +780,10 @@ export type Database = {
         Returns: boolean
       }
       normalize_username: { Args: { raw: string }; Returns: string }
+      place_lobby_item: {
+        Args: { p_item: string; p_slot: string }
+        Returns: string
+      }
       reading_days: {
         Args: never
         Returns: {
