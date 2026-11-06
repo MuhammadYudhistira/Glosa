@@ -34,6 +34,9 @@ const MESSAGES: Record<string, string> = {
   collections_changed:
     "Daftar koleksi berubah. Muat ulang rak, lalu coba lagi.",
   position_missing: "Posisi itu tidak ditemukan di buku ini",
+  not_enough: "Koinmu belum cukup.",
+  not_owned: "Barang ini belum kamu miliki.",
+  item_missing: "Barang ini tidak ada di toko.",
 }
 
 const FALLBACK = "Ada yang tidak beres. Coba lagi sebentar lagi."

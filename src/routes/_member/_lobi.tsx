@@ -8,6 +8,7 @@ import { LobbyStage } from "@/components/lobby/LobbyStage"
 import { ShelfLoadError } from "@/components/shelf/ShelfLoadError"
 import { useShelfSnapshot } from "@/components/shelf/useShelfSnapshot"
 import { refreshHabit } from "@/lib/habit/habit-client"
+import { refreshShop } from "@/lib/shop/shop-client"
 import { loadShelf } from "@/lib/shelf-loader"
 import { useQueueFlush } from "@/lib/sync/use-queue-flush"
 
@@ -34,6 +35,8 @@ function LobiLayout() {
   useShelfSnapshot(user.id, books, usage, collections, offline)
   // The reading habit for the plant, the panel and the member card (plan 3B, decision 10).
   useQueueFlush(user.id, refreshHabit)
+  // The shop's balance and items (plan 3C, decision 9).
+  useQueueFlush(user.id, refreshShop)
 
   return (
     <>
