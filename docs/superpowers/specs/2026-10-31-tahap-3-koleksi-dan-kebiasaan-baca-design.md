@@ -16,13 +16,14 @@ Roadmap lama menulis Tahap 3 sebagai "flashcard (FSRS) + gamifikasi: streak, lev
 | Bagian | Isi | Spec |
 |---|---|---|
 | **3A** | Koleksi buatan pengguna, koleksi otomatis Sedang dibaca dan Sudah dibaca, penanda buku selesai, lemari pajang di lobi 3D | **Dokumen ini (§3–§8)** |
-| 3B | Kebiasaan membaca: streak hari membaca (nada lembut, tanpa hukuman), target pribadi (menit per hari, buku per tahun), pencatatan waktu baca | Terpisah |
-| 3C | Kosakata yang tumbuh dari bacaan: % pemahaman per buku, kata yang ditemukan di tiap buku, kata tersimpan yang "bertemu lagi" di bacaan | Terpisah |
-| 3D | Kartu buku selesai, ulasan pribadi (rating 1–5, tingkat kesulitan mudah/sedang/sulit, catatan, kata yang dipelajari otomatis dari 3C), kilas balik bulanan/tahunan yang bisa dibagikan | Terpisah |
+| 3B | Kebiasaan membaca: streak hari membaca (nada lembut, tanpa hukuman), target pribadi (menit per hari, buku per tahun), pencatatan waktu baca | [`2026-11-06-tahap-3b-kebiasaan-baca-design.md`](2026-11-06-tahap-3b-kebiasaan-baca-design.md) |
+| 3C | Toko lobi (ditambahkan 2026-11-06, dari `inspiration.md`): membaca menghasilkan mata uang untuk membeli bagian lobi 3D yang dipasang di slot tetap | Terpisah |
+| 3D | Kosakata yang tumbuh dari bacaan: % pemahaman per buku, kata yang ditemukan di tiap buku, kata tersimpan yang "bertemu lagi" di bacaan | Terpisah |
+| 3E | Kartu buku selesai, ulasan pribadi (rating 1–5, tingkat kesulitan mudah/sedang/sulit, catatan, kata yang dipelajari otomatis dari 3D), kilas balik bulanan/tahunan yang bisa dibagikan | Terpisah |
 
-Urutan: 3A → 3B → 3C → 3D. 3A memberi "buku selesai" dan rak yang dipakai bagian lain; 3D merangkum semuanya.
+Urutan: 3A → 3B → 3C → 3D → 3E. 3A memberi "buku selesai" dan rak yang dipakai bagian lain; 3B memberi waktu baca yang dipakai toko (3C); 3E merangkum semuanya.
 
-**Ulasan** pribadi di 3D. Datanya disiapkan supaya Tahap 4 (sosial) bisa mempublikasikannya nanti; ulasan publik butuh katalog `works`, feed, dan moderasi, yang tetap di Tahap 4.
+**Ulasan** pribadi di 3E. Datanya disiapkan supaya Tahap 4 (sosial) bisa mempublikasikannya nanti; ulasan publik butuh katalog `works`, feed, dan moderasi, yang tetap di Tahap 4.
 
 **Paket Free/Pro** (spec induk §1) baru di Tahap 5. Tahap 3 dibangun tanpa batas paket, dengan desain yang tidak menghalangi batas dipasang nanti.
 
