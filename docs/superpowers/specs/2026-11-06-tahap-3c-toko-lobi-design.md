@@ -21,7 +21,7 @@ Prinsip Tahap 3 tetap berlaku: hadiah datang dari membaca. Tidak ada XP, papan p
 | 6 | Isi toko: **dekorasi di slot tetap**, 6 slot × 3 barang. | Lobi tetap tertata; tidak perlu editor tata ruang bebas. |
 | 7 | Harga **sedang**: 60–600 koin. | Barang pertama dalam beberapa hari; koleksi lengkap butuh berbulan-bulan. |
 | 8 | **Panel toko + pratinjau di lobi**: memilih barang memasangnya sementara dan menggeser kamera ke slotnya. | Anggota melihat hasilnya sebelum membayar. |
-| 9 | Saldo **dihitung dari data** (menit baca + bonus + koin tambahan − belanja), bukan disimpan sebagai angka (§5). | Koin lama otomatis terhitung, saldo tidak bisa menyimpang dari datanya, dan klien tidak bisa mencurangi. |
+| 9 | Saldo **dihitung dari data** (menit baca + bonus + koin tambahan − belanja), bukan disimpan sebagai angka (§5). | Koin lama otomatis terhitung, saldo tidak bisa menyimpang dari datanya, dan klien tidak bisa mengubah saldo atau harga. Waktu baca sendiri masih dilaporkan klien (3B), jadi koin bisa dipalsukan oleh skrip; aman selama barang hanya kosmetik dan pribadi (lihat §8). |
 
 ## 3. Perilaku
 
@@ -142,3 +142,5 @@ Halaman privasi menyebut data baru: barang lobi yang dibeli dan dipasang, serta 
 ## 8. Di luar 3C
 
 Membeli koin dengan uang (Tahap 5, mengisi `coin_grants`), jual kembali barang, barang musiman atau terbatas, tema lobi utuh, varian benda yang sudah ada (warna rak, model meja), tata ruang bebas, dan memamerkan lobi ke anggota lain (Tahap 4).
+
+**Catatan untuk Tahap 5 (review akhir 3C):** `record_reading_time` mempercayai klien (hingga 86.400 detik per hari, perangkat, dan buku; tanggal dalam jendela 30 hari). Sebelum koin dijual lewat `coin_grants`, server perlu memeriksa kewajaran waktu baca, supaya koin palsu tidak bersaing dengan koin yang dibayar.
