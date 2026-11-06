@@ -406,6 +406,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          daily_goal_minutes: number | null
           display_name: string
           id: string
           member_no: number
@@ -414,10 +415,12 @@ export type Database = {
           reader_settings: Json
           storage_limit_bytes: number
           username: string
+          yearly_goal_books: number | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          daily_goal_minutes?: number | null
           display_name: string
           id: string
           member_no?: number
@@ -426,10 +429,12 @@ export type Database = {
           reader_settings?: Json
           storage_limit_bytes?: number
           username: string
+          yearly_goal_books?: number | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          daily_goal_minutes?: number | null
           display_name?: string
           id?: string
           member_no?: number
@@ -438,6 +443,7 @@ export type Database = {
           reader_settings?: Json
           storage_limit_bytes?: number
           username?: string
+          yearly_goal_books?: number | null
         }
         Relationships: []
       }
@@ -473,6 +479,44 @@ export type Database = {
           },
           {
             foreignKeyName: "reading_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reading_time: {
+        Row: {
+          book_id: string
+          day: string
+          device_id: string
+          goal_minutes: number | null
+          seconds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          day: string
+          device_id: string
+          goal_minutes?: number | null
+          seconds: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          day?: string
+          device_id?: string
+          goal_minutes?: number | null
+          seconds?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_time_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -578,6 +622,15 @@ export type Database = {
         Returns: boolean
       }
       normalize_username: { Args: { raw: string }; Returns: string }
+      reading_days: {
+        Args: never
+        Returns: {
+          day: string
+          goal_minutes: number
+          seconds: number
+        }[]
+      }
+      record_reading_time: { Args: { p_entries: Json }; Returns: string[] }
       rename_collection: {
         Args: { p_id: string; p_name: string }
         Returns: string
