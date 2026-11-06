@@ -244,8 +244,10 @@ describe("reading habits", () => {
   })
 
   it("stores goals only within their ranges", async () => {
-    const goals = (patch: Record<string, number | null>) =>
-      budi.from("profiles").update(patch).eq("id", ids.budi)
+    const goals = (patch: {
+      daily_goal_minutes?: number | null
+      yearly_goal_books?: number | null
+    }) => budi.from("profiles").update(patch).eq("id", ids.budi)
     expect(
       (await goals({ daily_goal_minutes: 20, yearly_goal_books: 12 })).error
     ).toBeNull()
