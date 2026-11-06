@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react"
 import { saveProgressFn } from "@/server/reading"
 import { annotationSync } from "./annotations/annotation-sync-client"
+import { habitSync } from "./habit/habit-client"
 import { clearLocalData } from "./local/device"
 import { localPositionStore } from "./local/positions"
 import {
@@ -76,6 +77,7 @@ export async function leaveDevice(): Promise<void> {
       progressSync().flush(),
       wordSync().flush(),
       annotationSync().flush(),
+      habitSync().flush(),
     ]).catch(() => undefined),
     new Promise((resolve) => setTimeout(resolve, LEAVE_FLUSH_MS)),
   ])

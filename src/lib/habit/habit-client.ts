@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react"
 import type { ActionResult } from "@/lib/action-result"
 import { localDay } from "@/lib/dates"
-import { deviceId } from "@/lib/local/device"
+import { deviceId, onMemberDataWiped } from "@/lib/local/device"
 import {
   addReadingTime,
   loadHabitCache,
@@ -63,6 +63,22 @@ async function reloadLocal() {
 }
 
 let cacheRead: Promise<void> | null = null
+/** Bumped by every refresh and every reset; an older refresh drops its answer. */
+let refreshSeq = 0
+/** Bumped when saving goals starts; `savedGoals` are the ones being or last saved. */
+let goalsEpoch = 0
+let savedGoals: HabitGoals | null = null
+let savesInFlight = 0
+
+// A sign-out, account deletion or another member's claim wipes the device:
+// the previous member's streak and goals must not outlive it.
+onMemberDataWiped(() => {
+  refreshSeq++
+  goalsEpoch++
+  savedGoals = null
+  cacheRead = null
+  setState({ cache: null, local: {}, status: "loading" })
+})
 
 /** Reads this device's copy once per tab, so views show numbers offline. */
 function readCache(): Promise<void> {
@@ -73,9 +89,11 @@ function readCache(): Promise<void> {
     ])
     // A refresh that finished first already has the newer answer.
     setState({ cache: state.cache ?? cache, local })
-  })().catch((error: unknown) =>
+  })().catch((error: unknown) => {
+    // Let the next call try again.
+    cacheRead = null
     console.error("reading the reading habit on this device failed", error)
-  )
+  })
   return cacheRead
 }
 
@@ -100,18 +118,28 @@ export async function recordReadingTime(
  * decision 10). Never rejects: a failure keeps the last answer.
  */
 export async function refreshHabit(): Promise<void> {
+  const seq = ++refreshSeq
   try {
     await readCache()
     await habitSync().flush()
     const sentAtFetch = await localSentTotals()
+    const epochAtFetch = goalsEpoch
     const answer = await loadHabitFn()
+    if (seq !== refreshSeq) return
     if (!answer.ok) {
+      console.error("loading the reading habit was refused", answer.code)
       setState({ status: "failed" })
       return
     }
-    const cache = { days: answer.days, goals: answer.goals, sentAtFetch }
+    // Goals saved while this answer was on its way are newer than it.
+    const goals =
+      savedGoals && (savesInFlight > 0 || goalsEpoch !== epochAtFetch)
+        ? savedGoals
+        : answer.goals
+    const cache = { days: answer.days, goals, sentAtFetch }
     await saveHabitCache(cache)
     await pruneReadingTime(localDay())
+    if (seq !== refreshSeq) return
     setState({ cache, local: await localDayTotals(), status: "ready" })
   } catch (error) {
     console.error("refreshing the reading habit failed", error)
@@ -124,15 +152,25 @@ export async function saveGoals(goals: HabitGoals): Promise<ActionResult> {
   const before = state.cache
   if (!before) return { ok: false, code: "offline" }
   setState({ cache: { ...before, goals } })
+  goalsEpoch++
+  savedGoals = goals
+  savesInFlight++
   let result: ActionResult
   try {
     result = await updateGoalsFn({ data: goals })
   } catch {
     result = { ok: false, code: "unknown" }
+  } finally {
+    savesInFlight--
   }
   if (!result.ok) {
+    if (savedGoals === goals) savedGoals = null
     if (state.cache?.goals === goals) setState({ cache: before })
     return result
+  }
+  // A refresh that began before the save landed may have put old goals back.
+  if (savedGoals === goals && state.cache && state.cache.goals !== goals) {
+    setState({ cache: { ...state.cache, goals } })
   }
   if (state.cache) await saveHabitCache(state.cache)
   return result

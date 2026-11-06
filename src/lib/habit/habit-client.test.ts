@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { localDay } from "@/lib/dates"
 import type * as ClientModule from "./habit-client"
 import type * as ViewModule from "./habit-view"
+import type { HabitGoals } from "./types"
 
 const mocks = vi.hoisted(() => ({
   recordReadingTimeFn: vi.fn(),
@@ -103,6 +104,89 @@ describe("habit client", () => {
       dailyGoalMinutes: 30,
       yearlyGoalBooks: 12,
     })
+  })
+
+  it("keeps saved goals over a refresh fetched before the save landed", async () => {
+    const old: HabitGoals = { dailyGoalMinutes: 10, yearlyGoalBooks: null }
+    const saved: HabitGoals = { dailyGoalMinutes: 30, yearlyGoalBooks: 12 }
+    mocks.loadHabitFn.mockResolvedValueOnce({ ok: true, days: [], goals: old })
+    await client.refreshHabit()
+    let resolveLoad: (value: unknown) => void = () => undefined
+    mocks.loadHabitFn.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveLoad = resolve
+      })
+    )
+    const refresh = client.refreshHabit()
+    await vi.waitFor(() => expect(mocks.loadHabitFn).toHaveBeenCalledTimes(2))
+    mocks.updateGoalsFn.mockResolvedValueOnce({ ok: true })
+    await client.saveGoals(saved)
+    resolveLoad({ ok: true, days: [], goals: old })
+    await refresh
+    expect(current().goals).toEqual(saved)
+    const device = await import("@/lib/local/reading-time")
+    expect((await device.loadHabitCache())?.goals).toEqual(saved)
+  })
+
+  it("ignores an older refresh that resolves after a newer one", async () => {
+    const resolvers: Array<(value: unknown) => void> = []
+    mocks.loadHabitFn.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve)
+        })
+    )
+    const first = client.refreshHabit()
+    await vi.waitFor(() => expect(resolvers).toHaveLength(1))
+    const second = client.refreshHabit()
+    await vi.waitFor(() => expect(resolvers).toHaveLength(2))
+    const goals = (minutes: 5 | 15): HabitGoals => ({
+      dailyGoalMinutes: minutes,
+      yearlyGoalBooks: null,
+    })
+    resolvers[1]?.({ ok: true, days: [], goals: goals(15) })
+    await second
+    resolvers[0]?.({ ok: true, days: [], goals: goals(5) })
+    await first
+    expect(current().goals).toEqual(goals(15))
+  })
+
+  it("logs the code when the server refuses a refresh", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    mocks.loadHabitFn.mockResolvedValueOnce({ ok: false, code: "unknown" })
+    await client.refreshHabit()
+    expect(error).toHaveBeenCalledWith(expect.any(String), "unknown")
+    error.mockRestore()
+  })
+
+  it("forgets the previous member when the device is wiped", async () => {
+    mocks.loadHabitFn.mockResolvedValueOnce({
+      ok: true,
+      days: [{ day: TODAY, seconds: 400, goalMinutes: null }],
+      goals: { dailyGoalMinutes: 5, yearlyGoalBooks: null },
+    })
+    await client.refreshHabit()
+    expect(client.habitStateForTests().cache).not.toBeNull()
+    const device = await import("@/lib/local/device")
+    await device.clearLocalData()
+    expect(client.habitStateForTests()).toEqual({
+      cache: null,
+      local: {},
+      status: "loading",
+    })
+  })
+
+  it("tries reading the device copy again after a failure", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const store = await import("@/lib/local/reading-time")
+    const spy = vi
+      .spyOn(store, "loadHabitCache")
+      .mockRejectedValueOnce(new Error("idb"))
+    await client.recordReadingTime(BOOK, [{ day: TODAY, ms: 1_000 }])
+    await client.recordReadingTime(BOOK, [{ day: TODAY, ms: 1_000 }])
+    expect(spy).toHaveBeenCalledTimes(2)
+    error.mockRestore()
+    spy.mockRestore()
   })
 
   it("stores new time with the goal set now", async () => {

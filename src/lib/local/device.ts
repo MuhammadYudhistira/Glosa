@@ -3,6 +3,16 @@ import { COVER_CACHE, READER_SETTINGS_KEY, USER_KEY } from "./keys"
 
 const OWNER_KEY = "owner"
 
+const wipeListeners = new Set<() => void>()
+
+/** Runs `listener` after the member's data is wiped, so in-memory copies can reset. */
+export function onMemberDataWiped(listener: () => void): () => void {
+  wipeListeners.add(listener)
+  return () => {
+    wipeListeners.delete(listener)
+  }
+}
+
 /** Drops the member's books, positions, Kosakata, annotations, reading time, shelf snapshot, cached covers and reader settings. */
 async function wipeMemberData(): Promise<void> {
   const db = localDb()
@@ -29,6 +39,7 @@ async function wipeMemberData(): Promise<void> {
   } catch {
     // No Cache Storage outside secure contexts: nothing to remove.
   }
+  for (const listener of wipeListeners) listener()
 }
 
 /** On sign-out and account deletion: wipe everything, including the remembered member (plan 1C, decision 6). */
