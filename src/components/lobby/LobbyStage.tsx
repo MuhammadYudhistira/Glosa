@@ -76,10 +76,12 @@ export function LobbyStage({
   const sceneRef = useRef<LobbySceneHandle>(null)
 
   // A preview from the shop brings its slot into view beside the panel (plan 3C, decision 5).
-  const previewSlot = shop.preview ? (itemOf(shop.preview)?.slot ?? null) : null
+  // Keyed on the item, not its slot: a second item in the same slot recentres after a pan.
+  const previewId = shop.preview
   useEffect(() => {
-    if (previewSlot && wide) sceneRef.current?.showDecor(previewSlot)
-  }, [previewSlot, wide])
+    const slot = previewId ? itemOf(previewId)?.slot : undefined
+    if (slot && wide) sceneRef.current?.showDecor(slot)
+  }, [previewId, wide])
   const searchRef = useRef<HTMLInputElement>(null)
   // What had the focus when a book was picked; "Tutup detail" returns there.
   const openerRef = useRef<HTMLElement | null>(null)
@@ -141,7 +143,7 @@ export function LobbyStage({
     } else if (id === "tanaman") {
       void navigate({ to: "/habits" })
     } else if (id === "toko") {
-      // The /shop route arrives in plan 3C Task 4; until then the kiosk opens nothing.
+      void navigate({ to: "/shop" })
     } else if (id === "lemari") {
       void navigate({ to: "/shelf", search: { koleksi: "selesai" } })
     } else {

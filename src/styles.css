@@ -1459,6 +1459,15 @@
       box-shadow: 0 20px 50px rgb(0 0 0 / 0.5);
       backdrop-filter: blur(12px);
     }
+    /* The shop: the lobby stays in sight for the preview (plan 3C, decision 4). */
+    .lobby-popup-backdrop[data-side] {
+      background: transparent;
+      backdrop-filter: none;
+    }
+    .lobby-popup[data-side] {
+      left: auto;
+      width: min(28rem, 40vw);
+    }
     /* Stays in the corner while the panel scrolls. */
     .lobby-popup-close {
       position: sticky;
@@ -1909,6 +1918,51 @@
   @media (min-width: 640px) {
     .vocab-toolbar {
       grid-template-columns: 1fr 14rem;
+    }
+  }
+
+  /* Toko lobi (spec 3C §6.2). */
+  .shop-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .shop-balance {
+    font-size: 1.75rem;
+    font-weight: 600;
+  }
+  .shop-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .shop-items {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .shop-item {
+    display: grid;
+    gap: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 0.5rem;
+  }
+  /* Phones: the lobby is hidden, so the picture is the preview (spec 3C §6.3). */
+  .shop-thumb {
+    width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    background: var(--muted);
+  }
+  .shop-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  @media (min-width: 1024px) {
+    .shop-item {
+      grid-template-columns: 6rem 1fr;
     }
   }
 

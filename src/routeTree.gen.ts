@@ -27,6 +27,7 @@ import { Route as MemberLobiHabitsRouteImport } from './routes/_member/_lobi/hab
 import { Route as MemberLobiLobbyRouteImport } from './routes/_member/_lobi/lobby'
 import { Route as MemberLobiSettingsRouteImport } from './routes/_member/_lobi/settings'
 import { Route as MemberLobiShelfRouteImport } from './routes/_member/_lobi/shelf'
+import { Route as MemberLobiShopRouteImport } from './routes/_member/_lobi/shop'
 import { Route as MemberLobiVocabularyRouteImport } from './routes/_member/_lobi/vocabulary'
 import { Route as MemberReadBookIdRouteImport } from './routes/_member/read.$bookId'
 
@@ -118,6 +119,11 @@ const MemberLobiShelfRoute = MemberLobiShelfRouteImport.update({
   path: '/shelf',
   getParentRoute: () => MemberLobiRoute,
 } as any)
+const MemberLobiShopRoute = MemberLobiShopRouteImport.update({
+  id: '/shop',
+  path: '/shop',
+  getParentRoute: () => MemberLobiRoute,
+} as any)
 const MemberLobiVocabularyRoute = MemberLobiVocabularyRouteImport.update({
   id: '/vocabulary',
   path: '/vocabulary',
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/lobby': typeof MemberLobiLobbyRoute
   '/settings': typeof MemberLobiSettingsRoute
   '/shelf': typeof MemberLobiShelfRoute
+  '/shop': typeof MemberLobiShopRoute
   '/vocabulary': typeof MemberLobiVocabularyRoute
   '/read/$bookId': typeof MemberReadBookIdRoute
 }
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/lobby': typeof MemberLobiLobbyRoute
   '/settings': typeof MemberLobiSettingsRoute
   '/shelf': typeof MemberLobiShelfRoute
+  '/shop': typeof MemberLobiShopRoute
   '/vocabulary': typeof MemberLobiVocabularyRoute
   '/read/$bookId': typeof MemberReadBookIdRoute
 }
@@ -189,6 +197,7 @@ export interface FileRoutesById {
   '/_member/_lobi/lobby': typeof MemberLobiLobbyRoute
   '/_member/_lobi/settings': typeof MemberLobiSettingsRoute
   '/_member/_lobi/shelf': typeof MemberLobiShelfRoute
+  '/_member/_lobi/shop': typeof MemberLobiShopRoute
   '/_member/_lobi/vocabulary': typeof MemberLobiVocabularyRoute
   '/_member/read/$bookId': typeof MemberReadBookIdRoute
 }
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/lobby'
     | '/settings'
     | '/shelf'
+    | '/shop'
     | '/vocabulary'
     | '/read/$bookId'
   fileRoutesByTo: FileRoutesByTo
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
     | '/lobby'
     | '/settings'
     | '/shelf'
+    | '/shop'
     | '/vocabulary'
     | '/read/$bookId'
   id:
@@ -253,6 +264,7 @@ export interface FileRouteTypes {
     | '/_member/_lobi/lobby'
     | '/_member/_lobi/settings'
     | '/_member/_lobi/shelf'
+    | '/_member/_lobi/shop'
     | '/_member/_lobi/vocabulary'
     | '/_member/read/$bookId'
   fileRoutesById: FileRoutesById
@@ -400,6 +412,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MemberLobiShelfRouteImport
       parentRoute: typeof MemberLobiRoute
     }
+    '/_member/_lobi/shop': {
+      id: '/_member/_lobi/shop'
+      path: '/shop'
+      fullPath: '/shop'
+      preLoaderRoute: typeof MemberLobiShopRouteImport
+      parentRoute: typeof MemberLobiRoute
+    }
     '/_member/_lobi/vocabulary': {
       id: '/_member/_lobi/vocabulary'
       path: '/vocabulary'
@@ -422,6 +441,7 @@ interface MemberLobiRouteChildren {
   MemberLobiLobbyRoute: typeof MemberLobiLobbyRoute
   MemberLobiSettingsRoute: typeof MemberLobiSettingsRoute
   MemberLobiShelfRoute: typeof MemberLobiShelfRoute
+  MemberLobiShopRoute: typeof MemberLobiShopRoute
   MemberLobiVocabularyRoute: typeof MemberLobiVocabularyRoute
 }
 
@@ -430,6 +450,7 @@ const MemberLobiRouteChildren: MemberLobiRouteChildren = {
   MemberLobiLobbyRoute: MemberLobiLobbyRoute,
   MemberLobiSettingsRoute: MemberLobiSettingsRoute,
   MemberLobiShelfRoute: MemberLobiShelfRoute,
+  MemberLobiShopRoute: MemberLobiShopRoute,
   MemberLobiVocabularyRoute: MemberLobiVocabularyRoute,
 }
 

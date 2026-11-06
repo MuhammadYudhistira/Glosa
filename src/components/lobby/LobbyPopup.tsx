@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button"
 import { isWideScreen } from "@/lib/use-wide-screen"
 import { cn } from "@/lib/utils"
 
-/** The pages that open over the lobby on desktop (spec 1F §3, spec 2 §6.4). */
+/** The pages that open over the lobby on desktop (spec 1F §3, spec 2 §6.4, spec 3C §6.2). */
 export const POPUP_PATHS: ReadonlyArray<string> = [
   "/shelf",
   "/vocabulary",
   "/settings",
   "/habits",
+  "/shop",
 ]
 
 export const isPopupPath = (pathname: string): boolean =>
@@ -30,6 +31,7 @@ export function LobbyPopup({
   label,
   className,
   bodyClassName,
+  side,
   children,
 }: {
   /** The page's name, as in its h1: "Rak Saya", "Pengaturan". */
@@ -38,6 +40,8 @@ export function LobbyPopup({
   className?: string
   /** On the column that holds the content, e.g. its gap. */
   bodyClassName?: string
+  /** On desktop: a narrow panel on the right, the lobby clear beside it (plan 3C, decision 4). */
+  side?: boolean
   children: ReactNode
 }) {
   const navigate = useNavigate()
@@ -99,11 +103,13 @@ export function LobbyPopup({
       <div
         aria-hidden="true"
         className="lobby-popup-backdrop"
+        data-side={side ? "" : undefined}
         onClick={close}
       />
       <main
         ref={mainRef}
         aria-label={label}
+        data-side={side ? "" : undefined}
         className={cn("lobby-popup", className)}
       >
         {/* Hidden on phones by utility: the Button's own inline-flex utility would beat a layered rule. */}

@@ -36,6 +36,11 @@ function PrivacyPage() {
           terhapus saat akunmu dihapus.
         </li>
         <li>
+          Toko lobi: barang lobi yang kamu beli dan pasang, serta koin dari
+          bacaanmu. Data ini tidak dibagikan dan ikut terhapus saat akunmu
+          dihapus.
+        </li>
+        <li>
           Data teknis: waktu masuk terakhir dan laporan error untuk memperbaiki
           aplikasi. Laporan error hanya memuat ID akunmu, tanpa email atau nama.
         </li>
