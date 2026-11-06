@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from "dexie"
 import type { Annotation } from "@/lib/annotations/types"
+import type { DailyGoal } from "@/lib/habit/types"
 import type { LookupResult, SavedWord } from "@/lib/words/types"
 
 export type LocalFile = {
@@ -40,6 +41,19 @@ export type LocalWordOp = {
 /** An annotation as this device keeps it; `pending` is 1 until the server has this change. */
 export type LocalAnnotation = Annotation & { pending: 0 | 1 }
 
+/**
+ * This device's reading time for one local day and book (spec 3B §5.4), in
+ * milliseconds; `sentSeconds` is the total the server confirmed.
+ */
+export type LocalReadingTime = {
+  key: string
+  day: string
+  bookId: string
+  ms: number
+  sentSeconds: number
+  goalMinutes: DailyGoal | null
+}
+
 /** Everything Glosa keeps in IndexedDB for the member using this device (spec §3). */
 class GlosaDb extends Dexie {
   files!: EntityTable<LocalFile, "bookId">
@@ -49,6 +63,7 @@ class GlosaDb extends Dexie {
   words!: EntityTable<SavedWord, "headword">
   wordOps!: EntityTable<LocalWordOp, "headword">
   annotations!: EntityTable<LocalAnnotation, "id">
+  readingTime!: EntityTable<LocalReadingTime, "key">
 
   constructor() {
     super("glosa")
@@ -66,6 +81,10 @@ class GlosaDb extends Dexie {
     // Tahap 2B: highlights and bookmarks, with their queue (spec 2 §5).
     this.version(3).stores({
       annotations: "id, bookId, pending",
+    })
+    // Tahap 3B: reading time per day and book (spec 3B §5.4).
+    this.version(4).stores({
+      readingTime: "key, day",
     })
   }
 }

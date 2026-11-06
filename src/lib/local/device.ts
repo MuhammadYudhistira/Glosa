@@ -3,7 +3,7 @@ import { COVER_CACHE, READER_SETTINGS_KEY, USER_KEY } from "./keys"
 
 const OWNER_KEY = "owner"
 
-/** Drops the member's books, positions, Kosakata, annotations, shelf snapshot, cached covers and reader settings. */
+/** Drops the member's books, positions, Kosakata, annotations, reading time, shelf snapshot, cached covers and reader settings. */
 async function wipeMemberData(): Promise<void> {
   const db = localDb()
   const tables = [
@@ -14,6 +14,7 @@ async function wipeMemberData(): Promise<void> {
     db.words,
     db.wordOps,
     db.annotations,
+    db.readingTime,
   ]
   await db.transaction("rw", tables, async () => {
     await Promise.all(tables.map((table) => table.clear()))
@@ -38,6 +39,24 @@ export async function clearLocalData(): Promise<void> {
   } catch {
     // No localStorage: nothing to remove.
   }
+}
+
+const DEVICE_KEY = "deviceId"
+
+/**
+ * This device's id for reading time (spec 3B §5.4). Wiping the member's data
+ * drops it, and the device starts over under a new id: its old rows stay
+ * counted on the server.
+ */
+export async function deviceId(): Promise<string> {
+  const db = localDb()
+  return db.transaction("rw", db.meta, async () => {
+    const stored = await db.meta.get(DEVICE_KEY)
+    if (typeof stored?.value === "string") return stored.value
+    const id = crypto.randomUUID()
+    await db.meta.put({ key: DEVICE_KEY, value: id })
+    return id
+  })
 }
 
 async function claim(userId: string): Promise<void> {
