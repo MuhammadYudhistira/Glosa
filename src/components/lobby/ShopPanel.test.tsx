@@ -117,9 +117,11 @@ describe("ShopPanel", () => {
         name: "Beli",
       })
     )
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Koinmu belum cukup."
-    )
+    // The message sits in the item that was acted on, not in the header.
+    expect(
+      await within(item("Kucing tidur")).findByRole("alert")
+    ).toHaveTextContent("Koinmu belum cukup.")
+    expect(screen.getAllByRole("alert")).toHaveLength(1)
   })
 
   it("places and takes off", async () => {
@@ -171,5 +173,17 @@ describe("ShopPanel", () => {
     })
     fireEvent.click(screen.getByRole("button", { name: "Coba lagi" }))
     expect(onRetry).toHaveBeenCalled()
+  })
+
+  it("cannot try again offline, and says why", () => {
+    const { onRetry } = panel({
+      offline: true,
+      view: { status: "failed", state: null, preview: null },
+    })
+    const retry = screen.getByRole("button", { name: "Coba lagi" })
+    expect(retry).toBeDisabled()
+    fireEvent.click(retry)
+    expect(onRetry).not.toHaveBeenCalled()
+    expect(screen.getByText("Perlu koneksi internet")).toBeVisible()
   })
 })

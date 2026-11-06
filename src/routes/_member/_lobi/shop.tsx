@@ -9,6 +9,7 @@ import {
   refreshShop,
   useShop,
 } from "@/lib/shop/shop-client"
+import { useOnline } from "@/lib/use-online"
 
 const lobi = getRouteApi("/_member/_lobi")
 
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/_member/_lobi/shop")({
 /** Toko lobi over the lobby (spec 3C §6.2). */
 function ShopPage() {
   const { offline } = lobi.useLoaderData()
+  const online = useOnline()
   const shop = useShop()
   // The newest balance on every visit; closing ends a preview (spec 3C §6.3).
   useEffect(() => {
@@ -30,7 +32,7 @@ function ShopPage() {
     <LobbyPopup label="Toko lobi" side>
       <ShopPanel
         view={shop}
-        offline={offline}
+        offline={offline || !online}
         onRetry={() => void refreshShop()}
         onBuy={buyItem}
         onPlace={placeItem}

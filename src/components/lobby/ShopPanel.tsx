@@ -39,7 +39,10 @@ export function ShopPanel({
 }) {
   const [asking, setAsking] = useState<ShopItem | null>(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // One message at a time, kept with the item that was acted on.
+  const [error, setError] = useState<{ itemId: string; text: string } | null>(
+    null
+  )
   const { state } = view
 
   if (!state) {
@@ -49,7 +52,10 @@ export function ShopPanel({
         {view.status === "failed" ? (
           <>
             <p className="text-sm">Toko lobi belum bisa dimuat.</p>
-            <Button onClick={onRetry}>Coba lagi</Button>
+            <Button disabled={offline} onClick={onRetry}>
+              Coba lagi
+            </Button>
+            {offline && <p className="text-sm">{OFFLINE_NOTE}</p>}
           </>
         ) : (
           <p className="text-sm text-muted-foreground">Memuat…</p>
@@ -58,12 +64,12 @@ export function ShopPanel({
     )
   }
 
-  async function act(run: () => Promise<ActionResult>) {
+  async function act(itemId: string, run: () => Promise<ActionResult>) {
     setError(null)
     setBusy(true)
     try {
       const result = await run()
-      if (!result.ok) setError(bookMessage(result.code))
+      if (!result.ok) setError({ itemId, text: bookMessage(result.code) })
     } finally {
       setBusy(false)
     }
@@ -82,11 +88,6 @@ export function ShopPanel({
           <p className="text-sm">Baca untuk mendapat koin</p>
         )}
         {offline && <p className="text-sm">{OFFLINE_NOTE}</p>}
-        {error && (
-          <p role="alert" className="text-sm">
-            {error}
-          </p>
-        )}
       </header>
       {SLOTS.map((slot) => (
         <section key={slot.id} aria-label={slot.name} className="shop-slot">
@@ -120,7 +121,7 @@ export function ShopPanel({
                             variant="outline"
                             disabled={locked}
                             onClick={() =>
-                              void act(() => onPlace(slot.id, null))
+                              void act(item.id, () => onPlace(slot.id, null))
                             }
                           >
                             Lepas
@@ -131,7 +132,7 @@ export function ShopPanel({
                           size="sm"
                           disabled={locked}
                           onClick={() =>
-                            void act(() => onPlace(slot.id, item.id))
+                            void act(item.id, () => onPlace(slot.id, item.id))
                           }
                         >
                           Pasang
@@ -166,6 +167,11 @@ export function ShopPanel({
                         </Button>
                       )}
                     </div>
+                    {error?.itemId === item.id && (
+                      <p role="alert" className="text-sm">
+                        {error.text}
+                      </p>
+                    )}
                   </div>
                 </li>
               )
@@ -197,7 +203,7 @@ export function ShopPanel({
               onClick={() => {
                 const item = asking
                 setAsking(null)
-                if (item) void act(() => onBuy(item.id))
+                if (item) void act(item.id, () => onBuy(item.id))
               }}
             >
               Beli
