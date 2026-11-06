@@ -2,6 +2,7 @@ import "fake-indexeddb/auto"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 
+import type * as ShopCacheModule from "@/lib/local/shop-cache"
 import { localDb } from "@/lib/local/db"
 import { clearLocalData } from "@/lib/local/device"
 import { loadShopCache, saveShopCache } from "@/lib/local/shop-cache"
@@ -24,6 +25,19 @@ const flush = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 vi.mock("@/lib/habit/habit-client", () => ({
   habitSync: () => ({ flush }),
 }))
+
+const gate = vi.hoisted(() => ({ hold: null as Promise<void> | null }))
+vi.mock("@/lib/local/shop-cache", async (importOriginal) => {
+  const actual = await importOriginal<typeof ShopCacheModule>()
+  return {
+    ...actual,
+    loadShopCache: async () => {
+      const cache = await actual.loadShopCache()
+      await gate.hold
+      return cache
+    },
+  }
+})
 
 const state = (changes = {}) => ({
   earned: 300,
@@ -111,5 +125,72 @@ describe("shop client", () => {
       preview: null,
     })
     expect(await localDb().meta.get("lobbyShop")).toBeUndefined()
+  })
+
+  it("does not bring the old state back from a cache read begun before a wipe", async () => {
+    await saveShopCache(state({ balance: 7 }))
+    let release!: () => void
+    gate.hold = new Promise<void>((resolve) => (release = resolve))
+    server.loadLobbyFn.mockReturnValue(new Promise(() => {}))
+    void refreshShop()
+    await clearLocalData()
+    gate.hold = null
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(shopStateForTests().state).toBeNull()
+  })
+
+  it("leaves the reset store alone when a place call is answered after a wipe", async () => {
+    server.loadLobbyFn.mockResolvedValue({ ok: true, state: state() })
+    await refreshShop()
+    let answer!: (value: unknown) => void
+    server.placeLobbyItemFn.mockReturnValue(
+      new Promise((resolve) => (answer = resolve))
+    )
+    const placing = placeItem("rug", null)
+    await clearLocalData()
+    answer({ ok: false, code: "unknown" })
+    expect(await placing).toEqual({ ok: false, code: "unknown" })
+    expect(shopStateForTests().state).toBeNull()
+    expect(await localDb().meta.get("lobbyShop")).toBeUndefined()
+  })
+
+  it("does not write the old member's slot into a new member's state", async () => {
+    server.loadLobbyFn.mockResolvedValue({ ok: true, state: state() })
+    await refreshShop()
+    let answer!: (value: unknown) => void
+    server.placeLobbyItemFn.mockReturnValue(
+      new Promise((resolve) => (answer = resolve))
+    )
+    const placing = placeItem("rug", null)
+    await clearLocalData()
+    const next = state({ balance: 1, owned: [], placed: {} })
+    server.loadLobbyFn.mockResolvedValue({ ok: true, state: next })
+    await refreshShop()
+    answer({ ok: false, code: "unknown" })
+    await placing
+    expect(shopStateForTests().state).toEqual(next)
+  })
+
+  it("keeps an optimistic placement when an older refresh answers after it", async () => {
+    server.loadLobbyFn.mockResolvedValue({ ok: true, state: state() })
+    await refreshShop()
+    let answerLoad!: (value: unknown) => void
+    server.loadLobbyFn.mockReturnValue(
+      new Promise((resolve) => (answerLoad = resolve))
+    )
+    const refreshing = refreshShop()
+    await vi.waitFor(() => expect(server.loadLobbyFn).toHaveBeenCalledTimes(2))
+    let answerPlace!: (value: unknown) => void
+    server.placeLobbyItemFn.mockReturnValue(
+      new Promise((resolve) => (answerPlace = resolve))
+    )
+    const placing = placeItem("rug", null)
+    answerLoad({ ok: true, state: state() })
+    await refreshing
+    expect(shopStateForTests().state?.placed).toEqual({})
+    answerPlace({ ok: true })
+    await placing
+    expect(shopStateForTests().state?.placed).toEqual({})
   })
 })

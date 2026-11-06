@@ -22,8 +22,11 @@ export const shopStateForTests = (): ShopView => view
 let cacheRead: Promise<void> | null = null
 /** Bumped by every refresh and every wipe; an older refresh drops its answer. */
 let refreshSeq = 0
+/** Bumped only by a wipe; work begun before one must not touch the new store. */
+let wipeEpoch = 0
 
 onMemberDataWiped(() => {
+  wipeEpoch++
   refreshSeq++
   cacheRead = null
   setView(EMPTY)
@@ -31,8 +34,10 @@ onMemberDataWiped(() => {
 
 /** This device's last state, once per tab, so the lobby shows it offline. */
 function readCache(): Promise<void> {
+  const epoch = wipeEpoch
   cacheRead ??= loadShopCache()
     .then((cache) => {
+      if (epoch !== wipeEpoch) return
       // A refresh that finished first already has the newer answer.
       setView({ state: view.state ?? cache })
     })
@@ -96,6 +101,8 @@ export async function placeItem(
 ): Promise<ActionResult> {
   const before = view.state
   if (!before) return { ok: false, code: "offline" }
+  const epoch = wipeEpoch
+  refreshSeq++ // an older refresh must not undo the placement shown now
   const placed: Placements = { ...before.placed }
   if (itemId) placed[slot] = itemId
   else delete placed[slot]
@@ -106,6 +113,7 @@ export async function placeItem(
   } catch {
     result = { ok: false, code: "unknown" }
   }
+  if (epoch !== wipeEpoch) return result // the member's data was wiped meanwhile
   if (!result.ok) {
     // Only the slot goes back: a refresh may have landed meanwhile.
     const now = view.state
