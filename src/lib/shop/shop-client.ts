@@ -127,6 +127,8 @@ export async function placeItem(
     return result
   }
   if (view.state) await saveShopCache(view.state)
+  // A refresh begun before this place dropped its answer (balance, owned).
+  await refreshShop()
   return result
 }
 

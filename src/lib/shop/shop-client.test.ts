@@ -189,8 +189,38 @@ describe("shop client", () => {
     answerLoad({ ok: true, state: state() })
     await refreshing
     expect(shopStateForTests().state?.placed).toEqual({})
+    // The server has the placement by now, so the follow-up refresh shows it.
+    server.loadLobbyFn.mockResolvedValue({
+      ok: true,
+      state: state({ placed: {} }),
+    })
     answerPlace({ ok: true })
     await placing
     expect(shopStateForTests().state?.placed).toEqual({})
+  })
+
+  it("refreshes again after a place that superseded a refresh", async () => {
+    server.loadLobbyFn.mockResolvedValue({ ok: true, state: state() })
+    await refreshShop()
+    let answerLoad!: (value: unknown) => void
+    server.loadLobbyFn.mockReturnValueOnce(
+      new Promise((resolve) => (answerLoad = resolve))
+    )
+    const refreshing = refreshShop()
+    await vi.waitFor(() => expect(server.loadLobbyFn).toHaveBeenCalledTimes(2))
+    server.placeLobbyItemFn.mockResolvedValue({ ok: true })
+    const placing = placeItem("rug", null)
+    // The dropped answer carried the old balance; the follow-up has the new one.
+    server.loadLobbyFn.mockResolvedValue({
+      ok: true,
+      state: state({ balance: 777, placed: {} }),
+    })
+    answerLoad({ ok: true, state: state() })
+    await refreshing
+    await placing
+    expect(shopStateForTests().state).toMatchObject({
+      balance: 777,
+      placed: {},
+    })
   })
 })
