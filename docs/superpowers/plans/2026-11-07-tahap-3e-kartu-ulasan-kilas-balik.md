@@ -36,7 +36,7 @@
 - **Route tree:** jangan pakai `npm run generate-routes` (menghapus blok `Register`). Route baru `/recap` ditambahkan ke `src/routeTree.gen.ts` dengan menyalin setiap kemunculan `shop` (`MemberLobiShopRouteImport`, `MemberLobiShopRoute`, `'/shop'`, `'/_member/_lobi/shop'`) lalu mengganti namanya menjadi `Recap` / `/recap` — atau biarkan `npm run dev` membuat ulang file itu, lalu pastikan `interface Register { router: ... }` masih ada di akhir file (`git diff` harus hanya menambah baris `recap`).
 - **CI** menjalankan `npm run check` (prettier): setiap task menjalankan `npx prettier --write` pada file yang disentuh sebelum commit.
 - **E2E:** `--workers=2`; cek port 3000 dulu (`curl -sL localhost:3000/login | grep -o "<title>[^<]*"`), bila dipegang aplikasi lain pakai config sementara di port 3100 lalu hapus; satu kegagalan dijalankan ulang sendirian dulu.
-- **Tidak ada push ke GitHub** sampai seluruh Tahap 3 selesai (keputusan pemilik). Commit lokal saja. Pesan commit diakhiri `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
+- **Tidak ada push ke GitHub** sampai seluruh Tahap 3 selesai (keputusan pemilik). Commit lokal saja. Pesan commit diakhiri `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 ## Keputusan dan penyimpangan dari spec
 
@@ -717,7 +717,7 @@ npx tsc --noEmit
 git add supabase/migrations/20261107000200_finish_review_recap.sql tests/db/review-recap.test.ts src/server/database.types.ts
 git commit -m "feat(3e): reviews, finish summary and recap in the database
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -962,7 +962,7 @@ npx tsc --noEmit
 git add -A src
 git commit -m "feat(3e): review on the shelf list and the Rating tertinggi sort
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 (Gunakan `git add` pada file yang benar-benar berubah, bukan `-A`, bila ada berkas lain yang belum terkait; `inspiration.md` tidak boleh ikut.)
@@ -1706,7 +1706,7 @@ npx prettier --write "src/lib/recap/*.ts" src/server/reviews.ts src/server/recap
 git add src/lib/recap src/server/reviews.ts src/server/recap.ts src/lib/local/keys.ts src/lib/book-messages.ts
 git commit -m "feat(3e): recap logic, bubble rule and review/recap server functions
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2639,7 +2639,7 @@ npx prettier --write "src/lib/quote-card/*.ts" "src/components/share/*.tsx" src/
 git add src/lib/quote-card src/components/share src/components/reader/QuoteCardDialog.tsx
 git commit -m "feat(3e): finished-book and recap share images on the quote card engine
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -3102,7 +3102,7 @@ npx prettier --write "src/components/review/*.tsx" "src/routes/_member/read.\$bo
 git add src/components/review "src/routes/_member/read.\$bookId.tsx"
 git commit -m "feat(3e): finished-book card and review form in the reader
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -3278,7 +3278,7 @@ npx prettier --write "src/components/review/*.tsx" src/components/shelf/BookActi
 git add src/components/review src/components/shelf/BookActions.tsx src/components/shelf/BookActions.test.tsx
 git commit -m "feat(3e): Ulasan saya and Lihat kartu in the book details
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -3574,7 +3574,7 @@ npx prettier --write src/lib/recap/recap-client.ts "src/components/lobby/*.tsx" 
 git add src/lib/recap src/components/lobby src/routes src/routeTree.gen.ts
 git commit -m "feat(3e): recap page, entry points, month-start bubble and privacy note
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -3750,7 +3750,7 @@ npx prettier --write e2e/finish-review.spec.ts e2e/recap.spec.ts e2e/collections
 git add e2e/finish-review.spec.ts e2e/recap.spec.ts e2e/collections.spec.ts
 git commit -m "test(e2e): finished-book card, review and recap
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 7: Daftar cek pemilik (sampaikan di laporan akhir, jangan commit)**
