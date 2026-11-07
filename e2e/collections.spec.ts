@@ -103,7 +103,10 @@ test("finishing a book puts it on Sudah dibaca", async ({ page }) => {
   const prompt = page.getByRole("complementary", { name: "Buku selesai" })
   await expect(prompt).toBeVisible()
   await prompt.getByRole("button", { name: "Ya, selesai" }).click()
-  await expect(page.getByText("Masuk ke koleksi Sudah dibaca")).toBeVisible()
+  const card = page.getByRole("dialog", { name: `Selesai: ${SHORT.title}` })
+  await expect(card).toBeVisible()
+  await card.getByRole("button", { name: "Nanti" }).click()
+  await expect(card).toBeHidden()
   await expect(prompt).toHaveCount(0)
 
   // Back like the Android gesture does, which preloads nothing.
