@@ -40,6 +40,28 @@ export function filterWords(
   )
 }
 
+export type VocabSort = "terbaru" | "bertemu"
+export const VOCAB_SORTS: ReadonlyArray<{ value: VocabSort; label: string }> = [
+  { value: "terbaru", label: "Terbaru" },
+  { value: "bertemu", label: "Paling sering bertemu" },
+]
+
+/** Newest first, or the words met most first, then the newest (spec 3D §4.2). */
+export function sortWords(
+  words: ReadonlyArray<SavedWord>,
+  by: VocabSort,
+  meetings: Record<string, { meetings: number; books: number } | undefined>
+): Array<SavedWord> {
+  const newest = (a: SavedWord, b: SavedWord) =>
+    b.createdAt.localeCompare(a.createdAt)
+  if (by === "terbaru") return [...words].sort(newest)
+  return [...words].sort(
+    (a, b) =>
+      (meetings[b.headword]?.meetings ?? 0) -
+        (meetings[a.headword]?.meetings ?? 0) || newest(a, b)
+  )
+}
+
 export type SentencePart = { text: string; bold: boolean }
 
 /** The sentence with every form of its word picked out, for the card to bold. */

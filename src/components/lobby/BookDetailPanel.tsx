@@ -3,6 +3,7 @@ import { useEffect, useId, useRef } from "react"
 import { BookActions } from "@/components/shelf/BookActions"
 import { BookCover } from "@/components/shelf/BookCover"
 import { BookFacts } from "@/components/shelf/BookDetail"
+import { BookVocabLine } from "@/components/shelf/BookVocabLine"
 import { ReadLink } from "@/components/shelf/ReadLink"
 import {
   type LocalShelf,
@@ -71,6 +72,7 @@ export function BookDetailPanel({
         </Button>
       </div>
       <BookFacts book={book} percentage={percentage} />
+      <BookVocabLine bookId={book.id} />
       <ReadLink bookId={book.id} percentage={percentage} />
       <BookActions
         key={book.id}

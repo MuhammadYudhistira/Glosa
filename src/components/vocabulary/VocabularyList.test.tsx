@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react"
 import { fireEvent, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import type { SavedWord } from "@/lib/words/types"
@@ -26,7 +27,8 @@ const walk: SavedWord = {
 
 function show(
   words: Array<SavedWord>,
-  shelfIds: ReadonlySet<string> = new Set(["b1", "b2"])
+  shelfIds: ReadonlySet<string> = new Set(["b1", "b2"]),
+  extra: Partial<ComponentProps<typeof VocabularyList>> = {}
 ) {
   const onDelete = vi.fn()
   renderWithRouter(
@@ -35,6 +37,8 @@ function show(
       forms={{ run: ["run", "ran"], walk: ["walk"] }}
       shelfIds={shelfIds}
       onDelete={onDelete}
+      meetings={{}}
+      {...extra}
     />
   )
   return onDelete
@@ -101,5 +105,40 @@ describe("VocabularyList", () => {
       within(await card("run")).getByRole("button", { name: "Hapus run" })
     )
     expect(onDelete).toHaveBeenCalledWith(run)
+  })
+
+  it("says how often a saved word was met again", async () => {
+    show([run, walk], undefined, {
+      meetings: { run: { meetings: 7, books: 3 } },
+    })
+    expect(
+      within(await card("run")).getByText("Bertemu lagi 7× di 3 buku")
+    ).toBeInTheDocument()
+    expect(within(await card("walk")).queryByText(/Bertemu lagi/)).toBeNull()
+  })
+
+  it("puts the words met most first", async () => {
+    show([run, walk], undefined, {
+      meetings: { walk: { meetings: 4, books: 1 } },
+    })
+    await card("run")
+    const order = () =>
+      screen
+        .getAllByRole("article")
+        .map((a) => a.getAttribute("aria-labelledby"))
+    const heads = () =>
+      screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)
+    expect(order()).toHaveLength(2)
+    expect(heads()).toEqual(["run", "walk"])
+    fireEvent.change(screen.getByLabelText("Urutkan"), {
+      target: { value: "bertemu" },
+    })
+    expect(heads()).toEqual(["walk", "run"])
+  })
+
+  it("starts with the filter on a given book", async () => {
+    show([run, walk], undefined, { initialBook: "b2" })
+    expect(await card("walk")).toBeInTheDocument()
+    expect(screen.queryByRole("article", { name: "run" })).toBeNull()
   })
 })

@@ -2,6 +2,7 @@ import { type ReactNode, useId, useState } from "react"
 import { BookActions } from "@/components/shelf/BookActions"
 import { BookCover } from "@/components/shelf/BookCover"
 import { BookFacts } from "@/components/shelf/BookDetail"
+import { BookVocabLine } from "@/components/shelf/BookVocabLine"
 import { ReadLink } from "@/components/shelf/ReadLink"
 import {
   type LocalShelf,
@@ -68,6 +69,7 @@ export function ContinueSheet({
         {open && (
           <div className="max-h-[50dvh] space-y-3 overflow-y-auto">
             <BookFacts book={book} percentage={percentage} />
+            <BookVocabLine bookId={book.id} />
             <BookActions
               key={book.id}
               book={book}

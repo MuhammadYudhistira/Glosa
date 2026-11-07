@@ -1917,7 +1917,7 @@
   }
   @media (min-width: 640px) {
     .vocab-toolbar {
-      grid-template-columns: 1fr 14rem;
+      grid-template-columns: 1fr 14rem 12rem;
     }
   }
 

@@ -139,7 +139,7 @@ export function LobbyStage({
     } else if (id === "troli") {
       setSorting(true)
     } else if (id === "katalog") {
-      void navigate({ to: "/vocabulary" })
+      void navigate({ to: "/vocabulary", search: { buku: undefined } })
     } else if (id === "tanaman") {
       void navigate({ to: "/habits" })
     } else if (id === "toko") {

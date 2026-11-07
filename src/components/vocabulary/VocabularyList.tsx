@@ -10,8 +10,11 @@ import type { SavedWord } from "@/lib/words/types"
 import {
   ALL_BOOKS,
   bookOptions,
+  VOCAB_SORTS,
+  type VocabSort,
   filterWords,
   sentenceParts,
+  sortWords,
 } from "@/lib/words/vocabulary"
 
 const SHOWN_MEANINGS = 3
@@ -19,11 +22,14 @@ const SHOWN_MEANINGS = 3
 function VocabularyCard({
   word,
   forms,
+  met,
   onShelf,
   onDelete,
 }: {
   word: SavedWord
   forms: Array<string>
+  /** How often the word came up again, when it did. */
+  met?: { meetings: number; books: number }
   /** The book is still on the shelf, so its place can open. */
   onShelf: boolean
   onDelete: () => void
@@ -43,6 +49,11 @@ function VocabularyCard({
       </header>
       {word.meanings.length > 0 && (
         <p>{word.meanings.slice(0, SHOWN_MEANINGS).join(", ")}</p>
+      )}
+      {met && (
+        <p className="text-sm text-muted-foreground">
+          Bertemu lagi {met.meetings}× di {met.books} buku
+        </p>
       )}
       {word.sentence && (
         <blockquote className="vocab-sentence">
@@ -89,19 +100,25 @@ export function VocabularyList({
   words,
   forms,
   shelfIds,
+  meetings,
+  initialBook,
   onDelete,
 }: {
   words: Array<SavedWord>
   forms: FormsByHeadword
   shelfIds: ReadonlySet<string>
+  meetings: Record<string, { meetings: number; books: number } | undefined>
+  /** The book the filter starts on. */
+  initialBook?: string
   onDelete: (word: SavedWord) => void
 }) {
   const [q, setQ] = useState("")
-  const [book, setBook] = useState(ALL_BOOKS)
+  const [book, setBook] = useState(initialBook ?? ALL_BOOKS)
+  const [sort, setSort] = useState<VocabSort>("terbaru")
   const options = useMemo(() => bookOptions(words), [words])
   const visible = useMemo(
-    () => filterWords(words, { q, book }),
-    [words, q, book]
+    () => sortWords(filterWords(words, { q, book }), sort, meetings),
+    [words, q, book, sort, meetings]
   )
 
   if (words.length === 0) {
@@ -142,6 +159,21 @@ export function VocabularyList({
             </option>
           ))}
         </select>
+        <Label htmlFor="vocab-sort" className="sr-only">
+          Urutkan
+        </Label>
+        <select
+          id="vocab-sort"
+          className="vocab-select"
+          value={sort}
+          onChange={(event) => setSort(event.target.value as VocabSort)}
+        >
+          {VOCAB_SORTS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </div>
       {visible.length === 0 ? (
         <p className="text-sm text-muted-foreground">
@@ -154,6 +186,7 @@ export function VocabularyList({
               <VocabularyCard
                 word={word}
                 forms={forms[word.headword] ?? [word.headword]}
+                met={meetings[word.headword]}
                 onShelf={word.bookId !== null && shelfIds.has(word.bookId)}
                 onDelete={() => onDelete(word)}
               />

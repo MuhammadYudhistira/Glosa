@@ -1,12 +1,14 @@
-import { createFileRoute, getRouteApi } from "@tanstack/react-router"
+import { Link, createFileRoute, getRouteApi } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
 import { LobbyPopup } from "@/components/lobby/LobbyPopup"
 import { ShelfLoadError } from "@/components/shelf/ShelfLoadError"
 import { Button } from "@/components/ui/button"
+import { BookLookups } from "@/components/vocabulary/BookLookups"
 import { VocabularyList } from "@/components/vocabulary/VocabularyList"
 import { VocabularyNotice } from "@/components/vocabulary/VocabularyNotice"
 import { claimLocalData } from "@/lib/local/device"
 import { replaceLocalWords } from "@/lib/local/saved-words"
+import { useWordMeetings } from "@/lib/vocab/vocab-client"
 import { loadVocabulary } from "@/lib/vocabulary-loader"
 import type { SavedWord } from "@/lib/words/types"
 import {
@@ -21,6 +23,9 @@ const lobi = getRouteApi("/_member/_lobi")
 const UNDO_MS = 6_000
 
 export const Route = createFileRoute("/_member/_lobi/vocabulary")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    buku: typeof search.buku === "string" ? search.buku : undefined,
+  }),
   loader: ({ context }) => loadVocabulary(context.user.id),
   head: () => ({ meta: [{ title: "Kosakata — Glosa" }] }),
   errorComponent: ShelfLoadError,
@@ -31,9 +36,12 @@ function VocabularyPage() {
   const loaded = Route.useLoaderData()
   const { user } = Route.useRouteContext()
   const { books } = lobi.useLoaderData()
+  const { buku } = Route.useSearch()
+  const meetings = useWordMeetings()
   const words = useLocalWords(loaded.words)
   const forms = useSavedForms()
   const shelfIds = useMemo(() => new Set(books.map((book) => book.id)), [books])
+  const shelfBook = buku ? books.find((book) => book.id === buku) : undefined
   const [removed, setRemoved] = useState<{
     word: SavedWord
     forms: Array<string>
@@ -111,10 +119,31 @@ function VocabularyPage() {
           </Button>
         </aside>
       )}
+      {shelfBook && (
+        <>
+          <BookLookups
+            key={shelfBook.id}
+            bookId={shelfBook.id}
+            title={shelfBook.title}
+            savedHeadwords={new Set(words.map((w) => w.headword))}
+            offline={loaded.offline}
+          />
+          <Link
+            to="/vocabulary"
+            search={{ buku: undefined }}
+            className="self-start text-sm font-medium underline underline-offset-2"
+          >
+            Semua kata
+          </Link>
+        </>
+      )}
       <VocabularyList
+        key={buku ?? "semua"}
         words={words}
         forms={forms}
         shelfIds={shelfIds}
+        meetings={meetings}
+        initialBook={buku}
         onDelete={remove}
       />
     </LobbyPopup>

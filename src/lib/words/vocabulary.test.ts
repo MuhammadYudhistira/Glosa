@@ -5,6 +5,8 @@ import {
   bookOptions,
   filterWords,
   sentenceParts,
+  sortWords,
+  VOCAB_SORTS,
 } from "./vocabulary"
 
 const word = (
@@ -76,6 +78,34 @@ describe("sentenceParts", () => {
     ])
     expect(sentenceParts("She gave it up.", ["give up", "gave up"])).toEqual([
       { text: "She gave it up.", bold: false },
+    ])
+  })
+})
+
+describe("sortWords", () => {
+  const entry = (headword: string, createdAt: string) =>
+    ({ headword, createdAt }) as SavedWord
+  const sample = [
+    entry("a", "2026-11-01"),
+    entry("b", "2026-11-03"),
+    entry("c", "2026-11-02"),
+  ]
+
+  it("keeps the newest first, or puts the words met most first", () => {
+    expect(sortWords(sample, "terbaru", {}).map((w) => w.headword)).toEqual([
+      "b",
+      "c",
+      "a",
+    ])
+    expect(
+      sortWords(sample, "bertemu", {
+        a: { meetings: 5, books: 1 },
+        c: { meetings: 5, books: 2 },
+      }).map((w) => w.headword)
+    ).toEqual(["c", "a", "b"])
+    expect(VOCAB_SORTS).toEqual([
+      { value: "terbaru", label: "Terbaru" },
+      { value: "bertemu", label: "Paling sering bertemu" },
     ])
   })
 })

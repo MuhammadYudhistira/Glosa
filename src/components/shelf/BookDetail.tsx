@@ -11,6 +11,7 @@ import { formatLongDate } from "@/lib/dates"
 import { formatBytes } from "@/lib/member"
 import { formatPercent } from "@/lib/progress"
 import { BookCover } from "./BookCover"
+import { BookVocabLine } from "./BookVocabLine"
 
 /** The description and the facts, shared with the lobby's detail panel (spec 1D §5.2). */
 export function BookFacts({
@@ -81,6 +82,7 @@ export function BookDetail({
             </DialogHeader>
           </div>
           <BookFacts book={book} percentage={percentage} />
+          <BookVocabLine bookId={book.id} />
           {children}
         </DialogContent>
       )}
