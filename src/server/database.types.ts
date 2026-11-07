@@ -111,6 +111,45 @@ export type Database = {
         }
         Relationships: []
       }
+      book_words_read: {
+        Row: {
+          book_id: string
+          sections: number[]
+          updated_at: string
+          user_id: string
+          words: string[]
+        }
+        Insert: {
+          book_id: string
+          sections?: number[]
+          updated_at?: string
+          user_id: string
+          words?: string[]
+        }
+        Update: {
+          book_id?: string
+          sections?: number[]
+          updated_at?: string
+          user_id?: string
+          words?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_words_read_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "book_words_read_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books: {
         Row: {
           author: string
@@ -744,6 +783,80 @@ export type Database = {
         }
         Relationships: []
       }
+      word_lookups: {
+        Row: {
+          book_id: string
+          first_at: string
+          last_at: string
+          taps: number
+          user_id: string
+          word: string
+        }
+        Insert: {
+          book_id: string
+          first_at?: string
+          last_at?: string
+          taps: number
+          user_id: string
+          word: string
+        }
+        Update: {
+          book_id?: string
+          first_at?: string
+          last_at?: string
+          taps?: number
+          user_id?: string
+          word?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "word_lookups_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "word_lookups_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      word_meetings: {
+        Row: {
+          book_id: string
+          count: number
+          headword: string
+          section: number
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          count: number
+          headword: string
+          section: number
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          count?: number
+          headword?: string
+          section?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "word_meetings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -751,6 +864,15 @@ export type Database = {
     Functions: {
       award_book_coins: { Args: { p_user_id: string }; Returns: undefined }
       before_user_created: { Args: { event: Json }; Returns: Json }
+      book_vocab: { Args: { p_book_id: string }; Returns: Json }
+      book_vocab_summaries: {
+        Args: never
+        Returns: {
+          book_id: string
+          looked_up: number
+          read: number
+        }[]
+      }
       buy_lobby_item: { Args: { p_item: string }; Returns: string }
       coin_totals: {
         Args: { p_user_id: string }
@@ -792,7 +914,10 @@ export type Database = {
           seconds: number
         }[]
       }
+      record_lookups: { Args: { p_entries: Json }; Returns: string[] }
+      record_meetings: { Args: { p_entries: Json }; Returns: string[] }
       record_reading_time: { Args: { p_entries: Json }; Returns: string[] }
+      record_words_read: { Args: { p_entries: Json }; Returns: string[] }
       rename_collection: {
         Args: { p_id: string; p_name: string }
         Returns: string
@@ -855,6 +980,14 @@ export type Database = {
       unique_username: { Args: { base: string }; Returns: string }
       username_available: { Args: { candidate: string }; Returns: boolean }
       visitors_today: { Args: never; Returns: number }
+      word_meeting_counts: {
+        Args: never
+        Returns: {
+          books: number
+          headword: string
+          meetings: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
