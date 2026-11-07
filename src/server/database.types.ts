@@ -111,6 +111,51 @@ export type Database = {
         }
         Relationships: []
       }
+      book_reviews: {
+        Row: {
+          book_id: string
+          created_at: string
+          difficulty: string | null
+          note: string | null
+          rating: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          difficulty?: string | null
+          note?: string | null
+          rating: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          difficulty?: string | null
+          note?: string | null
+          rating?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_reviews_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: true
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "book_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       book_words_read: {
         Row: {
           book_id: string
@@ -830,6 +875,7 @@ export type Database = {
           book_id: string
           count: number
           headword: string
+          met_at: string
           section: number
           user_id: string
         }
@@ -837,6 +883,7 @@ export type Database = {
           book_id: string
           count: number
           headword: string
+          met_at?: string
           section: number
           user_id: string
         }
@@ -844,6 +891,7 @@ export type Database = {
           book_id?: string
           count?: number
           headword?: string
+          met_at?: string
           section?: number
           user_id?: string
         }
@@ -864,6 +912,7 @@ export type Database = {
     Functions: {
       award_book_coins: { Args: { p_user_id: string }; Returns: undefined }
       before_user_created: { Args: { event: Json }; Returns: Json }
+      book_finish_summary: { Args: { p_book_id: string }; Returns: Json }
       book_vocab: { Args: { p_book_id: string }; Returns: Json }
       book_vocab_summaries: { Args: never; Returns: Json }
       buy_lobby_item: { Args: { p_item: string }; Returns: string }
@@ -877,6 +926,7 @@ export type Database = {
       create_collection: { Args: { p_name: string }; Returns: string }
       decline_finish: { Args: { p_book_id: string }; Returns: string }
       delete_collection: { Args: { p_id: string }; Returns: string }
+      delete_review: { Args: { p_book_id: string }; Returns: string }
       delete_word: { Args: { p_headword: string }; Returns: undefined }
       dict_note_miss: { Args: { p_word: string }; Returns: undefined }
       dict_pos_rank: { Args: { p_pos: string }; Returns: number }
@@ -906,6 +956,10 @@ export type Database = {
           goal_minutes: number
           seconds: number
         }[]
+      }
+      reading_recap: {
+        Args: { p_from: string; p_to: string; p_tz: string }
+        Returns: Json
       }
       record_lookups: { Args: { p_entries: Json }; Returns: string[] }
       record_meetings: { Args: { p_entries: Json }; Returns: string[] }
@@ -945,6 +999,15 @@ export type Database = {
           p_updated_at: string
         }
         Returns: boolean
+      }
+      save_review: {
+        Args: {
+          p_book_id: string
+          p_difficulty: string
+          p_note: string
+          p_rating: number
+        }
+        Returns: string
       }
       save_word: {
         Args: {
