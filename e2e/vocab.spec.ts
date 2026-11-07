@@ -48,16 +48,16 @@ test("reading a section for a minute and tapping a word are kept per book", asyn
   await page.keyboard.press("Escape")
   // Past the 60 s mark, then the reader closes: a section that reaches 60 s
   // as the view goes is kept due, not lost.
-  await page.waitForTimeout(65_000)
-  await page.goto("/lobby")
+  await page.waitForTimeout(70_000)
+  // Leaving through the app unmounts the reader, which hands over the last time.
+  await page.getByRole("link", { name: "Kembali ke rak" }).click()
+  await expect(page).not.toHaveURL(/\/read\//)
   // The book opened again takes up the due section, in idle time.
   await page.goto(`/read/${bookId}`)
   await expect(page.getByRole("status", { name: "Posisi baca" })).toHaveText(
     /^\d+%$/,
     { timeout: 30_000 }
   )
-  await page.waitForTimeout(3_000)
-  await page.goto("/lobby")
   await expect
     .poll(async () => (await vocabOf(userId, bookId)).sections.length, {
       timeout: 30_000,
