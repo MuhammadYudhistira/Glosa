@@ -11,6 +11,7 @@ import type { ReactNode } from "react"
 const PATHS = [
   "/lobby",
   "/shelf",
+  "/recap",
   "/vocabulary",
   "/settings",
   "/logout",

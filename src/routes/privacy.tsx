@@ -48,6 +48,13 @@ function PrivacyPage() {
           ikut terhapus bersama bukunya, kecuali hitungan kata yang muncul lagi.
         </li>
         <li>
+          Ulasan pribadi: bintang, tingkat kesulitan, dan catatan yang kamu
+          tulis untuk buku yang sudah selesai. Ulasan ini hanya terlihat olehmu,
+          tidak dibagikan, dan ikut terhapus bersama bukunya atau saat akunmu
+          dihapus. Kilas balik dan kartu buku selesai dihitung dari data di atas
+          dan tidak menyimpan data baru.
+        </li>
+        <li>
           Data teknis: waktu masuk terakhir dan laporan error untuk memperbaiki
           aplikasi. Laporan error hanya memuat ID akunmu, tanpa email atau nama.
         </li>

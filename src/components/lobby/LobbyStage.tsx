@@ -5,7 +5,11 @@ import { AdminDeskCard } from "@/components/lobby/AdminDeskCard"
 import { BookDetailPanel } from "@/components/lobby/BookDetailPanel"
 import { ContinueSheet } from "@/components/lobby/ContinueSheet"
 import { LibraryMap } from "@/components/lobby/LibraryMap"
-import { LibrarianWelcome, ReadingHint } from "@/components/lobby/LobbyBubbles"
+import {
+  LibrarianWelcome,
+  ReadingHint,
+  RecapBubbleNote,
+} from "@/components/lobby/LobbyBubbles"
 import {
   LobbyScene,
   type LobbySceneHandle,
@@ -22,6 +26,12 @@ import { useLocalShelf } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
 import type { Collection, ShelfBook, StorageUsage } from "@/lib/book-types"
 import { useReadingHabit } from "@/lib/habit/habit-client"
+import {
+  type RecapBubble,
+  readShownBubbles,
+  recapBubbleFor,
+  rememberBubble,
+} from "@/lib/recap/bubble"
 import { itemOf } from "@/lib/shop/catalog"
 import { useLobbyDecor, useShop } from "@/lib/shop/shop-client"
 import type { SessionUser } from "@/lib/session-types"
@@ -90,6 +100,23 @@ export function LobbyStage({
   const [sorting, setSorting] = useState(false)
   const [readingHint, setReadingHint] = useState(false)
   const [sceneLive, setSceneLive] = useState(false)
+  const [recapBubble, setRecapBubble] = useState<RecapBubble | null>(null)
+
+  // "Kilas balik ... sudah siap" once per period, from the habit cache (spec 3E §5.4).
+  useEffect(() => {
+    if (
+      recapBubble ||
+      habit.status === "loading" ||
+      habit.status === "failed"
+    ) {
+      return
+    }
+    const next = recapBubbleFor(habit.today, habit.days, readShownBubbles())
+    if (next) {
+      rememberBubble(next.key)
+      setRecapBubble(next)
+    }
+  }, [recapBubble, habit.status, habit.today, habit.days])
   // A popup opening closes the book's details, or they would come back after
   // it and take its focus. A book picked over a popup stays: popup was on.
   const [wasPopup, setWasPopup] = useState(popup)
@@ -154,6 +181,9 @@ export function LobbyStage({
   // Behind a popup the scene says nothing: its words would repeat the page's.
   const bubbles: Partial<Record<HotspotId, ReactNode>> = {}
   if (!popup && readingHint) bubbles["meja-baca"] = <ReadingHint />
+  if (!popup && recapBubble) {
+    bubbles.tanaman = <RecapBubbleNote bubble={recapBubble} />
+  }
   // Phones greet in the sheet instead: their first view leaves the desk out.
   if (!popup && books.length === 0) {
     bubbles["meja-admin"] = <LibrarianWelcome className="hidden lg:grid" />
@@ -214,6 +244,9 @@ export function LobbyStage({
               hotspots={hotspots}
               anda={anda}
               interactive={sceneLive}
+              onRecap={() =>
+                void navigate({ to: "/recap", search: { periode: undefined } })
+              }
               onSelect={(id) => sceneRef.current?.showSpot(id)}
               className="lobby-at-map"
             />

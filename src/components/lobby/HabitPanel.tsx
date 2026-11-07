@@ -142,6 +142,13 @@ export function HabitPanel({
         >
           Lihat Sudah dibaca
         </Link>
+        <Link
+          to="/recap"
+          search={{ periode: undefined }}
+          className="text-sm underline"
+        >
+          Kilas balik
+        </Link>
       </section>
 
       <section aria-label="Lima minggu terakhir" className="habit-section">

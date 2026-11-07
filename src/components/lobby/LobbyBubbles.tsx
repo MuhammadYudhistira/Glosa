@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { LibrarianBubble } from "@/components/auth/LibrarianBubble"
+import type { RecapBubble } from "@/lib/recap/bubble"
 import { cn } from "@/lib/utils"
 
 /** Shown at the reading table when no book has been opened yet (spec 1D §5.1). */
@@ -33,5 +34,20 @@ export function LibrarianWelcome({ className }: { className?: string }) {
         .
       </p>
     </div>
+  )
+}
+
+/** "Kilas balik … sudah siap", once at the start of a month (spec 3E §5.4). */
+export function RecapBubbleNote({ bubble }: { bubble: RecapBubble }) {
+  return (
+    <output className="lobby-bubble">
+      <Link
+        to="/recap"
+        search={{ periode: bubble.key }}
+        className="font-bold underline"
+      >
+        {bubble.label}
+      </Link>
+    </output>
   )
 }

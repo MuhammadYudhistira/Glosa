@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button"
 import { isWideScreen } from "@/lib/use-wide-screen"
 import { cn } from "@/lib/utils"
 
-/** The pages that open over the lobby on desktop (spec 1F §3, spec 2 §6.4, spec 3C §6.2). */
+/** The pages that open over the lobby on desktop (spec 1F §3, spec 2 §6.4, spec 3C §6.2, spec 3E §5.1). */
 export const POPUP_PATHS: ReadonlyArray<string> = [
   "/shelf",
   "/vocabulary",
   "/settings",
   "/habits",
   "/shop",
+  "/recap",
 ]
 
 export const isPopupPath = (pathname: string): boolean =>

@@ -42,6 +42,14 @@ const panel = (props: Partial<Parameters<typeof HabitPanel>[0]> = {}) =>
   )
 
 describe("HabitPanel", () => {
+  it("links to the Kilas balik page", () => {
+    panel()
+    expect(screen.getByText("Kilas balik").closest("a")).toHaveAttribute(
+      "to",
+      "/recap"
+    )
+  })
+
   it("shows the streak, today and this year against the goals", () => {
     panel()
     expect(

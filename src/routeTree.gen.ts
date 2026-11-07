@@ -25,6 +25,7 @@ import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
 import { Route as MemberLobiHabitsRouteImport } from './routes/_member/_lobi/habits'
 import { Route as MemberLobiLobbyRouteImport } from './routes/_member/_lobi/lobby'
+import { Route as MemberLobiRecapRouteImport } from './routes/_member/_lobi/recap'
 import { Route as MemberLobiSettingsRouteImport } from './routes/_member/_lobi/settings'
 import { Route as MemberLobiShelfRouteImport } from './routes/_member/_lobi/shelf'
 import { Route as MemberLobiShopRouteImport } from './routes/_member/_lobi/shop'
@@ -109,6 +110,11 @@ const MemberLobiLobbyRoute = MemberLobiLobbyRouteImport.update({
   path: '/lobby',
   getParentRoute: () => MemberLobiRoute,
 } as any)
+const MemberLobiRecapRoute = MemberLobiRecapRouteImport.update({
+  id: '/recap',
+  path: '/recap',
+  getParentRoute: () => MemberLobiRoute,
+} as any)
 const MemberLobiSettingsRoute = MemberLobiSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/auth/confirm': typeof AuthConfirmRoute
   '/habits': typeof MemberLobiHabitsRoute
   '/lobby': typeof MemberLobiLobbyRoute
+  '/recap': typeof MemberLobiRecapRoute
   '/settings': typeof MemberLobiSettingsRoute
   '/shelf': typeof MemberLobiShelfRoute
   '/shop': typeof MemberLobiShopRoute
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/auth/confirm': typeof AuthConfirmRoute
   '/habits': typeof MemberLobiHabitsRoute
   '/lobby': typeof MemberLobiLobbyRoute
+  '/recap': typeof MemberLobiRecapRoute
   '/settings': typeof MemberLobiSettingsRoute
   '/shelf': typeof MemberLobiShelfRoute
   '/shop': typeof MemberLobiShopRoute
@@ -218,6 +226,7 @@ export interface FileRouteTypes {
     | '/auth/confirm'
     | '/habits'
     | '/lobby'
+    | '/recap'
     | '/settings'
     | '/shelf'
     | '/shop'
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/auth/confirm'
     | '/habits'
     | '/lobby'
+    | '/recap'
     | '/settings'
     | '/shelf'
     | '/shop'
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/auth/confirm'
     | '/_member/_lobi/habits'
     | '/_member/_lobi/lobby'
+    | '/_member/_lobi/recap'
     | '/_member/_lobi/settings'
     | '/_member/_lobi/shelf'
     | '/_member/_lobi/shop'
@@ -398,6 +409,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MemberLobiLobbyRouteImport
       parentRoute: typeof MemberLobiRoute
     }
+    '/_member/_lobi/recap': {
+      id: '/_member/_lobi/recap'
+      path: '/recap'
+      fullPath: '/recap'
+      preLoaderRoute: typeof MemberLobiRecapRouteImport
+      parentRoute: typeof MemberLobiRoute
+    }
     '/_member/_lobi/settings': {
       id: '/_member/_lobi/settings'
       path: '/settings'
@@ -439,6 +457,7 @@ declare module '@tanstack/react-router' {
 interface MemberLobiRouteChildren {
   MemberLobiHabitsRoute: typeof MemberLobiHabitsRoute
   MemberLobiLobbyRoute: typeof MemberLobiLobbyRoute
+  MemberLobiRecapRoute: typeof MemberLobiRecapRoute
   MemberLobiSettingsRoute: typeof MemberLobiSettingsRoute
   MemberLobiShelfRoute: typeof MemberLobiShelfRoute
   MemberLobiShopRoute: typeof MemberLobiShopRoute
@@ -448,6 +467,7 @@ interface MemberLobiRouteChildren {
 const MemberLobiRouteChildren: MemberLobiRouteChildren = {
   MemberLobiHabitsRoute: MemberLobiHabitsRoute,
   MemberLobiLobbyRoute: MemberLobiLobbyRoute,
+  MemberLobiRecapRoute: MemberLobiRecapRoute,
   MemberLobiSettingsRoute: MemberLobiSettingsRoute,
   MemberLobiShelfRoute: MemberLobiShelfRoute,
   MemberLobiShopRoute: MemberLobiShopRoute,

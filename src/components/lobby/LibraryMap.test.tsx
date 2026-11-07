@@ -7,6 +7,24 @@ import { lobbyHotspots, summarizeLobby } from "./lobby-data"
 const hotspots = lobbyHotspots(summarizeLobby([sherlock]).counts)
 
 describe("LibraryMap", () => {
+  it("offers Kilas balik only when it can open it", () => {
+    const onRecap = vi.fn()
+    const { rerender } = render(
+      <LibraryMap
+        hotspots={hotspots}
+        anda={[17, 17]}
+        onSelect={vi.fn()}
+        onRecap={onRecap}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Kilas balik" }))
+    expect(onRecap).toHaveBeenCalled()
+    rerender(
+      <LibraryMap hotspots={hotspots} anda={[17, 17]} onSelect={vi.fn()} />
+    )
+    expect(screen.queryByRole("button", { name: "Kilas balik" })).toBeNull()
+  })
+
   it("sends the camera to a place picked on the map", () => {
     const onSelect = vi.fn()
     render(

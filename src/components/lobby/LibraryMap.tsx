@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react"
+import { Button } from "@/components/ui/button"
 import { Panel } from "@/components/ui/panel"
 import { cn } from "@/lib/utils"
 import type { HotspotModel } from "./lobby-data"
@@ -55,6 +56,7 @@ export function LibraryMap({
   anda,
   onSelect,
   interactive = true,
+  onRecap,
   className,
 }: {
   hotspots: ReadonlyArray<HotspotModel>
@@ -62,6 +64,8 @@ export function LibraryMap({
   onSelect: (id: HotspotId) => void
   /** False without a live 3D camera: the spots would have nothing to move. */
   interactive?: boolean
+  /** Opens Kilas balik (spec 3E §5.1). */
+  onRecap?: () => void
   className?: string
 }) {
   return (
@@ -98,6 +102,11 @@ export function LibraryMap({
           </li>
         ))}
       </ul>
+      {onRecap && (
+        <Button variant="outline" size="sm" className="mt-2" onClick={onRecap}>
+          Kilas balik
+        </Button>
+      )}
       {!interactive && (
         <p className="mt-2 text-xs text-muted-foreground">
           Peta aktif saat adegan 3D tampil.
