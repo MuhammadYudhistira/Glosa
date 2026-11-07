@@ -245,18 +245,12 @@ function ReaderPage() {
   // footnote popups do not.
   const clockPaused = panel !== null || noteFor !== null || sharing !== null
   const shownSection = useRef<number | null>(null)
-  const formsRef = useRef(formsByHeadword)
-  formsRef.current = formsByHeadword
   // The words of the sections read for 60 s are queued in idle time. A due
   // section waits for a view (spec 3D §3.1): it is taken up when the reader
   // is ready, and again when another section crosses 60 s.
   const readDue = useCallback(() => {
     whenIdle(window, () => {
-      void readDueSections(
-        bookId,
-        () => controlsRef.current,
-        () => formsRef.current
-      )
+      void readDueSections(bookId, () => controlsRef.current)
     })
   }, [bookId])
   // Time goes to the section shown when the clock hands it over: show()

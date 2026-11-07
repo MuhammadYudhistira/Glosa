@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react"
 import { onMemberDataWiped } from "@/lib/local/device"
+import { loadSavedForms } from "@/lib/local/saved-words"
 import {
   addSectionTime,
   dueSections,
@@ -191,11 +192,13 @@ let dueChain: Promise<void> = Promise.resolve()
  */
 export function readDueSections(
   bookId: string,
-  getSource: () => SectionSource | null,
-  getForms: () => Record<string, Array<string>>
+  getSource: () => SectionSource | null
 ): Promise<void> {
   dueChain = dueChain.then(async () => {
     try {
+      // The device's saved forms, not the reader's state: that one may still
+      // be empty when a due section is taken up as the reader opens.
+      const forms = await loadSavedForms()
       for (const section of await dueSections(bookId)) {
         const source = getSource()
         if (!source) return
@@ -206,7 +209,7 @@ export function readDueSections(
           return
         }
         if (text === null && getSource() !== source) return
-        if (text) await queueSectionRead(bookId, section, text, getForms())
+        if (text) await queueSectionRead(bookId, section, text, forms)
         await markSectionDone(bookId, section)
       }
     } catch (error) {
