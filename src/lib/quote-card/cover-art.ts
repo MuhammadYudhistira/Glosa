@@ -2,12 +2,12 @@ import { coverPalette } from "./themes"
 
 /** The cover is shrunk to this many pixels a side to read its colours. */
 const PALETTE_SIZE = 12
-/** The decoded cover is kept this wide: a card draws it small. */
+/** The default width of a decoded cover: the quote card draws it small. */
 const COVER_WIDTH = 200
 
 /** The decoded cover redrawn small, so the full-size bitmap can be closed. */
-function shrunk(bitmap: ImageBitmap): HTMLCanvasElement | null {
-  const scale = Math.min(1, COVER_WIDTH / bitmap.width)
+function shrunk(bitmap: ImageBitmap, width: number): HTMLCanvasElement | null {
+  const scale = Math.min(1, width / bitmap.width)
   const canvas = document.createElement("canvas")
   canvas.width = Math.max(1, Math.round(bitmap.width * scale))
   canvas.height = Math.max(1, Math.round(bitmap.height * scale))
@@ -35,13 +35,14 @@ function paletteOf(source: CanvasImageSource): Array<string> | null {
 
 /** The cover as a small canvas plus its palette; null when it cannot be decoded. */
 export async function decodeCover(
-  blob: Blob
+  blob: Blob,
+  width = COVER_WIDTH
 ): Promise<{ image: CanvasImageSource; palette: Array<string> | null } | null> {
   if (!("createImageBitmap" in globalThis)) return null
   const bitmap = await createImageBitmap(blob)
   let small: HTMLCanvasElement | null = null
   try {
-    small = shrunk(bitmap)
+    small = shrunk(bitmap, width)
   } finally {
     bitmap.close()
   }

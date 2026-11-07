@@ -44,6 +44,7 @@ const OVER_LOBBY = [
   "/settings",
   "/habits",
   "/shop",
+  "/recap",
 ]
 
 /** Sidebar from 1024 px, tab bar below (spec 1D §5.3). */

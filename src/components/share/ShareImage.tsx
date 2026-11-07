@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Segments } from "@/components/reader/QuoteCardDialog"
+import { Segments } from "@/components/share/Segments"
 import { Button } from "@/components/ui/button"
 import { decodeCover } from "@/lib/quote-card/cover-art"
 import { drawCard } from "@/lib/quote-card/draw"
@@ -23,6 +23,8 @@ import {
 import { CARD_THEMES, THEMES } from "@/lib/quote-card/themes"
 
 const PNG_DELAY_MS = 250
+/** The widest a cover is drawn (the Story finish card: 400 px). */
+const SHARE_COVER_WIDTH = 600
 const IMAGE_UNAVAILABLE = "Gambar belum bisa dibuat. Coba lagi."
 const LINK_COPIED = "Link Glosa sudah disalin, tempel di stiker Link Instagram."
 const SIZE_OPTIONS: ReadonlyArray<[CardSize, string]> = [
@@ -81,7 +83,7 @@ export function ShareImage({
     void Promise.all(
       covers.map((load) =>
         load()
-          .then((blob) => (blob ? decodeCover(blob) : null))
+          .then((blob) => (blob ? decodeCover(blob, SHARE_COVER_WIDTH) : null))
           .catch(() => null)
       )
     ).then((decoded) => {

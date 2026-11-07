@@ -1,6 +1,7 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { XIcon } from "lucide-react"
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react"
+import { Segments } from "@/components/share/Segments"
 import { Button } from "@/components/ui/button"
 import { decodeCover } from "@/lib/quote-card/cover-art"
 import { drawCard } from "@/lib/quote-card/draw"
@@ -75,36 +76,6 @@ type Art = { cover: CanvasImageSource | null; palette: Array<string> | null }
 const NO_ART: Art = { cover: null, palette: null }
 
 const lookUpWord = (word: string) => lookUp(word, [])
-
-export function Segments<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string
-  options: ReadonlyArray<[T, string]>
-  value: T
-  onChange: (value: T) => void
-}) {
-  return (
-    <div>
-      <p className="quote-label">{label}</p>
-      <div role="group" aria-label={label} className="quote-segment">
-        {options.map(([option, name]) => (
-          <button
-            key={option}
-            type="button"
-            aria-pressed={value === option}
-            onClick={() => onChange(option)}
-          >
-            {name}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 /**
  * Bagikan kutipan (spec kartu kutipan §4): a card of the quote drawn on a

@@ -122,4 +122,11 @@ describe("ShareImage", () => {
       expect(build).toHaveBeenCalledWith("story", expect.any(Function), 2)
     )
   })
+
+  it("decodes covers wide enough for the largest layout", async () => {
+    show([() => Promise.resolve(new Blob(["x"]))])
+    await waitFor(() =>
+      expect(decodeCover).toHaveBeenCalledWith(expect.any(Blob), 600)
+    )
+  })
 })

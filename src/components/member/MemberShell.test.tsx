@@ -19,7 +19,14 @@ function renderAt(url: string) {
       </MemberShell>
     ),
   })
-  const pages = ["/lobby", "/shelf", "/settings", "/welcome", "/read/$bookId"]
+  const pages = [
+    "/lobby",
+    "/shelf",
+    "/settings",
+    "/recap",
+    "/welcome",
+    "/read/$bookId",
+  ]
   const router = createRouter({
     routeTree: rootRoute.addChildren(
       pages.map((path) =>
@@ -60,7 +67,7 @@ describe("MemberShell", () => {
     expect(screen.getByText("Isi halaman")).toBeInTheDocument()
   })
 
-  it.each(["/lobby", "/shelf?genre=lainnya", "/settings"])(
+  it.each(["/lobby", "/shelf?genre=lainnya", "/settings", "/recap"])(
     "floats the menu over the lobby at %s",
     async (url) => {
       const { container } = renderAt(url)
