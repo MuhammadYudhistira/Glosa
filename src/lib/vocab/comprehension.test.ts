@@ -12,5 +12,7 @@ describe("comprehension", () => {
     expect(comprehension({ read: 1000, lookedUp: 1 })).toBe(99)
     expect(comprehension({ read: 850, lookedUp: 34 })).toBe(96)
     expect(comprehension({ read: 300, lookedUp: 300 })).toBe(0)
+    // Integer arithmetic: 1 - 68/200 would come out at 65.99999.
+    expect(comprehension({ read: 200, lookedUp: 68 })).toBe(66)
   })
 })

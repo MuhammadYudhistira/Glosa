@@ -9,5 +9,5 @@ export type VocabSummary = { read: number; lookedUp: number }
  */
 export function comprehension({ read, lookedUp }: VocabSummary): number | null {
   if (read < MIN_WORDS_READ) return null
-  return Math.floor((1 - lookedUp / read) * 100)
+  return Math.floor(((read - lookedUp) * 100) / read)
 }

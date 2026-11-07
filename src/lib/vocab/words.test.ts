@@ -32,4 +32,13 @@ describe("section words", () => {
       "three",
     ])
   })
+
+  it("does not split a word at an inline element, only at block edges", () => {
+    const doc = new DOMParser().parseFromString(
+      '<html><body><p><span class="cap">W</span>ord and <em>emph</em>asis</p><div>next<br>line</div><ul><li>one</li><li>two</li></ul></body></html>',
+      "text/html"
+    )
+    expect(textOfDocument(doc)).toBe("Word and emphasis next line one two")
+    expect(sectionWords(textOfDocument(doc))).toContain("word")
+  })
 })
