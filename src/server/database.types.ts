@@ -865,14 +865,7 @@ export type Database = {
       award_book_coins: { Args: { p_user_id: string }; Returns: undefined }
       before_user_created: { Args: { event: Json }; Returns: Json }
       book_vocab: { Args: { p_book_id: string }; Returns: Json }
-      book_vocab_summaries: {
-        Args: never
-        Returns: {
-          book_id: string
-          looked_up: number
-          read: number
-        }[]
-      }
+      book_vocab_summaries: { Args: never; Returns: Json }
       buy_lobby_item: { Args: { p_item: string }; Returns: string }
       coin_totals: {
         Args: { p_user_id: string }
@@ -980,14 +973,7 @@ export type Database = {
       unique_username: { Args: { base: string }; Returns: string }
       username_available: { Args: { candidate: string }; Returns: boolean }
       visitors_today: { Args: never; Returns: number }
-      word_meeting_counts: {
-        Args: never
-        Returns: {
-          books: number
-          headword: string
-          meetings: number
-        }[]
-      }
+      word_meeting_counts: { Args: never; Returns: Json }
     }
     Enums: {
       [_ in never]: never

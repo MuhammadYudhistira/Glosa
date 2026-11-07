@@ -157,14 +157,9 @@ describe("vocabulary from reading", () => {
       ["zebra", 2],
     ])
     expect(await rpc(ani, "book_vocab", { p_book_id: books.budi })).toBeNull()
-    const summaries = (await rpc(ani, "book_vocab_summaries", {})) as Array<{
-      book_id: string
-      read: number
-      looked_up: number
-    }>
-    expect(summaries).toEqual([
-      { book_id: books.ani, read: 5005, looked_up: 1 },
-    ])
+    expect(await rpc(ani, "book_vocab_summaries", {})).toEqual({
+      [books.ani]: { read: 5005, looked_up: 1 },
+    })
   })
 
   it("keeps the most meetings per word, book and section, for saved words only", async () => {
@@ -198,9 +193,53 @@ describe("vocabulary from reading", () => {
         { headword: "mat", book_id: books.ani2, section: 1, count: 4 },
       ],
     })
-    expect(await rpc(ani, "word_meeting_counts", {})).toEqual([
-      { headword: "mat", meetings: 3 + 2 + 4, books: 2 },
+    expect(await rpc(ani, "word_meeting_counts", {})).toEqual({
+      mat: { meetings: 3 + 2 + 4, books: 2 },
+    })
+  })
+
+  it("does not count the section where a word was saved", async () => {
+    const admin = adminClient()
+    const { error } = await admin.from("saved_words").insert({
+      user_id: ids.ani,
+      headword: "cove",
+      meanings: ["teluk"],
+      sentence: "",
+      book_id: books.ani,
+      cfi: "epubcfi(/6/8!/4/2/1:0)", // spine step 8 is section 3
+    })
+    if (error) throw error
+    const meet = (book_id: string, section: number) => ({
+      headword: "cove",
+      book_id,
+      section,
+      count: 2,
+    })
+    expect(
+      await rpc(ani, "record_meetings", {
+        p_entries: [
+          meet(books.ani, 3), // where it was saved
+          meet(books.ani, 4),
+          meet(books.ani2, 3), // same section number, another book
+        ],
+      })
+    ).toEqual(["ok", "ok", "ok"])
+    const { data, error: readError } = await admin
+      .from("word_meetings")
+      .select("book_id, section")
+      .eq("user_id", ids.ani)
+      .eq("headword", "cove")
+      .order("section")
+    expect(readError).toBeNull()
+    expect(data).toEqual([
+      { book_id: books.ani2, section: 3 },
+      { book_id: books.ani, section: 4 },
     ])
+    await admin
+      .from("saved_words")
+      .delete()
+      .eq("user_id", ids.ani)
+      .eq("headword", "cove")
   })
 
   it("keeps meetings after the book is deleted, and drops them with the word", async () => {
@@ -249,9 +288,9 @@ describe("vocabulary from reading", () => {
       .eq("id", books.ani2)
     expect(deleteBookError).toBeNull()
     // The meeting in ani2 stays: word_meetings has no foreign key to books.
-    expect(await rpc(ani, "word_meeting_counts", {})).toEqual([
-      { headword: "mat", meetings: 9, books: 2 },
-    ])
+    expect(await rpc(ani, "word_meeting_counts", {})).toEqual({
+      mat: { meetings: 9, books: 2 },
+    })
     for (const table of ["book_words_read", "word_lookups"] as const) {
       const { data, error } = await admin
         .from(table)
@@ -267,7 +306,7 @@ describe("vocabulary from reading", () => {
       .eq("user_id", ids.ani)
       .eq("headword", "mat")
     expect(deleteWordError).toBeNull()
-    expect(await rpc(ani, "word_meeting_counts", {})).toEqual([])
+    expect(await rpc(ani, "word_meeting_counts", {})).toEqual({})
   })
 
   it("keeps every table private and read-only", async () => {
@@ -293,7 +332,7 @@ describe("vocabulary from reading", () => {
     }
     const { data } = await budi.from("word_lookups").select("word")
     expect(data).toEqual([])
-    expect(await rpc(budi, "book_vocab_summaries", {})).toEqual([])
+    expect(await rpc(budi, "book_vocab_summaries", {})).toEqual({})
   })
 
   it("drops a member's rows with the account", async () => {

@@ -90,6 +90,15 @@ export const recordMeetingsFn = createServerFn({ method: "POST" })
     )
   )
 
+const SummariesSchema = z.record(
+  z.string(),
+  z.object({ read: z.number().int(), looked_up: z.number().int() })
+)
+const MeetingsSchema = z.record(
+  z.string(),
+  z.object({ meetings: z.number().int(), books: z.number().int() })
+)
+
 /** Every book's numbers and every saved word's meetings (spec 3D §4). */
 export const loadVocabFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<VocabAnswer> => {
@@ -109,14 +118,18 @@ export const loadVocabFn = createServerFn({ method: "GET" }).handler(
       )
       return fail("unknown")
     }
+    const parsed = z
+      .object({ summaries: SummariesSchema, meetings: MeetingsSchema })
+      .safeParse({ summaries: summaries.data, meetings: meetings.data })
+    if (!parsed.success) {
+      logServerError("vocabulary numbers came in another shape", parsed.error)
+      return fail("unknown")
+    }
     const books: Record<string, { read: number; lookedUp: number }> = {}
-    for (const row of summaries.data) {
-      books[row.book_id] = { read: row.read, lookedUp: row.looked_up }
+    for (const [bookId, row] of Object.entries(parsed.data.summaries)) {
+      books[bookId] = { read: row.read, lookedUp: row.looked_up }
     }
-    const byWord: WordMeetings = {}
-    for (const row of meetings.data) {
-      byWord[row.headword] = { meetings: row.meetings, books: row.books }
-    }
+    const byWord: WordMeetings = parsed.data.meetings
     return { ok: true, cache: { books, meetings: byWord } }
   }
 )
