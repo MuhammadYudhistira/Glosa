@@ -1,4 +1,5 @@
 import type { Genre, GenreSource } from "./genre"
+import type { BookReview } from "./review"
 import type { Plan } from "./session-types"
 
 export type ShelfBook = {
@@ -22,6 +23,8 @@ export type ShelfBook = {
   finishDeclined: boolean
   /** The member's collections this book is in. */
   collectionIds: Array<string>
+  /** The member's private review, only while the book is finished (spec 3E §4.3). */
+  review: BookReview | null
 }
 
 export type StorageUsage = { usedBytes: number; limitBytes: number; plan: Plan }

@@ -139,6 +139,40 @@ describe("shelf snapshot and device owner", () => {
     })
   })
 
+  it("reads a snapshot saved before reviews came as review: null, and keeps one that has it", async () => {
+    const base = {
+      id: "a",
+      title: "Lama",
+      author: "",
+      description: null,
+      language: null,
+      genre: null,
+      genreSource: null,
+      sizeBytes: 1,
+      createdAt: "2026-10-01T00:00:00+00:00",
+      lastOpenedAt: null,
+      coverUrl: null,
+      progress: null,
+      finishedAt: "2026-10-02T00:00:00+00:00",
+      finishDeclined: false,
+      collectionIds: [],
+    }
+    const review = {
+      rating: 5,
+      difficulty: null,
+      note: "Bagus",
+      updatedAt: "2026-10-03T00:00:00+00:00",
+    }
+    await saveShelfSnapshot("u1", {
+      books: [base, { ...base, id: "b", review }],
+      usage: shelf.usage,
+      collections: [],
+    } as unknown as ShelfData)
+    const loaded = await loadShelfSnapshot("u1")
+    expect(loaded?.books[0].review).toBeNull()
+    expect(loaded?.books[1].review).toEqual(review)
+  })
+
   it("wipes another member's copies when a new member claims the device", async () => {
     await claimLocalData("u1")
     await saveLocalBook("a", epub("a"))

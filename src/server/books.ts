@@ -5,6 +5,7 @@ import type { ActionResult } from "@/lib/action-result"
 import type { ShelfData, UploadRequest, UploadTicket } from "@/lib/book-types"
 import { GENRE_VALUES, type Genre, isGenre } from "@/lib/genre"
 import { isAbandoned, usedBytes } from "@/lib/quota"
+import { reviewOf } from "@/lib/review"
 import { toPlan } from "@/lib/session-types"
 import {
   MAX_COVER_BYTES,
@@ -282,7 +283,7 @@ export const listBooksFn = createServerFn({ method: "GET" }).handler(
       supabase
         .from("books")
         .select(
-          "id, title, author, description, language, genre, genre_source, size_bytes, status, created_at, last_opened_at, cover_path, finished_at, finish_declined, reading_progress(percentage), collection_books(collection_id)"
+          "id, title, author, description, language, genre, genre_source, size_bytes, status, created_at, last_opened_at, cover_path, finished_at, finish_declined, reading_progress(percentage), collection_books(collection_id), book_reviews(rating, difficulty, note, updated_at)"
         )
         .order("created_at", { ascending: false }),
       supabase
@@ -335,6 +336,8 @@ export const listBooksFn = createServerFn({ method: "GET" }).handler(
         collectionIds: row.collection_books.map(
           (membership) => membership.collection_id
         ),
+        // A review of a book marked unfinished stays hidden, not deleted.
+        review: row.finished_at ? reviewOf(row.book_reviews) : null,
       })),
       usage: {
         usedBytes: usedBytes(

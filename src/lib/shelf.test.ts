@@ -4,7 +4,9 @@ import {
   activeCollection,
   countBooks,
   countCollections,
+  SHELF_SORTS,
   defaultSort,
+  isShelfSort,
   parseShelfSearch,
   shelfBooks,
 } from "./shelf"
@@ -26,6 +28,7 @@ function book(overrides: Partial<ShelfBook>): ShelfBook {
     finishedAt: null,
     finishDeclined: false,
     collectionIds: [],
+    review: null,
     ...overrides,
   }
 }
@@ -234,5 +237,45 @@ describe("collections on the shelf", () => {
       [santai.id]: 2,
       kosong: 0,
     })
+  })
+})
+
+describe("Rating tertinggi", () => {
+  const rated = (
+    id: string,
+    rating: number | null,
+    finishedAt: string | null
+  ) => ({
+    ...book({}),
+    id,
+    finishedAt,
+    review:
+      rating === null
+        ? null
+        : {
+            rating,
+            difficulty: null,
+            note: null,
+            updatedAt: "2026-11-01T00:00:00Z",
+          },
+  })
+
+  it("puts the most stars first, the later finish first on a tie, unrated below in the default order", () => {
+    const list = [
+      rated("none-old", null, null),
+      rated("three", 3, "2026-10-01T00:00:00Z"),
+      rated("five-old", 5, "2026-09-01T00:00:00Z"),
+      rated("five-new", 5, "2026-10-15T00:00:00Z"),
+    ]
+    list[0] = { ...list[0], lastOpenedAt: "2026-08-01T00:00:00Z" }
+    const ids = shelfBooks(list, { sort: "rating" }).map((b) => b.id)
+    expect(ids).toEqual(["five-new", "five-old", "three", "none-old"])
+  })
+
+  it("is a sort the URL may carry, labelled Rating tertinggi", () => {
+    expect(isShelfSort("rating")).toBe(true)
+    expect(SHELF_SORTS.find((s) => s.value === "rating")?.label).toBe(
+      "Rating tertinggi"
+    )
   })
 })

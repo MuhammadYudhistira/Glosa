@@ -8,7 +8,7 @@ import {
 } from "./genre"
 
 export type ShelfFilter = "semua" | Genre | "troli"
-export type ShelfSort = "opened" | "title" | "added" | "finished"
+export type ShelfSort = "opened" | "title" | "added" | "finished" | "rating"
 /** /shelf search params. Defaults ("semua", the collection's own order) stay out of the URL. */
 export type ShelfSearch = {
   genre?: Genre | "troli"
@@ -42,6 +42,7 @@ export const SHELF_SORTS: ReadonlyArray<{ value: ShelfSort; label: string }> = [
   { value: "title", label: "Judul" },
   { value: "added", label: "Tanggal ditambahkan" },
   { value: "finished", label: "Terakhir selesai" },
+  { value: "rating", label: "Rating tertinggi" },
 ]
 
 export function isShelfSort(value: unknown): value is ShelfSort {
@@ -110,12 +111,29 @@ const byOpened = (a: ShelfBook, b: ShelfBook) =>
   (b.lastOpenedAt ?? "").localeCompare(a.lastOpenedAt ?? "") ||
   b.createdAt.localeCompare(a.createdAt)
 
-function comparator(sort: ShelfSort): (a: ShelfBook, b: ShelfBook) => number {
+function comparator(
+  sort: ShelfSort,
+  koleksi: string | undefined
+): (a: ShelfBook, b: ShelfBook) => number {
   if (sort === "title") return (a, b) => titleOrder.compare(a.title, b.title)
   if (sort === "added") return (a, b) => b.createdAt.localeCompare(a.createdAt)
   if (sort === "finished")
     return (a, b) =>
       (b.finishedAt ?? "").localeCompare(a.finishedAt ?? "") || byOpened(a, b)
+  if (sort === "rating") {
+    // Books without stars follow the collection's own order.
+    const fallback = comparator(defaultSort(koleksi), koleksi)
+    return (a, b) => {
+      const ra = a.review?.rating ?? 0
+      const rb = b.review?.rating ?? 0
+      if (ra === 0 || rb === 0) return rb - ra || fallback(a, b)
+      return (
+        rb - ra ||
+        (b.finishedAt ?? "").localeCompare(a.finishedAt ?? "") ||
+        fallback(a, b)
+      )
+    }
+  }
   // Last opened first; books never opened follow, newest first.
   return byOpened
 }
@@ -134,7 +152,9 @@ export function shelfBooks(
         inCollection(book, search.koleksi) &&
         (!query || fold(`${book.title} ${book.author}`).includes(query))
     )
-    .sort(comparator(search.sort ?? defaultSort(search.koleksi)))
+    .sort(
+      comparator(search.sort ?? defaultSort(search.koleksi), search.koleksi)
+    )
 }
 
 export function countBooks(

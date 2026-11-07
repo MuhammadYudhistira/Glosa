@@ -16,4 +16,5 @@ export const sherlock: ShelfBook = {
   finishedAt: null,
   finishDeclined: false,
   collectionIds: [],
+  review: null,
 }

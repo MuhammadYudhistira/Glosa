@@ -6,9 +6,15 @@ type Snapshot = { userId: string; data: ShelfData; savedAt: number }
 /** A snapshot as an older version saved it: without what Tahap 3A added. */
 type StoredShelf = {
   books: Array<
-    Omit<ShelfBook, "finishedAt" | "finishDeclined" | "collectionIds"> &
+    Omit<
+      ShelfBook,
+      "finishedAt" | "finishDeclined" | "collectionIds" | "review"
+    > &
       Partial<
-        Pick<ShelfBook, "finishedAt" | "finishDeclined" | "collectionIds">
+        Pick<
+          ShelfBook,
+          "finishedAt" | "finishDeclined" | "collectionIds" | "review"
+        >
       >
   >
   usage: ShelfData["usage"]
@@ -45,6 +51,7 @@ export async function loadShelfSnapshot(
       finishedAt: book.finishedAt ?? null,
       finishDeclined: book.finishDeclined ?? false,
       collectionIds: book.collectionIds ?? [],
+      review: book.review ?? null,
     })),
     collections: data.collections ?? [],
   }
