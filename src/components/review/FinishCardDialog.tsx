@@ -17,6 +17,9 @@ import { useOnline } from "@/lib/use-online"
 import { useWideScreen } from "@/lib/use-wide-screen"
 import { finishSummaryFn } from "@/server/reviews"
 
+/** How long the card waits for the reading time to be sent first. */
+const BEFORE_LOAD_MS = 4_000
+
 type View = "card" | "form" | "share"
 type Loaded =
   | { status: "loading" }
@@ -82,7 +85,13 @@ export function FinishCardDialog({
   useEffect(() => {
     let live = true
     void Promise.resolve()
-      .then(() => beforeLoadRef.current?.())
+      .then(() =>
+        // A flush stuck on a slow network must not hold the card back.
+        Promise.race([
+          beforeLoadRef.current?.(),
+          new Promise<void>((resolve) => setTimeout(resolve, BEFORE_LOAD_MS)),
+        ])
+      )
       .catch(() => undefined)
       .then(() => loadSummary({ data: { bookId: book.id } }))
       .then((result) => {

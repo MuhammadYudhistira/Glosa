@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { FinishCardDialog } from "./FinishCardDialog"
 
@@ -223,5 +223,20 @@ describe("FinishCardDialog", () => {
     render(<FinishCardDialog {...props} beforeLoad={beforeLoad} />)
     expect(await screen.findByText("6 jam 20 menit")).toBeInTheDocument()
     expect(order).toEqual(["beforeLoad", "summary"])
+  })
+
+  it("asks for the summary after 4 s when beforeLoad hangs", async () => {
+    vi.useFakeTimers()
+    try {
+      mocks.finishSummaryFn.mockResolvedValue({ ok: true, summary })
+      const beforeLoad = vi.fn(() => new Promise<void>(() => undefined))
+      render(<FinishCardDialog {...props} beforeLoad={beforeLoad} />)
+      await act(() => vi.advanceTimersByTimeAsync(3_900))
+      expect(mocks.finishSummaryFn).not.toHaveBeenCalled()
+      await act(() => vi.advanceTimersByTimeAsync(200))
+      expect(mocks.finishSummaryFn).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
