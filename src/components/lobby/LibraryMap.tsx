@@ -3,16 +3,16 @@ import { Button } from "@/components/ui/button"
 import { Panel } from "@/components/ui/panel"
 import { cn } from "@/lib/utils"
 import type { HotspotModel } from "./lobby-data"
-import { ATRIUM, type HotspotId, type Point2, spotOf } from "./scene/layout"
+import { type HotspotId, type Point2, ROOM, spotOf } from "./scene/layout"
 
 /**
- * Where a floor point lies on the map: the atrium seen from above, turned like
+ * Where a floor point lies on the map: the room seen from above, turned like
  * the isometric view, so the map is a diamond (left edge: the left wall).
  */
 function onMap([x, z]: Point2): CSSProperties {
   return {
-    left: `${50 + ((x - z) / (2 * ATRIUM.size)) * 100}%`,
-    top: `${((x + z) / (2 * ATRIUM.size)) * 100}%`,
+    left: `${50 + ((x - z) / (2 * ROOM.width)) * 100}%`,
+    top: `${((x + z) / (2 * ROOM.width)) * 100}%`,
   }
 }
 

@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-  type Environment,
-  initialQuality,
-  nextQuality,
-  walkerShare,
-} from "./quality"
+import { type Environment, initialQuality, nextQuality } from "./quality"
 
 const desktop: Environment = {
   reducedMotion: false,
@@ -39,13 +34,5 @@ describe("nextQuality", () => {
     expect(nextQuality("rendah", 19)).toBe("diam")
     expect(nextQuality("rendah", 20)).toBe("rendah")
     expect(nextQuality("diam", 5)).toBe("diam")
-  })
-})
-
-describe("walkerShare", () => {
-  it("shows half the walkers on the low tier", () => {
-    expect(walkerShare("tinggi")).toBe(1)
-    expect(walkerShare("rendah")).toBe(0.5)
-    expect(walkerShare("diam")).toBe(1)
   })
 })

@@ -1,16 +1,24 @@
 import * as THREE from "three"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js"
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js"
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js"
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import type { PlantStage } from "@/lib/reading-habit"
 import type { Placements } from "@/lib/shop/types"
-import { buildDecor, buildKiosk } from "./decor"
+import {
+  type LightRig,
+  type Mood,
+  RIGS,
+  daylight,
+  mixRig,
+  msUntilNextMood,
+} from "./daylight"
+import { buildDecor } from "./decor"
 import { buildFurniture } from "./furniture"
 import { createKit } from "./kit"
-import { type Point2, SHELF_FACES, type ShowcaseBook } from "./layout"
+import { type Point2, ROOM, type ShowcaseBook } from "./layout"
+import { type ModelSet, loadModels } from "./models"
 import { createMotion } from "./motion"
 import { buildPeople } from "./people"
 import {
@@ -22,9 +30,8 @@ import {
   baseHalfHeight,
   clampView,
 } from "./projection"
-import { MEASURE_MS, type Quality, nextQuality, walkerShare } from "./quality"
+import { MEASURE_MS, type Quality, nextQuality } from "./quality"
 import { buildRoom } from "./room"
-import { buildShelves } from "./shelves"
 import { buildPlant } from "./plant"
 import { buildShowcase } from "./showcase"
 import { buildSkyline } from "./skyline"
@@ -46,6 +53,8 @@ export type StageOptions = {
   onQuality: (quality: Quality) => void
   /** The WebGL context was lost: the lobby falls back to the still image. */
   onLost: () => void
+  /** The light; by default the device clock's (spec 3F §3.4). */
+  mood?: Mood
 }
 
 export type Stage = {
@@ -62,8 +71,12 @@ export type Stage = {
   setPlant: (stage: PlantStage) => void
   /** The shop's items in their slots (spec 3C §6.3). */
   setDecor: (placed: Placements) => void
+  /** Day, dusk or night: blends over 3 seconds while animating, else at once. */
+  setMood: (mood: Mood) => void
   dispose: () => void
 }
+
+const BLEND_SECONDS = 3
 
 function pixelRatio(quality: Quality, mode: StageMode): number {
   return mode === "normal" && quality === "tinggi"
@@ -88,13 +101,16 @@ function disposeTree(root: THREE.Object3D) {
   })
 }
 
-/** The 3D lobby (spec 1D §3.1). Throws when WebGL cannot be created. */
-export function createStage(options: StageOptions): Stage {
+/**
+ * The 3D study (spec 3F §3). Rejects when WebGL cannot be created or the
+ * models do not load; the lobby then stays a still image.
+ */
+export async function createStage(options: StageOptions): Promise<Stage> {
   const { host, mode } = options
   const quality: Quality = mode === "test" ? "diam" : options.quality
   const fancy = mode !== "test"
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true })
+  const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(pixelRatio(quality, mode))
   renderer.shadowMap.enabled = fancy
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
@@ -108,7 +124,8 @@ export function createStage(options: StageOptions): Stage {
 
   // A build that fails part-way must not leave the canvas and context behind.
   try {
-    return buildStage(options, renderer, quality)
+    const models = await loadModels()
+    return buildStage(options, renderer, quality, models)
   } catch (error) {
     renderer.dispose()
     renderer.forceContextLoss()
@@ -120,56 +137,54 @@ export function createStage(options: StageOptions): Stage {
 function buildStage(
   options: StageOptions,
   renderer: THREE.WebGLRenderer,
-  initial: Quality
+  initial: Quality,
+  models: ModelSet
 ): Stage {
   const { host, mode } = options
   let quality = initial
   const fancy = mode !== "test"
   const canvas = renderer.domElement
+  // The still image is drawn with everything the high tier has.
+  const withLights = fancy && (mode === "still" || initial === "tinggi")
 
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(mode === "test" ? "#ff00ff" : "#1b120c")
-  const pmrem = new THREE.PMREMGenerator(renderer)
-  const room = new RoomEnvironment()
-  const environment = pmrem.fromScene(room, 0.04).texture
-  scene.environment = environment
-  disposeTree(room)
-  pmrem.dispose()
+  const background = new THREE.Color(mode === "test" ? "#ff00ff" : "#1b120c")
+  scene.background = background
 
-  // Warm atrium light and one soft key light that casts the shadows.
-  scene.add(new THREE.HemisphereLight("#ffe9cc", "#4a2e18", 0.55))
-  const key = new THREE.DirectionalLight("#ffe6c4", 1.25)
-  key.position.set(22, 30, 34)
-  key.target.position.set(14, 0, 14)
-  key.castShadow = fancy
-  const shadowSize = quality === "tinggi" ? 2048 : 1024
-  key.shadow.mapSize.set(shadowSize, shadowSize)
+  // One sky light and one key light (the sun, or the moon at night) that
+  // casts the shadows; the lamps and the fire add point lights (tinggi only).
+  const hemi = new THREE.HemisphereLight("#fff1d6", "#8a6a4a", 0.6)
+  scene.add(hemi)
+  const centre = new THREE.Vector3(ROOM.width / 2, 0, ROOM.depth / 2)
+  const key = new THREE.DirectionalLight("#fff0cf", 1.5)
+  key.target.position.copy(centre)
+  key.castShadow = fancy && (mode === "still" || initial === "tinggi")
+  key.shadow.mapSize.set(2048, 2048)
   const shadowCamera = key.shadow.camera
-  shadowCamera.left = -24
-  shadowCamera.right = 24
-  shadowCamera.top = 24
-  shadowCamera.bottom = -24
-  shadowCamera.far = 100
+  shadowCamera.left = -9
+  shadowCamera.right = 9
+  shadowCamera.top = 9
+  shadowCamera.bottom = -9
+  shadowCamera.near = 1
+  shadowCamera.far = 80
   shadowCamera.updateProjectionMatrix()
-  key.shadow.radius = 5
-  key.shadow.bias = -0.0005
+  key.shadow.radius = 4
+  key.shadow.bias = -0.0004
+  key.shadow.normalBias = 0.02
   scene.add(key, key.target)
 
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200)
-  // A stencil buffer, so the skyline stays inside the glass.
   const composer = new EffectComposer(
     renderer,
-    new THREE.WebGLRenderTarget(1, 1, {
-      type: THREE.HalfFloatType,
-      stencilBuffer: true,
-    })
+    new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType })
   )
   composer.addPass(new RenderPass(scene, camera))
+  // A high threshold: only lamps, flames and lit windows bloom, not daylight.
   const bloom = new UnrealBloomPass(
     new THREE.Vector2(256, 256),
-    0.35,
     0.45,
-    0.9
+    0.5,
+    0.95
   )
   bloom.enabled = fancy && quality === "tinggi"
   composer.addPass(bloom)
@@ -177,22 +192,47 @@ function buildStage(
   composer.addPass(output)
 
   const kit = createKit(scene)
-  const { stairSeats } = buildRoom(kit)
+  buildRoom(kit, models)
   const skyline = buildSkyline(kit)
-  const books = buildShelves(kit, SHELF_FACES)
-  const furniture = buildFurniture(kit)
+  const furniture = buildFurniture(kit, models, withLights)
   const showcase = buildShowcase(kit, () => requestRender())
   const plant = buildPlant(kit, () => requestRender())
-  buildKiosk(kit)
   const decor = buildDecor(scene, () => requestRender())
-  const people = buildPeople(
-    kit,
-    { stairs: stairSeats, lounges: furniture.loungeSeats },
-    options.anda
-  )
-  const motion = createMotion(people, furniture, skyline)
-  motion.showWalkers(walkerShare(quality))
+  const people = buildPeople(kit, options.anda)
+  const motion = createMotion(people)
   motion.update(0, 0)
+
+  /** Sets every light to a rig (spec 3F §3.4). */
+  function applyRig(rig: LightRig) {
+    if (mode !== "test") background.set(rig.background)
+    hemi.color.set(rig.hemiSky)
+    hemi.groundColor.set(rig.hemiGround)
+    hemi.intensity = rig.hemi
+    key.color.set(rig.sun)
+    key.intensity = rig.sunIntensity
+    key.position.set(
+      centre.x + rig.sunPosition[0],
+      centre.y + rig.sunPosition[1],
+      centre.z + rig.sunPosition[2]
+    )
+    for (const lamp of furniture.lamps) lamp.intensity = rig.lamps * 1.6
+    furniture.fire.intensity = rig.fire * 2
+    for (const { material, max, kind } of furniture.emissives) {
+      const level = kind === "fire" ? rig.fire : rig.lamps
+      material.emissiveIntensity = max * level
+      // An unlit flame or bulb is not drawn at all.
+      material.visible = level > 0.02
+    }
+    skyline.setCity(rig.city)
+    renderer.toneMappingExposure = rig.exposure
+  }
+
+  const firstMood = options.mood ?? daylight(new Date())
+  let from = RIGS[firstMood]
+  let to = from
+  let current = from
+  let blend = 1
+  applyRig(current)
 
   const animates = () => mode === "normal" && quality !== "diam"
 
@@ -269,16 +309,16 @@ function buildStage(
     renderer.setPixelRatio(pixelRatio(next, mode))
     bloom.enabled = fancy && next === "tinggi"
     controls.enableDamping = animates()
-    motion.showWalkers(walkerShare(next))
-    // The low tier's 1024 map also after a step-down (spec 1D §3.1); three
-    // creates a new map at the new size when it is null.
-    if (next !== "tinggi" && key.shadow.mapSize.x !== 1024) {
-      key.shadow.mapSize.set(1024, 1024)
-      key.shadow.map?.dispose()
-      key.shadow.map = null
+    // Shadows and point lights belong to the high tier (spec 3F §3.5).
+    key.castShadow = fancy && next === "tinggi"
+    for (const lamp of furniture.lamps) lamp.visible = next === "tinggi"
+    furniture.fire.visible = next === "tinggi"
+    // The loop stops at "diam": "Anda" must not stay frozen mid-walk, nor
+    // the light mid-blend.
+    if (next === "diam") {
+      motion.finishWalk()
+      finishBlend()
     }
-    // The loop stops at "diam": "Anda" must not stay frozen mid-walk.
-    if (next === "diam") motion.finishWalk()
     resize()
     options.onQuality(next)
   }
@@ -305,6 +345,12 @@ function buildStage(
     if (disposed || document.hidden) return
     const dt = Math.min(0.05, (now - last) / 1000)
     last = now
+    if (blend < 1) {
+      blend = Math.min(1, blend + dt / BLEND_SECONDS)
+      current = mixRig(from, to, blend)
+      applyRig(current)
+      needsRender = true
+    }
     if (animates() && !paused) {
       clock += dt
       motion.update(clock, dt)
@@ -314,7 +360,37 @@ function buildStage(
       schedule()
     } else if (needsRender) {
       draw()
+      if (blend < 1) schedule()
     }
+  }
+
+  function finishBlend() {
+    if (blend >= 1) return
+    blend = 1
+    current = to
+    applyRig(current)
+  }
+
+  function setMood(next: Mood) {
+    if (animates()) {
+      from = current
+      to = RIGS[next]
+      blend = 0
+    } else {
+      from = RIGS[next]
+      to = from
+      blend = 1
+      current = from
+      applyRig(current)
+    }
+    requestRender()
+  }
+
+  /** At 05, 16 and 19 o'clock the light follows the clock (plan 3F-R1, decision 9). */
+  let moodTimer = setTimeout(rollMood, msUntilNextMood(new Date()))
+  function rollMood() {
+    setMood(daylight(new Date()))
+    moodTimer = setTimeout(rollMood, msUntilNextMood(new Date()))
   }
 
   /** After every pan or zoom: keep the view inside the map (spec 1D §3.1). */
@@ -376,7 +452,9 @@ function buildStage(
   plant.set("tunas")
 
   return {
-    books,
+    // The shelves fill from data in Task 5.
+    books: 0,
+    setMood,
     setView(next) {
       view = clampView(next, viewport)
       frameCamera()
@@ -407,6 +485,7 @@ function buildStage(
     dispose() {
       disposed = true
       cancelAnimationFrame(frame)
+      clearTimeout(moodTimer)
       observer.disconnect()
       document.removeEventListener("visibilitychange", onVisibility)
       canvas.removeEventListener("webglcontextlost", onContextLost)
@@ -416,7 +495,7 @@ function buildStage(
       plant.dispose()
       decor.dispose()
       disposeTree(scene)
-      environment.dispose()
+      models.dispose()
       bloom.dispose()
       output.dispose()
       composer.dispose()

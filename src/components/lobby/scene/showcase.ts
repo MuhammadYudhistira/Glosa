@@ -1,15 +1,16 @@
 import * as THREE from "three"
-import type { Kit } from "./kit"
+import { type Kit, mergeStatic } from "./kit"
 import {
   SHOWCASE,
   SHOWCASE_SHELVES,
   SHOWCASE_SIZE,
+  SHOWCASE_TURN,
   type ShowcaseBook,
   showcaseSlots,
 } from "./layout"
 
-const BODY = "#5a3820"
-const TRIM = "#c98d55"
+const BODY = "#6a4228"
+const TRIM = "#b98552"
 const COVER = { width: 0.42, height: 0.6, depth: 0.05 } as const
 
 export type Showcase = {
@@ -27,32 +28,91 @@ export type Showcase = {
 export function buildShowcase(kit: Kit, onChange: () => void): Showcase {
   const [cx, cz] = SHOWCASE
   const { width, height, depth } = SHOWCASE_SIZE
-  const back = cx - depth / 2 + 0.03
-  kit.block(0.06, height, width, BODY, back, 0, cz, { r: 0.02 })
+  // Built facing +Z in its own group, then turned (plan 3F-R1, Task 5 refines it).
+  const body = new THREE.Group()
+  body.position.set(cx, 0, cz)
+  body.rotation.y = SHOWCASE_TURN
+  kit.scene.add(body)
+  const parent = body
+  const front = depth / 2
+  kit.block(width, height - 0.1, 0.05, "#4e3222", 0, 0.1, -front + 0.025, {
+    r: 0.015,
+    parent,
+  })
   for (const side of [-1, 1]) {
-    kit.block(
-      depth,
-      height,
-      0.06,
-      BODY,
-      cx,
-      0,
-      cz + side * (width / 2 - 0.03),
-      {
-        r: 0.02,
-      }
-    )
-  }
-  kit.block(depth, SHOWCASE_SHELVES[0], width, BODY, cx, 0, cz, { r: 0.02 })
-  for (const shelf of SHOWCASE_SHELVES.slice(1)) {
-    kit.block(depth - 0.04, 0.05, width - 0.12, TRIM, cx, shelf - 0.05, cz, {
-      r: 0.01,
-      cast: false,
+    kit.block(0.07, height, depth, BODY, side * (width / 2 - 0.035), 0, 0, {
+      r: 0.025,
+      parent,
     })
   }
-  kit.block(depth + 0.08, 0.06, width + 0.08, TRIM, cx, height, cz, {
-    r: 0.02,
+  kit.block(width, SHOWCASE_SHELVES[0], depth, BODY, 0, 0, 0, {
+    r: 0.025,
+    parent,
   })
+  for (const shelf of SHOWCASE_SHELVES.slice(1)) {
+    kit.block(width - 0.12, 0.04, depth - 0.06, TRIM, 0, shelf - 0.04, -0.02, {
+      r: 0.012,
+      parent,
+    })
+  }
+  kit.block(width + 0.1, 0.1, depth + 0.08, BODY, 0, height - 0.04, 0.01, {
+    r: 0.03,
+    parent,
+  })
+  kit.block(width + 0.16, 0.04, depth + 0.12, TRIM, 0, height + 0.06, 0.01, {
+    r: 0.015,
+    parent,
+  })
+  // Two glazed doors: thin frames, a faint pane and brass knobs.
+  const frame = kit.mat(TRIM, { roughness: 0.55 })
+  const doorWidth = (width - 0.14) / 2
+  const doorBottom = SHOWCASE_SHELVES[0] + 0.02
+  const doorHeight = height - 0.06 - doorBottom
+  for (const side of [-1, 1]) {
+    const x = side * (doorWidth / 2 + 0.005)
+    for (const dx of [-1, 1]) {
+      kit.block(
+        0.04,
+        doorHeight,
+        0.03,
+        frame,
+        x + (dx * (doorWidth - 0.04)) / 2,
+        doorBottom,
+        front + 0.01,
+        { r: 0.01, parent }
+      )
+    }
+    for (const y of [doorBottom, doorBottom + doorHeight - 0.04]) {
+      kit.block(doorWidth, 0.04, 0.03, frame, x, y, front + 0.01, {
+        r: 0.01,
+        parent,
+      })
+    }
+    kit.mesh(
+      new THREE.SphereGeometry(0.022, 12, 8),
+      kit.mat("#d9b26a", { metalness: 0.6, roughness: 0.3 }),
+      side * 0.05,
+      doorBottom + doorHeight * 0.48,
+      front + 0.04,
+      { parent }
+    )
+  }
+  const pane = new THREE.Mesh(
+    new THREE.PlaneGeometry(width - 0.16, doorHeight - 0.06),
+    new THREE.MeshStandardMaterial({
+      color: "#e4f0ff",
+      transparent: true,
+      opacity: 0.12,
+      roughness: 0.05,
+      metalness: 0.2,
+      depthWrite: false,
+    })
+  )
+  pane.position.set(0, doorBottom + doorHeight / 2, front + 0.012)
+  pane.renderOrder = 2
+  pane.userData.animated = true
+  parent.add(pane)
+  mergeStatic(body)
 
   const covers = new THREE.Group()
   kit.scene.add(covers)
@@ -87,12 +147,13 @@ export function buildShowcase(kit: Kit, onChange: () => void): Showcase {
           roughness: 0.7,
         })
         const edge = new THREE.MeshStandardMaterial({ color: "#efe6d4" })
-        // BoxGeometry faces: +X first, which looks into the room.
+        // BoxGeometry faces: +Z is the fifth, which looks out of the cabinet.
         const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(COVER.depth, COVER.height, COVER.width),
-          [face, edge, edge, edge, edge, edge]
+          new THREE.BoxGeometry(COVER.width, COVER.height, COVER.depth),
+          [edge, edge, edge, edge, face, edge]
         )
         mesh.position.set(x, y + COVER.height / 2, z)
+        mesh.rotation.y = SHOWCASE_TURN
         mesh.castShadow = true
         covers.add(mesh)
         if (!book.coverUrl) return

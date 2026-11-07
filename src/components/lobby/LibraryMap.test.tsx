@@ -12,7 +12,7 @@ describe("LibraryMap", () => {
     const { rerender } = render(
       <LibraryMap
         hotspots={hotspots}
-        anda={[17, 17]}
+        anda={[6, 6]}
         onSelect={vi.fn()}
         onRecap={onRecap}
       />
@@ -20,16 +20,14 @@ describe("LibraryMap", () => {
     fireEvent.click(screen.getByRole("button", { name: "Kilas balik" }))
     expect(onRecap).toHaveBeenCalled()
     rerender(
-      <LibraryMap hotspots={hotspots} anda={[17, 17]} onSelect={vi.fn()} />
+      <LibraryMap hotspots={hotspots} anda={[6, 6]} onSelect={vi.fn()} />
     )
     expect(screen.queryByRole("button", { name: "Kilas balik" })).toBeNull()
   })
 
   it("sends the camera to a place picked on the map", () => {
     const onSelect = vi.fn()
-    render(
-      <LibraryMap hotspots={hotspots} anda={[17, 17]} onSelect={onSelect} />
-    )
+    render(<LibraryMap hotspots={hotspots} anda={[6, 6]} onSelect={onSelect} />)
     expect(screen.getAllByRole("button")).toHaveLength(15)
     fireEvent.click(screen.getByRole("button", { name: "Meja Baca di peta" }))
     expect(onSelect).toHaveBeenCalledWith("meja-baca")
@@ -37,7 +35,7 @@ describe("LibraryMap", () => {
 
   it("marks each kind of place as its legend shows", () => {
     const { container } = render(
-      <LibraryMap hotspots={hotspots} anda={[17, 17]} onSelect={vi.fn()} />
+      <LibraryMap hotspots={hotspots} anda={[6, 6]} onSelect={vi.fn()} />
     )
     expect(screen.getByText("ketuk untuk pindah")).toBeInTheDocument()
     const kindOf = (name: string) =>
@@ -61,7 +59,7 @@ describe("LibraryMap", () => {
     render(
       <LibraryMap
         hotspots={hotspots}
-        anda={[17, 17]}
+        anda={[6, 6]}
         onSelect={onSelect}
         interactive={false}
       />
@@ -77,9 +75,7 @@ describe("LibraryMap", () => {
   })
 
   it("marks where 'Anda' stands", () => {
-    render(
-      <LibraryMap hotspots={hotspots} anda={[17, 17]} onSelect={vi.fn()} />
-    )
+    render(<LibraryMap hotspots={hotspots} anda={[6, 6]} onSelect={vi.fn()} />)
     expect(screen.getByText("Anda").parentElement).toHaveStyle({
       left: "50%",
       top: "50%",

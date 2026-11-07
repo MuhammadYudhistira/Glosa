@@ -31,46 +31,50 @@ export type LightRig = {
   exposure: number
 }
 
-/** Start values; the owner's visual checkpoint (plan 3F-R1, Task 4) tunes them. */
+/**
+ * Start values; the owner's visual checkpoint (plan 3F-R1, Task 4) tunes
+ * them. `sunPosition` is relative to the room's centre: by day and at dusk
+ * the sun comes in through the window (−Z), at night the moon does.
+ */
 export const RIGS: Record<Mood, LightRig> = {
   day: {
     background: "#2a1d14",
-    hemiSky: "#fff1d6",
-    hemiGround: "#8a6a4a",
-    hemi: 0.75,
+    hemiSky: "#fff3dc",
+    hemiGround: "#9a7650",
+    hemi: 1.0,
     sun: "#fff0cf",
-    sunIntensity: 1.7,
-    sunPosition: [-4, 22, 26],
+    sunIntensity: 2.3,
+    sunPosition: [7, 15, -11],
     lamps: 0,
     fire: 0,
     city: 0,
-    exposure: 0.9,
+    exposure: 0.95,
   },
   dusk: {
     background: "#241518",
     hemiSky: "#ffc99a",
     hemiGround: "#5a3a2c",
-    hemi: 0.5,
+    hemi: 0.62,
     sun: "#ff9c5a",
-    sunIntensity: 1.1,
-    sunPosition: [26, 7, 12],
+    sunIntensity: 1.9,
+    sunPosition: [9, 6.5, -12],
     lamps: 0.8,
     fire: 0.6,
     city: 0.45,
-    exposure: 0.85,
+    exposure: 0.92,
   },
   night: {
     background: "#120d12",
-    hemiSky: "#6e78b8",
-    hemiGround: "#2a1c22",
-    hemi: 0.32,
-    sun: "#8fa0e0",
-    sunIntensity: 0.35,
-    sunPosition: [-4, 22, 26],
+    hemiSky: "#7d86c4",
+    hemiGround: "#4a3428",
+    hemi: 0.62,
+    sun: "#9fb0ff",
+    sunIntensity: 0.55,
+    sunPosition: [6, 14, -10],
     lamps: 1,
     fire: 1,
     city: 1,
-    exposure: 0.82,
+    exposure: 1.05,
   },
 }
 

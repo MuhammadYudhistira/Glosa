@@ -8,17 +8,24 @@ import {
   startView,
 } from "@/components/lobby/scene/projection"
 import { itemOf } from "@/lib/shop/catalog"
+import type { Mood } from "@/components/lobby/scene/daylight"
 import { type StageMode, createStage } from "@/components/lobby/scene/stage"
 
-const requested = new URLSearchParams(window.location.search).get("mode")
+const params = new URLSearchParams(window.location.search)
+const requested = params.get("mode")
 const mode: StageMode =
   requested === "still" || requested === "test" ? requested : "normal"
+// ?mood=day|dusk|night: the light to draw (night by default, like the still image).
+const moodParam = params.get("mood")
+const mood: Mood =
+  moodParam === "day" || moodParam === "dusk" ? moodParam : "night"
 const host = document.getElementById("stage")
 if (!host) throw new Error("#stage is missing")
 
-const stage = createStage({
+const stage = await createStage({
   host,
   mode,
+  mood,
   quality: mode === "test" ? "diam" : "tinggi",
   view: startView({ width: host.clientWidth, height: host.clientHeight }),
   anda: ANDA_START,
@@ -32,7 +39,7 @@ const stage = createStage({
 })
 // ?decor=all: one item in every slot, to check where they stand.
 // ?decor=<id>: that item alone, the camera close on its slot (the shop's pictures).
-const decorParam = new URLSearchParams(window.location.search).get("decor")
+const decorParam = params.get("decor")
 if (decorParam === "all") {
   stage.setDecor({
     rug: "rug_pattern",
@@ -51,6 +58,13 @@ if (decorParam === "all") {
     ...centerOn(view, DECOR_SLOTS[item.slot].focus),
     zoom: MAX_ZOOM,
   })
+}
+// ?focus=x,y,z: the camera close on a point, to look at details.
+const focusParam = params.get("focus")
+if (focusParam) {
+  const [x = 0, y = 0, z = 0] = focusParam.split(",").map(Number)
+  const view = startView({ width: host.clientWidth, height: host.clientHeight })
+  stage.setView({ ...centerOn(view, [x, y, z]), zoom: MAX_ZOOM })
 }
 document.body.dataset.books = String(stage.books)
 // The first frame draws the scene; the second shows it.

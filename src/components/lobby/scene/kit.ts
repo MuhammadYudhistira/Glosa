@@ -1,5 +1,6 @@
 import * as THREE from "three"
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js"
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js"
 
 export type MeshOptions = {
   cast?: boolean
@@ -150,4 +151,74 @@ export function createKit(scene: THREE.Scene, seed = 7): Kit {
   })
 
   return { scene, rand, pick, mat, mesh, block, canvasTexture, glow }
+}
+
+/**
+ * Merges the static meshes under `root` into one mesh per material and
+ * shadow setting (spec 3F §5.3), in `root`'s own space. Meshes marked
+ * `userData.animated`, or with several materials, stay as they are.
+ */
+export function mergeStatic(root: THREE.Object3D): void {
+  root.updateMatrixWorld(true)
+  const inverse = root.matrixWorld.clone().invert()
+  const groups = new Map<
+    string,
+    {
+      material: THREE.Material
+      cast: boolean
+      receive: boolean
+      parts: Array<THREE.Mesh>
+    }
+  >()
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || object === root) return
+    if (object.userData.animated || Array.isArray(object.material)) return
+    if (object instanceof THREE.InstancedMesh) return
+    const { attributes } = object.geometry
+    if (!attributes.position || !attributes.normal || !attributes.uv) return
+    for (let up = object.parent; up && up !== root; up = up.parent) {
+      if (up.userData.animated) return
+    }
+    const material = object.material as THREE.Material
+    const key = `${material.uuid}:${object.castShadow}:${object.receiveShadow}`
+    let group = groups.get(key)
+    if (!group) {
+      group = {
+        material,
+        cast: object.castShadow,
+        receive: object.receiveShadow,
+        parts: [],
+      }
+      groups.set(key, group)
+    }
+    group.parts.push(object)
+  })
+  for (const { material, cast, receive, parts } of groups.values()) {
+    if (parts.length < 2) continue
+    const geometries = parts.map((mesh) => {
+      const local = mesh.geometry.index
+        ? mesh.geometry.toNonIndexed()
+        : mesh.geometry.clone()
+      for (const name of Object.keys(local.attributes)) {
+        if (!["position", "normal", "uv"].includes(name)) {
+          local.deleteAttribute(name)
+        }
+      }
+      local.applyMatrix4(
+        new THREE.Matrix4().multiplyMatrices(inverse, mesh.matrixWorld)
+      )
+      return local
+    })
+    // Every part was reduced to the same attributes above, so they merge.
+    const merged = mergeGeometries(geometries)
+    for (const geometry of geometries) geometry.dispose()
+    for (const mesh of parts) {
+      mesh.removeFromParent()
+      mesh.geometry.dispose()
+    }
+    const mesh = new THREE.Mesh(merged, material)
+    mesh.castShadow = cast
+    mesh.receiveShadow = receive
+    root.add(mesh)
+  }
 }

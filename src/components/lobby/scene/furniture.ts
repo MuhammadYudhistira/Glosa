@@ -1,454 +1,511 @@
 import * as THREE from "three"
-import type { Kit } from "./kit"
-import {
-  ADMIN_DESK,
-  ATRIUM,
-  CARD_CATALOG,
-  LOUNGES,
-  type Point2,
-  type Point3,
-  READING_TABLE,
-  TOWER,
-  TROLLEY,
-  ZONES,
-} from "./layout"
-import { BOOK_COLORS } from "./shelves"
+import { type Kit, mergeStatic } from "./kit"
+import { FURNITURE, type Point3 } from "./layout"
+import type { ModelKey } from "./model-manifest"
+import { fitTo, type ModelSet } from "./models"
 
-const WOOD = "#c98d55"
-
-export type Seat = { at: Point2; facing: number }
+/** What the light rigs drive: `kind` says which rig value scales the glow. */
+export type Glow = {
+  material: THREE.MeshStandardMaterial
+  max: number
+  kind: "lamps" | "fire"
+}
 export type Furnishings = {
-  /** The page that turns in each open book on the reading table. */
-  pagePivots: Array<THREE.Group>
-  /** The hanging art globes, which turn slowly. */
-  arts: Array<THREE.Mesh>
-  /** Where lounge visitors sit. */
-  loungeSeats: Array<Seat>
+  /** The reading lamp and the desk lamp; empty without point lights. */
+  lamps: Array<THREE.PointLight>
+  /** The fireplace's light (intensity 0 without point lights). */
+  fire: THREE.PointLight
+  /** Window light is the skyline's; kept for the rigs' shape. */
+  windowGlow: Array<THREE.Mesh>
+  emissives: Array<Glow>
 }
 
-const LAMP_POSTS: ReadonlyArray<Point2> = [
-  [11.2, 9.6],
-  [10.8, 3.2],
-  [16.5, 9.5],
-  [27.5, 13.5],
-  [2.2, 12.5],
-]
-/** [x, z, scale] */
-const PLANTS: ReadonlyArray<Point3> = [
-  [16.2, 3.2, 1.3],
-  [28.6, 5, 1.2],
-  [2.4, 22, 1.1],
-  [27.8, 24.5, 1.2],
-  [10.8, 22.5, 1],
-  [2.4, 31.5, 1.2],
-  [32, 20, 1.2],
-]
+const BRASS = "#c9a24a"
+const SOOT = "#2a1c16"
 
-function light(): THREE.MeshBasicMaterial {
-  return new THREE.MeshBasicMaterial({ color: "#fff6e0" })
+type Build = {
+  kit: Kit
+  /** The piece's own group: built facing +Z, centred, standing on y = 0. */
+  group: THREE.Group
+  size: Point3
+  glow: (
+    color: string,
+    max: number,
+    kind: Glow["kind"]
+  ) => THREE.MeshStandardMaterial
+  light: (color: string, at: Point3, kind: "lamp" | "fire") => void
 }
 
-/** A tower's body and top; its cubbies are shelf faces (layout.ts). */
-function towerBody(kit: Kit, [x, z]: Point2) {
-  const { width, height } = TOWER
-  kit.block(width, height, width, "#6b4426", x, 0, z)
-  kit.block(width + 0.12, 0.14, width + 0.12, "#b9824c", x, height, z)
-}
+/** Stones of a slightly different tone each, so the surround reads as built. */
+const STONES = ["#b9a184", "#c7b293", "#ad957a", "#bfa98c"]
 
-function lampPost(
-  kit: Kit,
-  x: number,
-  z: number,
-  base: number,
-  height: number
-) {
-  kit.mesh(
-    new THREE.CylinderGeometry(0.02, 0.02, height, 8),
-    "#b9935a",
-    x,
-    base + height / 2,
-    z
+/**
+ * The fireplace (code: no pack has one): a stone surround on a hearth, a
+ * sooty firebox with logs and flames, and a wooden mantel with candles and
+ * books. The flames and candles glow with the rig's `fire` and `lamps`.
+ */
+function fireplace({ kit, group, size, glow, light }: Build) {
+  const [w, h, d] = size
+  const parent = group
+  const front = d / 2
+  // Hearth: a stone slab that runs out into the room.
+  kit.block(w + 0.5, 0.1, d + 0.4, "#8f7a66", 0, 0, 0.2, { r: 0.03, parent })
+  kit.block(w + 0.36, 0.03, d + 0.3, "#a38c75", 0, 0.1, 0.18, {
+    r: 0.012,
+    parent,
+  })
+  const mantelY = h - 0.16
+  const pillar = 0.42
+  const opening = w - 2 * pillar
+  // Pillars of stacked stones, left and right.
+  for (const side of [-1, 1]) {
+    const x = side * (w / 2 - pillar / 2)
+    let y = 0.13
+    let i = side < 0 ? 0 : 2
+    while (y < mantelY - 0.05) {
+      const height = Math.min(0.26 + (i % 3) * 0.04, mantelY - y)
+      kit.block(
+        pillar - (i % 2) * 0.03,
+        height - 0.02,
+        d - 0.02 - (i % 2) * 0.02,
+        STONES[i % STONES.length],
+        x + side * (i % 2) * 0.01,
+        y,
+        0,
+        { r: 0.04, parent }
+      )
+      y += height
+      i += 1
+    }
+  }
+  // The lintel, in three stones over the opening, with a keystone.
+  const lintelY = mantelY - 0.36
+  ;[-1, 0, 1].forEach((k, i) => {
+    kit.block(
+      opening / 3 - 0.02,
+      0.34,
+      d - 0.04,
+      STONES[(i + 1) % STONES.length],
+      (k * opening) / 3,
+      lintelY,
+      0,
+      { r: 0.04, parent }
+    )
+  })
+  kit.block(0.2, 0.38, 0.08, "#d1bd9f", 0, lintelY - 0.03, front - 0.02, {
+    r: 0.04,
+    parent,
+  })
+  // The firebox: soot-dark walls and back, set into the surround.
+  const firebox = kit.mat(SOOT, { roughness: 1 })
+  kit.block(
+    opening + 0.02,
+    lintelY - 0.13,
+    0.08,
+    firebox,
+    0,
+    0.13,
+    -front + 0.06,
+    {
+      r: 0.02,
+      parent,
+    }
   )
+  for (const side of [-1, 1]) {
+    kit.block(
+      0.06,
+      lintelY - 0.13,
+      d - 0.12,
+      firebox,
+      side * (opening / 2 - 0.02),
+      0.13,
+      -0.02,
+      {
+        r: 0.02,
+        parent,
+      }
+    )
+  }
+  kit.block(opening, 0.02, d - 0.1, "#1a120e", 0, 0.13, 0, { r: 0.01, parent })
+  // An iron grate with three logs.
+  for (const side of [-1, 1]) {
+    kit.block(0.04, 0.12, 0.3, "#2e2a28", side * 0.3, 0.14, 0.02, {
+      r: 0.015,
+      parent,
+    })
+  }
+  const bark = kit.mat("#6b4226", { roughness: 0.95 })
+  const cut = kit.mat("#c89a64", { roughness: 0.9 })
+  for (const [x, y, turn, length] of [
+    [0, 0.3, 0.12, 0.72],
+    [-0.08, 0.38, -0.25, 0.6],
+    [0.1, 0.42, 0.4, 0.5],
+  ] as const) {
+    const log = new THREE.Group()
+    log.position.set(x, y, 0.02)
+    log.rotation.y = turn
+    parent.add(log)
+    const body = kit.mesh(
+      new THREE.CylinderGeometry(0.07, 0.075, length, 12),
+      bark,
+      0,
+      0,
+      0,
+      { parent: log }
+    )
+    body.rotation.z = Math.PI / 2
+    for (const end of [-1, 1]) {
+      const face = kit.mesh(
+        new THREE.CircleGeometry(0.068, 12),
+        cut,
+        (end * length) / 2 + end * 0.001,
+        0,
+        0,
+        { parent: log }
+      )
+      face.rotation.y = (end * Math.PI) / 2
+    }
+  }
+  // Embers and flames: layered teardrops, hot at the core.
+  const embers = glow("#ff4a12", 1.0, "fire")
+  const outer = glow("#ff5e14", 0.85, "fire")
+  const inner = glow("#ffa83a", 1.0, "fire")
+  const bed = kit.block(opening - 0.16, 0.03, 0.3, embers, 0, 0.15, 0.03, {
+    r: 0.012,
+    parent,
+    cast: false,
+  })
+  bed.userData.animated = true
+  for (const [x, height, s, material] of [
+    [-0.16, 0.36, 0.1, outer],
+    [0.04, 0.46, 0.13, outer],
+    [0.2, 0.32, 0.09, outer],
+    [-0.08, 0.26, 0.07, inner],
+    [0.08, 0.32, 0.08, inner],
+  ] as const) {
+    const flame = kit.mesh(
+      new THREE.SphereGeometry(1, 14, 12),
+      material,
+      x,
+      0.32 + height / 2,
+      0.04 + (material === inner ? 0.05 : 0),
+      { parent, cast: false, receive: false }
+    )
+    flame.scale.set(s, height / 2, s * 0.8)
+    flame.userData.animated = true
+  }
+  light("#ff9a4a", [0, 0.55, front + 0.45], "fire")
+
+  // The mantel: a thick wooden shelf on two small corbels.
+  kit.block(w + 0.24, 0.12, d + 0.12, "#6b4428", 0, mantelY, 0.04, {
+    r: 0.035,
+    parent,
+  })
+  kit.block(w + 0.14, 0.04, d + 0.04, "#80542f", 0, mantelY + 0.12, 0.03, {
+    r: 0.015,
+    parent,
+  })
+  for (const side of [-1, 1]) {
+    kit.block(
+      0.1,
+      0.14,
+      0.1,
+      "#6b4428",
+      side * (w / 2 - 0.15),
+      mantelY - 0.14,
+      front - 0.02,
+      {
+        r: 0.03,
+        parent,
+      }
+    )
+  }
+  const top = mantelY + 0.16
+  // Two candles in brass holders, a clock and a small stack of books.
+  const wax = kit.mat("#f3e7cf", { roughness: 0.7 })
+  const flame = glow("#ffc35c", 2.2, "lamps")
+  for (const [x, height] of [
+    [-0.62, 0.2],
+    [-0.5, 0.14],
+  ] as const) {
+    kit.mesh(
+      new THREE.CylinderGeometry(0.05, 0.06, 0.03, 14),
+      kit.mat(BRASS, { metalness: 0.5, roughness: 0.4 }),
+      x,
+      top + 0.015,
+      0.02,
+      { parent }
+    )
+    kit.mesh(
+      new THREE.CylinderGeometry(0.025, 0.025, height, 12),
+      wax,
+      x,
+      top + 0.03 + height / 2,
+      0.02,
+      { parent }
+    )
+    const tip = kit.mesh(
+      new THREE.SphereGeometry(1, 10, 8),
+      flame,
+      x,
+      top + 0.06 + height,
+      0.02,
+      {
+        parent,
+        cast: false,
+      }
+    )
+    tip.scale.set(0.014, 0.03, 0.014)
+    tip.userData.animated = true
+  }
+  kit.block(0.18, 0.2, 0.09, "#5a3a24", 0.08, top, 0.02, { r: 0.04, parent })
   kit.mesh(
-    new THREE.SphereGeometry(0.22, 20, 16),
-    light(),
-    x,
-    base + height + 0.18,
-    z,
-    { cast: false }
+    new THREE.CylinderGeometry(0.06, 0.06, 0.012, 20).rotateX(Math.PI / 2),
+    "#f6efe0",
+    0.08,
+    top + 0.12,
+    0.07,
+    { parent }
   )
+  for (const [i, color] of ["#3f5d8a", "#c0623a", "#e0b45c"].entries()) {
+    kit.block(
+      0.28 - i * 0.03,
+      0.045,
+      0.18,
+      color,
+      0.58,
+      top + i * 0.046,
+      0.02,
+      {
+        r: 0.01,
+        parent,
+      }
+    )
+  }
 }
 
-function lampSmall(kit: Kit, x: number, z: number, y: number) {
-  kit.mesh(
-    new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8),
-    "#3a2a22",
-    x,
-    y + 0.15,
-    z
+/** The laptop (code: none in the pack): aluminium base, keyboard, a lit screen. */
+function laptop({ kit, group, size }: Build) {
+  const [w, h, d] = size
+  const parent = group
+  const body = kit.mat("#a7adb5", { metalness: 0.45, roughness: 0.35 })
+  kit.block(w, 0.02, d, body, 0, 0, 0, { r: 0.008, parent })
+  kit.block(w * 0.86, 0.004, d * 0.42, "#2c2f35", 0, 0.02, -d * 0.12, {
+    r: 0.002,
+    parent,
+    cast: false,
+  })
+  kit.block(w * 0.3, 0.003, d * 0.22, "#8f959d", 0, 0.02, d * 0.28, {
+    r: 0.002,
+    parent,
+    cast: false,
+  })
+  // The lid, hinged at the back, tilted back a little.
+  const hinge = new THREE.Group()
+  hinge.position.set(0, 0.02, -d / 2 + 0.01)
+  hinge.rotation.x = -0.28
+  parent.add(hinge)
+  const lidHeight = h - 0.02
+  kit.block(w, lidHeight, 0.012, body, 0, 0, 0, { r: 0.006, parent: hinge })
+  const screen = kit.canvasTexture(128, 96, (g, sw, sh) => {
+    g.fillStyle = "#f4efe6"
+    g.fillRect(0, 0, sw, sh)
+    g.fillStyle = "#1f8a70"
+    g.fillRect(0, 0, sw, 12)
+    g.fillStyle = "#d9cdb8"
+    g.fillRect(8, 20, 34, sh - 28)
+    g.fillStyle = "#7d8ea3"
+    for (let y = 22; y < sh - 10; y += 9)
+      g.fillRect(50, y, 40 + ((y * 7) % 30), 3)
+  })
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(w * 0.9, lidHeight * 0.86),
+    new THREE.MeshStandardMaterial({
+      map: screen,
+      emissive: "#ffffff",
+      emissiveMap: screen,
+      emissiveIntensity: 0.55,
+      roughness: 0.3,
+    })
   )
-  kit.mesh(new THREE.SphereGeometry(0.1, 14, 10), light(), x, y + 0.36, z, {
+  face.position.set(0, lidHeight / 2, 0.0065)
+  hinge.add(face)
+}
+
+/** The base furniture's code builders, by model key (spec 3F §5.2). */
+const BUILDERS: Partial<Record<ModelKey, (build: Build) => void>> = {
+  fireplace,
+  laptop,
+  // The glass cabinet is the showcase's (showcase.ts): it holds the covers.
+  glassCabinet: () => undefined,
+}
+
+/** A rounded stand-in for a model that is missing. */
+function fallback({ kit, group, size }: Build) {
+  kit.block(size[0], size[1], size[2], "#a07850", 0, 0, 0, {
+    r: Math.min(size[0], size[1], size[2]) * 0.2,
+    parent: group,
+  })
+}
+
+/** Turns before fitting: the notebook lies on its back. */
+const PRE_TURN: Partial<Record<ModelKey, (object: THREE.Object3D) => void>> = {
+  notebook: (object) => {
+    object.rotation.z = Math.PI / 2
+  },
+}
+
+/**
+ * A model scaled to the piece's height (fitTo), then stretched on X and Z
+ * to its exact footprint: the layout is the source of truth (plan 3F-R1,
+ * decision 4); sizes there follow each model's proportions, so the stretch
+ * is slight.
+ */
+function placeModel(
+  model: THREE.Object3D,
+  key: ModelKey,
+  size: Point3
+): THREE.Group {
+  const turned = new THREE.Group()
+  turned.add(model)
+  PRE_TURN[key]?.(model)
+  const inner = new THREE.Group()
+  inner.add(turned)
+  fitTo(inner, size[1])
+  const box = new THREE.Box3().setFromObject(inner)
+  const extent = box.getSize(new THREE.Vector3())
+  if (extent.x > 0) inner.scale.x *= size[0] / extent.x
+  if (extent.z > 0) inner.scale.z *= size[2] / extent.z
+  fitTo(inner, size[1])
+  model.traverse((object) => {
+    if (object instanceof THREE.Mesh) {
+      object.castShadow = true
+      object.receiveShadow = true
+    }
+  })
+  return inner
+}
+
+/**
+ * Where each lamp's glow and light sit, as shares of the fitted size: the
+ * KayKit table lamp's shade is its top half.
+ */
+const LAMP_BULB = { y: 0.62, shade: 0.4 } as const
+
+function lampGlow(build: Build) {
+  const { kit, group, size, glow, light } = build
+  const [w, h] = size
+  // A warm bulb under the shade, and the shade's inside lit through its top.
+  const bulb = kit.mesh(
+    new THREE.SphereGeometry(w * 0.16, 14, 10),
+    glow("#ffe2a8", 2.6, "lamps"),
+    0,
+    h * LAMP_BULB.y,
+    0,
+    { parent: group, cast: false }
+  )
+  bulb.userData.animated = true
+  const liner = kit.mesh(
+    new THREE.CylinderGeometry(
+      w * LAMP_BULB.shade,
+      w * LAMP_BULB.shade,
+      0.01,
+      24
+    ),
+    glow("#ffd89a", 1.4, "lamps"),
+    0,
+    h * 0.995,
+    0,
+    { parent: group, cast: false }
+  )
+  liner.userData.animated = true
+  light("#ffcf8a", [0, h * 0.7, 0], "lamp")
+}
+
+/** Packing tape and an address label on the parcel box. */
+function parcelDetails({ kit, group, size }: Build) {
+  const [w, h, d] = size
+  const tape = kit.mat("#d9b98a", { roughness: 0.4 })
+  kit.block(0.1, 0.006, d + 0.004, tape, 0, h, 0, {
+    r: 0.002,
+    parent: group,
+    cast: false,
+  })
+  kit.block(0.1, h * 0.35, 0.006, tape, 0, h * 0.65, d / 2, {
+    r: 0.002,
+    parent: group,
+    cast: false,
+  })
+  kit.block(w * 0.28, 0.004, d * 0.3, "#f6efe0", w * 0.24, h, -d * 0.12, {
+    r: 0.002,
+    parent: group,
     cast: false,
   })
 }
 
-function plant(kit: Kit, [x, z, s]: Point3) {
-  kit.mesh(
-    new THREE.CylinderGeometry(0.32 * s, 0.26 * s, 0.6 * s, 20),
-    "#e7e1d8",
-    x,
-    0.3 * s,
-    z
-  )
-  kit.mesh(
-    new THREE.CylinderGeometry(0.04 * s, 0.05 * s, 1.4 * s, 8),
-    "#6b4a2e",
-    x,
-    1.2 * s,
-    z
-  )
-  const leaves = [
-    [0, 2, 0, 0.5],
-    [0.3, 1.75, 0.15, 0.36],
-    [-0.28, 1.8, -0.1, 0.38],
-  ] as const
-  for (const [dx, dy, dz, r] of leaves) {
-    kit.mesh(
-      new THREE.SphereGeometry(r * s, 16, 12),
-      "#4f7f4f",
-      x + dx * s,
-      dy * s,
-      z + dz * s
-    )
-  }
-}
-
-function displayTable(
+/**
+ * The base furniture (spec 3F §3.1): each piece from its model or its code
+ * builder, at its layout size and turn. Point lights only with `withLights`
+ * (quality "tinggi").
+ */
+export function buildFurniture(
   kit: Kit,
-  x: number,
-  z: number,
-  width = 2.6,
-  depth = 1.4
-) {
-  kit.block(width, 0.85, depth, WOOD, x, 0, z, { r: 0.05 })
-  const glowSide = new THREE.MeshStandardMaterial({
-    color: "#5a3a22",
-    emissive: "#ffffff",
-    emissiveMap: kit.glow,
-    emissiveIntensity: 0.9,
-  })
-  for (let i = 0; i < Math.floor(width / 0.8); i++) {
-    kit.mesh(
-      new THREE.PlaneGeometry(0.62, 0.55),
-      glowSide,
-      x - width / 2 + 0.45 + i * 0.82,
-      0.45,
-      z + depth / 2 + 0.01,
-      { cast: false }
-    )
-  }
-  const covers = ["#3d5a80", "#ee6c4d", "#f4efe6", "#7a9e7e"]
-  for (let i = 0; i < 6; i++) {
-    kit.block(
-      0.32,
-      0.03,
-      0.42,
-      kit.pick(covers),
-      x - width / 2 + 0.3 + i * 0.42,
-      0.85,
-      z + (i % 2 === 1 ? 0.2 : -0.2),
-      { r: 0.01 }
-    )
-  }
-  lampPost(kit, x + width / 2 - 0.3, z - depth / 2 + 0.3, 0.85, 0.5)
-}
+  models: ModelSet,
+  withLights: boolean
+): Furnishings {
+  const lamps: Array<THREE.PointLight> = []
+  const fire = new THREE.PointLight("#ff9a4a", 0, 9, 1)
+  const emissives: Array<Glow> = []
+  const glows = new Map<string, THREE.MeshStandardMaterial>()
 
-/** An open book whose right-hand page can turn. Returns the page's pivot. */
-function openBook(kit: Kit, x: number, y: number, z: number): THREE.Group {
-  const base = new THREE.Group()
-  base.position.set(x, y, z)
-  kit.scene.add(base)
-  kit.block(0.22, 0.012, 0.3, "#f7f2e6", -0.11, 0, 0, {
-    parent: base,
-    r: 0.004,
-  })
-  kit.block(0.22, 0.012, 0.3, "#ece3cf", 0.11, 0, 0, {
-    parent: base,
-    r: 0.004,
-  })
-  const pivot = new THREE.Group()
-  base.add(pivot)
-  kit.block(0.22, 0.006, 0.29, "#fffaf0", 0.11, 0.013, 0, {
-    parent: pivot,
-    r: 0.003,
-  })
-  return pivot
-}
-
-/** The long reading table with lamps and chairs. Returns its turning pages. */
-function readingTable(kit: Kit): Array<THREE.Group> {
-  const [cx, cz] = READING_TABLE
-  kit.block(6, 0.08, 1.5, "#d9a66b", cx, 0.76, cz, { r: 0.03 })
-  for (const dx of [-2.7, 2.7]) {
-    for (const dz of [-0.55, 0.55]) {
-      kit.block(0.08, 0.76, 0.08, "#3a2a22", cx + dx, 0, cz + dz, { r: 0.02 })
-    }
-  }
-  for (let i = 0; i < 4; i++) {
-    const x = cx - 2.1 + i * 1.4
-    lampSmall(kit, x, cz, 0.84)
-    for (const side of [-1, 1]) {
-      const chairZ = cz + side * 1.1
-      kit.block(0.46, 0.08, 0.46, "#efe3cf", x + 0.35, 0.44, chairZ, {
-        r: 0.03,
-      })
-      kit.block(0.46, 0.5, 0.06, "#efe3cf", x + 0.35, 0.52, cz + side * 1.33, {
-        r: 0.03,
-      })
-      for (const lx of [-0.18, 0.18]) {
-        for (const lz of [-0.18, 0.18]) {
-          kit.block(
-            0.03,
-            0.44,
-            0.03,
-            "#3a2a22",
-            x + 0.35 + lx,
-            0,
-            chairZ + lz,
-            {
-              r: 0.01,
-            }
-          )
+  for (const piece of FURNITURE) {
+    const holder = new THREE.Group()
+    holder.name = piece.id
+    holder.position.set(piece.at[0], piece.y ?? 0, piece.at[1])
+    holder.rotation.y = piece.turn
+    kit.scene.add(holder)
+    const build: Build = {
+      kit,
+      group: holder,
+      size: piece.size,
+      glow(color, max, kind) {
+        const key = `${color}:${max}:${kind}`
+        let material = glows.get(key)
+        if (!material) {
+          material = new THREE.MeshStandardMaterial({
+            color,
+            emissive: color,
+            emissiveIntensity: 0,
+            roughness: 0.5,
+          })
+          glows.set(key, material)
+          emissives.push({ material, max, kind })
         }
-      }
+        return material
+      },
+      light(color, [x, y, z], kind) {
+        if (kind === "fire") {
+          fire.position.set(x, y, z)
+          holder.add(fire)
+          return
+        }
+        if (!withLights) return
+        const lamp = new THREE.PointLight(color, 0, 7, 1)
+        lamp.position.set(x, y, z)
+        holder.add(lamp)
+        lamps.push(lamp)
+      },
     }
-  }
-  return [
-    openBook(kit, cx - 1.1, 0.85, cz - 0.3),
-    openBook(kit, cx + 1.7, 0.85, cz + 0.3),
-  ]
-}
-
-function adminDesk(kit: Kit) {
-  const [cx, cz] = ADMIN_DESK
-  kit.block(3.2, 1.0, 1.0, "#e9e3da", cx, 0, cz, { r: 0.12 })
-  kit.block(
-    3.0,
-    0.05,
-    0.05,
-    new THREE.MeshBasicMaterial({ color: "#ffd9a0" }),
-    cx,
-    0.15,
-    cz + 0.52,
-    { cast: false }
-  )
-  kit.block(3.3, 0.06, 1.1, WOOD, cx, 1.0, cz, { r: 0.03 })
-  const screen = new THREE.MeshStandardMaterial({
-    color: "#20242a",
-    emissive: "#4a86d6",
-    emissiveIntensity: 0.8,
-  })
-  const monitor = kit.block(
-    0.6,
-    0.38,
-    0.05,
-    screen,
-    cx + 0.6,
-    1.24,
-    cz - 0.15,
-    { r: 0.02 }
-  )
-  monitor.rotation.y = 0.35
-  kit.block(0.06, 0.2, 0.06, "#3a3a40", cx + 0.6, 1.06, cz - 0.2, { r: 0.01 })
-  lampSmall(kit, cx - 1.2, cz - 0.2, 1.06)
-}
-
-function trolley(kit: Kit) {
-  const [cx, cz] = TROLLEY
-  kit.block(1.1, 0.06, 0.6, "#9aa0a6", cx, 0.35, cz, { r: 0.02 })
-  kit.block(1.1, 0.06, 0.6, "#9aa0a6", cx, 0.85, cz, { r: 0.02 })
-  for (const dx of [-0.5, 0.5]) {
-    for (const dz of [-0.25, 0.25]) {
-      kit.block(0.03, 0.85, 0.03, "#7a8086", cx + dx, 0.08, cz + dz, {
-        r: 0.01,
-      })
-      kit.mesh(
-        new THREE.SphereGeometry(0.06, 10, 8),
-        "#222222",
-        cx + dx,
-        0.06,
-        cz + dz
-      )
+    const model = models.get(piece.model)
+    if (model) {
+      holder.add(placeModel(model, piece.model, piece.size))
+    } else {
+      ;(BUILDERS[piece.model] ?? fallback)(build)
+      mergeStatic(holder)
     }
+    if (piece.model === "readingLamp") lampGlow(build)
+    if (piece.model === "parcelBox") parcelDetails(build)
   }
-  for (let i = 0; i < 9; i++) {
-    const height = 0.26 + kit.rand() * 0.08
-    kit.block(
-      0.07,
-      height,
-      0.2,
-      kit.pick(BOOK_COLORS),
-      cx - 0.45 + i * 0.1,
-      0.91,
-      cz,
-      { r: 0.006 }
-    )
-  }
-}
-
-function hangingArt(
-  kit: Kit,
-  [x, y, z]: Point3,
-  radius: number,
-  colors: ReadonlyArray<string>
-): THREE.Mesh {
-  const top = ATRIUM.height + 2
-  kit.mesh(
-    new THREE.CylinderGeometry(0.01, 0.01, top - y, 4),
-    "#c9c4bd",
-    x,
-    (top + y) / 2,
-    z,
-    { cast: false }
-  )
-  const texture = kit.canvasTexture(512, 256, (g, w, h) => {
-    g.fillStyle = colors[0]
-    g.fillRect(0, 0, w, h)
-    for (let i = 0; i < 40; i++) {
-      g.strokeStyle = kit.pick(colors)
-      g.lineWidth = 6 + kit.rand() * 18
-      g.beginPath()
-      g.moveTo(kit.rand() * w, kit.rand() * h)
-      g.bezierCurveTo(
-        kit.rand() * w,
-        kit.rand() * h,
-        kit.rand() * w,
-        kit.rand() * h,
-        kit.rand() * w,
-        kit.rand() * h
-      )
-      g.stroke()
-    }
-  })
-  return kit.mesh(
-    new THREE.SphereGeometry(radius, 32, 24),
-    new THREE.MeshStandardMaterial({ map: texture, roughness: 0.5 }),
-    x,
-    y,
-    z
-  )
-}
-
-const shade = (hex: string, factor: number) =>
-  `#${new THREE.Color(hex).multiplyScalar(factor).getHexString()}`
-
-function sofa(kit: Kit, x: number, z: number, facing: number, color: string) {
-  const group = new THREE.Group()
-  group.position.set(x, 0, z)
-  group.rotation.y = facing
-  kit.scene.add(group)
-  kit.block(2.3, 0.4, 0.95, shade(color, 0.85), 0, 0, 0, {
-    parent: group,
-    r: 0.1,
-  })
-  kit.block(2.1, 0.14, 0.75, shade(color, 1.15), 0, 0.4, 0.06, {
-    parent: group,
-    r: 0.07,
-  })
-  kit.block(2.3, 0.62, 0.24, color, 0, 0.34, -0.36, { parent: group, r: 0.1 })
-  for (const dx of [-1.06, 1.06]) {
-    kit.block(0.2, 0.36, 0.95, color, dx, 0.34, 0, { parent: group, r: 0.08 })
-  }
-}
-
-/** A rug, two facing sofas, a round table and a lamp. Returns its two seats. */
-function lounge(kit: Kit, [cx, cz]: Point2, color: string): Array<Seat> {
-  kit.block(5.4, 0.02, 4.2, "#7a4a32", cx, 0, cz, { r: 0.01, cast: false })
-  sofa(kit, cx, cz - 1.45, 0, color)
-  sofa(kit, cx, cz + 1.45, Math.PI, color)
-  kit.mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.06, 32), WOOD, cx, 0.42, cz)
-  kit.mesh(
-    new THREE.CylinderGeometry(0.06, 0.12, 0.4, 12),
-    "#3a2a22",
-    cx,
-    0.2,
-    cz
-  )
-  for (let i = 0; i < 3; i++) {
-    kit.block(
-      0.3,
-      0.05,
-      0.22,
-      kit.pick(BOOK_COLORS),
-      cx - 0.15 + i * 0.05,
-      0.45 + i * 0.05,
-      cz,
-      { r: 0.01 }
-    )
-  }
-  lampPost(kit, cx + 2.4, cz - 1.6, 0, 2.2)
-  return [
-    { at: [cx - 0.5, cz - 1.45], facing: 0 },
-    { at: [cx + 0.6, cz + 1.45], facing: Math.PI },
-  ]
-}
-
-/** A low cabinet of small drawers with brass pulls: the card catalogue (spec 2 §6.4). */
-function cardCatalog(kit: Kit) {
-  const [cx, cz] = CARD_CATALOG
-  kit.block(0.7, 1.25, 1.5, "#7a4a2a", cx, 0, cz, { r: 0.04 })
-  kit.block(0.8, 0.06, 1.6, WOOD, cx, 1.25, cz, { r: 0.02 })
-  const front = cx + 0.36
-  for (let row = 0; row < 4; row++) {
-    for (let column = 0; column < 4; column++) {
-      const y = 0.14 + row * 0.27
-      const z = cz - 0.54 + column * 0.36
-      kit.block(0.03, 0.22, 0.31, "#b9824c", front, y, z, {
-        r: 0.01,
-        cast: false,
-      })
-      kit.block(0.03, 0.03, 0.1, "#d9b26a", front + 0.02, y + 0.09, z, {
-        r: 0.01,
-        cast: false,
-      })
-    }
-  }
-}
-
-/** Towers, desks, the trolley, the card catalogue, decorations and the lounges (spec 1D §4). */
-export function buildFurniture(kit: Kit): Furnishings {
-  for (const { at } of ZONES) towerBody(kit, at)
-  const pagePivots = readingTable(kit)
-  adminDesk(kit)
-  trolley(kit)
-  cardCatalog(kit)
-  displayTable(kit, 22, 5.5)
-  displayTable(kit, 26.5, 9.5, 2.2, 1.2)
-  displayTable(kit, 9.5, 11.6, 2.2, 1.2)
-  for (const [x, z] of LAMP_POSTS) lampPost(kit, x, z, 0, 2.6)
-  for (const spot of PLANTS) plant(kit, spot)
-  const loungeSeats = LOUNGES.flatMap(({ at, color }) => lounge(kit, at, color))
-  const arts = [
-    hangingArt(kit, [14.5, 10.6, 9], 1.1, [
-      "#f6e7d0",
-      "#2f6fb0",
-      "#e94f37",
-      "#f2c14e",
-      "#3a3a3a",
-    ]),
-    hangingArt(kit, [22, 11.4, 4.5], 1.4, [
-      "#fbe3e8",
-      "#d1495b",
-      "#edae49",
-      "#00798c",
-      "#30638e",
-    ]),
-    hangingArt(kit, [11.5, 12.2, 17], 0.8, [
-      "#e8f1f2",
-      "#13293d",
-      "#006494",
-      "#e94f37",
-    ]),
-  ]
-  return { pagePivots, arts, loungeSeats }
+  if (!withLights) fire.removeFromParent()
+  return { lamps, fire, windowGlow: [], emissives }
 }

@@ -2,8 +2,7 @@ import * as THREE from "three"
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js"
 import { SLOT_IDS, type SlotId } from "@/lib/shop/catalog"
 import type { Placements } from "@/lib/shop/types"
-import type { Kit } from "./kit"
-import { DECOR_SLOTS, KIOSK } from "./layout"
+import { DECOR_SLOTS } from "./layout"
 
 /** What a builder draws with: shapes in the slot's group, in its own paint. */
 export type Part = {
@@ -353,22 +352,4 @@ export function buildDecor(scene: THREE.Scene, onChange: () => void): Decor {
       paints.clear()
     },
   }
-}
-
-/** The shop's kiosk (spec 3C §6.2): a small stall with an awning and a coin. */
-export function buildKiosk(kit: Kit): void {
-  const [x, z] = KIOSK
-  kit.block(1.4, 1.0, 0.7, "#8a5a36", x, 0, z, { r: 0.05 })
-  kit.block(1.5, 0.06, 0.8, "#c9a24a", x, 1.0, z, { r: 0.02 })
-  kit.block(0.06, 1.2, 0.06, "#3b2a1e", x - 0.68, 1.06, z + 0.32)
-  kit.block(0.06, 1.2, 0.06, "#3b2a1e", x + 0.68, 1.06, z + 0.32)
-  kit.block(1.7, 0.12, 0.9, "#d2462e", x, 2.26, z + 0.05, { r: 0.04 })
-  kit.mesh(
-    new THREE.CylinderGeometry(0.22, 0.22, 0.05, 24),
-    kit.mat("#f2c14e", { metalness: 0.6, roughness: 0.3 }),
-    x,
-    1.3,
-    z,
-    {}
-  ).rotation.x = Math.PI / 2
 }

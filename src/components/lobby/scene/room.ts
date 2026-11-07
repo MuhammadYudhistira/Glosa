@@ -1,185 +1,712 @@
 import * as THREE from "three"
-import type { Kit } from "./kit"
-import { ATRIUM, BOX, GLASS, type Point3, STAIRS } from "./layout"
-import { BOOK_COLORS } from "./shelves"
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js"
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js"
+import { type Kit, mergeStatic } from "./kit"
+import { ROOM, ROOM_PARTS, SHELF, WALL_SECTIONS } from "./layout"
+import { fitTo, type ModelSet } from "./models"
 
-const { size: SIZE, height: HEIGHT } = ATRIUM
-const WHITE = "#ddd6cb"
+const { width: W, depth: D, height: H } = ROOM
+const WALL = 0.2
+const WOOD_FLOOR = "#b08a5e"
+const WALLPAPER = "#d9c2a3"
+const TRIM = "#7a5a3a"
+const PANEL = "#8f6a45"
+const FRAME = "#efe3cc"
+const CURTAIN = "#a4493a"
+const BRASS = "#c9a24a"
 
-/** Polished wood; it runs on past the open front, so the screen is always full. */
-function floor(kit: Kit) {
-  const texture = kit.canvasTexture(
-    1024,
-    1024,
-    (g) => {
-      for (let i = 0; i < 16; i++) {
-        for (let j = 0; j < 5; j++) {
-          const tone = 112 + Math.floor(kit.rand() * 22)
-          const x = j * 256 + (i % 2) * 128 - 128
-          g.fillStyle = `rgb(${tone + 34},${tone - 8},${tone - 52})`
-          g.fillRect(x, i * 64, 256, 64)
-          g.fillStyle = "rgba(40,20,8,.35)"
-          g.fillRect(x, i * 64, 2, 64)
-        }
-        g.fillStyle = "rgba(40,20,8,.4)"
-        g.fillRect(0, i * 64 + 62, 1024, 2)
-      }
-    },
-    [6, 6]
-  )
-  kit.mesh(
-    new THREE.BoxGeometry(SIZE * 2 + 2, 0.2, SIZE * 2 + 2),
-    new THREE.MeshStandardMaterial({
-      map: texture,
-      roughness: 0.32,
-      metalness: 0.05,
-    }),
-    SIZE - 1,
-    -0.1,
-    SIZE - 1,
-    { cast: false }
-  )
+/** [width, height, depth, centre x, base y, centre z] */
+type Piece = readonly [number, number, number, number, number, number]
+
+/**
+ * One mesh from rounded boxes, textured in world space (`tile` metres per
+ * repeat), so walls of any size share one material without stretching.
+ */
+function slab(
+  kit: Kit,
+  pieces: ReadonlyArray<Piece>,
+  material: THREE.Material,
+  tile: number,
+  parent: THREE.Object3D,
+  r = 0.02
+): THREE.Mesh {
+  const geometries = pieces.map(([w, h, d, x, y, z]) => {
+    const radius = Math.min(r, w / 2.01, h / 2.01, d / 2.01)
+    const geometry = new RoundedBoxGeometry(w, h, d, 2, radius)
+    geometry.translate(x, y + h / 2, z)
+    return geometry
+  })
+  const merged = mergeGeometries(geometries)
+  for (const geometry of geometries) geometry.dispose()
+  const position = merged.getAttribute("position")
+  const normal = merged.getAttribute("normal")
+  const uv = merged.getAttribute("uv")
+  for (let i = 0; i < position.count; i++) {
+    const nx = Math.abs(normal.getX(i))
+    const ny = Math.abs(normal.getY(i))
+    const nz = Math.abs(normal.getZ(i))
+    const x = position.getX(i)
+    const y = position.getY(i)
+    const z = position.getZ(i)
+    if (ny >= nx && ny >= nz) uv.setXY(i, x / tile, z / tile)
+    else if (nx >= nz) uv.setXY(i, z / tile, y / tile)
+    else uv.setXY(i, x / tile, y / tile)
+  }
+  uv.needsUpdate = true
+  return kit.mesh(merged, material, 0, 0, 0, { parent })
 }
 
-/** The shells behind the shelf walls and beside the glass. */
-function walls(kit: Kit) {
-  kit.block(0.4, HEIGHT, SIZE, "#3a2516", -0.2, 0, SIZE / 2, { r: 0.02 })
-  kit.block(GLASS.x0, HEIGHT, 0.4, "#3a2516", GLASS.x0 / 2, 0, -0.2, {
-    r: 0.02,
+function tiled(texture: THREE.Texture): THREE.Texture {
+  texture.wrapS = THREE.RepeatWrapping
+  texture.wrapT = THREE.RepeatWrapping
+  return texture
+}
+
+/** Warm planks with seams and a little grain; one texture tile is 2 × 2 m. */
+function floorMaterial(kit: Kit): THREE.MeshStandardMaterial {
+  const texture = kit.canvasTexture(1024, 1024, (g) => {
+    const rows = 10
+    const rowHeight = 1024 / rows
+    const base = new THREE.Color(WOOD_FLOOR)
+    for (let i = 0; i < rows + 1; i++) {
+      let x = -kit.rand() * 400
+      while (x < 1024) {
+        const length = 420 + kit.rand() * 520
+        const tone = base
+          .clone()
+          .offsetHSL((kit.rand() - 0.5) * 0.012, 0, (kit.rand() - 0.5) * 0.05)
+        g.fillStyle = `#${tone.getHexString()}`
+        g.fillRect(x, i * rowHeight, length, rowHeight)
+        // A few grain lines along the plank.
+        g.strokeStyle = "rgba(90,55,25,.12)"
+        g.lineWidth = 2
+        for (let k = 0; k < 4; k++) {
+          const y = i * rowHeight + 8 + kit.rand() * (rowHeight - 16)
+          g.beginPath()
+          g.moveTo(x + 6, y)
+          g.bezierCurveTo(
+            x + length * 0.3,
+            y + (kit.rand() - 0.5) * 8,
+            x + length * 0.7,
+            y + (kit.rand() - 0.5) * 8,
+            x + length - 6,
+            y
+          )
+          g.stroke()
+        }
+        g.fillStyle = "rgba(60,35,15,.35)"
+        g.fillRect(x, i * rowHeight, 2, rowHeight)
+        x += length
+      }
+      g.fillStyle = "rgba(60,35,15,.4)"
+      g.fillRect(0, i * rowHeight + rowHeight - 2, 1024, 2)
+    }
+  })
+  return new THREE.MeshStandardMaterial({
+    map: tiled(texture),
+    roughness: 0.55,
   })
 }
 
-function balcony(
-  kit: Kit,
-  [x0, x1, z0, z1]: readonly [number, number, number, number],
-  y: number,
-  rail: THREE.Material,
-  strip: THREE.Material
-) {
+/** Soft wallpaper: faint stripes with small warm sprigs; one tile is 1.2 m. */
+function wallpaperMaterial(kit: Kit): THREE.MeshStandardMaterial {
+  const texture = kit.canvasTexture(256, 256, (g, w, h) => {
+    g.fillStyle = WALLPAPER
+    g.fillRect(0, 0, w, h)
+    for (let x = 0; x < w; x += 64) {
+      g.fillStyle = "rgba(150,110,70,.10)"
+      g.fillRect(x, 0, 22, h)
+      g.fillStyle = "rgba(255,245,225,.18)"
+      g.fillRect(x + 26, 0, 4, h)
+    }
+    g.fillStyle = "rgba(160,95,60,.22)"
+    for (let y = 16; y < h; y += 64) {
+      for (let x = 43; x < w; x += 64) {
+        const dy = (x / 64) % 2 ? 32 : 0
+        g.beginPath()
+        g.ellipse(x + 4, y + dy, 3, 6, 0.5, 0, Math.PI * 2)
+        g.ellipse(x - 4, y + dy + 4, 3, 6, -0.5, 0, Math.PI * 2)
+        g.fill()
+      }
+    }
+  })
+  return new THREE.MeshStandardMaterial({
+    map: tiled(texture),
+    roughness: 0.9,
+  })
+}
+
+/** Wooden wainscot panels below the chair rail; one tile is 0.8 m wide. */
+function panelMaterial(kit: Kit): THREE.MeshStandardMaterial {
+  const texture = kit.canvasTexture(256, 256, (g, w, h) => {
+    g.fillStyle = PANEL
+    g.fillRect(0, 0, w, h)
+    g.fillStyle = "rgba(255,230,190,.10)"
+    g.fillRect(24, 24, w - 48, h - 48)
+    g.strokeStyle = "rgba(50,30,15,.35)"
+    g.lineWidth = 6
+    g.strokeRect(24, 24, w - 48, h - 48)
+    g.strokeStyle = "rgba(255,230,190,.25)"
+    g.lineWidth = 2
+    g.strokeRect(30, 30, w - 60, h - 60)
+    g.fillStyle = "rgba(50,30,15,.4)"
+    g.fillRect(0, 0, 4, h)
+  })
+  return new THREE.MeshStandardMaterial({
+    map: tiled(texture),
+    roughness: 0.7,
+  })
+}
+
+/** The floor and the plinth it rests on: the diorama's base. */
+function floor(kit: Kit, parent: THREE.Object3D) {
+  const material = floorMaterial(kit)
+  slab(kit, [[W, 0.2, D, W / 2, -0.2, D / 2]], material, 2, parent, 0.03)
+  const base = kit.block(
+    W + WALL + 0.12,
+    0.34,
+    D + WALL + 0.12,
+    "#4a3222",
+    (W - WALL) / 2,
+    -0.54,
+    (D - WALL) / 2,
+    { r: 0.06, parent, cast: false }
+  )
+  base.receiveShadow = false
+  // A thin dark edge where the boards meet the plinth.
+  kit.block(
+    W + WALL + 0.04,
+    0.04,
+    D + WALL + 0.04,
+    TRIM,
+    (W - WALL) / 2,
+    -0.22,
+    (D - WALL) / 2,
+    {
+      r: 0.02,
+      parent,
+      cast: false,
+    }
+  )
+}
+
+/**
+ * The two back walls, each one mesh: wallpaper above a panelled wainscot, a
+ * skirting board, a chair rail, a crown moulding and a cap on the cut top.
+ * The window wall is built around its opening.
+ */
+function walls(kit: Kit, parent: THREE.Object3D) {
+  const { x0, x1, y0, y1 } = ROOM_PARTS.window
+  const paper = wallpaperMaterial(kit)
+  const panel = panelMaterial(kit)
+  const RAIL = 1.0
+  // Wall X = 0 runs the full depth; wall Z = 0 also covers the corner and
+  // is built around the window opening.
+  slab(
+    kit,
+    [
+      [WALL, H - RAIL, D, -WALL / 2, RAIL, D / 2],
+      [x0 + WALL, H - RAIL, WALL, (x0 - WALL) / 2, RAIL, -WALL / 2],
+      [W - x1, H - RAIL, WALL, (W + x1) / 2, RAIL, -WALL / 2],
+      [x1 - x0, H - y1, WALL, (x0 + x1) / 2, y1, -WALL / 2],
+    ],
+    paper,
+    1.2,
+    parent,
+    0.01
+  )
+  const wainscot: Array<Piece> = [
+    [WALL, RAIL, D, -WALL / 2, 0, D / 2],
+    [W + WALL, RAIL, WALL, (W - WALL) / 2, 0, -WALL / 2],
+    // Below the window, up to its sill.
+    [x1 - x0, y0 - RAIL, WALL, (x0 + x1) / 2, RAIL, -WALL / 2],
+  ]
+  slab(
+    kit,
+    wainscot.filter(([, h]) => h > 0),
+    panel,
+    0.8,
+    parent,
+    0.01
+  )
+  const trim = kit.mat(TRIM, { roughness: 0.6 })
+  const cap = kit.mat("#5e4430", { roughness: 0.8 })
+  // Skirting, chair rail and crown moulding stand a little proud of the wall.
+  for (const [y, h, proud] of [
+    [0, 0.16, 0.035],
+    [RAIL - 0.03, 0.06, 0.03],
+    [H - 0.16, 0.12, 0.05],
+  ] as const) {
+    const along: Array<Piece> = [
+      [proud, h, D, proud / 2, y, D / 2],
+      [W, h, proud, W / 2, y, proud / 2],
+    ]
+    // The rail stops at the window.
+    const pieces =
+      y === RAIL - 0.03
+        ? [
+            along[0],
+            [x0 - 0.15, h, proud, (x0 - 0.15) / 2, y, proud / 2] as Piece,
+            [
+              W - x1 - 0.15,
+              h,
+              proud,
+              (W + x1 + 0.15) / 2,
+              y,
+              proud / 2,
+            ] as Piece,
+          ]
+        : along
+    slab(kit, pieces, trim, 1, parent, 0.012)
+  }
+  // The cut top of the walls, a shade darker: it reads as a model's section.
+  slab(
+    kit,
+    [
+      [WALL + 0.02, 0.05, D + 0.02, -WALL / 2, H, D / 2],
+      [W + WALL + 0.02, 0.05, WALL + 0.02, (W - WALL) / 2, H, -WALL / 2],
+    ],
+    cap,
+    1,
+    parent,
+    0.01
+  )
+}
+
+/** Frame, mullions, sill, glass, curtains on a brass rod (spec 3F §3.1). */
+function windowFrame(kit: Kit, parent: THREE.Object3D) {
+  const { x0, x1, y0, y1 } = ROOM_PARTS.window
   const cx = (x0 + x1) / 2
-  const cz = (z0 + z1) / 2
-  kit.block(x1 - x0, 0.42, z1 - z0, WHITE, cx, y - 0.42, cz, { r: 0.1 })
-  kit.block(x1 - x0, 0.06, z1 - z0, "#b07b4a", cx, y, cz, {
+  const width = x1 - x0
+  const height = y1 - y0
+  const frame = kit.mat(FRAME, { roughness: 0.55 })
+  const T = 0.11
+  const pieces: Array<Piece> = [
+    // Casing around the opening, proud of the wall.
+    [T, height + 2 * T, 0.08, x0 - T / 2, y0 - T, 0.04],
+    [T, height + 2 * T, 0.08, x1 + T / 2, y0 - T, 0.04],
+    [width + 2 * T + 0.1, T + 0.04, 0.1, cx, y1, 0.05],
+    // Reveal: the frame inside the opening.
+    [0.06, height, WALL, x0 + 0.03, y0, -WALL / 2],
+    [0.06, height, WALL, x1 - 0.03, y0, -WALL / 2],
+    [width, 0.06, WALL, cx, y1 - 0.06, -WALL / 2],
+    // Mullions and a transom, in the middle of the wall's thickness.
+    [0.06, height, 0.06, x0 + width / 3, y0, -0.1],
+    [0.06, height, 0.06, x0 + (2 * width) / 3, y0, -0.1],
+    [width, 0.06, 0.06, cx, y0 + height * 0.68, -0.1],
+  ]
+  slab(kit, pieces, frame, 1, parent, 0.015)
+  // The sill sticks out into the room, with a shelf bracket under it.
+  kit.block(width + 0.4, 0.07, 0.34, FRAME, cx, y0 - 0.07, 0.03, {
+    r: 0.025,
+    parent,
+  })
+  kit.block(width + 0.2, 0.08, 0.06, TRIM, cx, y0 - 0.15, 0.03, {
     r: 0.02,
+    parent,
+  })
+  // The glass: a faint warm-cool sheen, drawn after the city behind it.
+  const glass = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshStandardMaterial({
+      color: "#dcecff",
+      transparent: true,
+      opacity: 0.1,
+      roughness: 0.05,
+      metalness: 0.1,
+      depthWrite: false,
+    })
+  )
+  glass.position.set(cx, y0 + height / 2, -0.08)
+  glass.renderOrder = 2
+  parent.add(glass)
+  // A small pot of herbs and a book on the sill.
+  kit.mesh(
+    new THREE.CylinderGeometry(0.09, 0.07, 0.14, 16),
+    "#b4643c",
+    x0 + 0.45,
+    y0 + 0.07,
+    0.06,
+    { parent }
+  )
+  for (const [dx, dy, s] of [
+    [0, 0.2, 0.1],
+    [0.06, 0.25, 0.07],
+    [-0.05, 0.24, 0.075],
+  ] as const) {
+    kit.mesh(
+      new THREE.SphereGeometry(s, 12, 10),
+      "#6c9a4e",
+      x0 + 0.45 + dx,
+      y0 + dy,
+      0.06,
+      { parent }
+    )
+  }
+  kit.block(0.3, 0.05, 0.2, "#3f5d8a", x1 - 0.5, y0, 0.08, {
+    r: 0.012,
+    parent,
+  })
+  kit.block(0.28, 0.04, 0.18, "#e0b45c", x1 - 0.5, y0 + 0.05, 0.08, {
+    r: 0.012,
+    parent,
+  })
+
+  // Brass rod with round finials.
+  const rodY = y1 + 0.28
+  const rodLength = width + 1.3
+  kit.mesh(
+    new THREE.CylinderGeometry(0.022, 0.022, rodLength, 10).rotateZ(
+      Math.PI / 2
+    ),
+    kit.mat(BRASS, { metalness: 0.6, roughness: 0.35 }),
+    cx,
+    rodY,
+    0.14,
+    { parent }
+  )
+  for (const side of [-1, 1]) {
+    kit.mesh(
+      new THREE.SphereGeometry(0.05, 14, 10),
+      kit.mat(BRASS, { metalness: 0.6, roughness: 0.35 }),
+      cx + side * (rodLength / 2 + 0.03),
+      rodY,
+      0.14,
+      { parent }
+    )
+  }
+  // Curtains: soft folds, gathered at the sides of the window.
+  const curtain = kit.mat(CURTAIN, { roughness: 0.95 })
+  const fold = curtain.clone()
+  fold.color.offsetHSL(0, 0, -0.06)
+  const curtainTop = rodY - 0.04
+  const curtainBottom = 0.55
+  const length = curtainTop - curtainBottom
+  for (const side of [-1, 1]) {
+    const edge = side < 0 ? x0 - 0.12 : x1 + 0.12
+    for (let i = 0; i < 5; i++) {
+      const x = edge + side * (i * 0.11 - 0.1)
+      const radius = 0.07 + (i % 2) * 0.012
+      kit.mesh(
+        new THREE.CapsuleGeometry(radius, length - 2 * radius, 4, 10),
+        i % 2 ? fold : curtain,
+        x,
+        curtainBottom + length / 2,
+        0.16 + (i % 2) * 0.03,
+        { parent }
+      )
+    }
+    // A tie-back band around the gathered folds.
+    kit.block(0.5, 0.06, 0.12, "#c98d4a", edge + side * 0.12, 1.45, 0.24, {
+      r: 0.03,
+      parent,
+    })
+  }
+}
+
+/**
+ * The corkboard (spec 3F §3.2; Tahap 4 pins its feed here): a wooden frame,
+ * speckled cork, paper notes and a postcard held by coloured pins.
+ */
+function corkboard(kit: Kit, parent: THREE.Object3D) {
+  const { x, y, size } = ROOM_PARTS.corkboard
+  const width = size * 1.25
+  const height = size
+  const cork = kit.canvasTexture(256, 256, (g, w, h) => {
+    g.fillStyle = "#c49a6c"
+    g.fillRect(0, 0, w, h)
+    for (let i = 0; i < 1600; i++) {
+      g.fillStyle =
+        kit.rand() < 0.5 ? "rgba(120,80,45,.35)" : "rgba(230,200,150,.35)"
+      g.fillRect(kit.rand() * w, kit.rand() * h, 2, 2)
+    }
+  })
+  kit.block(width + 0.1, height + 0.1, 0.05, TRIM, x, y - 0.05, 0.025, {
+    r: 0.025,
+    parent,
+  })
+  kit.block(
+    width,
+    height,
+    0.03,
+    new THREE.MeshStandardMaterial({ map: cork, roughness: 1 }),
+    x,
+    y,
+    0.055,
+    { r: 0.01, parent }
+  )
+  const notes: ReadonlyArray<
+    readonly [number, number, number, number, string, string]
+  > = [
+    [-0.4, 0.68, 0.26, 0.22, "#fff3b0", "#d2462e"],
+    [-0.08, 0.6, 0.22, 0.3, "#f6efe0", "#3f7fb5"],
+    [0.32, 0.66, 0.3, 0.2, "#bfe3d0", "#e0b45c"],
+    [-0.3, 0.22, 0.32, 0.24, "#f2c6c2", "#3f7fb5"],
+    [0.22, 0.2, 0.28, 0.28, "#e8dcc4", "#d2462e"],
+  ]
+  for (const [dx, dy, w, h, paper, pin] of notes) {
+    const note = kit.block(w, h, 0.006, paper, x + dx, y + dy, 0.074, {
+      r: 0.002,
+      parent,
+      cast: false,
+    })
+    note.rotation.z = (kit.rand() - 0.5) * 0.18
+    kit.mesh(
+      new THREE.SphereGeometry(0.022, 10, 8),
+      pin,
+      x + dx,
+      y + dy + h - 0.035,
+      0.085,
+      { parent, cast: false }
+    )
+  }
+}
+
+/**
+ * The bookcase that fills the shelf wall: one section per genre, five shelves
+ * each, on a plinth with a crown and a small brass plate per section. The
+ * books come from data (shelves, Task 5).
+ */
+function shelfWall(kit: Kit, parent: THREE.Object3D) {
+  const { depth, bottom, top, rows, z0 } = SHELF
+  const z1 = z0 + WALL_SECTIONS.reduce((sum, { width }) => sum + width, 0)
+  const length = z1 - z0
+  const body = kit.mat("#7a5234", { roughness: 0.65 })
+  const board = kit.mat("#8f6440", { roughness: 0.6 })
+  const back = kit.mat("#4e3423", { roughness: 0.85 })
+  const zc = (z0 + z1) / 2
+  kit.block(0.04, top, length, back, 0.03, 0, zc, { r: 0.01, parent })
+  kit.block(depth, bottom, length, body, depth / 2, 0, zc, { r: 0.02, parent })
+  kit.block(
+    depth + 0.08,
+    0.14,
+    length + 0.12,
+    body,
+    depth / 2 + 0.02,
+    top,
+    zc,
+    {
+      r: 0.03,
+      parent,
+    }
+  )
+  kit.block(
+    depth + 0.12,
+    0.05,
+    length + 0.18,
+    board,
+    depth / 2 + 0.04,
+    top + 0.14,
+    zc,
+    {
+      r: 0.02,
+      parent,
+    }
+  )
+  const step = (top - bottom) / rows
+  for (let row = 1; row < rows; row++) {
+    kit.block(
+      depth - 0.04,
+      0.04,
+      length - 0.04,
+      board,
+      depth / 2,
+      bottom + row * step - 0.02,
+      zc,
+      {
+        r: 0.012,
+        parent,
+      }
+    )
+  }
+  for (let i = 0; i <= WALL_SECTIONS.length; i++) {
+    const z = z0 + i * WALL_SECTIONS[0].width
+    kit.block(
+      depth + 0.02,
+      top - bottom,
+      0.06,
+      body,
+      depth / 2 + 0.01,
+      bottom,
+      Math.min(z1 - 0.03, Math.max(z0 + 0.03, z)),
+      {
+        r: 0.015,
+        parent,
+      }
+    )
+  }
+  const plate = kit.mat(BRASS, { metalness: 0.5, roughness: 0.4 })
+  for (const { z } of WALL_SECTIONS) {
+    kit.block(0.02, 0.07, 0.3, plate, depth + 0.07, top + 0.035, z, {
+      r: 0.008,
+      parent,
+      cast: false,
+    })
+  }
+}
+
+/**
+ * Small things that make the room lived in: a library ladder on a brass
+ * rail, a runner rug along the bookcase and a framed print above the door.
+ */
+function dressing(kit: Kit, parent: THREE.Object3D) {
+  const { depth, top } = SHELF
+  // The brass rail the ladder hangs from, along the whole bookcase.
+  const brass = kit.mat(BRASS, { metalness: 0.6, roughness: 0.35 })
+  const z0 = SHELF.z0 + 0.1
+  const z1 = WALL_SECTIONS.at(-1)!.z + WALL_SECTIONS[0].width / 2 - 0.1
+  kit.mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, z1 - z0, 8).rotateX(Math.PI / 2),
+    brass,
+    depth + 0.06,
+    top - 0.45,
+    (z0 + z1) / 2,
+    { parent }
+  )
+  // The ladder leans from the rail to the floor.
+  const ladder = new THREE.Group()
+  ladder.position.set(depth + 0.06, top - 0.45, 3.9)
+  ladder.rotation.z = 0.22
+  parent.add(ladder)
+  const length = (top - 0.45) / Math.cos(0.22)
+  const wood = kit.mat("#9a6a40", { roughness: 0.6 })
+  for (const side of [-1, 1]) {
+    kit.block(0.05, length, 0.05, wood, 0, -length, side * 0.22, {
+      r: 0.015,
+      parent: ladder,
+    })
+  }
+  for (let y = 0.3; y < length - 0.1; y += 0.32) {
+    kit.block(0.04, 0.035, 0.44, wood, 0, -y, 0, { r: 0.012, parent: ladder })
+  }
+  kit.mesh(new THREE.TorusGeometry(0.035, 0.012, 6, 12), brass, 0, 0, 0, {
+    parent: ladder,
+  }).rotation.y = Math.PI / 2
+
+  // A runner rug along the bookcase, where Anda browses.
+  const runner = kit.canvasTexture(128, 512, (g, w, h) => {
+    g.fillStyle = "#8c3b2f"
+    g.fillRect(0, 0, w, h)
+    g.strokeStyle = "#e9d6b4"
+    g.lineWidth = 6
+    g.strokeRect(10, 10, w - 20, h - 20)
+    g.strokeStyle = "#c98d4a"
+    g.lineWidth = 3
+    g.strokeRect(20, 20, w - 40, h - 40)
+    g.fillStyle = "#e0b45c"
+    for (let y = 60; y < h - 40; y += 64) {
+      g.beginPath()
+      g.moveTo(w / 2, y - 18)
+      g.lineTo(w / 2 + 22, y)
+      g.lineTo(w / 2, y + 18)
+      g.lineTo(w / 2 - 22, y)
+      g.closePath()
+      g.fill()
+      g.fillStyle = "#2f5d62"
+      g.fillRect(w / 2 - 5, y - 5, 10, 10)
+      g.fillStyle = "#e0b45c"
+    }
+    g.fillStyle = "#e9d6b4"
+    for (let x = 6; x < w; x += 10) {
+      g.fillRect(x, 0, 3, 8)
+      g.fillRect(x, h - 8, 3, 8)
+    }
+  })
+  const rug = kit.block(
+    1.0,
+    0.015,
+    4.2,
+    new THREE.MeshStandardMaterial({ map: runner, roughness: 0.95 }),
+    2.0,
+    0,
+    3.3,
+    { r: 0.006, parent, cast: false }
+  )
+  rug.userData.animated = true
+
+  // A framed print over the door: hills at dusk.
+  const { z } = ROOM_PARTS.door
+  const print = kit.canvasTexture(256, 160, (g, w, h) => {
+    const sky = g.createLinearGradient(0, 0, 0, h)
+    sky.addColorStop(0, "#f2c58a")
+    sky.addColorStop(1, "#f6e3c4")
+    g.fillStyle = sky
+    g.fillRect(0, 0, w, h)
+    g.fillStyle = "#f7f0dc"
+    g.beginPath()
+    g.arc(w * 0.7, h * 0.35, 18, 0, Math.PI * 2)
+    g.fill()
+    for (const [y, color] of [
+      [0.6, "#a7b58a"],
+      [0.72, "#6f8a5e"],
+      [0.85, "#4d6a4a"],
+    ] as const) {
+      g.fillStyle = color
+      g.beginPath()
+      g.moveTo(0, h)
+      for (let x = 0; x <= w; x += 16) {
+        g.lineTo(x, h * y + Math.sin(x / 40 + y * 9) * 10)
+      }
+      g.lineTo(w, h)
+      g.fill()
+    }
+  })
+  kit.block(0.05, 0.62, 0.9, TRIM, 0.025, 2.75, z, { r: 0.015, parent })
+  const art = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.76, 0.48),
+    new THREE.MeshStandardMaterial({ map: print, roughness: 0.8 })
+  )
+  art.position.set(0.052, 2.75 + 0.31, z)
+  art.rotation.y = Math.PI / 2
+  parent.add(art)
+}
+
+/** The panelled door in the shelf wall, from Prototype Bits (code if missing). */
+function door(kit: Kit, models: ModelSet, parent: THREE.Object3D) {
+  const { z, width, height } = ROOM_PARTS.door
+  const model = models.get("door")
+  const holder = new THREE.Group()
+  if (model) {
+    const inner = new THREE.Group()
+    inner.add(model)
+    model.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = true
+        object.receiveShadow = true
+      }
+    })
+    fitTo(inner, height)
+    holder.add(inner)
+  } else {
+    kit.block(width + 0.2, height + 0.1, 0.08, TRIM, 0, 0, 0, {
+      parent: holder,
+    })
+    kit.block(width, height, 0.06, "#8a5a36", 0, 0, 0.05, { parent: holder })
+  }
+  // Built facing +Z; the door faces +X, its back against the wall.
+  holder.rotation.y = Math.PI / 2
+  const box = new THREE.Box3().setFromObject(holder)
+  holder.position.set(-box.min.x, 0, z)
+  parent.add(holder)
+  // A doormat in front of it.
+  kit.block(0.6, 0.02, width * 0.85, "#8c5a3c", 0.55, 0, z, {
+    r: 0.01,
+    parent,
     cast: false,
   })
-  // A warm strip of light under each open edge, and a glass railing above it.
-  if (z1 < SIZE) {
-    kit.block(x1 - x0 - 0.2, 0.05, 0.05, strip, cx, y - 0.45, z1 - 0.06, {
-      cast: false,
-    })
-    kit.mesh(
-      new THREE.BoxGeometry(x1 - x0, 1, 0.03),
-      rail,
-      cx,
-      y + 0.5,
-      z1 - 0.05,
-      { cast: false }
-    )
-  }
-  if (x1 < SIZE) {
-    kit.block(0.05, 0.05, z1 - z0 - 0.2, strip, x1 - 0.06, y - 0.45, cz, {
-      cast: false,
-    })
-    kit.mesh(
-      new THREE.BoxGeometry(0.03, 1, z1 - z0),
-      rail,
-      x1 - 0.05,
-      y + 0.5,
-      cz,
-      { cast: false }
-    )
-  }
 }
 
-function balconies(kit: Kit) {
-  const rail = new THREE.MeshStandardMaterial({
-    color: "#d7f0ff",
-    transparent: true,
-    opacity: 0.18,
-    roughness: 0.1,
-    depthWrite: false,
-  })
-  const strip = new THREE.MeshBasicMaterial({ color: "#ffd9a0" })
-  for (const y of [4.6, 9.2]) {
-    balcony(kit, [0, 3.2, 10, SIZE], y, rail, strip)
-    balcony(kit, [10.5, GLASS.x0 - 0.4, 0, 3.2], y, rail, strip)
-  }
-}
-
-/** The floating box's body; its cubbies are shelf faces (layout.ts). */
-function floatingBox(kit: Kit) {
-  const width = BOX.x1 - BOX.x0
-  const depth = BOX.z1 - BOX.z0
-  const cx = (BOX.x0 + BOX.x1) / 2
-  const cz = (BOX.z0 + BOX.z1) / 2
-  kit.block(width, BOX.y1 - BOX.y0, depth, "#8a5a33", cx, BOX.y0, cz, {
-    r: 0.05,
-  })
-  kit.block(width + 0.3, 0.3, depth + 0.3, "#c9945f", cx, BOX.y0 - 0.3, cz, {
-    r: 0.05,
-  })
-}
-
-/** Bleacher stairs with LEDs and small shelves. Returns where people sit. */
-function stairs(kit: Kit): Array<Point3> {
-  const led = new THREE.MeshBasicMaterial({ color: "#fff2d6" })
-  const width = STAIRS.x1 - STAIRS.x0
-  const middle = (STAIRS.x0 + STAIRS.x1) / 2
-  const seats: Array<Point3> = []
-  for (let k = 0; k < STAIRS.steps; k++) {
-    const front = STAIRS.z1 - k * STAIRS.run
-    const top = (k + 1) * STAIRS.rise
-    const base = top - STAIRS.rise
-    kit.block(width, top, front, WHITE, middle, 0, front / 2, { r: 0.03 })
-    kit.block(width - 0.2, 0.03, 0.03, led, middle, top - 0.1, front + 0.01, {
-      cast: false,
-    })
-    if (k % 3 === 1) {
-      // A small shelf set into the step.
-      const shelfX = 3 + (k % 2) * 3
-      kit.block(
-        1.6,
-        STAIRS.rise - 0.08,
-        0.05,
-        "#5a3a22",
-        shelfX,
-        base + 0.02,
-        front + 0.02,
-        { r: 0.01 }
-      )
-      for (let i = 0; i < 18; i++) {
-        const height = 0.24 + kit.rand() * 0.1
-        kit.block(
-          0.06,
-          height,
-          0.18,
-          kit.pick(BOOK_COLORS),
-          shelfX - 0.7 + i * 0.08,
-          base + 0.06,
-          front - 0.06,
-          { r: 0.005 }
-        )
-      }
-    }
-    if (k > 0 && k < STAIRS.steps - 1) {
-      for (let s = 0; s < 2; s++) {
-        if (kit.rand() < 0.55) {
-          seats.push([STAIRS.x0 + 1 + kit.rand() * 6, top, front - 0.45])
-        }
-      }
-    }
-  }
-  // The steps continue up to the balcony as a white landing.
-  kit.block(width, 4.6, 0.6, WHITE, middle, 0, 0.3, { r: 0.03 })
-  return seats
-}
-
-/** Floor, wall shells, balconies, the floating box and the bleacher stairs. */
-export function buildRoom(kit: Kit): { stairSeats: Array<Point3> } {
-  floor(kit)
-  walls(kit)
-  balconies(kit)
-  floatingBox(kit)
-  return { stairSeats: stairs(kit) }
+/** Floor, walls, window, corkboard, the bookcase and the door (spec 3F §3.1). */
+export function buildRoom(kit: Kit, models: ModelSet): void {
+  const shell = new THREE.Group()
+  shell.name = "room"
+  kit.scene.add(shell)
+  floor(kit, shell)
+  walls(kit, shell)
+  windowFrame(kit, shell)
+  corkboard(kit, shell)
+  shelfWall(kit, shell)
+  dressing(kit, shell)
+  mergeStatic(shell)
+  door(kit, models, shell)
 }

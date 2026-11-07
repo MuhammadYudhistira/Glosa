@@ -1,4 +1,4 @@
-import { ATRIUM, type Point3 } from "./layout"
+import { ROOM, type Point3 } from "./layout"
 
 /** What the camera looks at (any point on its axis) and how far it zooms in. */
 export type View = { target: Point3; zoom: number }
@@ -16,6 +16,8 @@ const R6 = Math.sqrt(6)
 /** The world directions of screen-right and screen-up for that camera. */
 export const SCREEN_RIGHT: Point3 = [1 / R2, 0, -1 / R2]
 export const SCREEN_UP: Point3 = [-1 / R6, 2 / R6, -1 / R6]
+/** Toward the camera; with the two above, an orthonormal frame. */
+const SCREEN_OUT: Point3 = [1 / R3, 1 / R3, 1 / R3]
 
 const dot = (a: Point3, b: Point3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 const clamp = (value: number, min: number, max: number) =>
@@ -35,16 +37,30 @@ function slide(point: Point3, right: number, up: number): Point3 {
   ]
 }
 
-const { size: SIZE, height: HEIGHT, front: FRONT, edge: EDGE } = ATRIUM
-/** The floor counts as map up to FRONT metres in front of the room. */
-const FLOOR = SIZE + FRONT
-/** Half the map's height on screen, from the wall tops' peak to the floor's front point. */
-const FIT_V = (HEIGHT + FLOOR - 2 * EDGE) / R6
+/** The room's box on screen: u (right) and v (up) ranges over its 8 corners. */
+const EXTENT = (() => {
+  const us: Array<number> = []
+  const vs: Array<number> = []
+  for (const x of [0, ROOM.width])
+    for (const y of [0, ROOM.height])
+      for (const z of [0, ROOM.depth]) {
+        us.push(dot(SCREEN_RIGHT, [x, y, z]))
+        vs.push(dot(SCREEN_UP, [x, y, z]))
+      }
+  return {
+    u0: Math.min(...us) - ROOM.pad,
+    u1: Math.max(...us) + ROOM.pad,
+    v0: Math.min(...vs) - ROOM.pad,
+    v1: Math.max(...vs) + ROOM.pad,
+  }
+})()
 
-/** Half the view's height in metres at zoom 1: the widest view that fits the map. */
+/** Half the view's height in metres at zoom 1: the whole room (with its pad) just fits. */
 export function baseHalfHeight(aspect: number): number {
-  // The 0.96 is a margin so that zoom 1 always fits inside the map at every screen aspect.
-  return Math.min(FIT_V / (1 + aspect / R3), (SIZE - EDGE) / R2 / aspect) * 0.96
+  return Math.max(
+    (EXTENT.v1 - EXTENT.v0) / 2,
+    (EXTENT.u1 - EXTENT.u0) / 2 / aspect
+  )
 }
 
 /** Half the view's width and height in metres. */
@@ -57,33 +73,39 @@ export function halfExtents(
   return { halfWidth: halfHeight * aspect, halfHeight }
 }
 
+/** How far toward the camera a clamped target lies: the room's centre's depth. */
+const DEPTH = dot(SCREEN_OUT, [ROOM.width / 2, ROOM.height / 2, ROOM.depth / 2])
+
+/** One axis: centred when the room is narrower than the screen, otherwise kept inside the room. */
+function fitAxis(
+  value: number,
+  min: number,
+  max: number,
+  half: number
+): number {
+  // The slack keeps an axis the room fills exactly (to rounding) centred.
+  return max - min <= 2 * half + 1e-9
+    ? (min + max) / 2
+    : clamp(value, min + half, max - half)
+}
+
 /**
- * Keeps the whole screen inside the map (spec 1D §3.1). On screen the atrium
- * is a hexagon: the tops of the two back walls above, the wall ends at the
- * sides, the floor's front corners below. u/v are screen-right/screen-up
- * distances in metres.
+ * Keeps the room on screen (spec 3F §3.1; plan 3F-R1, decision 1): the room
+ * floats in a dark void, so the screen may show the void around it, but it
+ * never pans the room away. u/v are screen-right/screen-up distances in metres.
  */
 export function clampView(view: View, viewport: Viewport): View {
   const zoom = clamp(view.zoom, MIN_ZOOM, MAX_ZOOM)
   const { halfWidth, halfHeight } = halfExtents(zoom, viewport)
   const u0 = dot(SCREEN_RIGHT, view.target)
   const v0 = dot(SCREEN_UP, view.target)
-  // Sideways, the view stops at the wall ends, and also where the space
-  // between the wall tops and the floor's edge is no longer as tall as the
-  // screen; past that point the top and the bottom would both show the void.
-  const umax = Math.max(
-    0,
-    Math.min(
-      (SIZE - EDGE) / R2 - halfWidth,
-      R3 * (FIT_V - halfHeight) - halfWidth
-    )
-  )
-  const u = clamp(u0, -umax, umax)
-  const slope = (Math.abs(u) + halfWidth) / R3
-  const vmax = (2 * (HEIGHT - EDGE)) / R6 - slope - halfHeight
-  const vmin = (-2 * (FLOOR - EDGE)) / R6 + slope + halfHeight
-  const v = vmin > vmax ? (vmin + vmax) / 2 : clamp(v0, vmin, vmax)
-  return { target: slide(view.target, u - u0, v - v0), zoom }
+  const u = fitAxis(u0, EXTENT.u0, EXTENT.u1, halfWidth)
+  const v = fitAxis(v0, EXTENT.v0, EXTENT.v1, halfHeight)
+  // The target moves along the camera's axis to the room's depth, which the
+  // orthographic view does not show: one screen position, one target.
+  const at = (k: 0 | 1 | 2) =>
+    SCREEN_RIGHT[k] * u + SCREEN_UP[k] * v + SCREEN_OUT[k] * DEPTH
+  return { target: [at(0), at(1), at(2)], zoom }
 }
 
 /** Where a world point appears, in percent of the viewport from its top left. */
@@ -100,13 +122,13 @@ export function project(
   }
 }
 
-/** The first view: the whole atrium on wide screens, the reading table on tall ones. */
+/** The first view: the whole room, on every screen shape. */
 export function startView(viewport: Viewport): View {
-  const tall = viewport.width < viewport.height
   return clampView(
-    tall
-      ? { target: [17, 3, 19], zoom: 1.6 }
-      : { target: [14, 4, 14], zoom: 1 },
+    {
+      target: [ROOM.width / 2, ROOM.height / 2, ROOM.depth / 2],
+      zoom: 1,
+    },
     viewport
   )
 }

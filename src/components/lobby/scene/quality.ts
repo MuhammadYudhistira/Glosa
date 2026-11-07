@@ -30,11 +30,6 @@ export function nextQuality(current: Quality, averageFps: number): Quality {
   return current
 }
 
-/** The share of walkers shown. */
-export function walkerShare(quality: Quality): number {
-  return quality === "rendah" ? 0.5 : 1
-}
-
 function webglAvailable(): boolean {
   try {
     const canvas = document.createElement("canvas")

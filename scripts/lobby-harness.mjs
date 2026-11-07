@@ -1,6 +1,7 @@
 // The 3D lobby on its own page, without the app (plan 1D, Task 5):
 //   node scripts/lobby-harness.mjs serve         open it in a browser
-//   node scripts/lobby-harness.mjs shot <file>   1440 × 900 screenshot (PNG)
+//   node scripts/lobby-harness.mjs shot <file> [all | query]   1440 × 900 screenshot (PNG)
+//   node scripts/lobby-harness.mjs moods [dir]   day, dusk and night, desktop and phone (PNG)
 //   node scripts/lobby-harness.mjs still         public/lobby/lobby-still*.{avif,webp}
 //   node scripts/lobby-harness.mjs thumbs        public/lobby/shop/<id>.webp
 import { mkdirSync } from "node:fs"
@@ -60,15 +61,31 @@ async function thumbs(only) {
   }
 }
 
-async function shot(path, decor) {
+async function shot(path, extra) {
   mkdirSync(dirname(path), { recursive: true })
-  await sharp(
-    await render(
-      { width: 1440, height: 900 },
-      decor === "all" ? "mode=still&decor=all" : "mode=still"
-    )
-  ).toFile(path)
+  // `all` puts an item in every slot; anything else is added to the query
+  // as it is (e.g. mood=day&focus=4,1,2).
+  const query =
+    extra === "all"
+      ? "mode=still&decor=all"
+      : `mode=still${extra ? `&${extra}` : ""}`
+  await sharp(await render({ width: 1440, height: 900 }, query)).toFile(path)
   console.log(`wrote ${path}`)
+}
+
+async function moods(dir) {
+  mkdirSync(dir, { recursive: true })
+  const sizes = {
+    desktop: { width: 1440, height: 900 },
+    phone: { width: 390, height: 844 },
+  }
+  for (const mood of ["day", "dusk", "night"]) {
+    for (const [name, viewport] of Object.entries(sizes)) {
+      const png = await render(viewport, `mode=still&mood=${mood}`)
+      await sharp(png).toFile(`${dir}/${mood}-${name}.png`)
+      console.log(`wrote ${dir}/${mood}-${name}.png`)
+    }
+  }
 }
 
 async function still() {
@@ -104,12 +121,13 @@ const server = await createServer({
 await server.listen()
 
 if (command === "serve") {
-  console.log(`${PAGE}   (?mode=still or ?mode=test)`)
+  console.log(`${PAGE}   (?mode=still or ?mode=test, ?mood=day|dusk|night)`)
 } else {
   try {
     if (command === "shot") await shot(file ?? "lobby.png", extra)
     else if (command === "still") await still()
     else if (command === "thumbs") await thumbs(file)
+    else if (command === "moods") await moods(file ?? "scratch/moods")
     else throw new Error(`Unknown command: ${command}`)
   } finally {
     await server.close()

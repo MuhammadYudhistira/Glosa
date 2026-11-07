@@ -1,80 +1,245 @@
-import type { Genre } from "@/lib/genre"
+import { GENRE_VALUES, type Genre } from "@/lib/genre"
 import type { PlantStage } from "@/lib/reading-habit"
 import type { SlotId } from "@/lib/shop/catalog"
+import type { ModelKey } from "./model-manifest"
+import type { Box2 } from "./walk"
 
 /**
- * The lobby's world, in metres (spec 1D §4). X runs along the glass wall
- * (Z = 0), Z along the left shelf wall (X = 0), Y up. The camera looks from
- * +X +Z. Pure data: no three.js, so tests and the hotspot layer can use it.
+ * The study room, in metres (spec 3F §3.1). X runs along the window wall
+ * (Z = 0), Z along the shelf wall (X = 0), Y up. The camera looks from
+ * +X +Z, so those two walls are the back of a diorama with no front walls
+ * and no roof. Pure data: no three.js, so tests and the hotspot layer can use
+ * it. Positions are starting values; the tests decide them (plan 3F-R1,
+ * decision 3), and every size here is the source of truth for the models
+ * fitted to it (decision 4).
  */
 export type Point2 = readonly [number, number]
 export type Point3 = readonly [number, number, number]
 
-/**
- * `front`: how far the floor in front of the open room counts as part of the
- * map. `edge`: how far the screen stays from the map's edges.
- */
-export const ATRIUM = { size: 34, height: 13.5, front: 6, edge: 0.25 } as const
-export const GLASS = { x0: 17, x1: 34, y0: 0, y1: ATRIUM.height } as const
-/** The box of shelves floating above the stairs. */
-export const BOX = {
-  x0: 1.5,
-  x1: 9.5,
-  z0: 1.5,
-  z1: 9.5,
-  y0: 8.4,
-  y1: 12.9,
-} as const
-/** Bleacher stairs rising toward the glass wall. */
-export const STAIRS = {
-  x0: 1.5,
-  x1: 9.5,
-  z1: 10.2,
-  steps: 10,
-  rise: 0.46,
-  run: 0.92,
-} as const
-export const TOWER = { width: 2.4, height: 5.4 } as const
+/** The floor is width × depth; `pad` is the margin the camera keeps around the room. */
+export const ROOM = { width: 12, depth: 12, height: 4.6, pad: 0.9 } as const
 
-/** One shelf tower per genre, in the order of GENRE_VALUES (spec 1D §4). */
-export const ZONES: ReadonlyArray<{ genre: Genre; at: Point2 }> = [
-  { genre: "fiksi_sastra", at: [13, 6.5] },
-  { genre: "fantasi_petualangan", at: [6.5, 14.5] },
-  { genre: "misteri_thriller", at: [13, 12.5] },
-  { genre: "anak_remaja", at: [6.5, 20] },
-  { genre: "sains_teknologi", at: [13, 18.5] },
-  { genre: "sejarah_budaya", at: [19.5, 14] },
-  { genre: "bisnis_pengembangan_diri", at: [24.5, 18] },
-  { genre: "lainnya", at: [19.5, 20.5] },
+/**
+ * Parts of the walls rather than furniture (room.ts builds them): the window
+ * in the Z = 0 wall (x0..x1, sill y0 to head y1), the door in the X = 0 wall
+ * (centred on z) and the corkboard on the Z = 0 wall (centred on x, y).
+ */
+export const ROOM_PARTS = {
+  window: { x0: 5.6, x1: 8.9, y0: 1.0, y1: 3.4 },
+  door: { z: 10.7, width: 1.3, height: 2.1 },
+  corkboard: { x: 1.6, y: 2.3, size: 1.0 },
+} as const
+
+/**
+ * One piece of the base furniture. `at`: centre of its footprint; `y`: what
+ * it stands on (0 = the floor); `size`: width (X), height, depth (Z) before
+ * its `turn` about Y (a multiple of π/2; models face +Z); `solid`: whether
+ * Anda walks around it.
+ */
+export type Furnishing = {
+  id: string
+  model: ModelKey
+  at: Point2
+  y?: number
+  size: Point3
+  turn: number
+  solid: boolean
+}
+
+const DESK_TOP = 0.78
+const SIDE_TOP = 0.6
+
+export const FURNITURE: ReadonlyArray<Furnishing> = [
+  // The reading corner: the armchair faces the room, the fire behind it.
+  {
+    id: "armchair",
+    model: "armchair",
+    at: [4.0, 2.3],
+    size: [1.3, 0.9, 1.15],
+    turn: 0,
+    solid: true,
+  },
+  {
+    id: "fireplace",
+    model: "fireplace",
+    at: [4.0, 0.3],
+    size: [1.8, 1.6, 0.6],
+    turn: 0,
+    solid: true,
+  },
+  {
+    id: "baseRug",
+    model: "baseRug",
+    at: [4.4, 3.1],
+    size: [2.7, 0.02, 1.8],
+    turn: 0,
+    solid: false,
+  },
+  {
+    id: "sideTable",
+    model: "sideTable",
+    at: [5.3, 2.1],
+    size: [0.7, SIDE_TOP, 0.7],
+    turn: 0,
+    solid: true,
+  },
+  {
+    id: "readingLamp",
+    model: "readingLamp",
+    at: [5.45, 1.95],
+    y: SIDE_TOP,
+    size: [0.36, 0.38, 0.36],
+    turn: 0,
+    solid: false,
+  },
+  {
+    id: "catalogue",
+    model: "catalogue",
+    at: [5.18, 2.28],
+    y: SIDE_TOP,
+    size: [0.34, 0.2, 0.15],
+    turn: 0,
+    solid: false,
+  },
+  // The writing desk against the shelf wall.
+  {
+    id: "desk",
+    model: "desk",
+    at: [1.1, 7.0],
+    size: [1.8, DESK_TOP, 0.9],
+    turn: Math.PI / 2,
+    solid: true,
+  },
+  {
+    id: "deskChair",
+    model: "deskChair",
+    at: [2.1, 7.0],
+    size: [0.6, 1.0, 0.67],
+    turn: -Math.PI / 2,
+    solid: true,
+  },
+  {
+    id: "laptop",
+    model: "laptop",
+    at: [1.1, 6.4],
+    y: DESK_TOP,
+    size: [0.4, 0.26, 0.3],
+    turn: Math.PI / 2,
+    solid: false,
+  },
+  {
+    id: "notebook",
+    model: "notebook",
+    at: [1.15, 7.2],
+    y: DESK_TOP,
+    size: [0.24, 0.04, 0.3],
+    turn: Math.PI / 2,
+    solid: false,
+  },
+  {
+    id: "deskLamp",
+    model: "readingLamp",
+    at: [0.95, 7.65],
+    y: DESK_TOP,
+    size: [0.3, 0.32, 0.3],
+    turn: 0,
+    solid: false,
+  },
+  // The parcel box by the door: new books (the trolley hotspot).
+  {
+    id: "parcelBox",
+    model: "parcelBox",
+    at: [0.8, 9.8],
+    size: [0.72, 0.48, 0.5],
+    turn: Math.PI / 2,
+    solid: true,
+  },
+  // A potted plant in the corner by the door.
+  {
+    id: "doorPlant",
+    model: "plantPot",
+    at: [0.75, 11.45],
+    size: [0.62, 0.6, 0.6],
+    turn: 0,
+    solid: true,
+  },
+  {
+    id: "glassCabinet",
+    model: "glassCabinet",
+    at: [10.75, 0.3],
+    size: [2.2, 2.2, 0.5],
+    turn: 0,
+    solid: true,
+  },
 ]
-export const READING_TABLE: Point2 = [19.5, 26]
-export const ADMIN_DESK: Point2 = [5.5, 25.5]
-export const TROLLEY: Point2 = [9, 26.8]
+
+/** A footprint on the floor, from the centre, size and quarter turn. */
+export function footprint(f: { at: Point2; size: Point3; turn: number }): Box2 {
+  const odd = Math.round(f.turn / (Math.PI / 2)) % 2 !== 0
+  const width = odd ? f.size[2] : f.size[0]
+  const depth = odd ? f.size[0] : f.size[2]
+  return {
+    x0: f.at[0] - width / 2,
+    x1: f.at[0] + width / 2,
+    z0: f.at[1] - depth / 2,
+    z1: f.at[1] + depth / 2,
+  }
+}
+
+/** The wall of shelves on X = 0: `rows` shelves from `bottom` to `top`, sections from z0. */
+export const SHELF = {
+  depth: 0.45,
+  bottom: 0.15,
+  top: 3.6,
+  rows: 5,
+  z0: 0.6,
+} as const
+const SECTION_WIDTH = 1.1
+
+/** One shelf section per genre, in the order of GENRE_VALUES (spec 3F §3.2). */
+export const WALL_SECTIONS: ReadonlyArray<{
+  genre: Genre
+  z: number
+  width: number
+}> = GENRE_VALUES.map((genre, i) => ({
+  genre,
+  z: SHELF.z0 + SECTION_WIDTH * (i + 0.5),
+  width: SECTION_WIDTH,
+}))
 
 /**
- * The card catalogue that opens Kosakata (spec 2 §6.4), against the left wall
- * by the admin desk: nothing tall stands between it and the camera.
+ * The glass cabinet of finished books (spec Tahap 3 §4.5), against the
+ * window wall. Its local front faces +Z before SHOWCASE_TURN.
  */
-export const CARD_CATALOG: Point2 = [1.0, 22.5]
-
-/**
- * The display cabinet of finished books (spec Tahap 3 §4.5). It stands free
- * on open floor, whole inside the start view, with nothing tall between it
- * and the camera. It faces +X, into the room.
- */
-export const SHOWCASE: Point2 = [30, 14]
-export const SHOWCASE_SIZE = { width: 2.6, height: 2.3, depth: 0.6 } as const
+export const SHOWCASE: Point2 = [10.75, 0.3]
+export const SHOWCASE_SIZE = { width: 2.2, height: 2.2, depth: 0.5 } as const
+export const SHOWCASE_TURN = 0
 /** The top of each shelf a cover stands on, from the floor up. */
-export const SHOWCASE_SHELVES = [0.12, 0.86, 1.6] as const
+export const SHOWCASE_SHELVES = [0.12, 0.8, 1.48] as const
 export const SHOWCASE_SLOTS = 12
 /** A finished book on display: its cover, or a coloured face without one. */
 export type ShowcaseBook = { id: string; coverUrl: string | null; hue: number }
 
 /**
- * The habit plant (spec 3B §4.1): a pot on open floor in front of the
- * reading table, nearer the camera than the table, clear of the walkers.
+ * Where each cover stands, the newest first: top shelf, left to right. World
+ * points; the covers stand inside the cabinet, behind its glass. Pure.
  */
-export const PLANT: Point2 = [23.4, 25.4]
+export function showcaseSlots(): Array<Point3> {
+  const [cx, cz] = SHOWCASE
+  const dz = SHOWCASE_SIZE.depth / 2 - 0.12
+  const cos = Math.cos(SHOWCASE_TURN)
+  const sin = Math.sin(SHOWCASE_TURN)
+  return [...SHOWCASE_SHELVES].reverse().flatMap((y) =>
+    [0, 1, 2, 3].map((i): Point3 => {
+      const dx = (i - 1.5) * 0.5
+      // A turn about Y: local +Z goes to (sin, cos).
+      return [cx + dx * cos + dz * sin, y, cz - dx * sin + dz * cos]
+    })
+  )
+}
+
+/** The habit plant (spec 3B §4.1): a pot by the window. */
+export const PLANT: Point2 = [9.2, 0.9]
 export const PLANT_POT = { width: 0.7, height: 0.6 } as const
 
 /** What grows on the stem at each stage, in metres before the plant's scale. */
@@ -90,202 +255,104 @@ export const PLANT_SHAPES: Record<
   berbunga: { stem: 0.75, leaves: 10, buds: 0, flowers: 4 },
 }
 
+const raised = (at: Point3, y: number): Point3 => [at[0], y, at[2]]
+
+const SLOT_AT: Record<SlotId, Point3> = {
+  rug: [7.0, 0, 6.5],
+  lamp: [10.8, 0, 6.5],
+  // The lounge seat under the window, apart from the reading armchair.
+  seat: [7.25, 0, 0.8],
+  // Above the mantelpiece.
+  wall: [4.0, 2.7, 0.06],
+  pet: [9.2, 0, 3.6],
+  ceiling: [6.5, 3.9, 6.5],
+}
+
 /**
- * The shop's slots (spec 3C §4, plan 3C decision 10). `at`: the item's
- * origin, on the floor, the wall or under the ceiling; `turn`: its turn
- * about Y (items are built facing +Z); `flat`: lies or hangs out of the
- * walkers' way; `focus`: where the camera looks for a preview.
+ * The shop's slots (spec 3C §4, 3F §3.3). `at`: the item's origin, on the
+ * floor, the wall or under the ceiling; `turn`: its turn about Y (items are
+ * built facing +Z); `flat`: lies or hangs out of Anda's way; `focus`: where
+ * the camera looks for a preview.
  */
 export const DECOR_SLOTS: Record<
   SlotId,
   { at: Point3; turn: number; flat: boolean; focus: Point3 }
 > = {
-  rug: { at: [19.5, 0, 26], turn: 0, flat: true, focus: [19.5, 0.5, 26] },
-  lamp: { at: [14.6, 0, 26.4], turn: 0, flat: false, focus: [14.6, 1.5, 26.4] },
-  seat: {
-    at: [31.5, 0, 3.2],
-    turn: Math.PI,
-    flat: false,
-    focus: [31.5, 0.8, 3.2],
-  },
-  wall: {
-    at: [0.55, 3.4, 8.6],
-    turn: Math.PI / 2,
+  rug: {
+    at: SLOT_AT.rug,
+    turn: 0,
     flat: true,
-    focus: [0.55, 4.4, 8.6],
+    focus: raised(SLOT_AT.rug, 0.3),
   },
-  pet: {
-    at: [30.5, 0, 22],
-    turn: -Math.PI / 4,
+  lamp: {
+    at: SLOT_AT.lamp,
+    turn: 0,
     flat: false,
-    focus: [30.5, 0.6, 22],
+    focus: raised(SLOT_AT.lamp, 1.0),
   },
-  ceiling: { at: [22, 9.5, 19], turn: 0, flat: true, focus: [22, 9.5, 19] },
+  seat: {
+    at: SLOT_AT.seat,
+    turn: 0,
+    flat: false,
+    focus: raised(SLOT_AT.seat, 0.5),
+  },
+  wall: { at: SLOT_AT.wall, turn: 0, flat: true, focus: SLOT_AT.wall },
+  pet: {
+    at: SLOT_AT.pet,
+    turn: 0,
+    flat: false,
+    focus: raised(SLOT_AT.pet, 0.4),
+  },
+  ceiling: {
+    at: SLOT_AT.ceiling,
+    turn: 0,
+    flat: true,
+    focus: SLOT_AT.ceiling,
+  },
 }
 
-/** The shop's kiosk (spec 3C §6.2): open floor near the front, clear of walkers. */
-export const KIOSK: Point2 = [29, 19.2]
+/** The largest footprint an item in each slot takes (for the collision tests). */
+export const DECOR_SIZES: Record<SlotId, Point3> = {
+  rug: [2, 0.02, 1.4],
+  lamp: [0.5, 1.7, 0.5],
+  seat: [2, 0.9, 0.9],
+  wall: [1.2, 1, 0.1],
+  pet: [0.8, 0.8, 0.8],
+  ceiling: [0.8, 0.8, 0.8],
+}
 
 /** How far right the camera moves past a slot, so it shows beside the shop panel. */
 export const PREVIEW_SHIFT = 0.16
 
-/** Where each cover stands, the newest first: top shelf, left to right. Pure. */
-export function showcaseSlots(): Array<Point3> {
-  const [cx, cz] = SHOWCASE
-  return [...SHOWCASE_SHELVES]
-    .reverse()
-    .flatMap((y) =>
-      [-0.9, -0.3, 0.3, 0.9].map((dz): Point3 => [cx + 0.05, y, cz + dz])
-    )
+/** Where "Anda" stands on a first visit, and how much room they take. */
+export const ANDA_START: Point2 = [8.0, 9.5]
+export const ANDA_RADIUS = 0.3
+
+/** The laptop on the writing desk; the sign-in pages zoom the still image here. */
+export const ADMIN_DESK: Point2 = [1.1, 6.4]
+
+/** Where Anda may walk: the floor, clear of the shelf wall. */
+export const WALK_BOUNDS: Box2 = { x0: 0.5, x1: 12, z0: 0.5, z1: 12 }
+
+/** The base furniture (the cabinet included) and the plant pot. Never the decor. */
+export function walkBlockers(): Array<Box2> {
+  const [px, pz] = PLANT
+  const half = PLANT_POT.width / 2
+  return [
+    ...FURNITURE.filter((f) => f.solid).map(footprint),
+    { x0: px - half, x1: px + half, z0: pz - half, z1: pz + half },
+  ]
 }
 
-/** Readers seated at the long table, facing along +Z (0) or −Z (π). */
-export const READERS: ReadonlyArray<{ at: Point2; facing: number }> = [
-  { at: [18.4, 25], facing: 0 },
-  { at: [21.2, 27], facing: Math.PI },
-  { at: [16.6, 27], facing: Math.PI },
-]
-export const LIBRARIAN: Point2 = [4.9, 24.7]
-/** Two lounges at the front of the atrium (spec 1D §2, decision 9). */
-export const LOUNGES: ReadonlyArray<{ at: Point2; color: string }> = [
-  { at: [16.5, 31], color: "#d9c2a3" },
-  { at: [27.5, 30.2], color: "#9c6b5a" },
-]
-/** Where "Anda" stands on a first visit. */
-export const ANDA_START: Point2 = [11.5, 29.5]
-
-/** Walkers loop through these points: [x, z, seconds to pause there]. */
-export const WALKER_ROUTES: ReadonlyArray<{
-  points: ReadonlyArray<readonly [number, number, number]>
-  speed: number
-}> = [
-  {
-    points: [
-      [16, 9.5, 2],
-      [16, 23, 0],
-      [23, 23, 2.5],
-      [23, 9.5, 0],
-    ],
-    speed: 0.9,
-  },
-  {
-    points: [
-      [10, 16, 1.5],
-      [16.3, 16, 0],
-      [16.3, 22, 2],
-      [10, 22, 0],
-    ],
-    speed: 0.75,
-  },
-  {
-    points: [
-      [21.5, 2.2, 3],
-      [28, 2.2, 0],
-      [28, 11.5, 2],
-      [21.5, 11.5, 0],
-    ],
-    speed: 0.7,
-  },
-  {
-    points: [
-      [3, 12, 0],
-      [3, 23, 2],
-      [9.8, 23, 0],
-      [9.8, 12.5, 1.5],
-    ],
-    speed: 0.8,
-  },
-  {
-    points: [
-      [26.5, 15, 0],
-      [26.5, 28, 2.5],
-      [21.5, 28.2, 0],
-      [21.5, 33, 2],
-      [12, 33, 0],
-      [12, 23.5, 1],
-      [26.5, 23.2, 0],
-    ],
-    speed: 0.85,
-  },
-]
-
-/**
- * A wall of glowing cubbies. `origin` is its bottom-left corner on the wall,
- * `along` the horizontal direction along it, `into` the direction into the room.
- */
-export type ShelfFace = {
-  origin: Point3
-  along: Point3
-  into: Point3
-  width: number
-  height: number
-  glow: number
+/** The decor slots that stand on the floor (Task 6 adds them when filled). */
+export function decorBlockers(): Array<Box2> {
+  return (Object.keys(DECOR_SLOTS) as Array<SlotId>)
+    .filter((slot) => !DECOR_SLOTS[slot].flat)
+    .map((slot) => {
+      const { at, turn } = DECOR_SLOTS[slot]
+      return footprint({ at: [at[0], at[2]], size: DECOR_SIZES[slot], turn })
+    })
 }
-
-const PLUS_X: Point3 = [1, 0, 0]
-const PLUS_Z: Point3 = [0, 0, 1]
-const MINUS_Z: Point3 = [0, 0, -1]
-
-export const SHELF_FACES: ReadonlyArray<ShelfFace> = [
-  // Left wall (X = 0): cubbies the whole way.
-  {
-    origin: [0, 0, ATRIUM.size],
-    along: MINUS_Z,
-    into: PLUS_X,
-    width: ATRIUM.size,
-    height: ATRIUM.height,
-    glow: 0.8,
-  },
-  // Right wall (Z = 0): cubbies up to the glass curtain wall.
-  {
-    origin: [0, 0, 0],
-    along: PLUS_X,
-    into: PLUS_Z,
-    width: GLASS.x0 - 0.4,
-    height: ATRIUM.height,
-    glow: 0.8,
-  },
-  // The two visible sides of the floating box.
-  {
-    origin: [BOX.x1, BOX.y0, BOX.z1],
-    along: MINUS_Z,
-    into: PLUS_X,
-    width: BOX.z1 - BOX.z0,
-    height: BOX.y1 - BOX.y0,
-    glow: 0.9,
-  },
-  {
-    origin: [BOX.x0, BOX.y0, BOX.z1],
-    along: PLUS_X,
-    into: PLUS_Z,
-    width: BOX.x1 - BOX.x0,
-    height: BOX.y1 - BOX.y0,
-    glow: 0.9,
-  },
-  // The two visible sides of every tower.
-  ...ZONES.flatMap(({ at: [x, z] }): Array<ShelfFace> => {
-    const half = TOWER.width / 2
-    const height = TOWER.height - 0.2
-    return [
-      {
-        origin: [x + half, 0.1, z + half],
-        along: MINUS_Z,
-        into: PLUS_X,
-        width: TOWER.width,
-        height,
-        glow: 0.9,
-      },
-      {
-        origin: [x - half, 0.1, z + half],
-        along: PLUS_X,
-        into: PLUS_Z,
-        width: TOWER.width,
-        height,
-        glow: 0.9,
-      },
-    ]
-  }),
-]
 
 export type HotspotId =
   | Genre
@@ -299,20 +366,20 @@ export type HotspotId =
 /** `label`: where the hotspot's label floats. `stand`: where "Anda" walks to. */
 export type HotspotSpot = { id: HotspotId; label: Point3; stand: Point2 }
 
-/** In tab order (spec 1D §6): reading table, zones, trolley, admin desk, card catalogue, display cabinet, habit plant, shop kiosk. */
+/** In tab order (spec 1D §6): reading chair, shelf sections, parcel box, laptop, notebook, cabinet, plant, catalogue. */
 export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
-  { id: "meja-baca", label: [19.5, 2.2, 26], stand: [19.5, 28.2] },
-  ...ZONES.map(({ genre, at: [x, z] }): HotspotSpot => ({
+  { id: "meja-baca", label: [4.0, 1.9, 2.3], stand: [4.0, 3.8] },
+  ...WALL_SECTIONS.map(({ genre, z }): HotspotSpot => ({
     id: genre,
-    label: [x, TOWER.height + 0.7, z],
-    stand: [x + 1.9, z + 1.9],
+    label: [0.4, 3.9, z],
+    stand: [3.0, z],
   })),
-  { id: "troli", label: [9, 1.9, 26.8], stand: [10.5, 28.3] },
-  { id: "meja-admin", label: [5.5, 2.8, 25.5], stand: [7.5, 27.8] },
-  { id: "katalog", label: [1.0, 2.1, 22.5], stand: [2.8, 23.4] },
-  { id: "lemari", label: [30, 2.9, 14], stand: [32, 14] },
-  { id: "tanaman", label: [23.4, 2.4, 25.4], stand: [24.9, 26.9] },
-  { id: "toko", label: [29, 2.6, 19.2], stand: [28, 21] },
+  { id: "troli", label: [0.8, 1.0, 9.8], stand: [2.0, 9.8] },
+  { id: "meja-admin", label: [1.1, 1.4, 6.4], stand: [2.9, 6.2] },
+  { id: "katalog", label: [1.1, 1.4, 7.4], stand: [2.9, 7.8] },
+  { id: "lemari", label: [10.75, 2.5, 0.3], stand: [10.75, 2.0] },
+  { id: "tanaman", label: [9.2, 1.9, 0.9], stand: [9.2, 2.2] },
+  { id: "toko", label: [5.3, 1.2, 2.1], stand: [5.3, 3.3] },
 ]
 
 export function spotOf(id: HotspotId): HotspotSpot {

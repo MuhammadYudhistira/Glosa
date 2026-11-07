@@ -1,47 +1,42 @@
 import { describe, expect, it } from "vitest"
 import { GENRE_VALUES } from "@/lib/genre"
 import { SLOT_IDS } from "@/lib/shop/catalog"
+import { MODEL_KEYS } from "./model-manifest"
 import {
-  ATRIUM,
+  ANDA_START,
+  ANDA_RADIUS,
+  DECOR_SIZES,
   DECOR_SLOTS,
+  FURNITURE,
   HOTSPOT_SPOTS,
-  KIOSK,
-  LOUNGES,
   PLANT,
   PLANT_POT,
   PLANT_SHAPES,
-  READERS,
+  ROOM,
   SHOWCASE,
   SHOWCASE_SIZE,
   SHOWCASE_SLOTS,
-  TOWER,
-  WALKER_ROUTES,
-  ZONES,
+  WALK_BOUNDS,
+  WALL_SECTIONS,
+  footprint,
   showcaseSlots,
+  walkBlockers,
   type Point2,
 } from "./layout"
+import { isInView, project, startView } from "./projection"
+import { type Box2, findPath, walkable } from "./walk"
 
-/** Distance from a floor point to the nearest tower's footprint. */
-function towerClearance([x, z]: Point2): number {
-  return Math.min(
-    ...ZONES.map(({ at: [cx, cz] }) =>
-      Math.hypot(
-        Math.max(Math.abs(x - cx) - TOWER.width / 2, 0),
-        Math.max(Math.abs(z - cz) - TOWER.width / 2, 0)
-      )
-    )
-  )
-}
+const inRoom = ([x, z]: Point2, m = 0) =>
+  x >= m && x <= ROOM.width - m && z >= m && z <= ROOM.depth - m
+const overlap = (a: Box2, b: Box2) =>
+  a.x0 < b.x1 && a.x1 > b.x0 && a.z0 < b.z1 && a.z1 > b.z0
+const VIEWPORTS = [
+  { width: 390, height: 844 },
+  { width: 1440, height: 900 },
+]
 
-const onFloor = ([x, z]: Point2) =>
-  x >= 0 && x <= ATRIUM.size && z >= 0 && z <= ATRIUM.size
-
-describe("lobby layout", () => {
-  it("gives every genre exactly one zone", () => {
-    expect(ZONES.map(({ genre }) => genre)).toEqual([...GENRE_VALUES])
-  })
-
-  it("lists unique hotspots in tab order", () => {
+describe("room layout", () => {
+  it("lists the hotspots in tab order, once each", () => {
     expect(HOTSPOT_SPOTS.map(({ id }) => id)).toEqual([
       "meja-baca",
       ...GENRE_VALUES,
@@ -54,115 +49,94 @@ describe("lobby layout", () => {
     ])
   })
 
-  it("stands the plant on open floor, clear of walkers, readers and the cabinet", () => {
-    expect(onFloor(PLANT)).toBe(true)
-    expect(towerClearance(PLANT)).toBeGreaterThan(1)
-    const distance = (a: Point2, b: Point2) =>
-      Math.hypot(a[0] - b[0], a[1] - b[1])
-    for (const { at } of READERS) {
-      expect(distance(PLANT, at)).toBeGreaterThan(1.2)
+  it("gives every genre one wall section, side by side inside the room", () => {
+    expect(WALL_SECTIONS.map(({ genre }) => genre)).toEqual([...GENRE_VALUES])
+    const last = WALL_SECTIONS.at(-1)!
+    expect(last.z + last.width / 2).toBeLessThanOrEqual(ROOM.depth)
+  })
+
+  it.each(VIEWPORTS)(
+    "has every hotspot inside the room and on screen (%o)",
+    (viewport) => {
+      const view = startView(viewport)
+      for (const { id, label, stand } of HOTSPOT_SPOTS) {
+        expect(label[0], id).toBeGreaterThanOrEqual(0)
+        expect(label[0], id).toBeLessThanOrEqual(ROOM.width)
+        expect(label[1], id).toBeGreaterThan(0)
+        expect(label[1], id).toBeLessThanOrEqual(ROOM.height)
+        expect(inRoom([label[0], label[2]]), id).toBe(true)
+        expect(inRoom(stand), id).toBe(true)
+        expect(isInView(label, view, viewport), id).toBe(true)
+        const { x, y } = project(label, view, viewport)
+        expect(x + y, id).toBeGreaterThan(0)
+      }
     }
-    expect(distance(PLANT, SHOWCASE)).toBeGreaterThan(3)
-    for (const [index, { points }] of WALKER_ROUTES.entries()) {
-      points.forEach(([x, z], i) => {
-        const [nx, nz] = points[(i + 1) % points.length]
-        for (let t = 0; t <= 1; t += 0.01) {
-          const at: Point2 = [x + (nx - x) * t, z + (nz - z) * t]
-          expect(distance(PLANT, at), `route ${index}`).toBeGreaterThan(
-            PLANT_POT.width / 2 + 0.6
+  )
+
+  it("lets Anda stand at every hotspot and reach it from the start", () => {
+    const blocked = walkBlockers()
+    expect(walkable(ANDA_START, WALK_BOUNDS, blocked, ANDA_RADIUS)).toBe(true)
+    for (const { id, stand } of HOTSPOT_SPOTS) {
+      expect(walkable(stand, WALK_BOUNDS, blocked, ANDA_RADIUS), id).toBe(true)
+      expect(
+        findPath(ANDA_START, stand, WALK_BOUNDS, blocked, ANDA_RADIUS).length,
+        id
+      ).toBeGreaterThan(0)
+    }
+  })
+
+  it("keeps the base furniture inside the room and apart from each other", () => {
+    const solid = FURNITURE.filter((f) => f.solid)
+    for (const f of FURNITURE) {
+      const box = footprint(f)
+      expect(box.x0, f.id).toBeGreaterThanOrEqual(0)
+      expect(box.x1, f.id).toBeLessThanOrEqual(ROOM.width)
+      expect(box.z0, f.id).toBeGreaterThanOrEqual(0)
+      expect(box.z1, f.id).toBeLessThanOrEqual(ROOM.depth)
+      expect(MODEL_KEYS, f.id).toContain(f.model)
+      const quarters = f.turn / (Math.PI / 2)
+      expect(Math.abs(quarters - Math.round(quarters)), f.id).toBeLessThan(1e-9)
+    }
+    solid.forEach((a, i) =>
+      solid
+        .slice(i + 1)
+        .forEach((b) =>
+          expect(overlap(footprint(a), footprint(b)), `${a.id} / ${b.id}`).toBe(
+            false
           )
-        }
+        )
+    )
+  })
+
+  it("puts every decor slot inside the room and clear of the solid furniture", () => {
+    const solid = walkBlockers()
+    for (const slot of SLOT_IDS) {
+      const { at, flat } = DECOR_SLOTS[slot]
+      expect(inRoom([at[0], at[2]]), slot).toBe(true)
+      expect(at[1], slot).toBeGreaterThanOrEqual(0)
+      expect(at[1], slot).toBeLessThanOrEqual(ROOM.height)
+      if (flat) continue
+      const box = footprint({
+        at: [at[0], at[2]],
+        size: DECOR_SIZES[slot],
+        turn: DECOR_SLOTS[slot].turn,
       })
+      expect(
+        solid.some((other) => overlap(box, other)),
+        slot
+      ).toBe(false)
     }
   })
 
-  it("grows the plant at every stage", () => {
-    const order = [
-      "biji",
-      "tunas",
-      "daun",
-      "rimbun",
-      "kuncup",
-      "berbunga",
-    ] as const
-    const shapes = order.map((stage) => PLANT_SHAPES[stage])
-    expect(shapes[0]).toEqual({ stem: 0, leaves: 0, buds: 0, flowers: 0 })
-    for (let i = 1; i < shapes.length; i++) {
-      expect(shapes[i].stem).toBeGreaterThanOrEqual(shapes[i - 1].stem)
-      expect(shapes[i].leaves).toBeGreaterThanOrEqual(shapes[i - 1].leaves)
-    }
-    expect(shapes[4].buds).toBeGreaterThan(0)
-    expect(shapes[5].flowers).toBeGreaterThan(0)
-  })
-
-  it("stands twelve covers inside the display cabinet", () => {
-    const slots = showcaseSlots()
-    expect(slots).toHaveLength(SHOWCASE_SLOTS)
-    const [cx, cz] = SHOWCASE
-    for (const [x, y, z] of slots) {
-      expect(Math.abs(x - cx)).toBeLessThan(SHOWCASE_SIZE.depth / 2)
-      expect(Math.abs(z - cz)).toBeLessThan(SHOWCASE_SIZE.width / 2)
-      expect(y).toBeGreaterThan(0)
+  it("stands the cabinet, its covers and the plant inside the room", () => {
+    expect(SHOWCASE_SLOTS).toBe(12)
+    expect(showcaseSlots()).toHaveLength(12)
+    for (const [x, y, z] of showcaseSlots()) {
+      expect(inRoom([x, z])).toBe(true)
       expect(y).toBeLessThan(SHOWCASE_SIZE.height)
     }
-    // The newest book first: top shelf, then down.
-    expect(slots[0][1]).toBeGreaterThan(slots[11][1])
-  })
-
-  it("lets 'Anda' stand on the floor, clear of the towers", () => {
-    for (const { id, stand } of HOTSPOT_SPOTS) {
-      expect(onFloor(stand), id).toBe(true)
-      expect(towerClearance(stand), id).toBeGreaterThan(0.25)
-    }
-  })
-
-  it("keeps walkers on the floor and out of the towers", () => {
-    for (const [index, { points }] of WALKER_ROUTES.entries()) {
-      points.forEach(([x, z], i) => {
-        const [nx, nz] = points[(i + 1) % points.length]
-        for (let t = 0; t <= 1; t += 0.01) {
-          const at: Point2 = [x + (nx - x) * t, z + (nz - z) * t]
-          expect(onFloor(at), `route ${index}`).toBe(true)
-          expect(towerClearance(at), `route ${index}`).toBeGreaterThanOrEqual(
-            0.25
-          )
-        }
-      })
-    }
-  })
-
-  it("gives every shop slot a place, and keeps standing items clear", () => {
-    const distance = (a: Point2, b: Point2) =>
-      Math.hypot(a[0] - b[0], a[1] - b[1])
-    expect(Object.keys(DECOR_SLOTS).sort()).toEqual([...SLOT_IDS].sort())
-    const standing: Array<[string, Point2]> = [
-      ...Object.entries(DECOR_SLOTS)
-        .filter(([, slot]) => !slot.flat)
-        .map(([id, { at }]): [string, Point2] => [id, [at[0], at[2]]]),
-      ["kiosk", KIOSK],
-    ]
-    for (const [id, at] of standing) {
-      expect(onFloor(at), id).toBe(true)
-      expect(towerClearance(at), id).toBeGreaterThan(1)
-      expect(distance(at, PLANT), id).toBeGreaterThan(2)
-      expect(distance(at, SHOWCASE), id).toBeGreaterThan(2.5)
-      for (const { at: seat } of READERS) {
-        expect(distance(at, seat), id).toBeGreaterThan(1.5)
-      }
-      for (const { at: lounge } of LOUNGES) {
-        expect(distance(at, lounge), id).toBeGreaterThan(2)
-      }
-      for (const [index, { points }] of WALKER_ROUTES.entries()) {
-        points.forEach(([x, z], i) => {
-          const [nx, nz] = points[(i + 1) % points.length]
-          for (let t = 0; t <= 1; t += 0.01) {
-            const on: Point2 = [x + (nx - x) * t, z + (nz - z) * t]
-            expect(distance(at, on), `${id} route ${index}`).toBeGreaterThan(
-              1.5
-            )
-          }
-        })
-      }
-    }
+    expect(inRoom(SHOWCASE)).toBe(true)
+    expect(inRoom(PLANT, PLANT_POT.width / 2)).toBe(true)
+    expect(Object.keys(PLANT_SHAPES)).toHaveLength(6)
   })
 })

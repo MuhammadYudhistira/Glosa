@@ -2,6 +2,7 @@ import { render } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { LobbyCanvas } from "./LobbyCanvas"
 import { ANDA_START } from "./scene/layout"
+import { type Stage, createStage } from "./scene/stage"
 
 // The real stage needs WebGL, which jsdom does not have.
 const stage = vi.hoisted(() => ({
@@ -12,9 +13,12 @@ const stage = vi.hoisted(() => ({
   setShowcase: vi.fn(),
   setPlant: vi.fn(),
   setDecor: vi.fn(),
+  setMood: vi.fn(),
   dispose: vi.fn(),
 }))
-vi.mock("./scene/stage", () => ({ createStage: vi.fn(() => stage) }))
+vi.mock("./scene/stage", () => ({
+  createStage: vi.fn(() => Promise.resolve(stage)),
+}))
 
 function canvasWith(paused: boolean, onReady = vi.fn()) {
   return (
@@ -114,5 +118,20 @@ describe("LobbyCanvas", () => {
       rug: "rug_round",
       pet: "pet_cat",
     })
+  })
+
+  it("frees a stage that finishes loading after the canvas is gone", async () => {
+    let finish: (value: Stage) => void = () => undefined
+    vi.mocked(createStage).mockImplementationOnce(
+      () => new Promise<Stage>((resolve) => (finish = resolve))
+    )
+    const onReady = vi.fn()
+    const { unmount } = render(canvasWith(false, onReady))
+    await vi.waitFor(() => expect(createStage).toHaveBeenCalled())
+    stage.dispose.mockClear()
+    unmount()
+    finish(stage)
+    await vi.waitFor(() => expect(stage.dispose).toHaveBeenCalled())
+    expect(onReady).not.toHaveBeenCalled()
   })
 })

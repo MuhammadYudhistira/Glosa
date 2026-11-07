@@ -1,214 +1,298 @@
 import * as THREE from "three"
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js"
 import type { Kit } from "./kit"
-import { ATRIUM, GLASS } from "./layout"
+import { ROOM_PARTS } from "./layout"
 
-const { size: SIZE, height: HEIGHT } = ATRIUM
-const GLASS_WIDTH = GLASS.x1 - GLASS.x0
-const GLASS_HEIGHT = GLASS.y1 - GLASS.y0
-const GLASS_CENTER = [
-  (GLASS.x0 + GLASS.x1) / 2,
-  (GLASS.y0 + GLASS.y1) / 2,
-] as const
 /**
- * The camera looks down, so through real glass it would only see the street.
- * The skyline is painted on a backdrop just behind the glass instead (a
- * diorama), and drawn only where the glass mask marked the stencil buffer.
+ * The city behind the window (spec 3F §3.1; Tahap 4 lights it for readers
+ * online). The camera looks down along (−1, −1, −1), so through the opening
+ * it sees what lies just behind the wall and lower down. The whole city is a
+ * shallow diorama inside a box right behind the opening: whatever pokes past
+ * the opening is hidden by the wall from the camera's angle, so no mask is
+ * needed. Depth d behind the wall shows through the window at x − d and y − d.
  */
-const SKY = { x0: GLASS.x0 - 4, x1: SIZE + 2, y0: -4, y1: HEIGHT + 1, z: -2.2 }
-const OUTSIDE = {
-  stencilWrite: true,
-  stencilRef: 1,
-  stencilFunc: THREE.EqualStencilFunc,
-  stencilZPass: THREE.KeepStencilOp,
-} satisfies THREE.MaterialParameters
+const { x0, x1, y0, y1 } = ROOM_PARTS.window
+/** The backdrop, deepest; the buildings stand between it and the wall. */
+const BACK = 0.75
+const SKY = { x0: x0 - BACK - 0.15, x1: x1 - 0.1, y0: y0 - BACK - 0.2, y1: y1 }
 
 export type Skyline = {
-  clouds: Array<{ group: THREE.Group; speed: number }>
-  birds: Array<{
-    group: THREE.Group
-    left: THREE.Mesh
-    right: THREE.Mesh
-    speed: number
-    phase: number
-  }>
-  beacons: Array<{ mesh: THREE.Mesh; phase: number }>
+  /** 0 by day, 1 at night: the windows of the city and the night sky. */
+  setCity: (k: number) => void
 }
 
-function glassMask(kit: Kit) {
-  const mask = new THREE.Mesh(
-    new THREE.PlaneGeometry(GLASS_WIDTH, GLASS_HEIGHT),
-    new THREE.MeshBasicMaterial({
-      colorWrite: false,
-      depthWrite: false,
-      stencilWrite: true,
-      stencilRef: 1,
-      stencilFunc: THREE.AlwaysStencilFunc,
-      stencilZPass: THREE.ReplaceStencilOp,
-    })
-  )
-  mask.position.set(GLASS_CENTER[0], GLASS_CENTER[1], -0.05)
-  mask.renderOrder = -1
-  kit.scene.add(mask)
+type SkyPaint = {
+  top: string
+  middle: string
+  bottom: string
+  draw?: (g: CanvasRenderingContext2D, w: number, h: number) => void
 }
 
-/** The painted city at dusk. Returns its blinking tower-top beacons. */
-function backdrop(kit: Kit): Skyline["beacons"] {
-  const tops: Array<readonly [number, number]> = []
-  const texture = kit.canvasTexture(2048, 2048, (g, w, h) => {
-    const sky = g.createLinearGradient(0, 0, 0, h)
-    sky.addColorStop(0, "#2b3a67")
-    sky.addColorStop(0.45, "#6c5b9e")
-    sky.addColorStop(0.72, "#e7909a")
-    sky.addColorStop(0.88, "#ffc58a")
-    g.fillStyle = sky
+function skyTexture(kit: Kit, paint: SkyPaint): THREE.CanvasTexture {
+  return kit.canvasTexture(512, 512, (g, w, h) => {
+    const gradient = g.createLinearGradient(0, 0, 0, h)
+    gradient.addColorStop(0, paint.top)
+    gradient.addColorStop(0.55, paint.middle)
+    gradient.addColorStop(1, paint.bottom)
+    g.fillStyle = gradient
     g.fillRect(0, 0, w, h)
-    const layer = (
-      minHeight: number,
-      maxHeight: number,
-      base: number,
-      color: string,
-      lit: boolean
-    ) => {
-      let x = -20
-      while (x < w) {
-        const width = 60 + kit.rand() * 120
-        const height = minHeight + kit.rand() * (maxHeight - minHeight)
-        const top = base - height
-        g.fillStyle = color
-        g.fillRect(x, top, width, h - top)
-        if (kit.rand() < 0.3) {
-          g.fillRect(x + width * 0.4, top - 40, width * 0.2, 40)
+    paint.draw?.(g, w, h)
+  })
+}
+
+function cloud(
+  g: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  s: number,
+  color: string
+) {
+  g.fillStyle = color
+  for (const [dx, dy, r] of [
+    [0, 0, 26],
+    [30, -10, 32],
+    [64, 0, 24],
+    [32, 10, 26],
+  ] as const) {
+    g.beginPath()
+    g.arc(x + dx * s, y + dy * s, r * s, 0, Math.PI * 2)
+    g.fill()
+  }
+}
+
+/** Far towers painted on the backdrop, as one silhouette. */
+function farCity(
+  kit: Kit,
+  g: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  color: string,
+  lit: string | null
+) {
+  let x = -10
+  while (x < w) {
+    const width = 26 + kit.rand() * 40
+    const top = h * (0.5 + kit.rand() * 0.25)
+    g.fillStyle = color
+    g.beginPath()
+    g.roundRect(x, top, width, h - top, [6, 6, 0, 0])
+    g.fill()
+    if (lit) {
+      g.fillStyle = lit
+      for (let wy = top + 8; wy < h - 6; wy += 11) {
+        for (let wx = x + 5; wx < x + width - 6; wx += 9) {
+          if (kit.rand() < 0.3) g.fillRect(wx, wy, 4, 5)
         }
-        if (lit) {
-          for (let wy = top + 12; wy < h - 10; wy += 22) {
-            for (let wx = x + 8; wx < x + width - 10; wx += 16) {
-              if (kit.rand() < 0.38) {
-                g.fillStyle =
-                  kit.rand() < 0.8
-                    ? "rgba(255,214,150,.85)"
-                    : "rgba(180,220,255,.8)"
-                g.fillRect(wx, wy, 8, 11)
-              }
-            }
-          }
-          if (height > maxHeight * 0.75) {
-            tops.push([x + width / 2, top - (kit.rand() < 0.3 ? 40 : 0)])
-          }
-        }
-        x += width + 6 + kit.rand() * 30
       }
     }
-    layer(500, 900, h * 0.92, "#5d4f7d", false)
-    layer(700, 1300, h * 0.95, "#3c3557", true)
-    layer(400, 1000, h, "#272338", true)
-  })
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(SKY.x1 - SKY.x0, SKY.y1 - SKY.y0),
-    new THREE.MeshBasicMaterial({ map: texture, ...OUTSIDE })
-  )
-  plane.position.set((SKY.x0 + SKY.x1) / 2, (SKY.y0 + SKY.y1) / 2, SKY.z)
-  kit.scene.add(plane)
-
-  const red = new THREE.MeshBasicMaterial({ color: "#ff3b3b", ...OUTSIDE })
-  return tops.slice(0, 7).map(([px, py], i) => {
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), red)
-    mesh.position.set(
-      SKY.x0 + (px / 2048) * (SKY.x1 - SKY.x0),
-      SKY.y1 - (py / 2048) * (SKY.y1 - SKY.y0),
-      SKY.z + 0.05
-    )
-    kit.scene.add(mesh)
-    return { mesh, phase: i * 0.37 }
-  })
+    x += width + 2 + kit.rand() * 8
+  }
 }
 
-function clouds(kit: Kit): Skyline["clouds"] {
-  const material = new THREE.MeshStandardMaterial({
-    color: "#fff4f0",
-    emissive: "#ffd9d0",
-    emissiveIntensity: 0.55,
-    roughness: 1,
-    ...OUTSIDE,
-  })
-  const puffs = [
-    [0, 0, 0.7],
-    [0.8, -0.1, 0.5],
-    [-0.8, -0.12, 0.5],
-    [0.3, 0.38, 0.5],
-  ] as const
-  return Array.from({ length: 5 }, (_, i) => {
-    const group = new THREE.Group()
-    for (const [dx, dy, radius] of puffs) {
-      const puff = new THREE.Mesh(
-        new THREE.SphereGeometry(radius, 18, 12),
-        material
+/** Day, dusk and night skies, faded into each other by setCity. */
+function skies(kit: Kit, parent: THREE.Object3D): (k: number) => void {
+  const seed = kit.rand()
+  const day = skyTexture(kit, {
+    top: "#7fb6e6",
+    middle: "#b9dcf2",
+    bottom: "#f3ead6",
+    draw: (g, w, h) => {
+      const sun = g.createRadialGradient(
+        w * 0.78,
+        h * 0.18,
+        4,
+        w * 0.78,
+        h * 0.18,
+        120
       )
-      puff.position.set(dx, dy, 0)
-      group.add(puff)
-    }
-    group.scale.set(1 + (i % 3) * 0.4, 0.55, 0.2)
-    group.position.set(GLASS.x0 + i * 3.5, 8.5 + (i % 3) * 1.4, -1.6)
-    kit.scene.add(group)
-    return { group, speed: 0.25 + (i % 3) * 0.08 }
+      sun.addColorStop(0, "rgba(255,250,225,1)")
+      sun.addColorStop(0.25, "rgba(255,240,200,.6)")
+      sun.addColorStop(1, "rgba(255,240,200,0)")
+      g.fillStyle = sun
+      g.fillRect(0, 0, w, h)
+      cloud(g, 60, 110, 1.2, "rgba(255,255,255,.85)")
+      cloud(g, 300, 70, 0.9, "rgba(255,255,255,.75)")
+      cloud(g, 200 + seed * 40, 190, 0.7, "rgba(255,255,255,.6)")
+      farCity(kit, g, w, h, "rgba(140,160,185,.55)", null)
+    },
   })
-}
-
-function birds(kit: Kit): Skyline["birds"] {
-  const material = new THREE.MeshBasicMaterial({
-    color: "#2a2433",
-    side: THREE.DoubleSide,
-    ...OUTSIDE,
+  const dusk = skyTexture(kit, {
+    top: "#4b4a86",
+    middle: "#e98a6a",
+    bottom: "#ffc98a",
+    draw: (g, w, h) => {
+      const sun = g.createRadialGradient(
+        w * 0.3,
+        h * 0.62,
+        6,
+        w * 0.3,
+        h * 0.62,
+        150
+      )
+      sun.addColorStop(0, "rgba(255,236,190,1)")
+      sun.addColorStop(0.3, "rgba(255,190,120,.6)")
+      sun.addColorStop(1, "rgba(255,170,110,0)")
+      g.fillStyle = sun
+      g.fillRect(0, 0, w, h)
+      cloud(g, 330, 120, 1.1, "rgba(255,170,150,.55)")
+      cloud(g, 80, 70, 0.8, "rgba(255,190,170,.45)")
+      farCity(kit, g, w, h, "rgba(90,60,90,.85)", "rgba(255,210,140,.55)")
+    },
   })
-  const wing = new THREE.BufferGeometry().setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute([0, 0, 0, 0.34, 0, 0, 0.17, 0.08, 0], 3)
-  )
-  return Array.from({ length: 4 }, (_, i) => {
-    const group = new THREE.Group()
-    const left = new THREE.Mesh(wing, material)
-    const right = new THREE.Mesh(wing, material)
-    right.rotation.y = Math.PI
-    group.add(left, right)
-    group.position.set(SIZE - i * 0.7, 9.5 + (i % 2) * 0.4 - i * 0.2, -0.9)
-    kit.scene.add(group)
-    return { group, left, right, speed: 1.1 + i * 0.1, phase: i * 1.3 }
+  const night = skyTexture(kit, {
+    top: "#0d1430",
+    middle: "#1d2550",
+    bottom: "#3a3466",
+    draw: (g, w, h) => {
+      for (let i = 0; i < 90; i++) {
+        g.fillStyle = `rgba(255,250,235,${0.3 + kit.rand() * 0.6})`
+        g.fillRect(kit.rand() * w, kit.rand() * h * 0.55, 2, 2)
+      }
+      const moon = g.createRadialGradient(
+        w * 0.72,
+        h * 0.2,
+        2,
+        w * 0.72,
+        h * 0.2,
+        70
+      )
+      moon.addColorStop(0, "rgba(255,248,220,1)")
+      moon.addColorStop(0.3, "rgba(255,248,220,1)")
+      moon.addColorStop(0.36, "rgba(200,210,255,.35)")
+      moon.addColorStop(1, "rgba(200,210,255,0)")
+      g.fillStyle = moon
+      g.fillRect(0, 0, w, h)
+      farCity(kit, g, w, h, "#1a1630", "rgba(255,214,150,.9)")
+    },
   })
-}
-
-/** Mullions, transoms and a faint pane. */
-function frame(kit: Kit) {
-  for (let x = GLASS.x0; x <= GLASS.x1 + 0.01; x += 2.6) {
-    kit.block(
-      0.14,
-      HEIGHT,
-      0.22,
-      "#d8d2c8",
-      Math.min(x, GLASS.x1 - 0.07),
-      0,
-      -0.05
-    )
-  }
-  for (const y of [0, 4.5, 9, HEIGHT - 0.25]) {
-    kit.block(GLASS_WIDTH, 0.22, 0.24, "#d8d2c8", GLASS_CENTER[0], y, -0.05)
-  }
-  const pane = new THREE.Mesh(
-    new THREE.PlaneGeometry(GLASS_WIDTH, GLASS_HEIGHT),
-    new THREE.MeshBasicMaterial({
-      color: "#bcd6ff",
-      transparent: true,
-      opacity: 0.06,
-      depthWrite: false,
+  const geometry = new THREE.PlaneGeometry(SKY.x1 - SKY.x0, SKY.y1 - SKY.y0)
+  const layers = [day, dusk, night].map((map, i) => {
+    const material = new THREE.MeshBasicMaterial({
+      map,
+      transparent: i > 0,
+      depthWrite: i === 0,
+      toneMapped: false,
     })
-  )
-  pane.position.set(GLASS_CENTER[0], GLASS_CENTER[1], 0.02)
-  kit.scene.add(pane)
+    const plane = new THREE.Mesh(geometry, material)
+    // Later layers sit a hair in front, so they blend over the day sky.
+    plane.position.set(
+      (SKY.x0 + SKY.x1) / 2,
+      (SKY.y0 + SKY.y1) / 2,
+      -BACK + 0.01 * i
+    )
+    plane.renderOrder = i
+    parent.add(plane)
+    return material
+  })
+  return (k) => {
+    // City 0 is day, 0.45 dusk, 1 night.
+    const duskShare = k <= 0.45 ? k / 0.45 : 1
+    const nightShare = k <= 0.45 ? 0 : (k - 0.45) / 0.55
+    layers[1].opacity = duskShare
+    layers[2].opacity = nightShare
+    layers[1].visible = duskShare > 0.001
+    layers[2].visible = nightShare > 0.001
+  }
 }
 
-/** The glass curtain wall and the city behind it (spec 1D §2, decision 4). */
+/** A facade with rows of windows; lit windows glow through `emissiveMap`. */
+function facade(kit: Kit, base: string): THREE.MeshStandardMaterial {
+  const columns = 4
+  const rows = 8
+  const lit: Array<readonly [number, number]> = []
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < columns; c++) {
+      if (kit.rand() < 0.45) lit.push([c, r])
+    }
+  }
+  const draw =
+    (glow: boolean) => (g: CanvasRenderingContext2D, w: number, h: number) => {
+      g.fillStyle = glow ? "#000000" : base
+      g.fillRect(0, 0, w, h)
+      const cw = w / columns
+      const rh = h / rows
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < columns; c++) {
+          const on = lit.some(([lc, lr]) => lc === c && lr === r)
+          if (glow && !on) continue
+          g.fillStyle = glow
+            ? kit.rand() < 0.8
+              ? "#ffd38a"
+              : "#bfe0ff"
+            : "rgba(40,50,70,.55)"
+          g.fillRect(
+            c * cw + cw * 0.22,
+            r * rh + rh * 0.25,
+            cw * 0.56,
+            rh * 0.5
+          )
+        }
+      }
+    }
+  return new THREE.MeshStandardMaterial({
+    map: kit.canvasTexture(64, 128, draw(false)),
+    emissive: "#ffffff",
+    emissiveMap: kit.canvasTexture(64, 128, draw(true)),
+    emissiveIntensity: 0,
+    roughness: 0.8,
+  })
+}
+
+/** Rounded towers in two rows between the backdrop and the wall. */
+function towers(
+  kit: Kit,
+  parent: THREE.Object3D
+): Array<THREE.MeshStandardMaterial> {
+  const tones = ["#c9b8a6", "#a9a3b5", "#d8c3a0", "#9fb0b8", "#b89a8a"]
+  const materials = tones.map((tone) => facade(kit, tone))
+  const roof = kit.mat("#6b5a55", { roughness: 0.9 })
+  const rows: ReadonlyArray<{ d: number; scale: number; top: number }> = [
+    { d: 0.6, scale: 0.85, top: y0 + 0.25 },
+    { d: 0.36, scale: 1, top: y0 - 0.2 },
+  ]
+  for (const { d, scale, top } of rows) {
+    let x = x0 - d - 0.05
+    while (x < x1 - d + 0.05) {
+      const width = (0.22 + kit.rand() * 0.22) * scale
+      const height = top - (y0 - d - 1.2) + kit.rand() * 0.55 * scale
+      const base = y0 - d - 1.2
+      const material = kit.pick(materials)
+      const geometry = new RoundedBoxGeometry(width, height, 0.14, 2, 0.03)
+      const tower = new THREE.Mesh(geometry, material)
+      tower.position.set(x + width / 2, base + height / 2, -d)
+      parent.add(tower)
+      // A flat roof cap, and now and then a water tank or a spire.
+      const cap = new THREE.Mesh(
+        new RoundedBoxGeometry(width + 0.02, 0.03, 0.16, 2, 0.01),
+        roof
+      )
+      cap.position.set(x + width / 2, base + height + 0.015, -d)
+      parent.add(cap)
+      if (kit.rand() < 0.35) {
+        const tank = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.035, 0.035, 0.07, 10),
+          roof
+        )
+        tank.position.set(x + width * 0.3, base + height + 0.065, -d)
+        parent.add(tank)
+      }
+      x += width + 0.02 + kit.rand() * 0.06
+    }
+  }
+  return materials
+}
+
+/** The city outside the window, behind the opening (spec 3F §3.1). */
 export function buildSkyline(kit: Kit): Skyline {
-  glassMask(kit)
-  const beacons = backdrop(kit)
-  const skyline: Skyline = { clouds: clouds(kit), birds: birds(kit), beacons }
-  frame(kit)
-  return skyline
+  const city = new THREE.Group()
+  city.name = "city"
+  kit.scene.add(city)
+  const setSky = skies(kit, city)
+  const lights = towers(kit, city)
+  return {
+    setCity(k) {
+      setSky(k)
+      for (const material of lights) material.emissiveIntensity = k * 1.6
+    },
+  }
 }

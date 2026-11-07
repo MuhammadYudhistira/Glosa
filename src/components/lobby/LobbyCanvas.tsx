@@ -61,9 +61,9 @@ export function LobbyCanvas({
     let cancelled = false
     import("./scene/stage")
       .then(({ createStage }) => {
-        if (cancelled) return
+        if (cancelled) return null
         const viewport = { width: host.clientWidth, height: host.clientHeight }
-        const stage = createStage({
+        return createStage({
           host,
           mode: initial.current.test ? "test" : "normal",
           quality: initial.current.quality,
@@ -73,6 +73,14 @@ export function LobbyCanvas({
           onQuality: (next) => callbacks.current.onQuality(next),
           onLost: () => callbacks.current.onFail(),
         })
+      })
+      .then((stage) => {
+        if (!stage) return
+        // Unmounted while the models loaded: nothing may stay behind.
+        if (cancelled) {
+          stage.dispose()
+          return
+        }
         stage.setPaused(pausedRef.current)
         stage.setShowcase(showcaseRef.current)
         stage.setPlant(plantRef.current)

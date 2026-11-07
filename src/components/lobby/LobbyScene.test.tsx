@@ -161,6 +161,7 @@ describe("LobbyScene", () => {
         setShowcase: vi.fn(),
         setPlant: vi.fn(),
         setDecor: vi.fn(),
+        setMood: vi.fn(),
         dispose: vi.fn(),
       }
       act(() => {
@@ -250,6 +251,7 @@ describe("LobbyScene", () => {
           setShowcase: vi.fn(),
           setPlant: vi.fn(),
           setDecor: vi.fn(),
+          setMood: vi.fn(),
           dispose: vi.fn(),
         })
       })

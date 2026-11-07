@@ -1,13 +1,6 @@
 import * as THREE from "three"
-import type { Seat } from "./furniture"
 import type { Kit } from "./kit"
-import {
-  LIBRARIAN,
-  type Point2,
-  type Point3,
-  READERS,
-  WALKER_ROUTES,
-} from "./layout"
+import type { Point2 } from "./layout"
 
 const SKIN = ["#e8b48e", "#c68e63", "#8a5a3c", "#f0c8a0"]
 const HAIR = ["#2b1d16", "#1d1d1d", "#6b4a2b", "#d8d4cf", "#a8742f"]
@@ -30,12 +23,7 @@ export type Figure = {
   arms: Array<THREE.Group>
   head: THREE.Group
 }
-/** A seated visitor whose head moves; `phase` keeps them out of step. */
-export type Sitter = Figure & { phase: number }
 export type People = {
-  sitters: Array<Sitter>
-  librarian: Figure
-  walkers: Array<Figure>
   anda: Figure
   /** The mint ring on the floor around "Anda". */
   ring: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>
@@ -111,42 +99,8 @@ function person(kit: Kit, look: Look = {}): Figure {
   return { root, legs, arms, head }
 }
 
-/** Someone sitting on a chair or a sofa. */
-function seated(kit: Kit, { at: [x, z], facing }: Seat, arms: number): Figure {
-  const figure = person(kit, { seated: true })
-  figure.root.position.set(x, 0.48, z)
-  figure.root.rotation.y = facing
-  for (const arm of figure.arms) arm.rotation.x = arms
-  return figure
-}
-
-/** Everyone in the lobby. motion.ts places the walkers. */
-export function buildPeople(
-  kit: Kit,
-  seats: { stairs: ReadonlyArray<Point3>; lounges: ReadonlyArray<Seat> },
-  anda: Point2
-): People {
-  // Up to 12 people on the stairs, some reading or on their phone.
-  const sitters: Array<Sitter> = seats.stairs
-    .slice(0, 12)
-    .map(([x, y, z], i) => {
-      const figure = person(kit, { seated: true })
-      figure.root.position.set(x, y + 0.02, z)
-      for (const arm of figure.arms) arm.rotation.x = -0.9 - (i % 3) * 0.2
-      return { ...figure, phase: i * 0.9 }
-    })
-  for (const reader of READERS) seated(kit, reader, -1.1)
-  for (const lounger of seats.lounges) {
-    sitters.push({ ...seated(kit, lounger, -0.8), phase: lounger.at[0] })
-  }
-  const librarian = person(kit, {
-    shirt: "#f2f0ea",
-    hair: "#d8d4cf",
-    seated: true,
-  })
-  librarian.root.position.set(LIBRARIAN[0], 0.5, LIBRARIAN[1])
-  const walkers = WALKER_ROUTES.map(() => person(kit))
-
+/** "Anda", the only person in the study (spec 3F §2, decision 5). Task 5 restyles them. */
+export function buildPeople(kit: Kit, anda: Point2): People {
   const member = person(kit, {
     shirt: "#1fa58a",
     hair: "#2b1d16",
@@ -164,5 +118,5 @@ export function buildPeople(
   ring.position.y = 0.02
   member.root.add(ring)
   member.root.position.set(anda[0], 0, anda[1])
-  return { sitters, librarian, walkers, anda: member, ring }
+  return { anda: member, ring }
 }
