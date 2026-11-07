@@ -68,8 +68,9 @@ export const MODELS: Record<ModelKey, ModelEntry> = {
   notebook: kay("book-single.glb", "book_single"),
   sideTable: kay("table-small.glb", "table_small"),
   catalogue: kay("book-set.glb", "book_set"),
-  parcelBox: code,
-  door: code,
+  // Prototype Bits (same author and style as Furniture Bits)
+  parcelBox: kay("box-b.glb", "Prototype Bits Box_B"),
+  door: kay("door-a.glb", "Prototype Bits Door_A"),
   fireplace: code,
   glassCabinet: code,
   windowFrame: code,
@@ -85,7 +86,11 @@ export const MODELS: Record<ModelKey, ModelEntry> = {
   decor_rug_pattern: kay("rug-rectangle-b.glb", "rug_rectangle_B"),
   decor_lamp_floor: kay("lamp-standing.glb", "lamp_standing"),
   decor_lamp_arc: code,
-  decor_lamp_lantern: code,
+  // Halloween Bits
+  decor_lamp_lantern: kay(
+    "lantern-standing.glb",
+    "Halloween Bits lantern_standing"
+  ),
   decor_seat_beanbag: code,
   decor_seat_armchair: kay("armchair-pillows.glb", "armchair_pillows"),
   decor_seat_sofa: kay("couch-pillows.glb", "couch_pillows"),

@@ -1,13 +1,17 @@
 # Model licenses
 
-All models below come from **KayKit : Furniture Bits (1.0)** by Kay Lousberg
-(https://www.kaylousberg.com), released under **CC0 1.0 Universal**
-(http://creativecommons.org/publicdomain/zero/1.0/): free for personal, educational
-and commercial use, credit not mandatory.
+Models come from three packs by Kay Lousberg (https://www.kaylousberg.com), all released
+under **CC0 1.0 Universal** (http://creativecommons.org/publicdomain/zero/1.0/): free for
+personal, educational and commercial use, credit not mandatory. Each repository's
+`LICENSE.txt` reads: "License: (Creative Commons Zero, CC0) ... This content is free to use
+in personal, educational and commercial projects."
 
-Source: https://kaylousberg.itch.io/furniture-bits
-Repository: https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0
-(license text: `LICENSE.txt` in the repository root, "License: Creative Commons Zero, CC0").
+- **KayKit : Furniture Bits (1.0)**: https://kaylousberg.itch.io/furniture-bits,
+  https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0
+- **KayKit : Prototype Bits (1.0)**: https://kaylousberg.itch.io/prototype-bits,
+  https://github.com/KayKit-Game-Assets/KayKit-Prototype-Bits-1.0
+- **KayKit : Halloween Bits (1.0)**: https://kaylousberg.itch.io/halloween-bits,
+  https://github.com/KayKit-Game-Assets/KayKit-Halloween-Bits-1.0
 
 Each file was converted from the pack's `.gltf` (+ `.bin` + palette texture) to a single
 binary `.glb` with `gltf-pipeline` (no Draco, geometry unchanged).
@@ -30,3 +34,6 @@ binary `.glb` with `gltf-pipeline` (no Draco, geometry unchanged).
 | rug-rectangle-stripes-a.glb | rug_rectangle_stripes_A | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
 | table-medium-long.glb | table_medium_long | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
 | table-small.glb | table_small | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
+| box-b.glb | Box_B (Prototype Bits) | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/prototype-bits |
+| door-a.glb | Door_A (Prototype Bits) | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/prototype-bits |
+| lantern-standing.glb | lantern_standing (Halloween Bits) | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/halloween-bits |
