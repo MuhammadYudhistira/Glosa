@@ -28,7 +28,15 @@ export function useRecap(
     if (!enabled) return
     let live = true
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    load({ data: { from: range.from, to: range.to, timeZone } })
+    const ask = (zone: string) =>
+      load({ data: { from: range.from, to: range.to, timeZone: zone } })
+    // A zone Postgres does not know is refused as invalid: try UTC once.
+    ask(timeZone)
+      .then((result) =>
+        !result.ok && result.code === "recap_invalid" && timeZone !== "UTC"
+          ? ask("UTC")
+          : result
+      )
       .then((result) => {
         if (!live) return
         setAnswer({
