@@ -40,6 +40,7 @@ import { useWordLookup } from "@/components/reader/useWordLookup"
 import { VocabularyNotice } from "@/components/vocabulary/VocabularyNotice"
 import { ChapterEdge } from "@/components/reader/ChapterEdge"
 import { FinishPrompt } from "@/components/reader/FinishPrompt"
+import { FinishCardDialog } from "@/components/review/FinishCardDialog"
 import { JumpOffer } from "@/components/reader/JumpOffer"
 import { ReaderFooter } from "@/components/reader/ReaderFooter"
 import { ReaderProblem } from "@/components/reader/ReaderProblem"
@@ -200,7 +201,8 @@ function ReaderPage() {
   }))
   const [finishBusy, setFinishBusy] = useState(false)
   const [finishError, setFinishError] = useState<string | null>(null)
-  const [finishedNote, setFinishedNote] = useState(false)
+  // The card of the book just finished (spec 3E §3).
+  const [finishCard, setFinishCard] = useState(false)
   // "Nanti": hidden for this visit only, nothing saved (spec Tahap 3 §9).
   const [finishSnoozed, setFinishSnoozed] = useState(false)
   const annotations = useBookAnnotations(bookId)
@@ -243,7 +245,8 @@ function ReaderPage() {
   const [panel, setPanel] = useState<"toc" | "settings" | null>(null)
   // A panel over the book stops the reading clock (spec 3B §3.1); word and
   // footnote popups do not.
-  const clockPaused = panel !== null || noteFor !== null || sharing !== null
+  const clockPaused =
+    panel !== null || noteFor !== null || sharing !== null || finishCard
   const shownSection = useRef<number | null>(null)
   // The words of the sections read for 60 s are queued in idle time. A due
   // section waits for a view (spec 3D §3.1): it is taken up when the reader
@@ -496,11 +499,6 @@ function ReaderPage() {
     const timer = setTimeout(() => setTargetMissing(false), NOTE_MS)
     return () => clearTimeout(timer)
   }, [targetMissing])
-  useEffect(() => {
-    if (!finishedNote) return
-    const timer = setTimeout(() => setFinishedNote(false), NOTE_MS)
-    return () => clearTimeout(timer)
-  }, [finishedNote])
 
   // An old failure does not wait behind a prompt that is gone.
   useEffect(() => {
@@ -519,7 +517,7 @@ function ReaderPage() {
       } else {
         if (finished) {
           setFinish((current) => ({ ...current, finished: true }))
-          setFinishedNote(true)
+          setFinishCard(true)
         } else {
           setFinish((current) => ({ ...current, finishDeclined: true }))
         }
@@ -768,6 +766,20 @@ function ReaderPage() {
           finalFocus={bookFocus}
         />
       )}
+      {finishCard && (
+        <FinishCardDialog
+          book={data.book}
+          loadCover={loadCover}
+          fallbackReview={null}
+          onChanged={() =>
+            void router.invalidate({
+              filter: (match) => match.routeId === "/_member/_lobi",
+            })
+          }
+          onClose={() => setFinishCard(false)}
+          finalFocus={bookFocus}
+        />
+      )}
       <FootnotePopup
         key={
           footnote
@@ -805,9 +817,6 @@ function ReaderPage() {
           onLater={() => setFinishSnoozed(true)}
         />
       )}
-      {finishedNote && (
-        <output className="reader-note">Masuk ke koleksi Sudah dibaca</output>
-      )}
       {goalToast && <GoalToast />}
       <ChapterEdge
         // Out of the way of anything open over the book (spec pindah bab §3.4).
@@ -818,6 +827,7 @@ function ReaderPage() {
           panel === null &&
           noteFor === null &&
           sharing === null &&
+          !finishCard &&
           offer === null
             ? edge
             : null
