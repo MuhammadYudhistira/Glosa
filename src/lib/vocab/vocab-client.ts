@@ -44,7 +44,8 @@ function setState(next: VocabState) {
 /** For tests: the state the hooks read. */
 export const vocabStateForTests = (): VocabState => state
 
-const keepaliveFetch: typeof fetch = (input, init) => fetch(input, { ...init, keepalive: true })
+const keepaliveFetch: typeof fetch = (input, init) =>
+  fetch(input, { ...init, keepalive: true })
 const isOnline = () => navigator.onLine
 
 let syncs: Array<QueueSync> | null = null
@@ -58,9 +59,15 @@ function vocabSyncs(): Array<QueueSync> {
       batchSize: MAX_WORDS_READ_BATCH,
       send: (batch) =>
         recordWordsReadFn({
-          data: batch.map(({ bookId, section, words, last }) => ({ bookId, section, words, last })),
+          data: batch.map(({ bookId, section, words, last }) => ({
+            bookId,
+            section,
+            words,
+            last,
+          })),
         }),
-      onRefused: (refused) => console.error("the server refused words read", refused.length),
+      onRefused: (refused) =>
+        console.error("the server refused words read", refused.length),
     }),
     createQueueSync<TapItem>({
       store: tapStore,
@@ -70,10 +77,16 @@ function vocabSyncs(): Array<QueueSync> {
       // Often sent as the reader closes.
       send: (batch) =>
         recordLookupsFn({
-          data: batch.map(({ bookId, word, taps, at }) => ({ bookId, word, taps, at })),
+          data: batch.map(({ bookId, word, taps, at }) => ({
+            bookId,
+            word,
+            taps,
+            at,
+          })),
           fetch: keepaliveFetch,
         }),
-      onRefused: (refused) => console.error("the server refused taps", refused.length),
+      onRefused: (refused) =>
+        console.error("the server refused taps", refused.length),
       debounceMs: 10_000,
     }),
     createQueueSync<MeetItem>({
@@ -90,7 +103,8 @@ function vocabSyncs(): Array<QueueSync> {
             count,
           })),
         }),
-      onRefused: (refused) => console.error("the server refused meetings", refused.length),
+      onRefused: (refused) =>
+        console.error("the server refused meetings", refused.length),
     }),
   ]
   return syncs
@@ -115,7 +129,10 @@ function readCache(): Promise<void> {
     })
     .catch((error: unknown) => {
       if (epoch === wipeEpoch) cacheRead = null
-      console.error("reading the vocabulary numbers on this device failed", error)
+      console.error(
+        "reading the vocabulary numbers on this device failed",
+        error
+      )
     })
   return cacheRead
 }
@@ -129,7 +146,11 @@ export async function recordTap(bookId: string, word: string): Promise<void> {
 }
 
 /** Reading time in a section; true once the section counts as read (spec 3D §3.1). */
-export function addSectionReading(bookId: string, section: number, ms: number): Promise<boolean> {
+export function addSectionReading(
+  bookId: string,
+  section: number,
+  ms: number
+): Promise<boolean> {
   return addSectionTime(bookId, section, ms)
 }
 
@@ -184,7 +205,11 @@ const subscribe = (listener: () => void) => {
 const SERVER_STATE: VocabState = { cache: null }
 
 function useVocabState(): VocabState {
-  const snapshot = useSyncExternalStore(subscribe, () => state, () => SERVER_STATE)
+  const snapshot = useSyncExternalStore(
+    subscribe,
+    () => state,
+    () => SERVER_STATE
+  )
   useEffect(() => {
     void readCache()
   }, [])

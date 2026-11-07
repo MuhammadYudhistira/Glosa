@@ -23,7 +23,8 @@ export function wordParts(
 ): Array<Array<string>> {
   if (words.length === 0) return [[]]
   const parts: Array<Array<string>> = []
-  for (let i = 0; i < words.length; i += size) parts.push(words.slice(i, i + size))
+  for (let i = 0; i < words.length; i += size)
+    parts.push(words.slice(i, i + size))
   return parts
 }
 

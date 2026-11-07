@@ -20,7 +20,11 @@ const BOOK = "00000000-0000-4000-8000-000000000001"
 describe("vocab store", () => {
   beforeEach(async () => {
     const db = localDb()
-    await Promise.all([db.sectionTime.clear(), db.vocabQueue.clear(), db.meta.clear()])
+    await Promise.all([
+      db.sectionTime.clear(),
+      db.vocabQueue.clear(),
+      db.meta.clear(),
+    ])
   })
 
   it("says a section is read once, when its time reaches 60 s across visits", async () => {
@@ -36,7 +40,11 @@ describe("vocab store", () => {
     await queueTap(BOOK, "mat", "2026-11-06T10:00:00.000Z")
     await queueTap(BOOK, "mat", "2026-11-06T10:01:00.000Z")
     const [sent] = await tapStore.pending()
-    expect(sent).toMatchObject({ word: "mat", taps: 2, at: "2026-11-06T10:01:00.000Z" })
+    expect(sent).toMatchObject({
+      word: "mat",
+      taps: 2,
+      at: "2026-11-06T10:01:00.000Z",
+    })
     await queueTap(BOOK, "mat", "2026-11-06T10:02:00.000Z") // while in flight
     await tapStore.confirm([sent])
     expect(await tapStore.pending()).toMatchObject([{ word: "mat", taps: 1 }])
@@ -58,10 +66,12 @@ describe("vocab store", () => {
   it("queues a section's parts in order and drops them once sent", async () => {
     await queueWordsRead(BOOK, 1, [["a", "b"], ["c"]])
     const pending = await wordsReadStore.pending()
-    expect(pending.map(({ part, last, words }) => [part, last, words])).toEqual([
-      [0, false, ["a", "b"]],
-      [1, true, ["c"]],
-    ])
+    expect(pending.map(({ part, last, words }) => [part, last, words])).toEqual(
+      [
+        [0, false, ["a", "b"]],
+        [1, true, ["c"]],
+      ]
+    )
     await wordsReadStore.confirm(pending.slice(0, 1))
     expect(await wordsReadStore.pending()).toHaveLength(1)
     await wordsReadStore.revert(pending[1])
@@ -70,7 +80,10 @@ describe("vocab store", () => {
 
   it("keeps the last summaries", async () => {
     expect(await loadVocabCache()).toBeNull()
-    const cache = { books: { [BOOK]: { read: 300, lookedUp: 4 } }, meetings: {} }
+    const cache = {
+      books: { [BOOK]: { read: 300, lookedUp: 4 } },
+      meetings: {},
+    }
     await saveVocabCache(cache)
     expect(await loadVocabCache()).toEqual(cache)
   })

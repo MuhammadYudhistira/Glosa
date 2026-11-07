@@ -24,7 +24,9 @@ export function countMeetings(
   }
   const counts: Record<string, number> = {}
   for (const { start, end } of findSavedSpans(text, savedFormsOf(forms))) {
-    for (const headword of headwordsOf.get(normalizeWord(text.slice(start, end))) ?? []) {
+    for (const headword of headwordsOf.get(
+      normalizeWord(text.slice(start, end))
+    ) ?? []) {
       counts[headword] = (counts[headword] ?? 0) + 1
     }
   }
@@ -43,10 +45,15 @@ export function meetingCounts(
 ): Array<{ headword: string; count: number }> {
   const savedHere = new Set(
     saved
-      .filter((word) => word.bookId === bookId && sectionOfCfi(word.cfi) === section)
+      .filter(
+        (word) => word.bookId === bookId && sectionOfCfi(word.cfi) === section
+      )
       .map((word) => word.headword)
   )
   return saved
-    .filter((word) => (counts[word.headword] ?? 0) > 0 && !savedHere.has(word.headword))
+    .filter(
+      (word) =>
+        (counts[word.headword] ?? 0) > 0 && !savedHere.has(word.headword)
+    )
     .map((word) => ({ headword: word.headword, count: counts[word.headword] }))
 }

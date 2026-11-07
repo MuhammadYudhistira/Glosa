@@ -10,7 +10,13 @@ export type WordsReadItem = {
   last: boolean
 }
 /** Taps on one word in one book not sent yet (spec 3D §3.3). */
-export type TapItem = { key: string; bookId: string; word: string; taps: number; at: string }
+export type TapItem = {
+  key: string
+  bookId: string
+  word: string
+  taps: number
+  at: string
+}
 /** A saved word's meetings in one section (spec 3D §3.4). */
 export type MeetItem = {
   key: string
@@ -27,10 +33,15 @@ export type BookVocab = {
 }
 export type WordMeetings = Record<string, { meetings: number; books: number }>
 /** What the lobby and Kosakata show without a request per book. */
-export type VocabCache = { books: Record<string, VocabSummary>; meetings: WordMeetings }
+export type VocabCache = {
+  books: Record<string, VocabSummary>
+  meetings: WordMeetings
+}
 
-export type VocabAnswer = { ok: true; cache: VocabCache } | { ok: false; code: string }
-export type BookVocabAnswer = { ok: true; vocab: BookVocab } | { ok: false; code: string }
+export type VocabAnswer =
+  { ok: true; cache: VocabCache } | { ok: false; code: string }
+export type BookVocabAnswer =
+  { ok: true; vocab: BookVocab } | { ok: false; code: string }
 
 export const MAX_TAP_BATCH = 50
 export const MAX_MEET_BATCH = 50

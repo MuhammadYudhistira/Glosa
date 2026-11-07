@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { MAX_WORDS_PER_PART, sectionWords, textOfDocument, wordParts } from "./words"
+import {
+  MAX_WORDS_PER_PART,
+  sectionWords,
+  textOfDocument,
+  wordParts,
+} from "./words"
 
 describe("section words", () => {
   it("keeps each word once, as the reader looks it up", () => {
@@ -22,6 +27,9 @@ describe("section words", () => {
       "<html><head><style>p{}</style></head><body><p>One</p><script>var two</script><p>three</p></body></html>",
       "text/html"
     )
-    expect(textOfDocument(doc).split(/\s+/).filter(Boolean)).toEqual(["One", "three"])
+    expect(textOfDocument(doc).split(/\s+/).filter(Boolean)).toEqual([
+      "One",
+      "three",
+    ])
   })
 })

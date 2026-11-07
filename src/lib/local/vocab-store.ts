@@ -1,6 +1,11 @@
 import type { QueueStore } from "@/lib/sync/queue-sync"
 import { VocabCacheSchema } from "@/lib/vocab/schemas"
-import type { MeetItem, TapItem, VocabCache, WordsReadItem } from "@/lib/vocab/types"
+import type {
+  MeetItem,
+  TapItem,
+  VocabCache,
+  WordsReadItem,
+} from "@/lib/vocab/types"
 import { type LocalVocabOp, localDb } from "./db"
 
 /** A section counts as read after this much reading time in it (spec 3D §3.1). */
@@ -22,13 +27,22 @@ export async function addSectionTime(
     if (row?.done === 1) return false
     const total = (row?.ms ?? 0) + ms
     const done = total >= SECTION_READ_MS
-    await db.sectionTime.put({ key, bookId, section, ms: total, done: done ? 1 : 0 })
+    await db.sectionTime.put({
+      key,
+      bookId,
+      section,
+      ms: total,
+      done: done ? 1 : 0,
+    })
     return done
   })
 }
 
 async function pendingOf<T>(kind: LocalVocabOp["kind"]): Promise<Array<T>> {
-  const rows = await localDb().vocabQueue.where("kind").equals(kind).sortBy("queuedAt")
+  const rows = await localDb()
+    .vocabQueue.where("kind")
+    .equals(kind)
+    .sortBy("queuedAt")
   return rows.map((row) => row.item as T)
 }
 
@@ -54,7 +68,11 @@ export const tapStore: QueueStore<TapItem> = {
         if (!row) continue
         const left = (row.item as TapItem).taps - item.taps
         if (left <= 0) await db.vocabQueue.delete(item.key)
-        else await db.vocabQueue.put({ ...row, item: { ...(row.item as TapItem), taps: left } })
+        else
+          await db.vocabQueue.put({
+            ...row,
+            item: { ...(row.item as TapItem), taps: left },
+          })
       }
     })
   },
@@ -77,7 +95,11 @@ export const meetStore: QueueStore<MeetItem> = {
   revert: (item) => dropAll([item]),
 }
 
-export async function queueTap(bookId: string, word: string, at: string): Promise<void> {
+export async function queueTap(
+  bookId: string,
+  word: string,
+  at: string
+): Promise<void> {
   const db = localDb()
   const key = `tap ${bookId} ${word}`
   await db.transaction("rw", db.vocabQueue, async () => {
@@ -105,7 +127,14 @@ export async function queueWordsRead(
         key,
         kind: "read" as const,
         queuedAt: now + part,
-        item: { key, bookId, section, part, words, last: part === parts.length - 1 },
+        item: {
+          key,
+          bookId,
+          section,
+          part,
+          words,
+          last: part === parts.length - 1,
+        },
       }
     })
   )

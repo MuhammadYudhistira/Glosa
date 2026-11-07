@@ -28,12 +28,16 @@ vi.mock("@/lib/local/saved-words", async (importOriginal) => ({
 }))
 
 const BOOK = "00000000-0000-4000-8000-000000000001"
-const ok = (n: number) => Promise.resolve({ ok: true, results: Array<"ok">(n).fill("ok") })
+const ok = (n: number) =>
+  Promise.resolve({ ok: true, results: Array<"ok">(n).fill("ok") })
 
 describe("vocab client", () => {
   beforeEach(async () => {
     vi.clearAllMocks()
-    Object.defineProperty(navigator, "onLine", { value: true, configurable: true })
+    Object.defineProperty(navigator, "onLine", {
+      value: true,
+      configurable: true,
+    })
     server.recordWordsReadFn.mockImplementation(({ data }) => ok(data.length))
     server.recordLookupsFn.mockImplementation(({ data }) => ok(data.length))
     server.recordMeetingsFn.mockImplementation(({ data }) => ok(data.length))
@@ -56,7 +60,14 @@ describe("vocab client", () => {
     )
     expect(server.recordWordsReadFn).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: [{ bookId: BOOK, section: 2, words: ["cat", "mat", "on", "sat", "the"], last: true }],
+        data: [
+          {
+            bookId: BOOK,
+            section: 2,
+            words: ["cat", "mat", "on", "sat", "the"],
+            last: true,
+          },
+        ],
       })
     )
     expect(server.loadVocabFn.mock.invocationCallOrder[0]).toBeGreaterThan(
@@ -77,9 +88,14 @@ describe("vocab client", () => {
     const forms = { run: ["run", "ran"], mat: ["mat"] }
     await queueSectionRead(BOOK, 2, "He ran to the mat and ran back.", forms)
     await queueSectionRead(BOOK, 3, "A mat. They run.", forms)
-    server.loadVocabFn.mockResolvedValue({ ok: true, cache: { books: {}, meetings: {} } })
+    server.loadVocabFn.mockResolvedValue({
+      ok: true,
+      cache: { books: {}, meetings: {} },
+    })
     await refreshVocab()
-    const sent = server.recordMeetingsFn.mock.calls.flatMap(([{ data }]) => data)
+    const sent = server.recordMeetingsFn.mock.calls.flatMap(
+      ([{ data }]) => data
+    )
     expect(sent).toEqual(
       expect.arrayContaining([
         { bookId: BOOK, headword: "mat", section: 2, count: 1 },
@@ -113,7 +129,10 @@ describe("vocab client", () => {
     await refreshVocab()
     server.loadVocabFn.mockResolvedValueOnce({ ok: false, code: "unknown" })
     await refreshVocab()
-    expect(vocabStateForTests().cache?.books[BOOK]).toEqual({ read: 300, lookedUp: 0 })
+    expect(vocabStateForTests().cache?.books[BOOK]).toEqual({
+      read: 300,
+      lookedUp: 0,
+    })
     await clearLocalData()
     expect(vocabStateForTests().cache).toBeNull()
   })

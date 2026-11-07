@@ -56,7 +56,13 @@ export type LocalReadingTime = {
 }
 
 /** Reading time in one section of a book on this device (spec 3D §3.1); done once read. */
-export type LocalSectionTime = { key: string; bookId: string; section: number; ms: number; done: 0 | 1 }
+export type LocalSectionTime = {
+  key: string
+  bookId: string
+  section: number
+  ms: number
+  done: 0 | 1
+}
 /** A waiting change of 3D (spec 3D §5.3): one table, three kinds. */
 export type LocalVocabOp = {
   key: string

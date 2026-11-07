@@ -41,12 +41,11 @@ function PrivacyPage() {
           dihapus.
         </li>
         <li>
-          Kosakata dari bacaan: kata yang kamu ketuk di tiap buku, kata dari
-          bab yang sudah kamu baca (untuk menghitung persen kata yang kamu
-          pahami tanpa kamus), dan berapa kali kata tersimpan muncul lagi. Data
-          ini tidak dibagikan dan ikut terhapus saat akunmu dihapus; data per
-          buku ikut terhapus bersama bukunya, kecuali hitungan kata yang muncul
-          lagi.
+          Kosakata dari bacaan: kata yang kamu ketuk di tiap buku, kata dari bab
+          yang sudah kamu baca (untuk menghitung persen kata yang kamu pahami
+          tanpa kamus), dan berapa kali kata tersimpan muncul lagi. Data ini
+          tidak dibagikan dan ikut terhapus saat akunmu dihapus; data per buku
+          ikut terhapus bersama bukunya, kecuali hitungan kata yang muncul lagi.
         </li>
         <li>
           Data teknis: waktu masuk terakhir dan laporan error untuk memperbaiki
