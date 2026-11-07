@@ -49,12 +49,14 @@ export function RecapPanel({
   const [sharing, setSharing] = useState(false)
   const label = periodLabel(period)
   const ongoing = isOngoing(period, today)
+  // The period is a new object each render; its dates are stable.
+  const { from, to } = periodRange(period)
   const view = useMemo(
     () =>
       state.status === "ready"
-        ? recapView(state.recap, periodRange(period), today)
+        ? recapView(state.recap, { from, to }, today)
         : null,
-    [state, period, today]
+    [state, from, to, today]
   )
   // Finished in the period and still on the shelf, newest first.
   const onShelf = useMemo(() => {

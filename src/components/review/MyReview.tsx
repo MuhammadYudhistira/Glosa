@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useId, useState } from "react"
 import { FinishCardDialog } from "@/components/review/FinishCardDialog"
 import { Button } from "@/components/ui/button"
 import type { ShelfBook } from "@/lib/book-types"
@@ -21,6 +21,7 @@ export function MyReview({
 }) {
   const [open, setOpen] = useState<"card" | "form" | null>(null)
   const [expanded, setExpanded] = useState(false)
+  const noteId = useId()
   const loadCover = useCallback(
     () => fetchCoverBlob(book.coverUrl),
     [book.coverUrl]
@@ -28,7 +29,8 @@ export function MyReview({
   if (book.finishedAt === null) return null
   const { review } = book
   // Only decides whether "Baca selengkapnya" shows; the CSS does the clamping.
-  const longNote = (review?.note?.length ?? 0) > 140
+  const note = review?.note ?? ""
+  const longNote = note.length > 140 || note.split("\n").length > 3
 
   return (
     <section aria-label="Ulasan saya" className="space-y-2">
@@ -49,6 +51,7 @@ export function MyReview({
           </p>
           {review.note && (
             <p
+              id={noteId}
               data-testid="review-note"
               className={
                 expanded
@@ -63,6 +66,8 @@ export function MyReview({
             <Button
               variant="ghost"
               size="sm"
+              aria-expanded={expanded}
+              aria-controls={noteId}
               onClick={() => setExpanded(!expanded)}
             >
               {expanded ? "Tutup" : "Baca selengkapnya"}

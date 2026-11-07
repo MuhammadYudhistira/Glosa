@@ -100,4 +100,48 @@ describe("MyReview", () => {
     fireEvent.click(screen.getByRole("button", { name: "Baca selengkapnya" }))
     expect(note).not.toHaveClass("line-clamp-3")
   })
+
+  it("ties the toggle to the note with aria-expanded and aria-controls", () => {
+    render(
+      <MyReview
+        book={book({
+          finishedAt: DONE,
+          review: {
+            rating: 3,
+            difficulty: null,
+            note: "x ".repeat(300),
+            updatedAt: DONE,
+          },
+        })}
+        onChanged={vi.fn()}
+      />
+    )
+    const toggle = screen.getByRole("button", { name: "Baca selengkapnya" })
+    const note = screen.getByTestId("review-note")
+    expect(toggle).toHaveAttribute("aria-expanded", "false")
+    expect(toggle).toHaveAttribute("aria-controls", note.id)
+    expect(note.id).not.toBe("")
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute("aria-expanded", "true")
+  })
+
+  it("offers the toggle for a short note of more than three lines", () => {
+    render(
+      <MyReview
+        book={book({
+          finishedAt: DONE,
+          review: {
+            rating: 3,
+            difficulty: null,
+            note: "a\nb\nc\nd",
+            updatedAt: DONE,
+          },
+        })}
+        onChanged={vi.fn()}
+      />
+    )
+    expect(
+      screen.getByRole("button", { name: "Baca selengkapnya" })
+    ).toBeInTheDocument()
+  })
 })

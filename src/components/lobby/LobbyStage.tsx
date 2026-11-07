@@ -112,11 +112,13 @@ export function LobbyStage({
       return
     }
     const next = recapBubbleFor(habit.today, habit.days, readShownBubbles())
-    if (next) {
-      rememberBubble(next.key)
-      setRecapBubble(next)
-    }
+    if (next) setRecapBubble(next)
   }, [recapBubble, habit.status, habit.today, habit.days])
+  // Remembered once it is on screen: behind a popup nobody sees it.
+  const shownBubbleKey = !popup && recapBubble ? recapBubble.key : null
+  useEffect(() => {
+    if (shownBubbleKey) rememberBubble(shownBubbleKey)
+  }, [shownBubbleKey])
   // A popup opening closes the book's details, or they would come back after
   // it and take its focus. A book picked over a popup stays: popup was on.
   const [wasPopup, setWasPopup] = useState(popup)

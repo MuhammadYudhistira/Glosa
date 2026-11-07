@@ -21,6 +21,26 @@ vi.mock("./LobbyScene", () => ({
   },
 }))
 
+const bubbles = vi.hoisted(() => ({ remember: vi.fn() }))
+vi.mock("@/lib/habit/habit-client", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useReadingHabit: () => ({
+    status: "ready",
+    today: "2026-11-03",
+    days: [],
+    goals: { dailyGoalMinutes: null },
+    summary: { todayDone: false, todaySeconds: 0, todayGoalSeconds: null },
+  }),
+}))
+vi.mock("@/lib/recap/bubble", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  recapBubbleFor: () => ({
+    key: "2026-10",
+    label: "Kilas balik Oktober sudah siap",
+  }),
+  rememberBubble: bubbles.remember,
+}))
+
 const member: SessionUser = {
   id: "11111111-1111-4111-8111-111111111111",
   email: "ani@glosa.test",
@@ -85,6 +105,7 @@ describe("LobbyStage", () => {
   afterEach(() => {
     unstubWideScreen()
     scene.props = null
+    bubbles.remember.mockClear()
   })
 
   it("is the lobby page, with its panels and a live scene", async () => {
@@ -161,5 +182,16 @@ describe("LobbyStage", () => {
     expect(
       await screen.findByRole("region", { name: sherlock.title })
     ).toBeInTheDocument()
+  })
+
+  it("remembers the Kilas balik bubble only once it is on screen", async () => {
+    stubWideScreen(true)
+    const { router } = renderWithRouter(<RoutedStage />, "/shelf")
+    await screen.findByLabelText("Cari di rakmu")
+    expect(bubbles.remember).not.toHaveBeenCalled()
+    await act(() => router.navigate({ to: "/lobby" }))
+    await vi.waitFor(() =>
+      expect(bubbles.remember).toHaveBeenCalledWith("2026-10")
+    )
   })
 })

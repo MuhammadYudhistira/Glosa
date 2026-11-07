@@ -22,8 +22,12 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
 }))
+const shareBuilds = vi.hoisted(() => [] as Array<unknown>)
 vi.mock("@/components/share/ShareImage", () => ({
-  ShareImage: () => <div>ShareImage</div>,
+  ShareImage: ({ build }: { build: unknown }) => {
+    shareBuilds.push(build)
+    return <div>ShareImage</div>
+  },
 }))
 
 const book = (over: Partial<ShelfBook>): ShelfBook => ({ ...sherlock, ...over })
@@ -143,5 +147,15 @@ describe("RecapPanel", () => {
     expect(
       screen.getByRole("dialog", { name: "Bagikan kilas balik" })
     ).toBeInTheDocument()
+  })
+
+  it("hands the share image the same build when the parent re-renders with an equal period", () => {
+    shareBuilds.length = 0
+    const { rerender } = render(<RecapPanel {...base} />)
+    fireEvent.click(screen.getByRole("button", { name: "Bagikan" }))
+    rerender(<RecapPanel {...base} period={parsePeriod("2026-10", TODAY)} />)
+    rerender(<RecapPanel {...base} period={parsePeriod("2026-10", TODAY)} />)
+    expect(shareBuilds.length).toBeGreaterThan(1)
+    expect(new Set(shareBuilds).size).toBe(1)
   })
 })
