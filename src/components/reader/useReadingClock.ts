@@ -16,16 +16,23 @@ export const TICK_MS = 30_000
  */
 export function useReadingClock(
   bookId: string,
-  paused: boolean
+  paused: boolean,
+  /** Gets the milliseconds of every save, for the time per section (plan 3D, decision 6). */
+  onCounted?: (ms: number) => void
 ): { onPage: () => void; onActivity: () => void } {
   const clockRef = useRef<ReadingClock | null>(null)
   clockRef.current ??= createReadingClock()
+  const onCountedRef = useRef(onCounted)
+  onCountedRef.current = onCounted
 
   const save = useCallback(
-    (pieces: Array<ClockPiece>) =>
-      recordReadingTime(bookId, pieces).catch((error: unknown) =>
+    (pieces: Array<ClockPiece>) => {
+      const total = pieces.reduce((sum, piece) => sum + piece.ms, 0)
+      if (total > 0) onCountedRef.current?.(total)
+      return recordReadingTime(bookId, pieces).catch((error: unknown) =>
         console.error("saving the reading time failed", error)
-      ),
+      )
+    },
     [bookId]
   )
 

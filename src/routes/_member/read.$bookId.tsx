@@ -70,6 +70,12 @@ import { useWakeLock } from "@/lib/use-wake-lock"
 import { savedChoice } from "@/lib/words/lookup"
 import { savedFormsOf } from "@/lib/words/saved-marks"
 import {
+  addSectionReading,
+  flushVocab,
+  queueSectionRead,
+  recordTap,
+} from "@/lib/vocab/vocab-client"
+import {
   refreshSavedForms,
   useSavedForms,
   wordSync,
@@ -238,12 +244,45 @@ function ReaderPage() {
   // A panel over the book stops the reading clock (spec 3B §3.1); word and
   // footnote popups do not.
   const clockPaused = panel !== null || noteFor !== null || sharing !== null
-  const readingClock = useReadingClock(bookId, clockPaused)
+  const shownSection = useRef<number | null>(null)
+  const formsRef = useRef(formsByHeadword)
+  formsRef.current = formsByHeadword
+  // Time goes to the section shown when the clock hands it over: show()
+  // hands over the page before, while shownSection still names its section
+  // (plan 3D, decision 6). A section read for 60 s gives its words (spec 3D §3.1).
+  const onCounted = useCallback(
+    (ms: number) => {
+      const section = shownSection.current
+      if (section === null) return
+      void addSectionReading(bookId, section, ms)
+        .then(async (read) => {
+          if (!read) return
+          const text = await controlsRef.current?.sectionText(section)
+          if (text)
+            await queueSectionRead(bookId, section, text, formsRef.current)
+        })
+        .catch((error: unknown) =>
+          console.error("counting the section read failed", error)
+        )
+    },
+    [bookId]
+  )
+  const readingClock = useReadingClock(bookId, clockPaused, onCounted)
   const { onPage: onReadingPage, onActivity: onReadingActivity } = readingClock
   // For onRelocate, which must not change with the settings.
   const flowRef = useRef(settings.flow)
   flowRef.current = settings.flow
-  const shownSection = useRef<number | null>(null)
+  // Sends the waiting vocabulary when the tab is hidden and when the reader closes.
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden") void flushVocab()
+    }
+    document.addEventListener("visibilitychange", onHide)
+    return () => {
+      document.removeEventListener("visibilitychange", onHide)
+      void flushVocab()
+    }
+  }, [])
   const habit = useReadingHabit()
   // Today's numbers and goals, and the waiting time sent (plan 3B, decision 10).
   useQueueFlush(user.id, refreshHabit)
@@ -390,12 +429,18 @@ function ReaderPage() {
     setViewError(error instanceof EpubError ? error.code : "unknown")
   }, [])
 
-  const openWord = useCallback((next: WordTap) => {
-    tappedAtCfi.current = shownCfi.current
-    setMarked(null)
-    setFootnote(null)
-    setTap(next)
-  }, [])
+  const openWord = useCallback(
+    (next: WordTap) => {
+      tappedAtCfi.current = shownCfi.current
+      setMarked(null)
+      setFootnote(null)
+      setTap(next)
+      void recordTap(bookId, next.word).catch((error: unknown) =>
+        console.error("recording the tap failed", error)
+      )
+    },
+    [bookId]
+  )
   const closeWord = useCallback(() => setTap(null), [])
   const openHighlight = useCallback((next: HighlightTap) => {
     tappedAtCfi.current = shownCfi.current

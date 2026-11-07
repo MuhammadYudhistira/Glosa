@@ -41,6 +41,7 @@ import {
   chapterLabel,
   createEdgePull,
 } from "./chapter-edge"
+import { textOfDocument } from "@/lib/vocab/words"
 import { loadReaderFonts } from "./reader-fonts"
 import {
   type ReaderMove,
@@ -85,6 +86,8 @@ export type ReaderControls = {
   canOpen: (cfi: string) => Promise<boolean>
   /** The chapter of each place, for the annotations panel. Never rejects. */
   chaptersOf: (cfis: ReadonlyArray<string>) => Promise<Array<string | null>>
+  /** A section's text, for the words read (plan 3D, decision 5). Never rejects. */
+  sectionText: (index: number) => Promise<string | null>
   /** The book's cover from the EPUB, or null. Never rejects. */
   cover: () => Promise<Blob | null>
 }
@@ -250,6 +253,16 @@ async function canOpen(view: View, cfi: string): Promise<boolean> {
     return Boolean(anchor(doc))
   } catch {
     return false
+  }
+}
+
+/** A section's text from its own document; null when it cannot be read. */
+async function sectionText(view: View, index: number): Promise<string | null> {
+  try {
+    const doc = await view.book.sections[index]?.createDocument?.()
+    return doc ? textOfDocument(doc) : null
+  } catch {
+    return null
   }
 }
 
@@ -1052,6 +1065,7 @@ export function ReaderView({
             move,
             clearSelection,
             chaptersOf: (cfis) => chaptersOf(current, cfis),
+            sectionText: (index) => sectionText(current, index),
             canOpen: (cfi) => canOpen(current, cfi),
             cover: () => epub.getCover().catch(() => null),
           },

@@ -100,4 +100,14 @@ describe("useReadingClock", () => {
     act(() => result.current.onPage())
     expect(total()).toBe(63_000)
   })
+
+  it("tells how much time each save counted", () => {
+    const onCounted = vi.fn()
+    const { result } = renderHook(() => useReadingClock(BOOK, false, onCounted))
+    act(() => result.current.onPage())
+    vi.setSystemTime(T0 + 12_000)
+    act(() => result.current.onPage())
+    expect(onCounted).toHaveBeenCalledWith(12_000)
+    expect(onCounted.mock.calls.every(([ms]) => (ms as number) > 0)).toBe(true)
+  })
 })
