@@ -204,20 +204,69 @@ describe("vocabulary from reading", () => {
   })
 
   it("keeps meetings after the book is deleted, and drops them with the word", async () => {
-    await adminClient().from("books").delete().eq("id", books.ani2)
-    expect(await rpc(ani, "word_meeting_counts", {})).toEqual([
-      { headword: "mat", meetings: 9, books: 2 },
-    ])
-    const { data: read } = await adminClient()
+    // Give book ani2 real rows first, so the cascade below has something to remove.
+    expect(
+      await rpc(ani, "record_words_read", {
+        p_entries: [
+          {
+            book_id: books.ani2,
+            section: 1,
+            words: ["cat", "dog"],
+            last: true,
+          },
+        ],
+      })
+    ).toEqual(["ok"])
+    expect(
+      await rpc(ani, "record_lookups", {
+        p_entries: [
+          {
+            book_id: books.ani2,
+            word: "cat",
+            taps: 1,
+            at: "2026-11-03T08:00:00Z",
+          },
+        ],
+      })
+    ).toEqual(["ok"])
+    const admin = adminClient()
+    const { data: readBefore, error: readBeforeError } = await admin
       .from("book_words_read")
       .select("book_id")
       .eq("book_id", books.ani2)
-    expect(read).toEqual([])
-    await adminClient()
+    expect(readBeforeError).toBeNull()
+    expect(readBefore).toEqual([{ book_id: books.ani2 }])
+    const { data: lookupsBefore, error: lookupsBeforeError } = await admin
+      .from("word_lookups")
+      .select("book_id")
+      .eq("book_id", books.ani2)
+    expect(lookupsBeforeError).toBeNull()
+    expect(lookupsBefore).toEqual([{ book_id: books.ani2 }])
+
+    const { error: deleteBookError } = await admin
+      .from("books")
+      .delete()
+      .eq("id", books.ani2)
+    expect(deleteBookError).toBeNull()
+    // The meeting in ani2 stays: word_meetings has no foreign key to books.
+    expect(await rpc(ani, "word_meeting_counts", {})).toEqual([
+      { headword: "mat", meetings: 9, books: 2 },
+    ])
+    for (const table of ["book_words_read", "word_lookups"] as const) {
+      const { data, error } = await admin
+        .from(table)
+        .select("book_id")
+        .eq("book_id", books.ani2)
+      expect(error, table).toBeNull()
+      expect(data, table).toEqual([])
+    }
+
+    const { error: deleteWordError } = await admin
       .from("saved_words")
       .delete()
       .eq("user_id", ids.ani)
       .eq("headword", "mat")
+    expect(deleteWordError).toBeNull()
     expect(await rpc(ani, "word_meeting_counts", {})).toEqual([])
   })
 
@@ -253,21 +302,36 @@ describe("vocabulary from reading", () => {
     ).id
     const book = await newTestBook(dora)
     const admin = adminClient()
-    await admin
-      .from("book_words_read")
-      .insert({ user_id: dora, book_id: book, words: ["a"] })
-    await admin
-      .from("word_lookups")
-      .insert({ user_id: dora, book_id: book, word: "a", taps: 1 })
-    await admin
-      .from("word_meetings")
-      .insert({
+    const seeded = [
+      await admin
+        .from("book_words_read")
+        .insert({ user_id: dora, book_id: book, words: ["a"] }),
+      await admin
+        .from("word_lookups")
+        .insert({ user_id: dora, book_id: book, word: "a", taps: 1 }),
+      await admin.from("word_meetings").insert({
         user_id: dora,
         headword: "a",
         book_id: book,
         section: 0,
         count: 1,
-      })
+      }),
+    ]
+    seeded.forEach(({ error }, i) => expect(error, `seed ${i}`).toBeNull())
+    // Each table must hold the seeded row before the account goes, or the
+    // zero counts below would prove nothing.
+    for (const table of [
+      "book_words_read",
+      "word_lookups",
+      "word_meetings",
+    ] as const) {
+      const { count, error } = await admin
+        .from(table)
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", dora)
+      expect(error, table).toBeNull()
+      expect(count, table).toBe(1)
+    }
     const { error } = await admin.auth.admin.deleteUser(dora)
     if (error) throw error
     forgetTestMember(dora)
@@ -276,10 +340,11 @@ describe("vocabulary from reading", () => {
       "word_lookups",
       "word_meetings",
     ] as const) {
-      const { count } = await admin
+      const { count, error: countError } = await admin
         .from(table)
         .select("*", { count: "exact", head: true })
         .eq("user_id", dora)
+      expect(countError, table).toBeNull()
       expect(count, table).toBe(0)
     }
   })
