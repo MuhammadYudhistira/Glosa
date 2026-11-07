@@ -81,7 +81,7 @@ describe("drawCard", () => {
 
 it("draws a cover with a slot from covers[slot] and ignores a missing one", () => {
   const picture = { tag: "second" } as unknown as CanvasImageSource
-  const layout = {
+  const slotted = {
     width: 1080,
     height: 1080,
     fontSize: 0,
@@ -93,7 +93,7 @@ it("draws a cover with a slot from covers[slot] and ignores a missing one", () =
     ],
   }
   const fake = fakeContext()
-  drawCard(fake.context, layout, "kertas", {
+  drawCard(fake.context, slotted, "kertas", {
     cover: null,
     palette: null,
     seed: "a",

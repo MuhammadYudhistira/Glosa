@@ -27,7 +27,8 @@ export function wrapText(
   if (line) lines.push(line)
   if (lines.length > maxLines) {
     const kept = lines.slice(0, maxLines)
-    kept[maxLines - 1] = `${kept[maxLines - 1]} ${lines.slice(maxLines).join(" ")}`
+    kept[maxLines - 1] =
+      `${kept[maxLines - 1]} ${lines.slice(maxLines).join(" ")}`
     return kept.map((item) => fitText(item, fontName, maxWidth, measure))
   }
   return lines.map((item) => fitText(item, fontName, maxWidth, measure))

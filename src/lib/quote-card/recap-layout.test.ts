@@ -40,9 +40,7 @@ describe("layoutRecapCard", () => {
     const covers = layoutRecapCard(base, fakeMeasure).items.filter(
       (item) => item.kind === "cover"
     )
-    expect(
-      covers.map((item) => (item.kind === "cover" ? item.slot : -1))
-    ).toEqual([0, 1, 2, 3, 4, 5])
+    expect(covers.map((item) => item.slot)).toEqual([0, 1, 2, 3, 4, 5])
     const three = layoutRecapCard(
       { ...base, coverCount: 3 },
       fakeMeasure
