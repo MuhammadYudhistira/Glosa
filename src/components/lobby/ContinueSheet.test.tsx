@@ -4,6 +4,11 @@ import { sherlock } from "@/components/shelf/fixtures"
 import { renderWithRouter } from "@/test/router"
 import { ContinueSheet } from "./ContinueSheet"
 
+// The card dialog pulls in server functions; these tests only check the section.
+vi.mock("@/components/review/FinishCardDialog", () => ({
+  FinishCardDialog: () => null,
+}))
+
 const local = {
   saved: new Set<string>(),
   percentages: new Map<string, number>(),
@@ -54,6 +59,16 @@ describe("ContinueSheet", () => {
       await screen.findByText(
         "Rakmu masih kosong. Bawa buku pertamamu ke sini!"
       )
+    ).toBeInTheDocument()
+  })
+
+  it("shows Ulasan saya in the details of a finished book", async () => {
+    renderSheet({
+      book: { ...sherlock, finishedAt: "2026-11-01T00:00:00Z" },
+    })
+    fireEvent.click(await screen.findByRole("button", { name: "Detail" }))
+    expect(
+      screen.getByRole("region", { name: "Ulasan saya" })
     ).toBeInTheDocument()
   })
 })

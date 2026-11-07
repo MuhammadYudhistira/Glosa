@@ -1,5 +1,6 @@
 import { useServerFn } from "@tanstack/react-start"
 import { useId, useState } from "react"
+import { MyReview } from "@/components/review/MyReview"
 import { Button } from "@/components/ui/button"
 import { BookLoadError, saveBookOffline } from "@/lib/book-download"
 import { bookMessage } from "@/lib/book-messages"
@@ -174,6 +175,8 @@ export function BookActions({
       />
 
       <FinishToggle book={book} offline={offline} onSaved={onShelved} />
+
+      <MyReview book={book} offline={offline} onChanged={onShelved} />
 
       <div className="space-y-1">
         <p className="text-sm font-bold">Di perangkat ini</p>

@@ -17,6 +17,9 @@ vi.mock("@/server/books", () => ({
   updateBookGenreFn: mocks.updateBookGenreFn,
   deleteBookFn: mocks.deleteBookFn,
 }))
+vi.mock("@/components/review/FinishCardDialog", () => ({
+  FinishCardDialog: () => null,
+}))
 vi.mock("@/server/collections", () => ({
   setBookCollectionsFn: vi.fn(),
   setBookFinishedFn: vi.fn(),
@@ -245,5 +248,26 @@ describe("BookActions", () => {
     expect(
       screen.getByRole("button", { name: "Simpan offline" })
     ).toBeDisabled()
+  })
+
+  it("shows Ulasan saya only for a finished book", () => {
+    const props = {
+      saved: false,
+      collections: [],
+      onShelved: vi.fn(),
+      onGenreSaved: vi.fn(),
+      onDeleted: vi.fn(),
+    }
+    const { rerender } = render(<BookActions book={sherlock} {...props} />)
+    expect(screen.queryByRole("region", { name: "Ulasan saya" })).toBeNull()
+    rerender(
+      <BookActions
+        book={{ ...sherlock, finishedAt: "2026-11-01T00:00:00Z" }}
+        {...props}
+      />
+    )
+    expect(
+      screen.getByRole("region", { name: "Ulasan saya" })
+    ).toBeInTheDocument()
   })
 })

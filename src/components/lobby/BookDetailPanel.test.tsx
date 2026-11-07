@@ -8,6 +8,11 @@ import { renderWithRouter } from "@/test/router"
 import { BookDetailPanel } from "./BookDetailPanel"
 import { LobbyTopBar } from "./LobbyTopBar"
 
+// The card dialog pulls in server functions; these tests only check the section.
+vi.mock("@/components/review/FinishCardDialog", () => ({
+  FinishCardDialog: () => null,
+}))
+
 const local = {
   saved: new Set<string>(),
   percentages: new Map<string, number>(),
@@ -82,5 +87,21 @@ describe("BookDetailPanel", () => {
     expect(
       screen.getByRole("heading", { name: "Pride and Prejudice" })
     ).toHaveFocus()
+  })
+
+  it("shows Ulasan saya for a finished book", async () => {
+    renderWithRouter(
+      <BookDetailPanel
+        book={{ ...sherlock, finishedAt: "2026-11-01T00:00:00Z" }}
+        local={local}
+        collections={[]}
+        onClose={vi.fn()}
+        onChanged={vi.fn()}
+        onDeleted={vi.fn()}
+      />
+    )
+    expect(
+      await screen.findByRole("region", { name: "Ulasan saya" })
+    ).toBeInTheDocument()
   })
 })
