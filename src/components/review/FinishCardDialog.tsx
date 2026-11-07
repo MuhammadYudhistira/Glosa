@@ -1,7 +1,7 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { useServerFn } from "@tanstack/react-start"
 import { XIcon } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ReviewForm } from "@/components/review/ReviewForm"
 import { ShareImage } from "@/components/share/ShareImage"
 import { Button } from "@/components/ui/button"
@@ -50,6 +50,7 @@ export function FinishCardDialog({
   onChanged,
   onClose,
   finalFocus,
+  beforeLoad,
 }: {
   book: { id: string; title: string; author: string }
   loadCover: () => Promise<Blob | null>
@@ -59,6 +60,11 @@ export function FinishCardDialog({
   onChanged: () => void
   onClose: () => void
   finalFocus?: () => HTMLElement | null
+  /**
+   * Runs before the summary is asked for, e.g. to send the reading time still
+   * waiting; its errors do not stop the summary from loading.
+   */
+  beforeLoad?: () => Promise<void>
 }) {
   const wide = useWideScreen()
   const online = useOnline()
@@ -68,16 +74,24 @@ export function FinishCardDialog({
   const [review, setReview] = useState<BookReview | null>(fallbackReview)
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
   const blocked = offline || !online
+  // Set once the form saved or deleted: a late summary must not undo that.
+  const touched = useRef(false)
+  const beforeLoadRef = useRef(beforeLoad)
+  beforeLoadRef.current = beforeLoad
 
   useEffect(() => {
     let live = true
-    void loadSummary({ data: { bookId: book.id } })
+    void Promise.resolve()
+      .then(() => beforeLoadRef.current?.())
+      .catch(() => undefined)
+      .then(() => loadSummary({ data: { bookId: book.id } }))
       .then((result) => {
         if (!live) return
         if (result.ok) {
           setLoaded({ status: "ready", summary: result.summary })
-          // The summary is the server's word on the review.
-          setReview(result.summary.review)
+          // The summary is the server's word on the review, unless the form
+          // changed it meanwhile.
+          if (!touched.current) setReview(result.summary.review)
         } else {
           setLoaded({ status: "unavailable" })
         }
@@ -213,7 +227,11 @@ export function FinishCardDialog({
               )}
               {review && <Stars review={review} />}
               <div className="flex flex-wrap gap-2">
-                <Button size="lg" onClick={() => setView("form")}>
+                <Button
+                  size="lg"
+                  disabled={loaded.status === "loading"}
+                  onClick={() => setView("form")}
+                >
                   {review ? "Ubah ulasan" : "Tulis ulasan"}
                 </Button>
                 <Button
@@ -239,6 +257,7 @@ export function FinishCardDialog({
                 offline={blocked}
                 onCancel={back}
                 onSaved={(next) => {
+                  touched.current = true
                   setReview(next)
                   onChanged()
                   back()

@@ -15,7 +15,11 @@ import { QuoteCardDialog } from "@/components/reader/QuoteCardDialog"
 import { GoalToast, useGoalToast } from "@/components/reader/GoalToast"
 import { HabitRing } from "@/components/reader/HabitRing"
 import { useReadingClock } from "@/components/reader/useReadingClock"
-import { refreshHabit, useReadingHabit } from "@/lib/habit/habit-client"
+import {
+  habitSync,
+  refreshHabit,
+  useReadingHabit,
+} from "@/lib/habit/habit-client"
 import { useQueueFlush } from "@/lib/sync/use-queue-flush"
 import { ReaderBack } from "@/components/reader/ReaderBack"
 import {
@@ -141,6 +145,9 @@ function ReaderError({ error }: { error: unknown }) {
     />
   )
 }
+
+/** Sends the reading time still waiting, so the finish card counts it. */
+const flushReadingTime = () => habitSync().flush()
 
 function putAnnotation(annotation: Annotation) {
   annotationSync()
@@ -771,6 +778,7 @@ function ReaderPage() {
           book={data.book}
           loadCover={loadCover}
           fallbackReview={null}
+          beforeLoad={flushReadingTime}
           onChanged={() =>
             void router.invalidate({
               filter: (match) => match.routeId === "/_member/_lobi",

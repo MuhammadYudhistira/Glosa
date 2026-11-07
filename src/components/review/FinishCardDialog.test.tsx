@@ -174,4 +174,54 @@ describe("FinishCardDialog", () => {
     rerender(<FinishCardDialog {...props} />)
     expect(new Set(mocks.shareBuilds).size).toBe(1)
   })
+
+  it("keeps a review deleted meanwhile when the summary answers late", async () => {
+    let resolve: (value: unknown) => void = () => undefined
+    mocks.finishSummaryFn.mockReturnValue(
+      new Promise((done) => {
+        resolve = done
+      })
+    )
+    mocks.deleteReviewFn.mockResolvedValue({ ok: true })
+    const old = { rating: 4, difficulty: null, note: null, updatedAt: "x" }
+    // onClose is a mock here, so the form stays up after the deletion.
+    render(<FinishCardDialog {...props} start="form" fallbackReview={old} />)
+    fireEvent.click(screen.getByRole("button", { name: "Hapus ulasan" }))
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Hapus ulasan" })).toBeNull()
+    )
+    resolve({ ok: true, summary: { ...summary, review: old } })
+    await waitFor(() => expect(mocks.finishSummaryFn).toHaveBeenCalled())
+    await new Promise((done) => setTimeout(done, 20))
+    expect(screen.queryByRole("button", { name: "Hapus ulasan" })).toBeNull()
+  })
+
+  it("disables the review button only while the summary loads", async () => {
+    let resolve: (value: unknown) => void = () => undefined
+    mocks.finishSummaryFn.mockReturnValue(
+      new Promise((done) => {
+        resolve = done
+      })
+    )
+    render(<FinishCardDialog {...props} />)
+    expect(screen.getByRole("button", { name: "Tulis ulasan" })).toBeDisabled()
+    resolve({ ok: false, code: "unknown" })
+    await screen.findByText("Ringkasan belum bisa dimuat")
+    expect(screen.getByRole("button", { name: "Tulis ulasan" })).toBeEnabled()
+  })
+
+  it("runs beforeLoad before it asks for the summary, and loads anyway if it throws", async () => {
+    const order: Array<string> = []
+    mocks.finishSummaryFn.mockImplementation(() => {
+      order.push("summary")
+      return Promise.resolve({ ok: true, summary })
+    })
+    const beforeLoad = vi.fn(() => {
+      order.push("beforeLoad")
+      return Promise.reject(new Error("offline"))
+    })
+    render(<FinishCardDialog {...props} beforeLoad={beforeLoad} />)
+    expect(await screen.findByText("6 jam 20 menit")).toBeInTheDocument()
+    expect(order).toEqual(["beforeLoad", "summary"])
+  })
 })
