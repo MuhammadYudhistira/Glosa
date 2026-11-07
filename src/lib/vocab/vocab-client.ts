@@ -1,0 +1,203 @@
+import { useEffect, useSyncExternalStore } from "react"
+import { onMemberDataWiped } from "@/lib/local/device"
+import { listLocalWords } from "@/lib/local/saved-words"
+import {
+  addSectionTime,
+  loadVocabCache,
+  meetStore,
+  queueMeetings,
+  queueTap,
+  queueWordsRead,
+  saveVocabCache,
+  tapStore,
+  wordsReadStore,
+} from "@/lib/local/vocab-store"
+import { type QueueSync, createQueueSync } from "@/lib/sync/queue-sync"
+import { normalizeWord, isLookupWord } from "@/lib/words/normalize"
+import {
+  loadVocabFn,
+  recordLookupsFn,
+  recordMeetingsFn,
+  recordWordsReadFn,
+} from "@/server/vocab"
+import type { VocabSummary } from "./comprehension"
+import { countMeetings, meetingCounts } from "./meetings"
+import {
+  MAX_MEET_BATCH,
+  MAX_TAP_BATCH,
+  MAX_WORDS_READ_BATCH,
+  type MeetItem,
+  type TapItem,
+  type VocabCache,
+  type WordMeetings,
+  type WordsReadItem,
+} from "./types"
+import { sectionWords, wordParts } from "./words"
+
+type VocabState = { cache: VocabCache | null }
+let state: VocabState = { cache: null }
+const listeners = new Set<() => void>()
+function setState(next: VocabState) {
+  state = next
+  for (const listener of listeners) listener()
+}
+/** For tests: the state the hooks read. */
+export const vocabStateForTests = (): VocabState => state
+
+const keepaliveFetch: typeof fetch = (input, init) => fetch(input, { ...init, keepalive: true })
+const isOnline = () => navigator.onLine
+
+let syncs: Array<QueueSync> | null = null
+/** The three queues of this tab (browser only), sent in this order. */
+function vocabSyncs(): Array<QueueSync> {
+  syncs ??= [
+    createQueueSync<WordsReadItem>({
+      store: wordsReadStore,
+      isOnline,
+      keyOf: (item) => item.key,
+      batchSize: MAX_WORDS_READ_BATCH,
+      send: (batch) =>
+        recordWordsReadFn({
+          data: batch.map(({ bookId, section, words, last }) => ({ bookId, section, words, last })),
+        }),
+      onRefused: (refused) => console.error("the server refused words read", refused.length),
+    }),
+    createQueueSync<TapItem>({
+      store: tapStore,
+      isOnline,
+      keyOf: (item) => item.key,
+      batchSize: MAX_TAP_BATCH,
+      // Often sent as the reader closes.
+      send: (batch) =>
+        recordLookupsFn({
+          data: batch.map(({ bookId, word, taps, at }) => ({ bookId, word, taps, at })),
+          fetch: keepaliveFetch,
+        }),
+      onRefused: (refused) => console.error("the server refused taps", refused.length),
+      debounceMs: 10_000,
+    }),
+    createQueueSync<MeetItem>({
+      store: meetStore,
+      isOnline,
+      keyOf: (item) => item.key,
+      batchSize: MAX_MEET_BATCH,
+      send: (batch) =>
+        recordMeetingsFn({
+          data: batch.map(({ bookId, headword, section, count }) => ({
+            bookId,
+            headword,
+            section,
+            count,
+          })),
+        }),
+      onRefused: (refused) => console.error("the server refused meetings", refused.length),
+    }),
+  ]
+  return syncs
+}
+
+let refreshSeq = 0
+let wipeEpoch = 0
+let cacheRead: Promise<void> | null = null
+
+onMemberDataWiped(() => {
+  refreshSeq++
+  wipeEpoch++
+  cacheRead = null
+  setState({ cache: null })
+})
+
+function readCache(): Promise<void> {
+  const epoch = wipeEpoch
+  cacheRead ??= loadVocabCache()
+    .then((cache) => {
+      if (epoch === wipeEpoch) setState({ cache: state.cache ?? cache })
+    })
+    .catch((error: unknown) => {
+      if (epoch === wipeEpoch) cacheRead = null
+      console.error("reading the vocabulary numbers on this device failed", error)
+    })
+  return cacheRead
+}
+
+/** A tap that opened a meaning (spec 3D §3.3). */
+export async function recordTap(bookId: string, word: string): Promise<void> {
+  const normal = normalizeWord(word)
+  if (!isLookupWord(normal)) return
+  await queueTap(bookId, normal, new Date().toISOString())
+  vocabSyncs()[1].later()
+}
+
+/** Reading time in a section; true once the section counts as read (spec 3D §3.1). */
+export function addSectionReading(bookId: string, section: number, ms: number): Promise<boolean> {
+  return addSectionTime(bookId, section, ms)
+}
+
+/** A section just read: its words, and the saved words met in it (spec 3D §3.2, §3.4). */
+export async function queueSectionRead(
+  bookId: string,
+  section: number,
+  text: string,
+  forms: Record<string, Array<string>>
+): Promise<void> {
+  await queueWordsRead(bookId, section, wordParts(sectionWords(text)))
+  const saved = await listLocalWords()
+  const met = meetingCounts(countMeetings(text, forms), bookId, section, saved)
+  if (met.length > 0) await queueMeetings(bookId, section, met)
+  const [reads, , meets] = vocabSyncs()
+  reads.later()
+  meets.later()
+}
+
+/** Sends every waiting change. Never rejects. */
+export async function flushVocab(): Promise<void> {
+  for (const sync of vocabSyncs()) await sync.flush()
+}
+
+/** Sends the queues, then loads every book's numbers and the meetings. Never rejects. */
+export async function refreshVocab(): Promise<void> {
+  const seq = ++refreshSeq
+  const epoch = wipeEpoch
+  try {
+    await readCache()
+    await flushVocab()
+    const answer = await loadVocabFn()
+    if (seq !== refreshSeq || epoch !== wipeEpoch) return
+    if (!answer.ok) {
+      console.error("loading the vocabulary numbers was refused", answer.code)
+      return
+    }
+    await saveVocabCache(answer.cache)
+    if (seq !== refreshSeq || epoch !== wipeEpoch) return
+    setState({ cache: answer.cache })
+  } catch (error) {
+    console.error("refreshing the vocabulary numbers failed", error)
+  }
+}
+
+const subscribe = (listener: () => void) => {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+const SERVER_STATE: VocabState = { cache: null }
+
+function useVocabState(): VocabState {
+  const snapshot = useSyncExternalStore(subscribe, () => state, () => SERVER_STATE)
+  useEffect(() => {
+    void readCache()
+  }, [])
+  return snapshot
+}
+
+/** A book's numbers; null when nothing was read or looked up in it yet. */
+export function useBookVocab(bookId: string): VocabSummary | null {
+  return useVocabState().cache?.books[bookId] ?? null
+}
+
+const NO_MEETINGS: WordMeetings = {}
+/** Every saved word's meetings, by headword. */
+export function useWordMeetings(): WordMeetings {
+  return useVocabState().cache?.meetings ?? NO_MEETINGS
+}

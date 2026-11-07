@@ -9,6 +9,7 @@ import { ShelfLoadError } from "@/components/shelf/ShelfLoadError"
 import { useShelfSnapshot } from "@/components/shelf/useShelfSnapshot"
 import { refreshHabit } from "@/lib/habit/habit-client"
 import { refreshShop } from "@/lib/shop/shop-client"
+import { refreshVocab } from "@/lib/vocab/vocab-client"
 import { loadShelf } from "@/lib/shelf-loader"
 import { useQueueFlush } from "@/lib/sync/use-queue-flush"
 
@@ -37,6 +38,8 @@ function LobiLayout() {
   useQueueFlush(user.id, refreshHabit)
   // The shop's balance and items (plan 3C, decision 9).
   useQueueFlush(user.id, refreshShop)
+  // Words read and looked up, for the book details and Kosakata (plan 3D, decision 9).
+  useQueueFlush(user.id, refreshVocab)
 
   return (
     <>

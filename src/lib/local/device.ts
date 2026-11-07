@@ -13,7 +13,7 @@ export function onMemberDataWiped(listener: () => void): () => void {
   }
 }
 
-/** Drops the member's books, positions, Kosakata, annotations, reading time, shelf snapshot, cached covers and reader settings. */
+/** Drops the member's books, positions, Kosakata, annotations, reading time, section time, vocabulary queues, shelf snapshot, cached covers and reader settings. */
 async function wipeMemberData(): Promise<void> {
   const db = localDb()
   const tables = [
@@ -25,6 +25,8 @@ async function wipeMemberData(): Promise<void> {
     db.wordOps,
     db.annotations,
     db.readingTime,
+    db.sectionTime,
+    db.vocabQueue,
   ]
   await db.transaction("rw", tables, async () => {
     await Promise.all(tables.map((table) => table.clear()))

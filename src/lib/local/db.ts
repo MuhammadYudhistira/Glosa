@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from "dexie"
 import type { Annotation } from "@/lib/annotations/types"
 import type { DailyGoal } from "@/lib/habit/types"
+import type { MeetItem, TapItem, WordsReadItem } from "@/lib/vocab/types"
 import type { LookupResult, SavedWord } from "@/lib/words/types"
 
 export type LocalFile = {
@@ -54,6 +55,16 @@ export type LocalReadingTime = {
   goalMinutes: DailyGoal | null
 }
 
+/** Reading time in one section of a book on this device (spec 3D §3.1); done once read. */
+export type LocalSectionTime = { key: string; bookId: string; section: number; ms: number; done: 0 | 1 }
+/** A waiting change of 3D (spec 3D §5.3): one table, three kinds. */
+export type LocalVocabOp = {
+  key: string
+  kind: "read" | "tap" | "meet"
+  queuedAt: number
+  item: WordsReadItem | TapItem | MeetItem
+}
+
 /** Everything Glosa keeps in IndexedDB for the member using this device (spec §3). */
 class GlosaDb extends Dexie {
   files!: EntityTable<LocalFile, "bookId">
@@ -64,6 +75,8 @@ class GlosaDb extends Dexie {
   wordOps!: EntityTable<LocalWordOp, "headword">
   annotations!: EntityTable<LocalAnnotation, "id">
   readingTime!: EntityTable<LocalReadingTime, "key">
+  sectionTime!: EntityTable<LocalSectionTime, "key">
+  vocabQueue!: EntityTable<LocalVocabOp, "key">
 
   constructor() {
     super("glosa")
@@ -85,6 +98,11 @@ class GlosaDb extends Dexie {
     // Tahap 3B: reading time per day and book (spec 3B §5.4).
     this.version(4).stores({
       readingTime: "key, day",
+    })
+    // Tahap 3D: time per section, and the vocabulary queues (spec 3D §5.3).
+    this.version(5).stores({
+      sectionTime: "key, bookId",
+      vocabQueue: "key, kind, queuedAt",
     })
   }
 }
