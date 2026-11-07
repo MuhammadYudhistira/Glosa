@@ -52,6 +52,8 @@ test("reading a section for a minute and tapping a word are kept per book", asyn
   // Leaving through the app unmounts the reader, which hands over the last time.
   await page.getByRole("link", { name: "Kembali ke rak" }).click()
   await expect(page).not.toHaveURL(/\/read\//)
+  // Let the last time reach this device's storage before the page reloads.
+  await page.waitForTimeout(3_000)
   // The book opened again takes up the due section, in idle time.
   await page.goto(`/read/${bookId}`)
   await expect(page.getByRole("status", { name: "Posisi baca" })).toHaveText(
