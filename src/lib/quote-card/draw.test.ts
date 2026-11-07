@@ -78,3 +78,28 @@ describe("drawCard", () => {
     ).toBeGreaterThan(50)
   })
 })
+
+it("draws a cover with a slot from covers[slot] and ignores a missing one", () => {
+  const picture = { tag: "second" } as unknown as CanvasImageSource
+  const layout = {
+    width: 1080,
+    height: 1080,
+    fontSize: 0,
+    fits: true,
+    hits: [],
+    items: [
+      { kind: "cover" as const, x: 0, y: 0, width: 10, height: 10, slot: 1 },
+      { kind: "cover" as const, x: 20, y: 0, width: 10, height: 10, slot: 2 },
+    ],
+  }
+  const fake = fakeContext()
+  drawCard(fake.context, layout, "kertas", {
+    cover: null,
+    palette: null,
+    seed: "a",
+    covers: [{} as CanvasImageSource, picture],
+  })
+  const drawn = fake.calls.filter((call) => call.name === "drawImage")
+  expect(drawn).toHaveLength(1)
+  expect(drawn[0].args[0]).toBe(picture)
+})
