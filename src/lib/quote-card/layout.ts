@@ -42,7 +42,15 @@ export type CardItem =
       turn: CardTurn
     }
   | { kind: "rule"; x: number; y: number; width: number; height: number }
-  | { kind: "cover"; x: number; y: number; width: number; height: number }
+  | {
+      kind: "cover"
+      x: number
+      y: number
+      width: number
+      height: number
+      /** Which of the card's covers (recap card); none: the book's own. */
+      slot?: number
+    }
 /** Where a quote token is, for a tap on the preview. */
 export type CardHit = {
   token: number
@@ -78,9 +86,9 @@ export type CardLayout = {
   hits: Array<CardHit>
 }
 
-const PAD = 96
-const TOP = 110
-const BOTTOM = 90
+export const PAD = 96
+export const TOP = 110
+export const BOTTOM = 90
 const COVER_WIDTH = 64
 const COVER_HEIGHT = 94
 const COVER_GAP = 28
@@ -124,7 +132,7 @@ type SetQuote = {
 }
 
 /** The text cut to fit `maxWidth`, with an ellipsis when cut. */
-function fitText(
+export function fitText(
   text: string,
   fontName: string,
   maxWidth: number,
@@ -431,8 +439,8 @@ function header(
 }
 
 /** Glosa, the site and (Kutipan story only) the tagline; returns the footer's top. */
-function footer(
-  input: CardInput,
+export function footer(
+  input: Pick<CardInput, "layout" | "size" | "host">,
   width: number,
   height: number,
   measure: Measure,

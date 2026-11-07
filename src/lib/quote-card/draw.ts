@@ -12,6 +12,8 @@ import {
 /** What a card shows besides its layout: the cover, its colours, and the seed of Malam's stars. */
 export type CardArt = {
   cover: CanvasImageSource | null
+  /** The covers of a recap card, by slot. */
+  covers?: ReadonlyArray<CanvasImageSource>
   palette: ReadonlyArray<string> | null
   seed: string
 }
@@ -149,8 +151,12 @@ export function drawCard(
         )
         context.fill()
         break
-      case "cover":
-        if (art.cover) {
+      case "cover": {
+        const image =
+          item.slot === undefined
+            ? art.cover
+            : (art.covers?.[item.slot] ?? null)
+        if (image) {
           rounded(
             context,
             item.x,
@@ -160,9 +166,10 @@ export function drawCard(
             COVER_RADIUS
           )
           context.clip()
-          context.drawImage(art.cover, item.x, item.y, item.width, item.height)
+          context.drawImage(image, item.x, item.y, item.width, item.height)
         }
         break
+      }
     }
     context.restore()
   }

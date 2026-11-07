@@ -2,6 +2,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { XIcon } from "lucide-react"
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { decodeCover } from "@/lib/quote-card/cover-art"
 import { drawCard } from "@/lib/quote-card/draw"
 import { cardFontsReady } from "@/lib/quote-card/fonts"
 import {
@@ -32,7 +33,7 @@ import {
   shareCard,
   shareText,
 } from "@/lib/quote-card/share"
-import { CARD_THEMES, THEMES, coverPalette } from "@/lib/quote-card/themes"
+import { CARD_THEMES, THEMES } from "@/lib/quote-card/themes"
 import type { ReaderBook } from "@/lib/reader-types"
 import { useWideScreen } from "@/lib/use-wide-screen"
 import { POS_LABELS } from "@/lib/words/labels"
@@ -44,10 +45,6 @@ import type { LookupEntry } from "@/lib/words/types"
 const MAX_CARD_MEANINGS = 3
 /** The PNG is made this long after the last change, ready before Bagikan is tapped. */
 const PNG_DELAY_MS = 250
-/** The cover is shrunk to this many pixels a side to read its colours. */
-const PALETTE_SIZE = 12
-/** The decoded cover is kept this wide: a card draws it small. */
-const COVER_WIDTH = 200
 const IMAGE_FAILED = "Gambar belum bisa dibuat. Coba lagi."
 const LINK_COPIED = "Link Glosa sudah disalin, tempel di stiker Link Instagram."
 
@@ -79,35 +76,7 @@ const NO_ART: Art = { cover: null, palette: null }
 
 const lookUpWord = (word: string) => lookUp(word, [])
 
-/** The decoded cover redrawn small, so the full-size bitmap can be closed. */
-function shrunk(bitmap: ImageBitmap): HTMLCanvasElement | null {
-  const scale = Math.min(1, COVER_WIDTH / bitmap.width)
-  const canvas = document.createElement("canvas")
-  canvas.width = Math.max(1, Math.round(bitmap.width * scale))
-  canvas.height = Math.max(1, Math.round(bitmap.height * scale))
-  const context = canvas.getContext("2d")
-  if (!context) return null
-  context.imageSmoothingQuality = "high"
-  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-  return canvas
-}
-
-function paletteOf(source: CanvasImageSource): Array<string> | null {
-  try {
-    const small = document.createElement("canvas")
-    small.width = PALETTE_SIZE
-    small.height = PALETTE_SIZE
-    const context = small.getContext("2d")
-    if (!context) return null
-    context.drawImage(source, 0, 0, PALETTE_SIZE, PALETTE_SIZE)
-    const { data } = context.getImageData(0, 0, PALETTE_SIZE, PALETTE_SIZE)
-    return coverPalette(data, PALETTE_SIZE, PALETTE_SIZE)
-  } catch {
-    return null
-  }
-}
-
-function Segments<T extends string>({
+export function Segments<T extends string>({
   label,
   options,
   value,
@@ -193,15 +162,9 @@ export function QuoteCardDialog({
     let live = true
     loadCover()
       .then(async (blob) => {
-        if (!blob || !("createImageBitmap" in globalThis)) return
-        const bitmap = await createImageBitmap(blob)
-        let small: HTMLCanvasElement | null = null
-        try {
-          small = shrunk(bitmap)
-        } finally {
-          bitmap.close()
-        }
-        if (small && live) setArt({ cover: small, palette: paletteOf(small) })
+        const decoded = blob ? await decodeCover(blob) : null
+        if (decoded && live)
+          setArt({ cover: decoded.image, palette: decoded.palette })
       })
       .catch(() => undefined)
     return () => {
