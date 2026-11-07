@@ -76,21 +76,42 @@ export function findPath(
     r < rows &&
     walkable(pointOf(c, r), bounds, blocked, radius)
 
-  const start = cellOf(from)
-  const goal = cellOf(to)
+  // Free cells around `p` from which the straight leg to `p` is clear, nearest first.
+  const anchorsOf = (p: Point2): Array<[number, number]> => {
+    const [pc, pr] = cellOf(p)
+    const found: Array<{ cell: [number, number]; d: number }> = []
+    for (let c = pc - 2; c <= pc + 2; c++) {
+      for (let r = pr - 2; r <= pr + 2; r++) {
+        if (!free(c, r)) continue
+        const cell = pointOf(c, r)
+        if (!clear(cell, p, bounds, blocked, radius)) continue
+        found.push({
+          cell: [c, r],
+          d: Math.hypot(cell[0] - p[0], cell[1] - p[1]),
+        })
+      }
+    }
+    return found.sort((a, b) => a.d - b.d).map((f) => f.cell)
+  }
   const key = (c: number, r: number) => r * cols + c
-  const cost = new Map<number, number>([[key(...start), 0]])
+  const starts = anchorsOf(from)
+  const goals = new Set(anchorsOf(to).map(([c, r]) => key(c, r)))
+  if (starts.length === 0 || goals.size === 0) return []
+  const cost = new Map<number, number>(starts.map(([c, r]) => [key(c, r), 0]))
   const parent = new Map<number, number>()
-  const open: Array<[number, number, number]> = [[0, ...start]]
-  const heuristic = (c: number, r: number) =>
-    Math.hypot(goal[0] - c, goal[1] - r)
+  const open: Array<[number, number, number]> = starts.map(([c, r]) => [
+    0,
+    c,
+    r,
+  ])
 
-  let found = false
+  // Several goal cells, so no useful heuristic: plain Dijkstra on a small grid.
+  let goal: number | undefined
   while (open.length > 0) {
     open.sort((a, b) => a[0] - b[0])
     const [, c, r] = open.shift()!
-    if (c === goal[0] && r === goal[1]) {
-      found = true
+    if (goals.has(key(c, r))) {
+      goal = key(c, r)
       break
     }
     for (let dc = -1; dc <= 1; dc++) {
@@ -109,31 +130,30 @@ export function findPath(
         if (next < (cost.get(key(nc, nr)) ?? Infinity)) {
           cost.set(key(nc, nr), next)
           parent.set(key(nc, nr), key(c, r))
-          open.push([next + heuristic(nc, nr), nc, nr])
+          open.push([next, nc, nr])
         }
       }
     }
   }
-  if (!found) return []
+  if (goal === undefined) return []
 
   const cells: Array<Point2> = []
-  for (
-    let k: number | undefined = key(...goal);
-    k !== undefined;
-    k = parent.get(k)
-  ) {
+  for (let k: number | undefined = goal; k !== undefined; k = parent.get(k)) {
     cells.push(pointOf(k % cols, Math.floor(k / cols)))
   }
   cells.reverse()
-  cells[cells.length - 1] = to
+  cells.push(to)
 
-  // String pulling: skip every waypoint that can be walked past.
+  // String pulling from `from`: jump to the farthest waypoint reachable by a
+  // clear leg. Every cell and the final `to` was validated, and each pushed
+  // leg is checked, so a failure means no safe path rather than a bad one.
   const path: Array<Point2> = []
   let anchor = from
   let i = 0
   while (i < cells.length) {
     let j = cells.length - 1
     while (j > i && !clear(anchor, cells[j], bounds, blocked, radius)) j--
+    if (!clear(anchor, cells[j], bounds, blocked, radius)) return []
     path.push(cells[j])
     anchor = cells[j]
     i = j + 1

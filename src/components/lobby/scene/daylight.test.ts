@@ -36,6 +36,16 @@ describe("mixRig", () => {
     expect(half.background).toMatch(/^#[0-9a-f]{6}$/)
   })
 
+  it("clamps k, treats NaN as 0 and never returns the shared rigs", () => {
+    expect(mixRig(RIGS.day, RIGS.night, -3)).toEqual(RIGS.day)
+    expect(mixRig(RIGS.day, RIGS.night, 7)).toEqual(RIGS.night)
+    expect(mixRig(RIGS.day, RIGS.night, Number.NaN)).toEqual(RIGS.day)
+    const copy = mixRig(RIGS.day, RIGS.night, 0)
+    expect(copy).not.toBe(RIGS.day)
+    expect(copy.sunPosition).not.toBe(RIGS.day.sunPosition)
+    expect(mixRig(RIGS.day, RIGS.night, 1)).not.toBe(RIGS.night)
+  })
+
   it("has lamps off by day and on at dusk and night", () => {
     expect(RIGS.day.lamps).toBe(0)
     expect(RIGS.dusk.lamps).toBeGreaterThan(0)

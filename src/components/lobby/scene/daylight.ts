@@ -90,23 +90,24 @@ const mixNumber = (a: number, b: number, k: number) => a + (b - a) * k
 
 /** A blend of two rigs, k = 0 is `a` and k = 1 is `b`. */
 export function mixRig(a: LightRig, b: LightRig, k: number): LightRig {
-  if (k <= 0) return a
-  if (k >= 1) return b
+  const t = Number.isNaN(k) ? 0 : Math.min(1, Math.max(0, k))
+  if (t === 0) return { ...a, sunPosition: [...a.sunPosition] }
+  if (t === 1) return { ...b, sunPosition: [...b.sunPosition] }
   return {
-    background: mixHex(a.background, b.background, k),
-    hemiSky: mixHex(a.hemiSky, b.hemiSky, k),
-    hemiGround: mixHex(a.hemiGround, b.hemiGround, k),
-    hemi: mixNumber(a.hemi, b.hemi, k),
-    sun: mixHex(a.sun, b.sun, k),
-    sunIntensity: mixNumber(a.sunIntensity, b.sunIntensity, k),
+    background: mixHex(a.background, b.background, t),
+    hemiSky: mixHex(a.hemiSky, b.hemiSky, t),
+    hemiGround: mixHex(a.hemiGround, b.hemiGround, t),
+    hemi: mixNumber(a.hemi, b.hemi, t),
+    sun: mixHex(a.sun, b.sun, t),
+    sunIntensity: mixNumber(a.sunIntensity, b.sunIntensity, t),
     sunPosition: [
-      mixNumber(a.sunPosition[0], b.sunPosition[0], k),
-      mixNumber(a.sunPosition[1], b.sunPosition[1], k),
-      mixNumber(a.sunPosition[2], b.sunPosition[2], k),
+      mixNumber(a.sunPosition[0], b.sunPosition[0], t),
+      mixNumber(a.sunPosition[1], b.sunPosition[1], t),
+      mixNumber(a.sunPosition[2], b.sunPosition[2], t),
     ],
-    lamps: mixNumber(a.lamps, b.lamps, k),
-    fire: mixNumber(a.fire, b.fire, k),
-    city: mixNumber(a.city, b.city, k),
-    exposure: mixNumber(a.exposure, b.exposure, k),
+    lamps: mixNumber(a.lamps, b.lamps, t),
+    fire: mixNumber(a.fire, b.fire, t),
+    city: mixNumber(a.city, b.city, t),
+    exposure: mixNumber(a.exposure, b.exposure, t),
   }
 }
