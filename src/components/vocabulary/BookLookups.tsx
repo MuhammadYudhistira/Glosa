@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { vocabLineText } from "@/components/shelf/BookVocabLine"
 import { Button } from "@/components/ui/button"
 import type { BookVocab } from "@/lib/vocab/types"
-import { type LookupOutcome, lookUp } from "@/lib/words/lookup"
-import { MAX_MEANINGS } from "@/lib/words/types"
+import { type LookupOutcome, lookUp, savedChoice } from "@/lib/words/lookup"
+import { normalizeWord } from "@/lib/words/normalize"
 import { wordSync } from "@/lib/words/word-sync-client"
 import { loadBookVocabFn } from "@/server/vocab"
 
@@ -11,17 +11,24 @@ import { loadBookVocabFn } from "@/server/vocab"
 export function BookLookups({
   bookId,
   title,
-  savedHeadwords,
+  forms,
   offline,
 }: {
   bookId: string
   title: string
-  savedHeadwords: ReadonlySet<string>
+  /** The forms of every saved word, by headword: a tapped "ran" is saved as "run". */
+  forms: Record<string, Array<string>>
   offline: boolean
 }) {
   const [vocab, setVocab] = useState<BookVocab | null>(null)
   const [failed, setFailed] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
+  // The row open now, for answers that arrive late.
+  const openRef = useRef<string | null>(null)
+  const savedForms = useMemo(
+    () => new Set(Object.values(forms).flat().map(normalizeWord)),
+    [forms]
+  )
   const [found, setFound] = useState<{
     word: string
     outcome: LookupOutcome
@@ -50,24 +57,25 @@ export function BookLookups({
 
   async function toggle(word: string) {
     if (open === word) {
+      openRef.current = null
       setOpen(null)
       return
     }
+    openRef.current = word
     setOpen(word)
     setFound(null)
-    setFound({ word, outcome: await lookUp(word, []) })
+    const outcome = await lookUp(word, [])
+    // Another row may have been opened while this answer was on its way.
+    if (openRef.current === word) setFound({ word, outcome })
   }
 
   function save(word: string) {
     if (meaning?.kind !== "result") return
     if (meaning.result.entries.length === 0) return
-    const entry = meaning.result.entries[0]
     void wordSync()
       .save(
         {
-          headword: entry.headword,
-          pos: entry.pos,
-          meanings: entry.meanings.slice(0, MAX_MEANINGS),
+          ...savedChoice(meaning.result, word),
           bookId,
           bookTitle: title,
           sentence: "",
@@ -103,7 +111,7 @@ export function BookLookups({
             className="flex flex-col gap-1"
           >
             {vocab.words.map(({ word, taps }) => {
-              const saved = savedHeadwords.has(word)
+              const saved = savedForms.has(normalizeWord(word))
               return (
                 <li key={word} className="rounded-lg border px-3 py-2">
                   <button

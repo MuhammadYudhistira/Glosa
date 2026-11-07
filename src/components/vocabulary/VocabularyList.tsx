@@ -9,6 +9,7 @@ import { POS_LABELS } from "@/lib/words/labels"
 import type { SavedWord } from "@/lib/words/types"
 import {
   ALL_BOOKS,
+  type BookOption,
   bookOptions,
   VOCAB_SORTS,
   type VocabSort,
@@ -102,6 +103,7 @@ export function VocabularyList({
   shelfIds,
   meetings,
   initialBook,
+  extraBook,
   onDelete,
 }: {
   words: Array<SavedWord>
@@ -110,12 +112,21 @@ export function VocabularyList({
   meetings: Record<string, { meetings: number; books: number } | undefined>
   /** The book the filter starts on. */
   initialBook?: string
+  /** A shelf book to offer even without saved words, so the filter can name it. */
+  extraBook?: BookOption
   onDelete: (word: SavedWord) => void
 }) {
   const [q, setQ] = useState("")
   const [book, setBook] = useState(initialBook ?? ALL_BOOKS)
   const [sort, setSort] = useState<VocabSort>("terbaru")
-  const options = useMemo(() => bookOptions(words), [words])
+  const options = useMemo(() => {
+    const list = bookOptions(words)
+    return extraBook && !list.some((option) => option.key === extraBook.key)
+      ? [...list, extraBook].sort((a, b) =>
+          a.title.localeCompare(b.title, "id")
+        )
+      : list
+  }, [words, extraBook])
   const visible = useMemo(
     () => sortWords(filterWords(words, { q, book }), sort, meetings),
     [words, q, book, sort, meetings]

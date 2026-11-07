@@ -11,7 +11,10 @@ import { BookLookups } from "./BookLookups"
 const server = vi.hoisted(() => ({ loadBookVocabFn: vi.fn() }))
 vi.mock("@/server/vocab", () => server)
 const lookup = vi.hoisted(() => ({ lookUp: vi.fn() }))
-vi.mock("@/lib/words/lookup", () => lookup)
+vi.mock("@/lib/words/lookup", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  lookUp: lookup.lookUp,
+}))
 const sync = vi.hoisted(() => ({ save: vi.fn(() => Promise.resolve()) }))
 vi.mock("@/lib/words/word-sync-client", () => ({ wordSync: () => sync }))
 
@@ -33,7 +36,7 @@ const show = (props: Partial<Parameters<typeof BookLookups>[0]> = {}) =>
     <BookLookups
       bookId={BOOK}
       title="Sherlock"
-      savedHeadwords={new Set(["mat"])}
+      forms={{ mat: ["mat"], run: ["run", "ran"] }}
       offline={false}
       {...props}
     />
@@ -100,5 +103,77 @@ describe("BookLookups", () => {
     show({ offline: true })
     expect(screen.getByText("Perlu koneksi internet")).toBeVisible()
     expect(server.loadBookVocabFn).not.toHaveBeenCalled()
+  })
+
+  it("marks a tapped inflection as saved through the forms of the saved word", async () => {
+    server.loadBookVocabFn.mockResolvedValue({
+      ok: true,
+      vocab: {
+        read: 850,
+        lookedUp: 1,
+        words: [{ word: "ran", taps: 2, lastAt: "2026-11-06T10:00:00Z" }],
+      },
+    })
+    show()
+    const row = (await screen.findByRole("button", { name: /ran/ })).closest(
+      "li"
+    ) as HTMLElement
+    expect(within(row).getByText("Tersimpan")).toBeVisible()
+  })
+
+  it("ignores a meaning that arrives after another row was opened", async () => {
+    server.loadBookVocabFn.mockResolvedValue(answer)
+    const result = (headword: string, meaning: string) => ({
+      kind: "result",
+      result: {
+        word: headword,
+        entries: [{ headword, pos: "adj", meanings: [meaning] }],
+        phrases: [],
+        version: null,
+      },
+    })
+    let late: (value: unknown) => void = () => {}
+    lookup.lookUp.mockImplementation((word: string) =>
+      word === "ubiquitous"
+        ? new Promise((resolve) => {
+            late = resolve
+          })
+        : Promise.resolve(result("mat", "tikar"))
+    )
+    show()
+    fireEvent.click(await screen.findByRole("button", { name: /ubiquitous/ }))
+    fireEvent.click(screen.getByRole("button", { name: /mat/ }))
+    expect(await screen.findByText("tikar")).toBeVisible()
+    late(result("ubiquitous", "ada di mana-mana"))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(screen.getByText("tikar")).toBeVisible()
+    expect(screen.queryByText("ada di mana-mana")).toBeNull()
+  })
+
+  it("saves the choice the reader would keep, the phrase first", async () => {
+    server.loadBookVocabFn.mockResolvedValue(answer)
+    lookup.lookUp.mockResolvedValue({
+      kind: "result",
+      result: {
+        word: "ubiquitous",
+        entries: [{ headword: "ubiquitous", pos: "adj", meanings: ["x"] }],
+        phrases: [{ headword: "ubiquitous thing", meanings: ["barang"] }],
+        version: null,
+      },
+    })
+    show()
+    fireEvent.click(await screen.findByRole("button", { name: /ubiquitous/ }))
+    await screen.findByText("x")
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }))
+    await waitFor(() =>
+      expect(sync.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headword: "ubiquitous thing",
+          pos: "phrase",
+          meanings: ["barang"],
+        }),
+        ["ubiquitous"]
+      )
+    )
   })
 })

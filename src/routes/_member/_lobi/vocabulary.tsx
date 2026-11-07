@@ -8,7 +8,7 @@ import { VocabularyList } from "@/components/vocabulary/VocabularyList"
 import { VocabularyNotice } from "@/components/vocabulary/VocabularyNotice"
 import { claimLocalData } from "@/lib/local/device"
 import { replaceLocalWords } from "@/lib/local/saved-words"
-import { useWordMeetings } from "@/lib/vocab/vocab-client"
+import { dropWordMeetings, useWordMeetings } from "@/lib/vocab/vocab-client"
 import { loadVocabulary } from "@/lib/vocabulary-loader"
 import type { SavedWord } from "@/lib/words/types"
 import {
@@ -75,6 +75,7 @@ function VocabularyPage() {
   }, [removed])
 
   const remove = (word: SavedWord) => {
+    void dropWordMeetings(word.headword)
     setRemoved({ word, forms: forms[word.headword] ?? [word.headword] })
     wordSync()
       .remove(word.headword)
@@ -125,7 +126,7 @@ function VocabularyPage() {
             key={shelfBook.id}
             bookId={shelfBook.id}
             title={shelfBook.title}
-            savedHeadwords={new Set(words.map((w) => w.headword))}
+            forms={forms}
             offline={loaded.offline}
           />
           <Link
@@ -144,6 +145,9 @@ function VocabularyPage() {
         shelfIds={shelfIds}
         meetings={meetings}
         initialBook={buku}
+        extraBook={
+          shelfBook ? { key: shelfBook.id, title: shelfBook.title } : undefined
+        }
         onDelete={remove}
       />
     </LobbyPopup>

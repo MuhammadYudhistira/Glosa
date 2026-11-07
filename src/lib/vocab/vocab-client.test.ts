@@ -6,6 +6,7 @@ import { localDb } from "@/lib/local/db"
 import { dueSections, loadVocabCache } from "@/lib/local/vocab-store"
 import {
   addSectionReading,
+  dropWordMeetings,
   queueSectionRead,
   readDueSections,
   recordTap,
@@ -207,5 +208,35 @@ describe("vocab client", () => {
     })
     await clearLocalData()
     expect(vocabStateForTests().cache).toBeNull()
+  })
+
+  it("drops a deleted word's meetings from the numbers at once", async () => {
+    server.loadVocabFn.mockResolvedValue({
+      ok: true,
+      cache: {
+        books: {},
+        meetings: {
+          run: { meetings: 7, books: 3 },
+          mat: { meetings: 1, books: 1 },
+        },
+      },
+    })
+    await refreshVocab()
+    await dropWordMeetings("run")
+    expect(vocabStateForTests().cache?.meetings).toEqual({
+      mat: { meetings: 1, books: 1 },
+    })
+    expect((await loadVocabCache())?.meetings).toEqual({
+      mat: { meetings: 1, books: 1 },
+    })
+  })
+
+  it("does not load the numbers while offline", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      value: false,
+      configurable: true,
+    })
+    await refreshVocab()
+    expect(server.loadVocabFn).not.toHaveBeenCalled()
   })
 })

@@ -216,6 +216,20 @@ export function readDueSections(
   return dueChain
 }
 
+/** A word left Kosakata: its meetings go from this device's numbers at once (spec 3D §3.4). */
+export async function dropWordMeetings(headword: string): Promise<void> {
+  const cache = state.cache
+  if (!cache || !Object.hasOwn(cache.meetings, headword)) return
+  const { [headword]: _dropped, ...meetings } = cache.meetings
+  const next = { ...cache, meetings }
+  setState({ cache: next })
+  try {
+    await saveVocabCache(next)
+  } catch (error) {
+    console.error("keeping the vocabulary numbers on this device failed", error)
+  }
+}
+
 /** Sends every waiting change. Never rejects. */
 export async function flushVocab(): Promise<void> {
   const { reads, taps, meets } = vocabSyncs()

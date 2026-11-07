@@ -141,4 +141,15 @@ describe("VocabularyList", () => {
     expect(await card("walk")).toBeInTheDocument()
     expect(screen.queryByRole("article", { name: "run" })).toBeNull()
   })
+
+  it("offers a shelf book without saved words in the filter", async () => {
+    show([run, walk], undefined, {
+      initialBook: "b9",
+      extraBook: { key: "b9", title: "Empty shelf" },
+    })
+    expect(await screen.findByRole("combobox", { name: "Buku" })).toHaveValue(
+      "b9"
+    )
+    expect(screen.getByRole("option", { name: "Empty shelf" })).toBeVisible()
+  })
 })
