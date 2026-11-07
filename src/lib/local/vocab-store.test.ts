@@ -5,7 +5,9 @@ import { localDb } from "./db"
 import {
   SECTION_READ_MS,
   addSectionTime,
+  dueSections,
   loadVocabCache,
+  markSectionDone,
   meetStore,
   queueMeetings,
   queueTap,
@@ -27,13 +29,20 @@ describe("vocab store", () => {
     ])
   })
 
-  it("says a section is read once, when its time reaches 60 s across visits", async () => {
+  it("keeps a section due from 60 s, across visits, until it is marked done", async () => {
     expect(SECTION_READ_MS).toBe(60_000)
     expect(await addSectionTime(BOOK, 2, 40_000)).toBe(false)
     expect(await addSectionTime(BOOK, 2, 19_999)).toBe(false)
+    expect(await dueSections(BOOK)).toEqual([])
     expect(await addSectionTime(BOOK, 2, 1)).toBe(true)
-    expect(await addSectionTime(BOOK, 2, 90_000)).toBe(false)
     expect(await addSectionTime(BOOK, 3, 60_000)).toBe(true)
+    expect(await dueSections(BOOK)).toEqual([2, 3])
+    expect(await dueSections("other-book")).toEqual([])
+    // Still due until its words are queued.
+    expect(await addSectionTime(BOOK, 2, 5_000)).toBe(true)
+    await markSectionDone(BOOK, 2)
+    expect(await addSectionTime(BOOK, 2, 90_000)).toBe(false)
+    expect(await dueSections(BOOK)).toEqual([3])
   })
 
   it("adds taps on the same word and takes off only what was sent", async () => {

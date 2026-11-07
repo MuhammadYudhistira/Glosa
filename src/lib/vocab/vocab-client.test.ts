@@ -3,9 +3,11 @@ import { act, renderHook } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { clearLocalData } from "@/lib/local/device"
 import { localDb } from "@/lib/local/db"
-import { loadVocabCache } from "@/lib/local/vocab-store"
+import { dueSections, loadVocabCache } from "@/lib/local/vocab-store"
 import {
+  addSectionReading,
   queueSectionRead,
+  readDueSections,
   recordTap,
   refreshVocab,
   useBookVocab,
@@ -21,11 +23,6 @@ const server = vi.hoisted(() => ({
   loadBookVocabFn: vi.fn(),
 }))
 vi.mock("@/server/vocab", () => server)
-const words = vi.hoisted(() => ({ listLocalWords: vi.fn() }))
-vi.mock("@/lib/local/saved-words", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  listLocalWords: words.listLocalWords,
-}))
 
 const BOOK = "00000000-0000-4000-8000-000000000001"
 const ok = (n: number) =>
@@ -41,7 +38,6 @@ describe("vocab client", () => {
     server.recordWordsReadFn.mockImplementation(({ data }) => ok(data.length))
     server.recordLookupsFn.mockImplementation(({ data }) => ok(data.length))
     server.recordMeetingsFn.mockImplementation(({ data }) => ok(data.length))
-    words.listLocalWords.mockResolvedValue([])
     await clearLocalData()
   })
 
@@ -80,11 +76,7 @@ describe("vocab client", () => {
     expect(await localDb().vocabQueue.count()).toBe(0)
   })
 
-  it("queues meetings of saved words, not in the section they were saved", async () => {
-    words.listLocalWords.mockResolvedValue([
-      { headword: "run", bookId: BOOK, cfi: "epubcfi(/6/6!/4/2/1:0)" },
-      { headword: "mat", bookId: null, cfi: null },
-    ])
+  it("queues meetings of every saved word, leaving the saved section to the server", async () => {
     const forms = { run: ["run", "ran"], mat: ["mat"] }
     await queueSectionRead(BOOK, 2, "He ran to the mat and ran back.", forms)
     await queueSectionRead(BOOK, 3, "A mat. They run.", forms)
@@ -96,14 +88,94 @@ describe("vocab client", () => {
     const sent = server.recordMeetingsFn.mock.calls.flatMap(
       ([{ data }]) => data
     )
+    expect(sent).toHaveLength(4)
     expect(sent).toEqual(
       expect.arrayContaining([
+        { bookId: BOOK, headword: "run", section: 2, count: 2 },
         { bookId: BOOK, headword: "mat", section: 2, count: 1 },
         { bookId: BOOK, headword: "run", section: 3, count: 1 },
         { bookId: BOOK, headword: "mat", section: 3, count: 1 },
       ])
     )
-    expect(sent).toHaveLength(3) // "run" in section 2 is where it was saved
+  })
+
+  describe("sections read", () => {
+    const source = (text: string | null) => ({
+      sectionText: vi.fn().mockResolvedValue(text),
+    })
+    const NO_FORMS = {}
+
+    it("queues a due section's words and marks it done", async () => {
+      expect(await addSectionReading(BOOK, 4, 61_000)).toBe(true)
+      const view = source("The cat sat.")
+      await readDueSections(
+        BOOK,
+        () => view,
+        () => NO_FORMS
+      )
+      expect(view.sectionText).toHaveBeenCalledWith(4)
+      expect(await dueSections(BOOK)).toEqual([])
+      expect(await localDb().vocabQueue.count()).toBe(1)
+    })
+
+    it("keeps a section due when there is no view, or the view goes", async () => {
+      await addSectionReading(BOOK, 4, 61_000)
+      await readDueSections(
+        BOOK,
+        () => null,
+        () => NO_FORMS
+      )
+      expect(await dueSections(BOOK)).toEqual([4])
+      let alive: typeof gone | null = null
+      const gone = { sectionText: vi.fn().mockResolvedValue(null) }
+      alive = gone
+      gone.sectionText.mockImplementation(() => {
+        alive = null // the view closes while the text is read
+        return Promise.resolve(null)
+      })
+      await readDueSections(
+        BOOK,
+        () => alive,
+        () => NO_FORMS
+      )
+      expect(await dueSections(BOOK)).toEqual([4])
+      const throwing = {
+        sectionText: vi.fn().mockRejectedValue(new Error("closed")),
+      }
+      await readDueSections(
+        BOOK,
+        () => throwing,
+        () => NO_FORMS
+      )
+      expect(await dueSections(BOOK)).toEqual([4])
+      expect(await localDb().vocabQueue.count()).toBe(0)
+    })
+
+    it("takes up the sections left due when the view is ready", async () => {
+      await addSectionReading(BOOK, 1, 60_000)
+      await addSectionReading(BOOK, 6, 70_000)
+      await addSectionReading(BOOK, 7, 10_000)
+      const view = source("Some words here.")
+      await readDueSections(
+        BOOK,
+        () => view,
+        () => NO_FORMS
+      )
+      expect(view.sectionText.mock.calls).toEqual([[1], [6]])
+      expect(await dueSections(BOOK)).toEqual([])
+    })
+
+    it("marks a section done when its text is null while the view is alive", async () => {
+      await addSectionReading(BOOK, 4, 61_000)
+      const view = source(null)
+      await readDueSections(
+        BOOK,
+        () => view,
+        () => NO_FORMS
+      )
+      expect(await dueSections(BOOK)).toEqual([])
+      expect(await localDb().vocabQueue.count()).toBe(0)
+    })
   })
 
   it("shows a book's numbers and the meetings from the cache", async () => {

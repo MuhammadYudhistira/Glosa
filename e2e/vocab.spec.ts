@@ -46,8 +46,17 @@ test("reading a section for a minute and tapping a word are kept per book", asyn
   const { userId, bookId } = await startReading(page)
   const word = await tapWord(page, isMobile)
   await page.keyboard.press("Escape")
-  // Past the 60 s mark on a 30 s save tick, then the reader closes.
-  await page.waitForTimeout(95_000)
+  // Past the 60 s mark, then the reader closes: a section that reaches 60 s
+  // as the view goes is kept due, not lost.
+  await page.waitForTimeout(65_000)
+  await page.goto("/lobby")
+  // The book opened again takes up the due section, in idle time.
+  await page.goto(`/read/${bookId}`)
+  await expect(page.getByRole("status", { name: "Posisi baca" })).toHaveText(
+    /^\d+%$/,
+    { timeout: 30_000 }
+  )
+  await page.waitForTimeout(3_000)
   await page.goto("/lobby")
   await expect
     .poll(async () => (await vocabOf(userId, bookId)).sections.length, {

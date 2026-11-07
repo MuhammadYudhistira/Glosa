@@ -1,9 +1,10 @@
 import { useEffect, useSyncExternalStore } from "react"
 import { onMemberDataWiped } from "@/lib/local/device"
-import { listLocalWords } from "@/lib/local/saved-words"
 import {
   addSectionTime,
+  dueSections,
   loadVocabCache,
+  markSectionDone,
   meetStore,
   queueMeetings,
   queueTap,
@@ -21,7 +22,7 @@ import {
   recordWordsReadFn,
 } from "@/server/vocab"
 import type { VocabSummary } from "./comprehension"
-import { countMeetings, meetingCounts } from "./meetings"
+import { countMeetings } from "./meetings"
 import {
   MAX_MEET_BATCH,
   MAX_TAP_BATCH,
@@ -48,11 +49,12 @@ const keepaliveFetch: typeof fetch = (input, init) =>
   fetch(input, { ...init, keepalive: true })
 const isOnline = () => navigator.onLine
 
-let syncs: Array<QueueSync> | null = null
-/** The three queues of this tab (browser only), sent in this order. */
-function vocabSyncs(): Array<QueueSync> {
-  syncs ??= [
-    createQueueSync<WordsReadItem>({
+type VocabSyncs = { reads: QueueSync; taps: QueueSync; meets: QueueSync }
+let syncs: VocabSyncs | null = null
+/** The three queues of this tab (browser only). */
+function vocabSyncs(): VocabSyncs {
+  syncs ??= {
+    reads: createQueueSync<WordsReadItem>({
       store: wordsReadStore,
       isOnline,
       keyOf: (item) => item.key,
@@ -69,7 +71,7 @@ function vocabSyncs(): Array<QueueSync> {
       onRefused: (refused) =>
         console.error("the server refused words read", refused.length),
     }),
-    createQueueSync<TapItem>({
+    taps: createQueueSync<TapItem>({
       store: tapStore,
       isOnline,
       keyOf: (item) => item.key,
@@ -89,7 +91,7 @@ function vocabSyncs(): Array<QueueSync> {
         console.error("the server refused taps", refused.length),
       debounceMs: 10_000,
     }),
-    createQueueSync<MeetItem>({
+    meets: createQueueSync<MeetItem>({
       store: meetStore,
       isOnline,
       keyOf: (item) => item.key,
@@ -106,7 +108,7 @@ function vocabSyncs(): Array<QueueSync> {
       onRefused: (refused) =>
         console.error("the server refused meetings", refused.length),
     }),
-  ]
+  }
   return syncs
 }
 
@@ -142,10 +144,10 @@ export async function recordTap(bookId: string, word: string): Promise<void> {
   const normal = normalizeWord(word)
   if (!isLookupWord(normal)) return
   await queueTap(bookId, normal, new Date().toISOString())
-  vocabSyncs()[1].later()
+  vocabSyncs().taps.later()
 }
 
-/** Reading time in a section; true once the section counts as read (spec 3D §3.1). */
+/** Reading time in a section; true while the section is due (spec 3D §3.1). */
 export function addSectionReading(
   bookId: string,
   section: number,
@@ -162,17 +164,62 @@ export async function queueSectionRead(
   forms: Record<string, Array<string>>
 ): Promise<void> {
   await queueWordsRead(bookId, section, wordParts(sectionWords(text)))
-  const saved = await listLocalWords()
-  const met = meetingCounts(countMeetings(text, forms), bookId, section, saved)
+  // The server leaves out the section where a word was saved.
+  const met = Object.entries(countMeetings(text, forms)).map(
+    ([headword, count]) => ({ headword, count })
+  )
   if (met.length > 0) await queueMeetings(bookId, section, met)
-  const [reads, , meets] = vocabSyncs()
+  const { reads, meets } = vocabSyncs()
   reads.later()
   meets.later()
 }
 
+/** What the reader gives for the text of a section. */
+export type SectionSource = {
+  /** null: the section cannot be read; throws: the view is gone. */
+  sectionText: (index: number) => Promise<string | null>
+}
+
+let dueChain: Promise<void> = Promise.resolve()
+
+/**
+ * Queues the words of every due section of a book. A section is done once
+ * its rows are queued, or once its text came back null while the view was
+ * alive (a document that really fails is not tried again). Without a source,
+ * or when the view goes while reading, the section stays due for the next
+ * visit. Runs one call at a time. Never rejects.
+ */
+export function readDueSections(
+  bookId: string,
+  getSource: () => SectionSource | null,
+  getForms: () => Record<string, Array<string>>
+): Promise<void> {
+  dueChain = dueChain.then(async () => {
+    try {
+      for (const section of await dueSections(bookId)) {
+        const source = getSource()
+        if (!source) return
+        let text: string | null
+        try {
+          text = await source.sectionText(section)
+        } catch {
+          return
+        }
+        if (text === null && getSource() !== source) return
+        if (text) await queueSectionRead(bookId, section, text, getForms())
+        await markSectionDone(bookId, section)
+      }
+    } catch (error) {
+      console.error("counting the sections read failed", error)
+    }
+  })
+  return dueChain
+}
+
 /** Sends every waiting change. Never rejects. */
 export async function flushVocab(): Promise<void> {
-  for (const sync of vocabSyncs()) await sync.flush()
+  const { reads, taps, meets } = vocabSyncs()
+  for (const sync of [reads, taps, meets]) await sync.flush()
 }
 
 /** Sends the queues, then loads every book's numbers and the meetings. Never rejects. */
@@ -182,6 +229,8 @@ export async function refreshVocab(): Promise<void> {
   try {
     await readCache()
     await flushVocab()
+    // Offline there is nothing to load (and no console noise).
+    if (!isOnline()) return
     const answer = await loadVocabFn()
     if (seq !== refreshSeq || epoch !== wipeEpoch) return
     if (!answer.ok) {

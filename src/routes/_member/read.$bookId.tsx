@@ -68,11 +68,11 @@ import type { Position, TocItem } from "@/lib/reader-types"
 import { reportError } from "@/lib/sentry-client"
 import { useWakeLock } from "@/lib/use-wake-lock"
 import { savedChoice } from "@/lib/words/lookup"
-import { savedFormsOf } from "@/lib/words/saved-marks"
+import { savedFormsOf, whenIdle } from "@/lib/words/saved-marks"
 import {
   addSectionReading,
   flushVocab,
-  queueSectionRead,
+  readDueSections,
   recordTap,
 } from "@/lib/vocab/vocab-client"
 import {
@@ -247,25 +247,34 @@ function ReaderPage() {
   const shownSection = useRef<number | null>(null)
   const formsRef = useRef(formsByHeadword)
   formsRef.current = formsByHeadword
+  // The words of the sections read for 60 s are queued in idle time. A due
+  // section waits for a view (spec 3D §3.1): it is taken up when the reader
+  // is ready, and again when another section crosses 60 s.
+  const readDue = useCallback(() => {
+    whenIdle(window, () => {
+      void readDueSections(
+        bookId,
+        () => controlsRef.current,
+        () => formsRef.current
+      )
+    })
+  }, [bookId])
   // Time goes to the section shown when the clock hands it over: show()
   // hands over the page before, while shownSection still names its section
-  // (plan 3D, decision 6). A section read for 60 s gives its words (spec 3D §3.1).
+  // (plan 3D, decision 6).
   const onCounted = useCallback(
     (ms: number) => {
       const section = shownSection.current
       if (section === null) return
-      void addSectionReading(bookId, section, ms)
-        .then(async (read) => {
-          if (!read) return
-          const text = await controlsRef.current?.sectionText(section)
-          if (text)
-            await queueSectionRead(bookId, section, text, formsRef.current)
+      addSectionReading(bookId, section, ms)
+        .then((due) => {
+          if (due) readDue()
         })
         .catch((error: unknown) =>
           console.error("counting the section read failed", error)
         )
     },
-    [bookId]
+    [bookId, readDue]
   )
   const readingClock = useReadingClock(bookId, clockPaused, onCounted)
   const { onPage: onReadingPage, onActivity: onReadingActivity } = readingClock
@@ -280,6 +289,8 @@ function ReaderPage() {
     document.addEventListener("visibilitychange", onHide)
     return () => {
       document.removeEventListener("visibilitychange", onHide)
+      // The view is going: nothing may read a section through it any more.
+      controlsRef.current = null
       void flushVocab()
     }
   }, [])
@@ -350,6 +361,7 @@ function ReaderPage() {
     (info: ReaderReady) => {
       ready.current = true
       controlsRef.current = info.controls
+      readDue()
       setControls(info.controls)
       setToc(info.toc)
       // Reloading the page opens the last place read, not the word again.
@@ -362,7 +374,7 @@ function ReaderPage() {
         })
       }
     },
-    [bookId, navigate, target]
+    [bookId, navigate, readDue, target]
   )
 
   const onRelocate = useCallback(

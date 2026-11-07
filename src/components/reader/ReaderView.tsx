@@ -28,6 +28,7 @@ import {
   showActiveWord,
   whenIdle,
 } from "@/lib/words/saved-marks"
+import { textOfDocument } from "@/lib/vocab/words"
 import { type WordHit, wordAt } from "@/lib/words/word-at"
 import type { HighlightTap } from "./AnnotationPopup"
 import {
@@ -41,7 +42,6 @@ import {
   chapterLabel,
   createEdgePull,
 } from "./chapter-edge"
-import { textOfDocument } from "@/lib/vocab/words"
 import { loadReaderFonts } from "./reader-fonts"
 import {
   type ReaderMove,
@@ -86,7 +86,7 @@ export type ReaderControls = {
   canOpen: (cfi: string) => Promise<boolean>
   /** The chapter of each place, for the annotations panel. Never rejects. */
   chaptersOf: (cfis: ReadonlyArray<string>) => Promise<Array<string | null>>
-  /** A section's text, for the words read (plan 3D, decision 5). Never rejects. */
+  /** A section's text, for the words read (plan 3D, decision 5). Null: unreadable; rejects: the view closed. */
   sectionText: (index: number) => Promise<string | null>
   /** The book's cover from the EPUB, or null. Never rejects. */
   cover: () => Promise<Blob | null>
@@ -1065,7 +1065,12 @@ export function ReaderView({
             move,
             clearSelection,
             chaptersOf: (cfis) => chaptersOf(current, cfis),
-            sectionText: (index) => sectionText(current, index),
+            sectionText: async (index) => {
+              const text = await sectionText(current, index)
+              // A view torn down in between cannot say the section is unreadable.
+              if (text === null && cancelled) throw new Error("reader closed")
+              return text
+            },
             canOpen: (cfi) => canOpen(current, cfi),
             cover: () => epub.getCover().catch(() => null),
           },

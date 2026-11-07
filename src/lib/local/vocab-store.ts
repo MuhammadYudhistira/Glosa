@@ -14,7 +14,12 @@ const CACHE_KEY = "vocab"
 
 const sectionKey = (bookId: string, section: number) => `${bookId} ${section}`
 
-/** Adds reading time to a section; true exactly once, when it reaches 60 s. */
+/**
+ * Adds reading time to a section; true while the section is due: 60 s read
+ * and its words not queued yet. It stays due until markSectionDone, so a
+ * section that reached 60 s as the reader closed is picked up on the next
+ * visit.
+ */
 export async function addSectionTime(
   bookId: string,
   section: number,
@@ -26,16 +31,33 @@ export async function addSectionTime(
     const row = await db.sectionTime.get(key)
     if (row?.done === 1) return false
     const total = (row?.ms ?? 0) + ms
-    const done = total >= SECTION_READ_MS
     await db.sectionTime.put({
       key,
       bookId,
       section,
       ms: total,
-      done: done ? 1 : 0,
+      done: 0,
     })
-    return done
+    return total >= SECTION_READ_MS
   })
+}
+
+/** The sections of a book that reached 60 s and are not done yet. */
+export async function dueSections(bookId: string): Promise<Array<number>> {
+  const rows = await localDb()
+    .sectionTime.where("bookId")
+    .equals(bookId)
+    .filter((row) => row.done === 0 && row.ms >= SECTION_READ_MS)
+    .toArray()
+  return rows.map((row) => row.section).sort((a, b) => a - b)
+}
+
+/** A due section whose words are queued (or that cannot be read at all). */
+export async function markSectionDone(
+  bookId: string,
+  section: number
+): Promise<void> {
+  await localDb().sectionTime.update(sectionKey(bookId, section), { done: 1 })
 }
 
 async function pendingOf<T>(kind: LocalVocabOp["kind"]): Promise<Array<T>> {
