@@ -203,6 +203,7 @@ export interface FileRoutesById {
   '/auth/confirm': typeof AuthConfirmRoute
   '/_member/_lobi/habits': typeof MemberLobiHabitsRoute
   '/_member/_lobi/lobby': typeof MemberLobiLobbyRoute
+  '/_member/_lobi/recap': typeof MemberLobiRecapRoute
   '/_member/_lobi/settings': typeof MemberLobiSettingsRoute
   '/_member/_lobi/shelf': typeof MemberLobiShelfRoute
   '/_member/_lobi/shop': typeof MemberLobiShopRoute
