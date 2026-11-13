@@ -452,6 +452,18 @@
   .lobby-map-mark[data-kind="toko"] {
     background: #f2a65a;
   }
+  .lobby-map-spot[data-kind="perapian"],
+  .lobby-map-mark[data-kind="perapian"] {
+    background: #ff6b4a;
+  }
+  .lobby-map-spot[data-kind="papan"],
+  .lobby-map-mark[data-kind="papan"] {
+    background: #d4b483;
+  }
+  .lobby-map-spot[data-kind="pintu"],
+  .lobby-map-mark[data-kind="pintu"] {
+    background: #9aa8ff;
+  }
   .lobby-legend {
     display: grid;
     gap: 0.4rem;

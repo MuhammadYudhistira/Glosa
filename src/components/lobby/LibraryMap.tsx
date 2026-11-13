@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react"
 import { Button } from "@/components/ui/button"
 import { Panel } from "@/components/ui/panel"
+import type { Genre } from "@/lib/genre"
 import { cn } from "@/lib/utils"
 import type { HotspotModel } from "./lobby-data"
 import { type HotspotId, type Point2, ROOM, spotOf } from "./scene/layout"
@@ -17,21 +18,25 @@ function onMap([x, z]: Point2): CSSProperties {
 }
 
 /** How a place shows on the map; the legend uses the same marks. */
-type MapKind =
-  | "zone"
-  | "meja-baca"
-  | "meja-admin"
-  | "troli"
-  | "katalog"
-  | "lemari"
-  | "tanaman"
-  | "toko"
+type PlaceKind = Exclude<HotspotId, Genre>
+type MapKind = "zone" | PlaceKind
+
+/** Every place that is not a shelf has its own mark: a new one must add a row. */
+const PLACE_KINDS: Record<PlaceKind, true> = {
+  "meja-baca": true,
+  "meja-admin": true,
+  troli: true,
+  katalog: true,
+  lemari: true,
+  tanaman: true,
+  toko: true,
+  perapian: true,
+  papan: true,
+  pintu: true,
+}
+const isPlace = (id: HotspotId): id is PlaceKind => id in PLACE_KINDS
 const kindOf = (id: HotspotId, count: number | null): MapKind =>
-  id === "lemari"
-    ? "lemari"
-    : count !== null
-      ? "zone"
-      : (id as Exclude<MapKind, "zone">)
+  isPlace(id) && (id === "lemari" || count === null) ? id : "zone"
 
 const LEGEND: ReadonlyArray<[MapKind | "anda", string]> = [
   ["zone", "Rak buku"],
@@ -41,6 +46,9 @@ const LEGEND: ReadonlyArray<[MapKind | "anda", string]> = [
   ["katalog", "Kosakata"],
   ["lemari", "Sudah dibaca"],
   ["tanaman", "Kebiasaan baca"],
+  ["perapian", "Kilas balik"],
+  ["papan", "Sorotan"],
+  ["pintu", "Pengaturan"],
   ["toko", "Toko dekorasi"],
   ["anda", "Posisi Anda"],
 ]

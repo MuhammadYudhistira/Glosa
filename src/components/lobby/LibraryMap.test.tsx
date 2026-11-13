@@ -54,8 +54,21 @@ describe("LibraryMap", () => {
     expect(kindOf("Toko dekorasi di peta")).toBe("toko")
     const legend = container.querySelector(".lobby-legend")
     expect(legend).toHaveTextContent(
-      "Rak bukuKursi bacaMeja AdminTroli Buku BaruKosakataSudah dibacaKebiasaan bacaToko dekorasiPosisi Anda"
+      "Rak bukuKursi bacaMeja AdminTroli Buku BaruKosakataSudah dibacaKebiasaan bacaKilas balikSorotanPengaturanToko dekorasiPosisi Anda"
     )
+  })
+
+  it("marks the fireplace, corkboard and door with their own kinds", () => {
+    render(<LibraryMap hotspots={hotspots} anda={CENTRE} onSelect={vi.fn()} />)
+    for (const [label, id] of [
+      ["Kilas balik", "perapian"],
+      ["Sorotan", "papan"],
+      ["Pengaturan", "pintu"],
+    ]) {
+      expect(
+        screen.getByRole("button", { name: `${label} di peta` })
+      ).toHaveAttribute("data-kind", id)
+    }
   })
 
   it("turns its spots off while no 3D camera can move", () => {
