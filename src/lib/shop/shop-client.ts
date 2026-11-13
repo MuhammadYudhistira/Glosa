@@ -158,10 +158,15 @@ export function useShop(): ShopView {
   return snapshot
 }
 
-/** What the lobby shows in each slot: the items placed, and one tried on. */
-export function useLobbyDecor(): Placements {
+/**
+ * What the lobby shows in each slot: the items placed, and one tried on.
+ * `null` while the shop state is not known yet and nothing is tried on, so
+ * "not loaded" is not mistaken for "nothing placed".
+ */
+export function useLobbyDecor(): Placements | null {
   const snapshot = useShop()
   return useMemo(() => {
+    if (!snapshot.state && !snapshot.preview) return null
     const placed: Placements = { ...snapshot.state?.placed }
     const tried = snapshot.preview ? itemOf(snapshot.preview) : undefined
     if (tried) placed[tried.slot] = tried.id

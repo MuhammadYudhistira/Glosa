@@ -104,6 +104,16 @@ describe("shop client", () => {
     expect(shopStateForTests().state?.placed).toEqual({ rug: "rug_woven" })
   })
 
+  it("gives null until the shop state is known, then the placements", async () => {
+    const { result } = renderHook(() => useLobbyDecor())
+    expect(result.current).toBeNull()
+    server.loadLobbyFn.mockResolvedValue({ ok: true, state: state() })
+    await act(async () => {
+      await refreshShop()
+    })
+    expect(result.current).toEqual({ rug: "rug_woven" })
+  })
+
   it("shows an item tried on in its slot, over the one placed", async () => {
     server.loadLobbyFn.mockResolvedValue({ ok: true, state: state() })
     await refreshShop()

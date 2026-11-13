@@ -47,7 +47,8 @@ export function LobbyCanvas({
   /** Per genre, the colours of its books' covers, the newest first. */
   shelves?: GenreHues
   /** The shop's items, placed or tried on. */
-  decor: Placements
+  /** `null` while the shop state is not known yet: the stage is left as is. */
+  decor: Placements | null
   onReady: (stage: Stage) => void
   onView: (view: View, viewport: Viewport) => void
   onQuality: (quality: Quality) => void
@@ -102,7 +103,7 @@ export function LobbyCanvas({
         stage.setSignals(signalsRef.current)
         stage.setNotes(notesRef.current)
         stage.setShelves(shelvesRef.current)
-        stage.setDecor(decorRef.current)
+        if (decorRef.current) stage.setDecor(decorRef.current)
         stageRef.current = stage
         callbacks.current.onReady(stage)
       })
@@ -155,7 +156,7 @@ export function LobbyCanvas({
 
   useEffect(() => {
     decorRef.current = decor
-    stageRef.current?.setDecor(decor)
+    if (decor) stageRef.current?.setDecor(decor)
   }, [decor])
 
   return <div ref={hostRef} className="lobby-canvas-host" />

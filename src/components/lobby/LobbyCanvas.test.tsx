@@ -103,7 +103,7 @@ describe("LobbyCanvas", () => {
   })
 
   it("passes the shop's items to the stage, at start and on change", async () => {
-    const canvas = (decor: Record<string, string>) => (
+    const canvas = (decor: Record<string, string> | null) => (
       <LobbyCanvas
         quality="tinggi"
         test={false}
@@ -128,6 +128,31 @@ describe("LobbyCanvas", () => {
       rug: "rug_round",
       pet: "pet_cat",
     })
+  })
+
+  it("leaves the stage's items alone while the shop state is unknown", async () => {
+    const canvas = (decor: Record<string, string> | null) => (
+      <LobbyCanvas
+        quality="tinggi"
+        test={false}
+        anda={ANDA_START}
+        paused={false}
+        showcase={[]}
+        plant="tunas"
+        signals={NEUTRAL_SIGNALS}
+        decor={decor}
+        onReady={vi.fn()}
+        onView={vi.fn()}
+        onQuality={vi.fn()}
+        onFail={vi.fn()}
+      />
+    )
+    const { rerender } = render(canvas(null))
+    await vi.waitFor(() => expect(stage.setPlant).toHaveBeenCalled())
+    expect(stage.setDecor).not.toHaveBeenCalled()
+    rerender(canvas({ rug: "rug_woven" }))
+    expect(stage.setDecor).toHaveBeenCalledTimes(1)
+    expect(stage.setDecor).toHaveBeenCalledWith({ rug: "rug_woven" })
   })
 
   it("hands the room's signals to the stage, now and on change", async () => {

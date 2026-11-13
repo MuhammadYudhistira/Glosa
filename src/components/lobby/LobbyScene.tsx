@@ -106,7 +106,7 @@ export function LobbyScene({
   /** Per genre, the colours of its books' covers, the newest first. */
   shelves?: GenreHues
   /** The shop's items, placed or tried on. */
-  decor?: Placements
+  decor?: Placements | null
   /** False keeps WebGL off, e.g. while the lobby is hidden behind a page on phones (spec 1F §5). */
   allow3d?: boolean
   ref?: Ref<LobbySceneHandle>
