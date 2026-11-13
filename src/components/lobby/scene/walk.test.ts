@@ -8,7 +8,14 @@ import {
   footprint,
   walkBlockers,
 } from "./layout"
-import { type Box2, advance, findPath, nearestWalkable, walkable } from "./walk"
+import {
+  type Box2,
+  advance,
+  findPath,
+  nearestWalkable,
+  sameBoxes,
+  walkable,
+} from "./walk"
 
 const bounds: Box2 = { x0: 0, x1: 10, z0: 0, z1: 10 }
 const wall: Box2 = { x0: 4, x1: 5, z0: 0, z1: 8 }
@@ -198,5 +205,21 @@ describe("Anda in the study", () => {
         expect(crosses(path, from, box), `${from} -> ${to}`).toBe(false)
       }
     }
+  })
+})
+
+describe("sameBoxes", () => {
+  const a: Box2 = { x0: 0, x1: 1, z0: 0, z1: 1 }
+  const b: Box2 = { x0: 2, x1: 3, z0: 2, z1: 3 }
+
+  it("holds for equal boxes in the same order, even as separate objects", () => {
+    expect(sameBoxes([], [])).toBe(true)
+    expect(sameBoxes([a, b], [{ ...a }, { ...b }])).toBe(true)
+  })
+
+  it("fails for another length, order or edge", () => {
+    expect(sameBoxes([a], [a, b])).toBe(false)
+    expect(sameBoxes([a, b], [b, a])).toBe(false)
+    expect(sameBoxes([a], [{ ...a, z1: 1.5 }])).toBe(false)
   })
 })

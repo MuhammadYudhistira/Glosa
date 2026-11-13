@@ -2,6 +2,23 @@ import type { Point2 } from "./layout"
 
 export type Box2 = { x0: number; x1: number; z0: number; z1: number }
 
+/** Whether two box lists hold the same boxes, edge for edge, in order. */
+export function sameBoxes(
+  a: ReadonlyArray<Box2>,
+  b: ReadonlyArray<Box2>
+): boolean {
+  return (
+    a.length === b.length &&
+    a.every(
+      (box, i) =>
+        box.x0 === b[i].x0 &&
+        box.x1 === b[i].x1 &&
+        box.z0 === b[i].z0 &&
+        box.z1 === b[i].z1
+    )
+  )
+}
+
 const CELL = 0.25
 
 /** Whether a walker of this radius may stand at `p`: inside the bounds, off every box. */

@@ -1,6 +1,13 @@
 import { ANDA_RADIUS, type Point2, WALK_BOUNDS, walkBlockers } from "./layout"
 import type { Figure, People } from "./people"
-import { type Box2, advance, findPath, nearestWalkable, walkable } from "./walk"
+import {
+  type Box2,
+  advance,
+  findPath,
+  nearestWalkable,
+  sameBoxes,
+  walkable,
+} from "./walk"
 
 /** Walking speed, metres per second. */
 const SPEED = 1.4
@@ -122,6 +129,8 @@ export function createMotion(people: People): Motion {
   }
 
   function setExtraBlockers(boxes: Array<Box2>) {
+    // The same footprints again: leave a walk under way as it is.
+    if (sameBoxes(extra, boxes)) return
     extra = boxes
     const blocked = blockers()
     const here: Point2 = [root.position.x, root.position.z]
