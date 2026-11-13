@@ -42,11 +42,24 @@ const from = (parent: Point2, dx: number, dz: number): Point2 => [
  * (centred on z) and the corkboard on the Z = 0 wall (centred on x, y), above
  * the writing desk.
  * The door serves the `pintu` hotspot, the corkboard serves `papan` and the window tells the time of day (spec 3F §3.6).
+ * The corkboard's `size` is its cork's height; `width` is its frame's, outside.
  */
 export const ROOM_PARTS = {
   window: { x0: 4.5, x1: 7.2, y0: 1.0, y1: 3.4 },
   door: { z: 9.1, width: 1.3, height: 2.1 },
-  corkboard: { x: DESK_AT[0], y: 2.3, size: 1.0 },
+  corkboard: { x: DESK_AT[0], y: 2.3, size: 1.0, width: 1.35 },
+} as const
+
+/**
+ * How far the window's curtain rod (its round finial included) and the
+ * gathered curtains reach past the window's sides.
+ */
+export const CURTAIN_REACH = 0.58
+
+/** The stretch of the window wall the wall slot's items hang in: between the corkboard and the left curtain. */
+export const WALL_GAP = {
+  x0: ROOM_PARTS.corkboard.x + ROOM_PARTS.corkboard.width / 2,
+  x1: ROOM_PARTS.window.x0 - CURTAIN_REACH,
 } as const
 
 /**
@@ -349,23 +362,28 @@ const raised = (at: Point3, y: number): Point3 => [at[0], y, at[2]]
 
 const SLOT_AT: Record<SlotId, Point3> = {
   rug: [5.6, 0, 5.6],
-  lamp: [9.25, 0, 3.4],
-  // The lounge seat in the room, apart from the reading armchair.
-  seat: [7.6, 0, 3.4],
-  // Above the mantelpiece.
-  wall: [FIRE_AT[0], 2.7, 0.06],
-  // In front of the reading corner, where the seat does not hide it.
-  pet: [5.6, 0, 3.2],
+  // Right of the lounge seat, at the open side of the room; a step in front
+  // of it, so the hanging lantern is not drawn over the plant behind.
+  lamp: [9.3, 0, 5.2],
+  // The lounge seat in the room, apart from the reading armchair, with a
+  // walk behind it to the plant and the cabinet.
+  seat: [7.5, 0, 3.9],
+  // Above the mantelpiece, its centre level with the corkboard's.
+  wall: [FIRE_AT[0], 2.8, 0.02],
+  // On the rug's near corner, clear of the walk behind the seat and in
+  // front of the reading corner, so neither hides the other.
+  pet: [4.4, 0, 4.4],
   // Above the front floor, so from the camera nothing hanging falls in
   // front of the reading corner or the writing desk.
   ceiling: [5.8, 3.9, 7.2],
 }
 
 /**
- * The shop's slots (spec 3C §4, 3F §3.3). `at`: the item's origin, on the
- * floor, the wall or under the ceiling; `turn`: its turn about Y (items are
- * built facing +Z); `flat`: lies or hangs out of Anda's way; `focus`: where
- * the camera looks for a preview.
+ * The shop's slots (spec 3C §4, 3F §3.3). `at`: the item's origin: on the
+ * floor (it stands on it), on the wall (its centre, the item in front of the
+ * wall) or under the ceiling (it hangs down from there); `turn`: its turn
+ * about Y (items are built facing +Z); `flat`: lies or hangs out of Anda's
+ * way; `focus`: where the camera looks for a preview.
  */
 export const DECOR_SLOTS: Record<
   SlotId,
@@ -400,18 +418,23 @@ export const DECOR_SLOTS: Record<
     at: SLOT_AT.ceiling,
     turn: 0,
     flat: true,
-    focus: SLOT_AT.ceiling,
+    focus: raised(SLOT_AT.ceiling, SLOT_AT.ceiling[1] - 0.4),
   },
 }
 
-/** The largest footprint an item in each slot takes (for the collision tests). */
+/**
+ * The box every item in a slot fits in (width X, height, depth Z, before the
+ * slot's turn), centred on the slot's point; a wall item stands out from the
+ * wall by the depth. The builders keep to it, and the floor ones block Anda's
+ * walk by its footprint.
+ */
 export const DECOR_SIZES: Record<SlotId, Point3> = {
-  rug: [2, 0.02, 1.4],
-  lamp: [0.5, 1.7, 0.5],
-  seat: [2, 0.9, 0.9],
-  wall: [1.2, 1, 0.1],
+  rug: [3, 0.03, 2],
+  lamp: [0.9, 1.7, 0.9],
+  seat: [2.2, 0.9, 1.2],
+  wall: [1.2, 1, 0.15],
   pet: [0.8, 0.8, 0.8],
-  ceiling: [0.8, 0.8, 0.8],
+  ceiling: [1.2, 0.8, 1.2],
 }
 
 /** How far right the camera moves past a slot, so it shows beside the shop panel. */
@@ -442,9 +465,9 @@ export function walkBlockers(): Array<Box2> {
   ]
 }
 
-/** The decor slots that stand on the floor (Task 6 adds them when filled). */
-export function decorBlockers(): Array<Box2> {
-  return (Object.keys(DECOR_SLOTS) as Array<SlotId>)
+/** The footprints of the decor slots that stand on the floor: of `filled` only, or of all of them. */
+export function decorBlockers(filled?: ReadonlyArray<SlotId>): Array<Box2> {
+  return (filled ?? (Object.keys(DECOR_SLOTS) as Array<SlotId>))
     .filter((slot) => !DECOR_SLOTS[slot].flat)
     .map((slot) => {
       const { at, turn } = DECOR_SLOTS[slot]

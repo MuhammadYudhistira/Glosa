@@ -1,6 +1,6 @@
 import { ANDA_RADIUS, type Point2, WALK_BOUNDS, walkBlockers } from "./layout"
 import type { Figure, People } from "./people"
-import { advance, findPath, walkable } from "./walk"
+import { type Box2, advance, findPath, nearestWalkable, walkable } from "./walk"
 
 /** Walking speed, metres per second. */
 const SPEED = 1.4
@@ -37,6 +37,12 @@ export type Motion = {
   walkTo: (spot: Point2, instant: boolean) => void
   /** Ends a walk under way at its spot (the loop is about to stop). */
   finishWalk: () => void
+  /**
+   * What else Anda walks around (the placed shop items' footprints). One
+   * standing inside a new footprint steps out to the nearest free point; a
+   * walk under way finds a new way to its spot.
+   */
+  setExtraBlockers: (boxes: Array<Box2>) => void
 }
 
 /** The study's light animation: Anda walking (spec 3F §3.1); the ring stays still (§3.6). */
@@ -46,6 +52,8 @@ export function createMotion(people: People): Motion {
   let route: Array<Point2> = []
   let leg = 0
   let legProgress = 0
+  let extra: Array<Box2> = []
+  const blockers = () => [...walkBlockers(), ...extra]
 
   /** Turns Anda along leg `i` of the route, unless it has no length. */
   function face(i: number) {
@@ -80,7 +88,7 @@ export function createMotion(people: People): Motion {
 
   function walkTo([x, z]: Point2, instant: boolean) {
     const from: Point2 = [root.position.x, root.position.z]
-    const blocked = walkBlockers()
+    const blocked = blockers()
     const path = findPath(from, [x, z], WALK_BOUNDS, blocked, ANDA_RADIUS)
     if (path.length === 0) {
       // Standing where furniture now stands (a spot kept from an older
@@ -113,5 +121,20 @@ export function createMotion(people: People): Motion {
     arrive()
   }
 
-  return { update, walkTo, finishWalk }
+  function setExtraBlockers(boxes: Array<Box2>) {
+    extra = boxes
+    const blocked = blockers()
+    const here: Point2 = [root.position.x, root.position.z]
+    const free = nearestWalkable(here, WALK_BOUNDS, blocked, ANDA_RADIUS)
+    if (free !== here) root.position.set(free[0], 0, free[1])
+    const end = route.at(-1)
+    if (end) {
+      // The old way may cross the new item: walk on from here.
+      route = []
+      gait(figure, null)
+      walkTo(end, false)
+    }
+  }
+
+  return { update, walkTo, finishWalk, setExtraBlockers }
 }

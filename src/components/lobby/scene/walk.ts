@@ -28,6 +28,33 @@ export function walkable(
   )
 }
 
+/**
+ * `p` if a walker may stand there, else the nearest point found on rings
+ * 0.25 m apart around it, nearest ring first (for one standing where an item
+ * was just placed). `p` itself when nothing within 5 m is free.
+ */
+export function nearestWalkable(
+  p: Point2,
+  bounds: Box2,
+  blocked: ReadonlyArray<Box2>,
+  radius: number
+): Point2 {
+  if (walkable(p, bounds, blocked, radius)) return p
+  for (let ring = 1; ring <= 20; ring++) {
+    const distance = ring * CELL
+    const steps = ring * 8
+    for (let i = 0; i < steps; i++) {
+      const angle = (i / steps) * Math.PI * 2
+      const q: Point2 = [
+        p[0] + Math.cos(angle) * distance,
+        p[1] + Math.sin(angle) * distance,
+      ]
+      if (walkable(q, bounds, blocked, radius)) return q
+    }
+  }
+  return p
+}
+
 function clear(
   a: Point2,
   b: Point2,

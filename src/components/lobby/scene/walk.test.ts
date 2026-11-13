@@ -8,7 +8,7 @@ import {
   footprint,
   walkBlockers,
 } from "./layout"
-import { type Box2, advance, findPath, walkable } from "./walk"
+import { type Box2, advance, findPath, nearestWalkable, walkable } from "./walk"
 
 const bounds: Box2 = { x0: 0, x1: 10, z0: 0, z1: 10 }
 const wall: Box2 = { x0: 4, x1: 5, z0: 0, z1: 8 }
@@ -55,6 +55,25 @@ describe("walkable", () => {
     expect(walkable([3.8, 2], bounds, [wall], 0.3)).toBe(false)
     expect(walkable([0.1, 5], bounds, [wall], 0.3)).toBe(false)
     expect(walkable([11, 5], bounds, [wall], 0.3)).toBe(false)
+  })
+})
+
+describe("nearestWalkable", () => {
+  it("keeps a point that is already walkable", () => {
+    expect(nearestWalkable([2, 2], bounds, [wall], 0.3)).toEqual([2, 2])
+  })
+
+  it("steps out of a box to a walkable point close by", () => {
+    const inside: [number, number] = [4.6, 3]
+    const out = nearestWalkable(inside, bounds, [wall], 0.3)
+    expect(walkable(out, bounds, [wall], 0.3)).toBe(true)
+    // The near side of the wall is 0.7 m away (5 + 0.3 - 4.6).
+    expect(Math.hypot(out[0] - inside[0], out[1] - inside[1])).toBeLessThan(1)
+  })
+
+  it("steps in from outside the bounds", () => {
+    const out = nearestWalkable([0.1, 5], bounds, [wall], 0.3)
+    expect(walkable(out, bounds, [wall], 0.3)).toBe(true)
   })
 })
 

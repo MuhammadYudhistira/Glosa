@@ -82,6 +82,15 @@ if (decorParam === "all") {
     pet: "pet_cat",
     ceiling: "ceiling_lights",
   })
+} else if (decorParam?.includes(",")) {
+  // ?decor=<id>,<id>,...: these items together, the whole room in view.
+  const placed: Partial<Record<string, string>> = {}
+  for (const id of decorParam.split(",")) {
+    const item = itemOf(id)
+    if (!item) throw new Error(`No shop item ${id}`)
+    placed[item.slot] = item.id
+  }
+  stage.setDecor(placed)
 } else if (decorParam) {
   const item = itemOf(decorParam)
   if (!item) throw new Error(`No shop item ${decorParam}`)

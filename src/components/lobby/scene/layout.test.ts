@@ -12,18 +12,29 @@ import {
   PLANT,
   PLANT_POT,
   PLANT_SHAPES,
+  PREVIEW_SHIFT,
   ROOM,
+  ROOM_PARTS,
   SHOWCASE,
   SHOWCASE_SIZE,
   SHOWCASE_SLOTS,
   WALK_BOUNDS,
+  WALL_GAP,
   WALL_SECTIONS,
+  decorBlockers,
   footprint,
   showcaseSlots,
   walkBlockers,
   type Point2,
 } from "./layout"
-import { isInView, project, startView } from "./projection"
+import {
+  centerOn,
+  clampView,
+  isInView,
+  panBy,
+  project,
+  startView,
+} from "./projection"
 import { type Box2, findPath, walkable } from "./walk"
 
 const inRoom = ([x, z]: Point2, m = 0) =>
@@ -175,4 +186,55 @@ describe("room layout", () => {
     expect(inRoom(PLANT, PLANT_POT.width / 2)).toBe(true)
     expect(Object.keys(PLANT_SHAPES)).toHaveLength(6)
   })
+
+  it("hangs every wall item between the corkboard and the window's curtain", () => {
+    const corkboardRight =
+      ROOM_PARTS.corkboard.x + ROOM_PARTS.corkboard.width / 2
+    expect(WALL_GAP.x0).toBeGreaterThanOrEqual(corkboardRight)
+    expect(WALL_GAP.x1).toBeLessThanOrEqual(ROOM_PARTS.window.x0)
+    const [x] = DECOR_SLOTS.wall.at
+    const half = DECOR_SIZES.wall[0] / 2
+    expect(x - half).toBeGreaterThanOrEqual(WALL_GAP.x0)
+    expect(x + half).toBeLessThanOrEqual(WALL_GAP.x1)
+  })
+
+  it("lets Anda reach every hotspot with an item in every slot", () => {
+    const blocked = [...walkBlockers(), ...decorBlockers()]
+    expect(walkable(ANDA_START, WALK_BOUNDS, blocked, ANDA_RADIUS)).toBe(true)
+    for (const { id, stand } of HOTSPOT_SPOTS) {
+      expect(walkable(stand, WALK_BOUNDS, blocked, ANDA_RADIUS), id).toBe(true)
+      expect(
+        findPath(ANDA_START, stand, WALK_BOUNDS, blocked, ANDA_RADIUS).length,
+        id
+      ).toBeGreaterThan(0)
+    }
+  })
+
+  it("blocks only the floor slots it is given", () => {
+    expect(decorBlockers([])).toEqual([])
+    expect(decorBlockers(["rug", "wall", "ceiling"])).toEqual([])
+    expect(decorBlockers(["seat"])).toHaveLength(1)
+    expect(decorBlockers()).toHaveLength(
+      SLOT_IDS.filter((slot) => !DECOR_SLOTS[slot].flat).length
+    )
+  })
+
+  it.each(VIEWPORTS)(
+    "keeps every slot on screen in the shop's preview (%o)",
+    (viewport) => {
+      for (const slot of SLOT_IDS) {
+        const { focus } = DECOR_SLOTS[slot]
+        const view = clampView(
+          panBy(
+            centerOn(startView(viewport), focus),
+            PREVIEW_SHIFT,
+            0,
+            viewport
+          ),
+          viewport
+        )
+        expect(isInView(focus, view, viewport), slot).toBe(true)
+      }
+    }
+  )
 })

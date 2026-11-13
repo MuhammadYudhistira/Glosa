@@ -3,7 +3,7 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js"
 import type { HighlightColor } from "@/lib/annotations/types"
 import { type Kit, mergeStatic } from "./kit"
-import { ROOM, ROOM_PARTS, SHELF, WALL_SECTIONS } from "./layout"
+import { CURTAIN_REACH, ROOM, ROOM_PARTS, SHELF, WALL_SECTIONS } from "./layout"
 import { fitTo, type ModelSet } from "./models"
 
 const { width: W, depth: D, height: H } = ROOM
@@ -329,9 +329,10 @@ function windowFrame(kit: Kit, parent: THREE.Object3D) {
   glass.renderOrder = 2
   parent.add(glass)
 
-  // Brass rod with round finials.
+  // Brass rod with round finials (0.03 out, 0.05 round): the whole reaches
+  // CURTAIN_REACH past each side.
   const rodY = y1 + 0.28
-  const rodLength = width + 1.0
+  const rodLength = width + 2 * (CURTAIN_REACH - 0.08)
   kit.mesh(
     new THREE.CylinderGeometry(0.022, 0.022, rodLength, 10).rotateZ(
       Math.PI / 2
@@ -388,8 +389,9 @@ function windowFrame(kit: Kit, parent: THREE.Object3D) {
  * paper notes held by coloured pins.
  */
 function corkboard(kit: Kit, parent: THREE.Object3D) {
-  const { x, y, size } = ROOM_PARTS.corkboard
-  const width = size * 1.25
+  const { x, y, size, width: outside } = ROOM_PARTS.corkboard
+  // The cork inside a 5 cm frame.
+  const width = outside - 0.1
   const height = size
   const cork = kit.canvasTexture(256, 256, (g, w, h) => {
     g.fillStyle = "#c49a6c"

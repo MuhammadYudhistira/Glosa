@@ -6,6 +6,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import type { HighlightColor } from "@/lib/annotations/types"
 import type { PlantStage } from "@/lib/reading-habit"
+import { SLOT_IDS } from "@/lib/shop/catalog"
 import type { Placements } from "@/lib/shop/types"
 import {
   type LightRig,
@@ -20,10 +21,10 @@ import {
   NEUTRAL_SIGNALS,
   type RoomSignals,
 } from "../room-signals"
-import { buildDecor } from "./decor"
+import { DECOR_BUILDERS, buildDecor } from "./decor"
 import { buildFurniture } from "./furniture"
 import { createKit } from "./kit"
-import { type Point2, ROOM, type ShowcaseBook } from "./layout"
+import { type Point2, ROOM, type ShowcaseBook, decorBlockers } from "./layout"
 import { type ModelSet, loadModels } from "./models"
 import { createMotion } from "./motion"
 import { buildPeople } from "./people"
@@ -233,7 +234,16 @@ function buildStage(
         shelves: keep(buildShelves(kit)),
         showcase: keep(buildShowcase(kit, models, () => requestRender())),
         plant: keep(buildPlant(kit, () => requestRender())),
-        decor: keep(buildDecor(scene, () => requestRender())),
+        decor: keep(
+          buildDecor(
+            scene,
+            models,
+            () => requestRender(),
+            // Shop items move briefly when placed (spec 3F §3.6), only
+            // where the lobby moves at all and not behind a popup.
+            () => animates() && !paused
+          )
+        ),
         people: buildPeople(kit, options.anda),
       }
     } catch (error) {
@@ -263,6 +273,7 @@ function buildStage(
       centre.z + rig.sunPosition[2]
     )
     for (const lamp of furniture.lamps) lamp.intensity = rig.lamps * 1.6
+    decor.setLamps(rig.lamps)
     const fire = FIRE_STRENGTH[signals.fire]
     furniture.fire.intensity = fire * 2
     if (furniture.deskLight) {
@@ -548,6 +559,13 @@ function buildStage(
     },
     setDecor(placed) {
       decor.set(placed)
+      // Anda walks around the placed items that stand on the floor.
+      const filled = SLOT_IDS.filter((slot) => {
+        const id = placed[slot]
+        return id !== undefined && Object.hasOwn(DECOR_BUILDERS, id)
+      })
+      motion.setExtraBlockers(decorBlockers(filled))
+      requestRender()
     },
     setShowcase(list) {
       showcase.set(list)
