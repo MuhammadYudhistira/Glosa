@@ -65,6 +65,23 @@ describe("CorkboardPanel", () => {
     expect(screen.getByText(first.excerpt)).toBeInTheDocument()
   })
 
+  it("fills the board from older highlights when the newest is of a removed book", async () => {
+    const third = { ...first, id: "x3", excerpt: "Third" }
+    const fourth = { ...first, id: "x4", excerpt: "Fourth" }
+    renderPanel({
+      status: "ready",
+      highlights: [gone, first, second, third, fourth],
+    })
+    await screen.findByRole("dialog", { name: "Sorotan" })
+    expect(screen.getAllByRole("link", { name: "Buka di buku" })).toHaveLength(
+      3
+    )
+    expect(screen.queryByText(gone.excerpt)).not.toBeInTheDocument()
+    expect(screen.getByText(first.excerpt)).toBeInTheDocument()
+    expect(screen.getByText("Third")).toBeInTheDocument()
+    expect(screen.queryByText("Fourth")).not.toBeInTheDocument()
+  })
+
   it("shows at most three", async () => {
     const third = { ...first, id: "x3", excerpt: "Third" }
     const fourth = { ...first, id: "x4", excerpt: "Fourth" }

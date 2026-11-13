@@ -8,12 +8,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import type { HighlightsState } from "@/lib/annotations/highlights-client"
+import { pinnedHighlights } from "@/lib/annotations/pinned"
 import type { HighlightColor } from "@/lib/annotations/types"
 import type { ShelfBook } from "@/lib/book-types"
 import { cn } from "@/lib/utils"
 
 /** Most notes the corkboard holds. */
 export const CORKBOARD_NOTES = 3
+/** Highlights asked for, so removed books' ones can be skipped and still fill the board. */
+export const CORKBOARD_FETCH = 20
 
 const EDGE: Record<HighlightColor, string> = {
   yellow: "border-l-[#e8c547]",
@@ -38,12 +41,7 @@ export function CorkboardPanel({
 }) {
   const shown =
     state.status === "ready"
-      ? state.highlights
-          .flatMap((highlight) => {
-            const book = books.find(({ id }) => id === highlight.bookId)
-            return book ? [{ highlight, book }] : []
-          })
-          .slice(0, CORKBOARD_NOTES)
+      ? pinnedHighlights(state.highlights, books, CORKBOARD_NOTES)
       : []
 
   return (

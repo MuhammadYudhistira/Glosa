@@ -2,6 +2,7 @@ import { useNavigate, useRouter, useSearch } from "@tanstack/react-router"
 import { PlusIcon } from "lucide-react"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import {
+  CORKBOARD_FETCH,
   CORKBOARD_NOTES,
   CorkboardPanel,
 } from "@/components/lobby/CorkboardPanel"
@@ -30,6 +31,7 @@ import { UploadPanel } from "@/components/shelf/UploadPanel"
 import { useLocalShelf } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
 import type { Collection, ShelfBook, StorageUsage } from "@/lib/book-types"
+import { pinnedHighlights } from "@/lib/annotations/pinned"
 import { useHighlights } from "@/lib/annotations/highlights-client"
 import { useReadingHabit } from "@/lib/habit/habit-client"
 import {
@@ -78,17 +80,16 @@ export function LobbyStage({
   const decor = useLobbyDecor()
   const shop = useShop()
   const online = useOnline()
-  const highlights = useHighlights(CORKBOARD_NOTES, online && !offline)
+  const highlights = useHighlights(CORKBOARD_FETCH, online && !offline)
   // The papers on the board: the newest highlights of books still on the shelf.
   const notes = useMemo(
     () =>
       highlights.state.status === "ready"
-        ? highlights.state.highlights
-            .filter((highlight) =>
-              books.some((book) => book.id === highlight.bookId)
-            )
-            .slice(0, CORKBOARD_NOTES)
-            .map((highlight) => highlight.color)
+        ? pinnedHighlights(
+            highlights.state.highlights,
+            books,
+            CORKBOARD_NOTES
+          ).map(({ highlight }) => highlight.color)
         : [],
     [highlights.state, books]
   )

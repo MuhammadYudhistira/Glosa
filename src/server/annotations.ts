@@ -127,6 +127,8 @@ export const listHighlightsFn = createServerFn({ method: "GET" })
       .eq("kind", "highlight")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
+      // A stable tiebreaker for highlights made at the same moment.
+      .order("id")
       .limit(data.limit)
     if (error) {
       logServerError("listing highlights failed", error)

@@ -441,6 +441,8 @@ function corkboard(kit: Kit, parent: THREE.Object3D) {
       { parent, cast: false }
     )
     tack.userData.animated = true
+    // Bare until setNotes says otherwise.
+    note.visible = tack.visible = false
     return { note, tack, paper }
   })
   return {

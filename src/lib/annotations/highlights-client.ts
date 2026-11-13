@@ -1,5 +1,5 @@
 import { useServerFn } from "@tanstack/react-start"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { listHighlightsFn } from "@/server/annotations"
 import type { Highlight } from "./types"
 
@@ -47,12 +47,13 @@ export function useHighlights(
     return () => {
       live = false
     }
-  }, [limit, online, attempt, key, load])
+  }, [limit, online, key, load])
 
   const state: HighlightsState = !online
     ? { status: "offline" }
     : answer && answer.key === key
       ? answer.state
       : { status: "loading" }
-  return { state, retry: () => setAttempt((value) => value + 1) }
+  const retry = useCallback(() => setAttempt((value) => value + 1), [])
+  return { state, retry }
 }
