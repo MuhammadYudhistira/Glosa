@@ -6,6 +6,7 @@ import { NO_NOTES, type RoomSignals } from "./room-signals"
 import type { Point2, ShowcaseBook } from "./scene/layout"
 import { type View, type Viewport, startView } from "./scene/projection"
 import type { Quality } from "./scene/quality"
+import { EMPTY_HUES, type GenreHues } from "./scene/shelf-books"
 import type { Stage } from "./scene/stage"
 
 /**
@@ -22,6 +23,7 @@ export function LobbyCanvas({
   plant,
   signals,
   notes = NO_NOTES,
+  shelves = EMPTY_HUES,
   decor,
   onReady,
   onView,
@@ -42,6 +44,8 @@ export function LobbyCanvas({
   signals: RoomSignals
   /** The colours of the corkboard's papers, newest highlight first. */
   notes?: ReadonlyArray<HighlightColor>
+  /** Per genre, the colours of its books' covers, the newest first. */
+  shelves?: GenreHues
   /** The shop's items, placed or tried on. */
   decor: Placements
   onReady: (stage: Stage) => void
@@ -57,6 +61,7 @@ export function LobbyCanvas({
   const plantRef = useRef(plant)
   const signalsRef = useRef(signals)
   const notesRef = useRef(notes)
+  const shelvesRef = useRef(shelves)
   const decorRef = useRef(decor)
   const callbacks = useRef({ onReady, onView, onQuality, onFail })
   const initial = useRef({ quality, test })
@@ -96,6 +101,7 @@ export function LobbyCanvas({
         stage.setPlant(plantRef.current)
         stage.setSignals(signalsRef.current)
         stage.setNotes(notesRef.current)
+        stage.setShelves(shelvesRef.current)
         stage.setDecor(decorRef.current)
         stageRef.current = stage
         callbacks.current.onReady(stage)
@@ -141,6 +147,11 @@ export function LobbyCanvas({
     notesRef.current = notes
     stageRef.current?.setNotes(notes)
   }, [notes])
+
+  useEffect(() => {
+    shelvesRef.current = shelves
+    stageRef.current?.setShelves(shelves)
+  }, [shelves])
 
   useEffect(() => {
     decorRef.current = decor

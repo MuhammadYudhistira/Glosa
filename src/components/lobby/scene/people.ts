@@ -2,23 +2,22 @@ import * as THREE from "three"
 import type { Kit } from "./kit"
 import type { Point2 } from "./layout"
 
-const SKIN = ["#e8b48e", "#c68e63", "#8a5a3c", "#f0c8a0"]
-const HAIR = ["#2b1d16", "#1d1d1d", "#6b4a2b", "#d8d4cf", "#a8742f"]
-const SHIRT = [
-  "#f2f0ea",
-  "#2f3e46",
-  "#ee6c4d",
-  "#98c1d9",
-  "#7a9e7e",
-  "#b56576",
-  "#e0c068",
-  "#3d5a80",
-  "#1f1f24",
-]
-const PANTS = ["#2b2420", "#3d5a80", "#4a4a4a", "#d9cdb8"]
+/** Anda's warm palette, in the rounded style of the room's models. */
+const LOOK = {
+  skin: "#e2a982",
+  cheek: "#e98f7a",
+  hair: "#4a2e1f",
+  sweater: "#d9774b",
+  collar: "#f2e3c6",
+  trousers: "#5b4636",
+  shoes: "#2e2019",
+  eyes: "#2a1a12",
+} as const
 
 export type Figure = {
   root: THREE.Group
+  /** Everything but the ring: it bobs and sways while walking. */
+  body: THREE.Group
   legs: Array<{ hip: THREE.Group; knee: THREE.Group }>
   arms: Array<THREE.Group>
   head: THREE.Group
@@ -29,83 +28,96 @@ export type People = {
   ring: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>
 }
 
-type Look = {
-  shirt?: string
-  pants?: string
-  skin?: string
-  hair?: string
-  seated?: boolean
-}
+const capsule = (radius: number, length: number) =>
+  new THREE.CapsuleGeometry(radius, length, 6, 14)
+const ball = (radius: number) => new THREE.SphereGeometry(radius, 22, 16)
 
-/** A jointed figure from simple shapes: hips, knees, shoulders, head (spec 1D §2, decision 8). */
-function person(kit: Kit, look: Look = {}): Figure {
-  const shirt = look.shirt ?? kit.pick(SHIRT)
-  const pants = look.pants ?? kit.pick(PANTS)
-  const skin = look.skin ?? kit.pick(SKIN)
-  const hair = look.hair ?? kit.pick(HAIR)
-  const capsule = (radius: number, length: number) =>
-    new THREE.CapsuleGeometry(radius, length, 5, 10)
+/**
+ * "Anda" in the room's rounded style: a round head, a capsule body, short
+ * jointed legs and arms (hips, knees, shoulders) for the walk, about 1.55 m
+ * tall, facing +Z.
+ */
+function anda(kit: Kit): Figure {
   const root = new THREE.Group()
-  const hipY = look.seated ? 0 : 0.86
+  const body = new THREE.Group()
+  root.add(body)
+  const hipY = 0.62
 
   const legs = [-1, 1].map((side) => {
     const hip = new THREE.Group()
-    hip.position.set(side * 0.09, hipY, 0)
-    root.add(hip)
-    kit.mesh(capsule(0.075, 0.32), pants, 0, -0.22, 0, { parent: hip })
+    hip.position.set(side * 0.1, hipY, 0)
+    body.add(hip)
+    kit.mesh(capsule(0.078, 0.2), LOOK.trousers, 0, -0.16, 0, { parent: hip })
     const knee = new THREE.Group()
-    knee.position.set(0, -0.42, 0)
+    knee.position.set(0, -0.32, 0)
     hip.add(knee)
-    kit.mesh(capsule(0.065, 0.3), pants, 0, -0.2, 0, { parent: knee })
-    kit.block(0.11, 0.07, 0.2, "#2b1d16", 0, -0.42, 0.04, {
+    kit.mesh(capsule(0.07, 0.16), LOOK.trousers, 0, -0.12, 0, {
       parent: knee,
-      r: 0.03,
+    })
+    kit.block(0.13, 0.08, 0.21, LOOK.shoes, 0, -0.3, 0.035, {
+      parent: knee,
+      r: 0.035,
     })
     return { hip, knee }
   })
-  kit.mesh(capsule(0.19, 0.3), shirt, 0, hipY + 0.32, 0, { parent: root })
+
+  // A round body in a chunky sweater, with a pale collar.
+  kit.mesh(capsule(0.22, 0.26), LOOK.sweater, 0, hipY + 0.28, 0, {
+    parent: body,
+  })
+  kit.mesh(
+    new THREE.TorusGeometry(0.11, 0.035, 10, 24).rotateX(Math.PI / 2),
+    LOOK.collar,
+    0,
+    hipY + 0.6,
+    0,
+    { parent: body }
+  )
+
   const arms = [-1, 1].map((side) => {
     const shoulder = new THREE.Group()
-    shoulder.position.set(side * 0.25, hipY + 0.5, 0)
-    root.add(shoulder)
-    kit.mesh(capsule(0.06, 0.4), shirt, 0, -0.25, 0, { parent: shoulder })
-    kit.mesh(new THREE.SphereGeometry(0.065, 10, 8), skin, 0, -0.5, 0, {
+    shoulder.position.set(side * 0.25, hipY + 0.47, 0)
+    body.add(shoulder)
+    kit.mesh(capsule(0.062, 0.24), LOOK.sweater, 0, -0.17, 0, {
       parent: shoulder,
     })
+    kit.mesh(ball(0.06), LOOK.skin, 0, -0.35, 0, { parent: shoulder })
     return shoulder
   })
+
   const head = new THREE.Group()
   head.position.y = hipY + 0.8
-  root.add(head)
-  kit.mesh(new THREE.SphereGeometry(0.16, 20, 16), skin, 0, 0, 0, {
-    parent: head,
-  })
+  body.add(head)
+  kit.mesh(ball(0.2), LOOK.skin, 0, 0, 0, { parent: head })
+  // Hair: a cap over the crown and the back of the head.
   const cap = kit.mesh(
-    new THREE.SphereGeometry(0.17, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2),
-    hair,
+    new THREE.SphereGeometry(0.212, 22, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
+    LOOK.hair,
     0,
-    0.01,
-    -0.01,
+    0.012,
+    -0.012,
     { parent: head }
   )
-  cap.rotation.x = -0.25
-  if (look.seated) {
-    for (const { hip, knee } of legs) {
-      hip.rotation.x = -Math.PI / 2
-      knee.rotation.x = Math.PI / 2
-    }
+  cap.rotation.x = -0.32
+  // Eyes and cheeks, so it is clear which way Anda faces.
+  for (const side of [-1, 1]) {
+    kit.mesh(ball(0.022), LOOK.eyes, side * 0.072, 0.0, 0.186, {
+      parent: head,
+      cast: false,
+    })
+    const cheek = kit.mesh(ball(0.03), LOOK.cheek, side * 0.115, -0.05, 0.155, {
+      parent: head,
+      cast: false,
+    })
+    cheek.scale.z = 0.4
   }
   kit.scene.add(root)
-  return { root, legs, arms, head }
+  return { root, body, legs, arms, head }
 }
 
-/** "Anda", the only person in the study (spec 3F §2, decision 5). Task 5 restyles them. */
-export function buildPeople(kit: Kit, anda: Point2): People {
-  const member = person(kit, {
-    shirt: "#1fa58a",
-    hair: "#2b1d16",
-    skin: "#c68e63",
-  })
+/** "Anda", the only person in the study (spec 3F §2, decision 5). */
+export function buildPeople(kit: Kit, at: Point2): People {
+  const member = anda(kit)
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(0.42, 0.52, 40),
     new THREE.MeshBasicMaterial({
@@ -117,6 +129,6 @@ export function buildPeople(kit: Kit, anda: Point2): People {
   ring.rotation.x = -Math.PI / 2
   ring.position.y = 0.02
   member.root.add(ring)
-  member.root.position.set(anda[0], 0, anda[1])
+  member.root.position.set(at[0], 0, at[1])
   return { anda: member, ring }
 }

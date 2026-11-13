@@ -160,3 +160,44 @@ export function findPath(
   }
   return path
 }
+
+/**
+ * Moves `distance` further along a route of straight legs, from `progress`
+ * metres into leg `leg`. Never past the end: `done` once the last point is
+ * reached, and then `at` is that point.
+ */
+export function advance(
+  route: ReadonlyArray<Point2>,
+  leg: number,
+  progress: number,
+  distance: number
+): { leg: number; progress: number; at: Point2; done: boolean } {
+  let i = leg
+  let d = progress + distance
+  while (i < route.length - 1) {
+    const length = Math.hypot(
+      route[i + 1][0] - route[i][0],
+      route[i + 1][1] - route[i][1]
+    )
+    if (d < length) {
+      const t = length === 0 ? 1 : d / length
+      return {
+        leg: i,
+        progress: d,
+        done: false,
+        at: [
+          route[i][0] + (route[i + 1][0] - route[i][0]) * t,
+          route[i][1] + (route[i + 1][1] - route[i][1]) * t,
+        ],
+      }
+    }
+    d -= length
+    i++
+  }
+  return {
+    leg: Math.max(0, route.length - 1),
+    progress: 0,
+    done: true,
+    at: route[route.length - 1],
+  }
+}

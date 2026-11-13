@@ -4,6 +4,7 @@ import type { Kit } from "./kit"
 import { PLANT, PLANT_POT, PLANT_SHAPES } from "./layout"
 
 const POT = "#b4643c"
+const RIM = "#c97a4e"
 const SOIL = "#3b2618"
 /** The plant is drawn small and scaled up, so it reads from the camera. */
 const SCALE = 2.6
@@ -21,22 +22,38 @@ export type Plant = {
  */
 export function buildPlant(kit: Kit, onChange: () => void): Plant {
   const [x, z] = PLANT
-  kit.block(PLANT_POT.width, PLANT_POT.height, PLANT_POT.width, POT, x, 0, z, {
-    r: 0.06,
-  })
-  kit.block(
-    PLANT_POT.width - 0.1,
-    0.03,
-    PLANT_POT.width - 0.1,
-    SOIL,
+  // A round terracotta pot in code, narrower at the foot, with a thick rim:
+  // the pack's only potted plant is a cactus, not a pot (plan 3F-R1, Task 5).
+  const radius = PLANT_POT.width / 2
+  const rim = 0.09
+  const bowl = PLANT_POT.height - rim
+  kit.mesh(
+    new THREE.CylinderGeometry(radius - 0.04, radius * 0.72, bowl, 28),
+    POT,
     x,
-    PLANT_POT.height,
+    bowl / 2,
+    z
+  )
+  kit.mesh(
+    new THREE.TorusGeometry(radius - rim / 2, rim / 2, 10, 32).rotateX(
+      Math.PI / 2
+    ),
+    RIM,
+    x,
+    bowl + rim / 2,
+    z
+  )
+  kit.mesh(
+    new THREE.CylinderGeometry(radius - rim, radius - rim, 0.02, 28),
+    kit.mat(SOIL, { roughness: 1 }),
+    x,
+    PLANT_POT.height - 0.03,
     z,
-    { r: 0.01, cast: false }
+    { cast: false }
   )
 
   const group = new THREE.Group()
-  group.position.set(x, PLANT_POT.height + 0.03, z)
+  group.position.set(x, PLANT_POT.height - 0.02, z)
   group.scale.setScalar(SCALE)
   kit.scene.add(group)
 

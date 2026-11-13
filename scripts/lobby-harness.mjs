@@ -1,6 +1,7 @@
 // The 3D lobby on its own page, without the app (plan 1D, Task 5):
 //   node scripts/lobby-harness.mjs serve         open it in a browser
-//   node scripts/lobby-harness.mjs shot <file> [all | query]   1440 × 900 screenshot (PNG)
+//   node scripts/lobby-harness.mjs shot <file> [all | query]   1440 × 900 screenshot (PNG);
+//                                 `phone` in the query takes it at 390 × 844
 //   node scripts/lobby-harness.mjs moods [dir]   day, dusk and night, desktop and phone (PNG)
 //   node scripts/lobby-harness.mjs still         public/lobby/lobby-still*.{avif,webp}
 //   node scripts/lobby-harness.mjs thumbs        public/lobby/shop/<id>.webp
@@ -69,7 +70,10 @@ async function shot(path, extra) {
     extra === "all"
       ? "mode=still&decor=all"
       : `mode=still${extra ? `&${extra}` : ""}`
-  await sharp(await render({ width: 1440, height: 900 }, query)).toFile(path)
+  const viewport = /(^|&)phone(=|&|$)/.test(extra ?? "")
+    ? { width: 390, height: 844 }
+    : { width: 1440, height: 900 }
+  await sharp(await render(viewport, query)).toFile(path)
   console.log(`wrote ${path}`)
 }
 

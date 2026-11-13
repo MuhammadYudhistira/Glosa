@@ -22,7 +22,6 @@ binary `.glb` with `gltf-pipeline` (no Draco, geometry unchanged).
 | armchair-pillows.glb | armchair_pillows | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
 | book-set.glb | book_set | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
 | book-single.glb | book_single | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
-| cactus-medium-a.glb | cactus_medium_A | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
 | chair-a-wood.glb | chair_A_wood | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
 | couch-pillows.glb | couch_pillows | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
 | lamp-standing.glb | lamp_standing | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |

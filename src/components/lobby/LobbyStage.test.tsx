@@ -2,6 +2,7 @@ import "fake-indexeddb/auto"
 import { act, fireEvent, screen } from "@testing-library/react"
 import { useRouterState } from "@tanstack/react-router"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { coverHue } from "@/components/shelf/BookCover"
 import { sherlock } from "@/components/shelf/fixtures"
 import type { StorageUsage } from "@/lib/book-types"
 import type { SessionUser } from "@/lib/session-types"
@@ -17,6 +18,7 @@ const scene = vi.hoisted(() => ({
     allow3d?: boolean
     onActivate?: (id: string) => void
     notes?: Array<string>
+    shelves?: Record<string, ReadonlyArray<number>>
   } | null,
 }))
 vi.mock("./LobbyScene", () => ({
@@ -205,6 +207,38 @@ describe("LobbyStage", () => {
     renderStage(false)
     await screen.findByRole("main")
     expect(scene.props?.notes).toEqual(["pink", "green"])
+  })
+
+  it("stands each genre's books on its shelf, the newest added first", async () => {
+    const newer = {
+      ...sherlock,
+      id: "22222222-2222-4222-8222-222222222222",
+      title: "The Hound of the Baskervilles",
+      createdAt: "2026-10-20T03:00:00+00:00",
+    }
+    const unsorted = {
+      ...sherlock,
+      id: "33333333-3333-4333-8333-333333333333",
+      genre: null,
+    }
+    stubWideScreen(true)
+    renderWithRouter(
+      <LobbyStage
+        collections={[]}
+        user={member}
+        books={[sherlock, unsorted, newer]}
+        usage={usage}
+        offline={false}
+        popup={false}
+      />,
+      "/lobby"
+    )
+    await screen.findByRole("main")
+    expect(scene.props?.shelves?.misteri_thriller).toEqual([
+      coverHue(newer.title),
+      coverHue(sherlock.title),
+    ])
+    expect(scene.props?.shelves?.fiksi_sastra).toEqual([])
   })
 
   it("closes the popup when a search result is picked, and shows the book", async () => {

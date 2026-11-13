@@ -2,6 +2,7 @@
 // looking at the scene while working on it, and for rendering the still image.
 // Not part of the app.
 import { ANDA_START, DECOR_SLOTS } from "@/components/lobby/scene/layout"
+import { genreHues } from "@/components/lobby/scene/shelf-books"
 import {
   MAX_ZOOM,
   centerOn,
@@ -59,6 +60,16 @@ const noteColors = (params.get("notes") ?? "")
     (HIGHLIGHT_COLORS as ReadonlyArray<string>).includes(color)
   )
 stage.setNotes(noteColors)
+// ?books=1: sample books on the shelves, 0 to 120 per genre (past a
+// section's capacity), so full, part-filled and empty (dim) sections show.
+if (params.get("books") === "1") {
+  const counts = [0, 120, 35, 0, 78, 12, 54, 3]
+  stage.setShelves(
+    genreHues((_, g) =>
+      Array.from({ length: counts[g] }, (_book, i) => (i * 47 + g * 29) % 360)
+    )
+  )
+}
 // ?decor=all: one item in every slot, to check where they stand.
 // ?decor=<id>: that item alone, the camera close on its slot (the shop's pictures).
 const decorParam = params.get("decor")

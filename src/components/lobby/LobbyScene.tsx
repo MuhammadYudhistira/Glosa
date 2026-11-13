@@ -38,6 +38,7 @@ import {
   detectEnvironment,
   initialQuality,
 } from "./scene/quality"
+import { EMPTY_HUES, type GenreHues } from "./scene/shelf-books"
 import type { Stage } from "./scene/stage"
 
 export type LobbySceneHandle = {
@@ -81,6 +82,7 @@ export function LobbyScene({
   plant = "tunas",
   signals = NEUTRAL_SIGNALS,
   notes = NO_NOTES,
+  shelves = EMPTY_HUES,
   decor = {},
   allow3d = true,
   ref,
@@ -101,6 +103,8 @@ export function LobbyScene({
   signals?: RoomSignals
   /** The colours of the corkboard's papers, newest highlight first. */
   notes?: ReadonlyArray<HighlightColor>
+  /** Per genre, the colours of its books' covers, the newest first. */
+  shelves?: GenreHues
   /** The shop's items, placed or tried on. */
   decor?: Placements
   /** False keeps WebGL off, e.g. while the lobby is hidden behind a page on phones (spec 1F §5). */
@@ -202,6 +206,7 @@ export function LobbyScene({
           plant={plant}
           signals={signals}
           notes={notes}
+          shelves={shelves}
           decor={decor}
           onReady={(stage) => {
             stageRef.current = stage

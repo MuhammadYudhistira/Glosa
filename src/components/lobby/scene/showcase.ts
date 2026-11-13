@@ -8,6 +8,7 @@ import {
   type ShowcaseBook,
   showcaseSlots,
 } from "./layout"
+import { type ModelSet, fitTo } from "./models"
 
 const BODY = "#6a4228"
 const TRIM = "#b98552"
@@ -19,21 +20,9 @@ export type Showcase = {
   dispose: () => void
 }
 
-/**
- * The display cabinet of finished books (spec Tahap 3 §4.5). Covers load as
- * textures from their signed URLs, which Storage sends with CORS headers; a
- * book without one, a cover that fails and every cover offline keep a
- * coloured face. onChange asks the stage to draw again.
- */
-export function buildShowcase(kit: Kit, onChange: () => void): Showcase {
-  const [cx, cz] = SHOWCASE
+/** The cabinet's body in code: rounded wood, two glazed doors, brass knobs. */
+function cabinetBody(kit: Kit, parent: THREE.Object3D) {
   const { width, height, depth } = SHOWCASE_SIZE
-  // Built facing +Z in its own group, then turned (plan 3F-R1, Task 5 refines it).
-  const body = new THREE.Group()
-  body.position.set(cx, 0, cz)
-  body.rotation.y = SHOWCASE_TURN
-  kit.scene.add(body)
-  const parent = body
   const front = depth / 2
   kit.block(width, height - 0.1, 0.05, "#4e3222", 0, 0.1, -front + 0.025, {
     r: 0.015,
@@ -112,6 +101,38 @@ export function buildShowcase(kit: Kit, onChange: () => void): Showcase {
   pane.renderOrder = 2
   pane.userData.animated = true
   parent.add(pane)
+}
+
+/**
+ * The display cabinet of finished books (spec Tahap 3 §4.5): the
+ * `glassCabinet` model when there is one, else built in code. Covers load as
+ * textures from their signed URLs, which Storage sends with CORS headers; a
+ * book without one, a cover that fails and every cover offline keep a
+ * coloured face. onChange asks the stage to draw again.
+ */
+export function buildShowcase(
+  kit: Kit,
+  models: ModelSet,
+  onChange: () => void
+): Showcase {
+  const [cx, cz] = SHOWCASE
+  // Built facing +Z in its own group, then turned like the cover slots.
+  const body = new THREE.Group()
+  body.position.set(cx, 0, cz)
+  body.rotation.y = SHOWCASE_TURN
+  kit.scene.add(body)
+  const model = models.get("glassCabinet")
+  if (model) {
+    model.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = true
+        object.receiveShadow = true
+      }
+    })
+    body.add(fitTo(model, SHOWCASE_SIZE.height))
+  } else {
+    cabinetBody(kit, body)
+  }
   mergeStatic(body)
 
   const covers = new THREE.Group()

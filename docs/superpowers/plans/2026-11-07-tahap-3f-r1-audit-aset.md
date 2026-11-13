@@ -25,7 +25,7 @@ Tinggi nyata = perkiraan tinggi di ruangan (m); `fitTo` menskala model ke angka 
 | glassCabinet | kode | `cabinet_*` tidak berkaca dan tak bisa memuat 12 sampul; dibuat kode | 2,0 |
 | windowFrame | kode | tak ada jendela di paket | 1,6 |
 | corkboard | kode | tak ada papan gabus di paket | 0,9 |
-| plantPot | paket | `cactus_medium_A` — kaktus berpot | 0,6 |
+| plantPot | dibuang (Task 5) | `cactus_medium_A` ternyata kaktus berpot, bukan pot polos; pot tanaman kebiasaan dibuat lewat kode | 0,6 |
 | cushion | paket | `pillow_A` — bantal jingga, bersandar di kursi berlengan (Task 4R) | 0,33 |
 | deskBooks | paket | `book_set` (berkas sama dengan catalogue) — buku berdiri di meja tulis (Task 4R) | 0,2 |
 | mug | kode | tak ada cangkir di paket; cangkir teh di meja tulis (Task 4R) | 0,1 |
@@ -109,6 +109,14 @@ baru `pillow-a.glb`, 19.984 byte, dikonversi `gltf-pipeline` tanpa Draco) dan `b
 Cangkir, kertas/pena dan keranjang dibuat lewat kode (gaya membulat yang sama). Kini 39 kunci: 20 memakai model,
 19 dibuat lewat kode. Ukuran: **563.488 byte** (19 berkas `.glb`; `rug-rectangle-a.glb` sudah dibuang di Task 4A),
 batas 3.145.728 byte.
+
+## (g) Task 5: pot tanaman lewat kode (2026-11-13)
+
+`cactus_medium_A` adalah satu mesh kaktus beserta potnya (satu node, satu material palet), jadi tidak bisa dipakai
+sebagai pot tanaman kebiasaan tanpa kaktusnya. Pot dibuat lewat kode (terakota membulat dengan bibir tebal, ukuran
+`PLANT_POT`); kunci `plantPot` dihapus dari manifest, berkas `cactus-medium-a.glb` dan barisnya di
+`public/lobby/models/LICENSE.md` dibuang (model yang tak dipakai tidak ikut dikirim). Kini 38 kunci: 19 memakai
+model, 19 dibuat lewat kode. Ukuran: **528.664 byte** (18 berkas `.glb`), batas 3.145.728 byte.
 
 ## Persetujuan arah visual
 

@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest"
-import { type Box2, findPath, walkable } from "./walk"
+import {
+  ANDA_RADIUS,
+  ANDA_START,
+  FURNITURE,
+  HOTSPOT_SPOTS,
+  WALK_BOUNDS,
+  footprint,
+  walkBlockers,
+} from "./layout"
+import { type Box2, advance, findPath, walkable } from "./walk"
 
 const bounds: Box2 = { x0: 0, x1: 10, z0: 0, z1: 10 }
 const wall: Box2 = { x0: 4, x1: 5, z0: 0, z1: 8 }
@@ -103,5 +112,72 @@ describe("findPath", () => {
     const path = findPath(from, to, bounds, boxes, 0.1)
     expect(path.length).toBeGreaterThan(1)
     expectLegsClear(from, path, boxes, 0.1)
+  })
+})
+
+describe("advance", () => {
+  const route: Array<readonly [number, number]> = [
+    [0, 0],
+    [2, 0],
+    [2, 2],
+  ]
+
+  it("moves along the legs by the distance, in order", () => {
+    expect(advance(route, 0, 0, 1)).toEqual({
+      leg: 0,
+      progress: 1,
+      done: false,
+      at: [1, 0],
+    })
+    expect(advance(route, 0, 0, 3)).toEqual({
+      leg: 1,
+      progress: 1,
+      done: false,
+      at: [2, 1],
+    })
+  })
+
+  it("stops at the last point, and is done only there", () => {
+    const end = advance(route, 0, 0, 99)
+    expect(end.done).toBe(true)
+    expect(end.at).toEqual([2, 2])
+    expect(advance(route, 1, 1.999, 0).done).toBe(false)
+  })
+
+  it("never skips a leg, however small the steps", () => {
+    let state = { leg: 0, progress: 0, done: false }
+    let previous: readonly [number, number] = route[0]
+    for (let i = 0; i < 1000 && !state.done; i++) {
+      const next = advance(route, state.leg, state.progress, 0.05)
+      expect(next.leg - state.leg).toBeLessThanOrEqual(1)
+      // Every step is no longer than the distance walked.
+      expect(
+        Math.hypot(next.at[0] - previous[0], next.at[1] - previous[1])
+      ).toBeLessThanOrEqual(0.05 + 1e-9)
+      previous = next.at
+      state = next
+    }
+    expect(state.done).toBe(true)
+  })
+})
+
+describe("Anda in the study", () => {
+  it("cannot walk through furniture", () => {
+    const blocked = walkBlockers()
+    const solid = FURNITURE.filter((f) => f.solid).map(footprint)
+    const stands = HOTSPOT_SPOTS.map(({ stand }) => stand)
+    const trips: Array<
+      readonly [readonly [number, number], readonly [number, number]]
+    > = [
+      ...stands.map((stand) => [ANDA_START, stand] as const),
+      ...stands.slice(1).map((stand, i) => [stands[i], stand] as const),
+    ]
+    for (const [from, to] of trips) {
+      const path = findPath(from, to, WALK_BOUNDS, blocked, ANDA_RADIUS)
+      expect(path.length, `${from} -> ${to}`).toBeGreaterThan(0)
+      for (const box of [...solid, ...blocked]) {
+        expect(crosses(path, from, box), `${from} -> ${to}`).toBe(false)
+      }
+    }
   })
 })

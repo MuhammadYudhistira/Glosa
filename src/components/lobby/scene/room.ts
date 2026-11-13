@@ -459,8 +459,8 @@ function corkboard(kit: Kit, parent: THREE.Object3D) {
 
 /**
  * The bookcase that fills the shelf wall: one section per genre, five shelves
- * each, on a plinth with a crown and a small brass plate per section. The
- * books come from data (shelves, Task 5).
+ * each, on a plinth with a crown. The books, the name plates and the dimming
+ * of empty sections come from data (shelves.ts).
  */
 function shelfWall(kit: Kit, parent: THREE.Object3D) {
   const { depth, bottom, top, rows, z0 } = SHELF
@@ -529,14 +529,6 @@ function shelfWall(kit: Kit, parent: THREE.Object3D) {
         parent,
       }
     )
-  }
-  const plate = kit.mat(BRASS, { metalness: 0.5, roughness: 0.4 })
-  for (const { z } of WALL_SECTIONS) {
-    kit.block(0.02, 0.07, 0.3, plate, depth + 0.07, top + 0.035, z, {
-      r: 0.008,
-      parent,
-      cast: false,
-    })
   }
 }
 

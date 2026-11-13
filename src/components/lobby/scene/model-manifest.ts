@@ -23,7 +23,6 @@ export const MODEL_KEYS = [
   "glassCabinet",
   "windowFrame",
   "corkboard",
-  "plantPot",
   "cushion",
   "deskBooks",
   "mug",
@@ -79,7 +78,6 @@ export const MODELS: Record<ModelKey, ModelEntry> = {
   glassCabinet: code,
   windowFrame: code,
   corkboard: code,
-  plantPot: kay("cactus-medium-a.glb", "cactus_medium_A"),
   // Small things that belong to a piece with a hotspot (spec 3F §3.6).
   cushion: kay("pillow-a.glb", "pillow_A"),
   deskBooks: kay("book-set.glb", "book_set"),

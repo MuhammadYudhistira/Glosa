@@ -4,6 +4,7 @@ import { LobbyCanvas } from "./LobbyCanvas"
 import type { HighlightColor } from "@/lib/annotations/types"
 import { NEUTRAL_SIGNALS, type RoomSignals } from "./room-signals"
 import { ANDA_START } from "./scene/layout"
+import { EMPTY_HUES, type GenreHues } from "./scene/shelf-books"
 import { type Stage, createStage } from "./scene/stage"
 
 // The real stage needs WebGL, which jsdom does not have.
@@ -16,6 +17,7 @@ const stage = vi.hoisted(() => ({
   setPlant: vi.fn(),
   setSignals: vi.fn(),
   setNotes: vi.fn(),
+  setShelves: vi.fn(),
   setDecor: vi.fn(),
   setMood: vi.fn(),
   dispose: vi.fn(),
@@ -178,6 +180,33 @@ describe("LobbyCanvas", () => {
     )
     rerender(canvas(["pink", "blue"]))
     expect(stage.setNotes).toHaveBeenLastCalledWith(["pink", "blue"])
+  })
+
+  it("hands the shelves' book colours to the stage, now and on change", async () => {
+    const canvas = (shelves?: GenreHues) => (
+      <LobbyCanvas
+        quality="tinggi"
+        test={false}
+        anda={ANDA_START}
+        paused={false}
+        showcase={[]}
+        plant="tunas"
+        signals={NEUTRAL_SIGNALS}
+        shelves={shelves}
+        decor={{}}
+        onReady={vi.fn()}
+        onView={vi.fn()}
+        onQuality={vi.fn()}
+        onFail={vi.fn()}
+      />
+    )
+    const { rerender } = render(canvas())
+    await vi.waitFor(() =>
+      expect(stage.setShelves).toHaveBeenCalledWith(EMPTY_HUES)
+    )
+    const filled: GenreHues = { ...EMPTY_HUES, fiksi_sastra: [12, 200] }
+    rerender(canvas(filled))
+    expect(stage.setShelves).toHaveBeenLastCalledWith(filled)
   })
 
   it("frees a stage that finishes loading after the canvas is gone", async () => {

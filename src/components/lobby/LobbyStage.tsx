@@ -25,6 +25,7 @@ import { TrolleyPanel } from "@/components/lobby/TrolleyPanel"
 import { lobbyHotspots, summarizeLobby } from "@/components/lobby/lobby-data"
 import { roomSignals } from "@/components/lobby/room-signals"
 import { type HotspotId, spotOf } from "@/components/lobby/scene/layout"
+import { genreHues } from "@/components/lobby/scene/shelf-books"
 import { useAndaSpot } from "@/components/lobby/useAndaSpot"
 import { coverHue } from "@/components/shelf/BookCover"
 import { UploadPanel } from "@/components/shelf/UploadPanel"
@@ -126,6 +127,17 @@ export function LobbyStage({
       })),
     [summary]
   )
+  // The books on each genre's shelf, the newest added first, by cover colour.
+  const shelves = useMemo(() => {
+    const newest = [...books].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt)
+    )
+    return genreHues((genre) =>
+      newest
+        .filter((book) => book.genre === genre)
+        .map((book) => coverHue(book.title))
+    )
+  }, [books])
   const [anda, moveAnda] = useAndaSpot()
   const sceneRef = useRef<LobbySceneHandle>(null)
 
@@ -262,6 +274,7 @@ export function LobbyStage({
           plant={habit.summary.stage}
           signals={signals}
           notes={notes}
+          shelves={shelves}
           decor={decor}
           anda={anda}
           bubbles={bubbles}

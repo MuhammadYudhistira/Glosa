@@ -39,6 +39,8 @@ import {
 import { MEASURE_MS, type Quality, nextQuality } from "./quality"
 import { buildRoom } from "./room"
 import { buildPlant } from "./plant"
+import type { GenreHues } from "./shelf-books"
+import { buildShelves } from "./shelves"
 import { buildShowcase } from "./showcase"
 import { buildSkyline } from "./skyline"
 
@@ -81,6 +83,8 @@ export type Stage = {
   setSignals: (signals: RoomSignals) => void
   /** The corkboard's papers, one per newest highlight (spec 3F §3.2). */
   setNotes: (colors: ReadonlyArray<HighlightColor>) => void
+  /** The genre shelves' books, by cover colour, newest first (spec 3F §3.2). */
+  setShelves: (hues: GenreHues) => void
   /** Day, dusk or night: blends over 3 seconds while animating, else at once. */
   setMood: (mood: Mood) => void
   dispose: () => void
@@ -226,7 +230,8 @@ function buildStage(
         room,
         skyline: buildSkyline(kit),
         furniture: buildFurniture(kit, models, withLights),
-        showcase: keep(buildShowcase(kit, () => requestRender())),
+        shelves: keep(buildShelves(kit)),
+        showcase: keep(buildShowcase(kit, models, () => requestRender())),
         plant: keep(buildPlant(kit, () => requestRender())),
         decor: keep(buildDecor(scene, () => requestRender())),
         people: buildPeople(kit, options.anda),
@@ -237,7 +242,8 @@ function buildStage(
       throw error
     }
   })()
-  const { room, skyline, furniture, showcase, plant, decor, people } = built
+  const { room, skyline, furniture, shelves, showcase, plant, decor, people } =
+    built
   const motion = createMotion(people)
   motion.update(0, 0)
 
@@ -510,11 +516,16 @@ function buildStage(
   let moodTimer = setTimeout(rollMood, msUntilNextMood(new Date()))
 
   return {
-    // The shelves fill from data in Task 5.
-    books: 0,
+    get books() {
+      return shelves.count
+    },
     setMood,
     setNotes(colors) {
       room.setNotes(colors)
+      requestRender()
+    },
+    setShelves(hues) {
+      shelves.set(hues)
       requestRender()
     },
     setSignals(next) {
@@ -558,6 +569,7 @@ function buildStage(
       canvas.removeEventListener("webglcontextlost", onContextLost)
       controls.removeEventListener("change", onControlsChange)
       controls.dispose()
+      shelves.dispose()
       showcase.dispose()
       plant.dispose()
       decor.dispose()
