@@ -1596,6 +1596,38 @@ Run `npx vitest run src/components/lobby src/lib/annotations --maxWorkers=2` →
 
 ---
 
+### Task 4L: Tata letak — meja tulis di bawah papan gabus (keputusan pemilik 2026-11-13)
+
+Pemilik melihat lobi di aplikasi (dengan barang toko terpasang): meja tulis di depan rak menutupi rak genre dan menyesakkan sudut pintu, dan bola dunia gantung menutupi sudut baca. Pilihan pemilik: **tata letak A**.
+
+**Files:**
+- Modify: `src/components/lobby/scene/layout.ts`, `layout.test.ts`, `room.ts` (hanya bila papan gabus perlu bergeser), `furniture-builders.ts` (hanya bila hiasan meja/perapian bergantung pada posisi), `src/components/lobby/LibraryMap.test.tsx` (hanya bila angka bergeser)
+
+**Interfaces:**
+- Consumes/Produces: ekspor `layout.ts` tidak berubah nama atau bentuk; hanya angka.
+
+- [ ] **Step 1: Tes jarak label (gagal dulu bila label masih berdesakan)**
+
+Di `layout.test.ts` tambah: pada `startView` desktop 1440 × 900, untuk setiap pasangan hotspot, titik label hasil `project` (persen → piksel) berbeda **≥ 26 px secara vertikal atau ≥ 110 px secara horizontal** (label HTML berupa pil ±110 × 26 px). Tes yang sama untuk HP 390 × 844 tidak diwajibkan (denah datar dan zoom dipakai di HP).
+
+- [ ] **Step 2: Pindahkan meja tulis**
+
+- Kelompok meja tulis (`desk`, `deskChair`, `laptop`, `notebook`, `deskLamp`, `deskBooks`, `mug`, `papers`) pindah ke **pojok kiri dinding jendela (Z = 0)**, tepat di bawah papan gabus: meja memanjang searah X, punggungnya menempel dinding, kursi di depannya (sisi +Z) menghadap dinding. Meja tidak menyentuh rak (rak di X = 0 sedalam `SHELF.depth`) dan tidak menutupi bagian rak genre dari sudut kamera lebih dari yang tak terhindarkan di pojok.
+- Papan gabus (`ROOM_PARTS.corkboard`) dipusatkan di atas meja.
+- Perapian dan keranjang kayu bergeser ke kanan seperlunya; **sudut baca** (kursi berlengan, bantal, meja samping, lampu baca, katalog) tetap satu kelompok dengan perapian. Jendela, tanaman, lemari tetap kecuali tes memaksa.
+- Hiasan yang dihitung dari posisi induknya (bantal, keranjang kayu, hiasan meja) ikut bergeser; bila masih berupa angka mati, turunkan dari `at` induknya plus selisih.
+- Hotspot `meja-admin`, `katalog`, `papan`, `perapian`, `meja-baca`, `toko` mengikuti bendanya (label di atas benda, `stand` di depannya).
+
+- [ ] **Step 3: Barang gantung tidak menutupi sudut baca**
+
+`DECOR_SLOTS.ceiling` (dan `SLOT_AT.ceiling`) pindah ke atas **lantai depan** (sisi ruangan yang dekat kamera), sehingga dari kamera barang gantung tidak jatuh di depan sudut baca atau meja tulis. Periksa dengan `node scripts/lobby-harness.mjs shot scratch/decor-all.png all`. (Ukuran bola dunia dan barang dinding diperbaiki di Task 6.)
+
+- [ ] **Step 4: Verifikasi dan commit**
+
+Semua tes `layout.test.ts` (di dalam ruangan, tak bertabrakan, terproyeksi di layar, terjangkau dari `ANDA_START`, slot dekor bebas, jarak label), `walk.test.ts`, dan seluruh suite hijau; `npx tsc --noEmit`. Buat ulang `node scripts/lobby-harness.mjs moods scratch/moods` dan `shot scratch/decor-all.png all`, lihat sendiri: rak genre terlihat utuh, meja di bawah papan, sudut baca terlihat, tidak ada benda menembus. Format dan commit `fix(3f): the desk moves under the corkboard`.
+
+---
+
 ### Task 5: Isi ruangan — rak genre dan hotspot, lemari kaca, tanaman, Anda, batas jalan
 
 **Files:**
