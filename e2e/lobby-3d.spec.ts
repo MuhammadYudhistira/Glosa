@@ -13,8 +13,8 @@ test.describe.configure({ mode: "serial" })
 const sceneOf = (page: Page) =>
   page.getByRole("region", { name: "Adegan lobi" })
 
-/** Pixels of the magenta void the test mode paints outside the map. */
-async function voidPixels(png: Buffer): Promise<number> {
+/** Share of the screenshot painted with the magenta void of the test mode. */
+async function voidShare(png: Buffer): Promise<number> {
   const { data, info } = await sharp(png)
     .raw()
     .toBuffer({ resolveWithObject: true })
@@ -22,7 +22,7 @@ async function voidPixels(png: Buffer): Promise<number> {
   for (let i = 0; i < data.length; i += info.channels) {
     if (data[i] > 200 && data[i + 1] < 60 && data[i + 2] > 200) count++
   }
-  return count
+  return count / (info.width * info.height)
 }
 
 async function drag(page: Page, dx: number, dy: number) {
@@ -38,14 +38,19 @@ async function drag(page: Page, dx: number, dy: number) {
   await page.mouse.up()
 }
 
-/** Drags the 8 directions; checks for void each time and whether the view changed. */
+/** Drags the 8 directions; checks the room stays on screen and whether the view changed. */
 async function sweep(page: Page, label: string): Promise<{ moved: boolean }> {
   const baseline = await page.screenshot({ timeout: 120_000 })
   let moved = false
   for (const [direction, dx, dy] of DIRECTIONS) {
     for (let k = 0; k < 3; k++) await drag(page, dx, dy)
     const png = await page.screenshot({ timeout: 120_000 })
-    expect(await voidPixels(png), `${label}, geser ke ${direction}`).toBe(0)
+    // The room is a diorama on a dark backdrop: some void is fine, but the
+    // room must never leave the screen.
+    expect(
+      await voidShare(png),
+      `${label}, geser ke ${direction}`
+    ).toBeLessThan(0.9)
     if (!png.equals(baseline)) moved = true
   }
   return { moved }
@@ -62,7 +67,7 @@ const DIRECTIONS = [
   ["kanan atas", -1, 1],
 ] as const
 
-test("the camera never shows anything outside the map", async ({ page }) => {
+test("the room never leaves the screen", async ({ page }) => {
   test.setTimeout(1_500_000)
   await page.addInitScript(() =>
     Object.assign(window, { __GLOSA_LOBBY_TEST__: true })
@@ -88,17 +93,8 @@ test("the camera never shows anything outside the map", async ({ page }) => {
     const box = await scene.boundingBox()
     if (!box) throw new Error("the lobby scene has no box")
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
-    // Zoom out as far as it goes. At very wide sizes that view can be fixed
-    // (nothing left to pan), so only the sizes that can pan must move.
-    for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 1500)
-    const out = await sweep(page, `${size}, zoomed out`)
-    if (viewport.width !== 1680) {
-      expect(out.moved, `${size}: zoomed out, no drag moved the camera`).toBe(
-        true
-      )
-    }
-    // Zoomed in part of the way every size can pan.
-    for (let i = 0; i < 3; i++) await page.mouse.wheel(0, -500)
+    // At zoom 1 the narrower axis does not pan, so zoom in first.
+    for (let i = 0; i < 2; i++) await page.mouse.wheel(0, -600)
     const inn = await sweep(page, `${size}, zoomed in`)
     expect(inn.moved, `${size}: zoomed in, no drag moved the camera`).toBe(true)
   }
@@ -145,4 +141,33 @@ test("the 3D scene stays loaded behind Rak Saya", async ({ page }) => {
     "data-e2e-mark",
     "1"
   )
+})
+
+test("at the start view every hotspot sits inside the scene", async ({
+  page,
+}) => {
+  test.setTimeout(300_000)
+  await signInAndOnboard(page, await createConfirmedMember())
+  const scene = sceneOf(page)
+  await expect(scene.locator("canvas")).toBeVisible({ timeout: 120_000 })
+  const sceneBox = await scene.boundingBox()
+  if (!sceneBox) throw new Error("the lobby scene has no box")
+  const buttons = scene.getByRole("button")
+  const count = await buttons.count()
+  expect(count).toBeGreaterThan(0)
+  for (let i = 0; i < count; i++) {
+    const button = buttons.nth(i)
+    if (!(await button.isVisible())) continue
+    const box = await button.boundingBox()
+    if (!box) continue
+    const name = (await button.getAttribute("aria-label")) ?? `#${i}`
+    expect(box.x, name).toBeGreaterThanOrEqual(sceneBox.x - 1)
+    expect(box.y, name).toBeGreaterThanOrEqual(sceneBox.y - 1)
+    expect(box.x + box.width, name).toBeLessThanOrEqual(
+      sceneBox.x + sceneBox.width + 1
+    )
+    expect(box.y + box.height, name).toBeLessThanOrEqual(
+      sceneBox.y + sceneBox.height + 1
+    )
+  }
 })

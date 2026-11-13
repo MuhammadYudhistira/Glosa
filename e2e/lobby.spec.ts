@@ -137,3 +137,33 @@ test("on phones the sheet continues the last book and the tab bar leads to the s
     .click()
   await expect(page).toHaveURL(/\/shelf$/)
 })
+
+test("the fireplace, the door and the corkboard lead somewhere", async ({
+  page,
+}) => {
+  await signInAndOnboard(page, await createConfirmedMember())
+  const scene = await openLobby(page)
+
+  await scene
+    .getByRole("button", { name: "Sorotan", exact: true })
+    .press("Enter")
+  const board = page.getByRole("dialog", { name: "Sorotan" })
+  await expect(board.getByText(/Belum ada sorotan\./)).toBeVisible()
+  await page.keyboard.press("Escape")
+  await expect(board).toBeHidden()
+
+  await scene
+    .getByRole("button", { name: "Kilas balik", exact: true })
+    .press("Enter")
+  await expect(page).toHaveURL(/\/recap$/)
+  await expect(page.getByRole("heading", { name: "Kilas balik" })).toBeVisible()
+
+  const again = await openLobby(page)
+  await again
+    .getByRole("button", { name: "Pengaturan", exact: true })
+    .press("Enter")
+  await expect(page).toHaveURL(/\/settings$/)
+  await expect(
+    page.getByRole("main").getByRole("link", { name: "Keluar" })
+  ).toBeVisible()
+})

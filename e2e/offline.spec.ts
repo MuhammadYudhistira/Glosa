@@ -93,5 +93,16 @@ test("a book saved for offline reading opens without a connection", async ({
       .getByRole("region", { name: "Adegan lobi" })
       .getByRole("button", { name: "Troli Buku Baru · 1 buku" })
   ).toBeAttached()
+  // Without WebGL the scene is the still image, and it loaded from the cache.
+  await expect
+    .poll(() =>
+      page
+        .locator("img.lobby-still")
+        .first()
+        .evaluate(
+          (img: HTMLImageElement) => img.complete && img.naturalWidth > 0
+        )
+    )
+    .toBe(true)
   expect(errors).toEqual([])
 })
