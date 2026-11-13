@@ -46,7 +46,7 @@ describe("MemberShell", () => {
   it("offers the sidebar and the tab bar, with the current page marked", async () => {
     renderAt("/shelf?genre=lainnya")
     const navs = await screen.findAllByRole("navigation", {
-      name: "Navigasi anggota",
+      name: "Navigasi utama",
     })
     expect(navs).toHaveLength(2)
     for (const nav of navs) {
@@ -61,7 +61,7 @@ describe("MemberShell", () => {
         within(nav).getByRole("link", { name: "Rak Saya" })
       ).toHaveAttribute("aria-current", "page")
       expect(
-        within(nav).getByRole("link", { name: "Lobi" })
+        within(nav).getByRole("link", { name: "Ruang baca" })
       ).not.toHaveAttribute("aria-current")
     }
     expect(screen.getByText("Isi halaman")).toBeInTheDocument()
@@ -72,7 +72,7 @@ describe("MemberShell", () => {
     async (url) => {
       const { container } = renderAt(url)
       const [sidebar] = await screen.findAllByRole("navigation", {
-        name: "Navigasi anggota",
+        name: "Navigasi utama",
       })
       expect(sidebar).toHaveAttribute("data-floating")
       expect(container.querySelector(".member-main")).toHaveAttribute(
@@ -96,7 +96,7 @@ describe("MemberShell", () => {
       useEffect(() => {
         mounts += 1
       }, [])
-      return <p>Lobi 3D</p>
+      return <p>Ruang 3D</p>
     }
     let release = () => {}
     const held = new Promise<void>((resolve) => {
@@ -126,7 +126,7 @@ describe("MemberShell", () => {
       history: createMemoryHistory({ initialEntries: ["/lobby"] }),
     })
     render(<RouterProvider router={router} />)
-    expect(await screen.findByText("Lobi 3D")).toBeInTheDocument()
+    expect(await screen.findByText("Ruang 3D")).toBeInTheDocument()
     expect(mounts).toBe(1)
 
     let navigation: Promise<void> = Promise.resolve()
@@ -138,7 +138,7 @@ describe("MemberShell", () => {
     })
     // The reader's beforeLoad is still running: the lobby and its shell stay.
     expect(router.state.location.pathname).toBe("/read/abc")
-    expect(screen.getByText("Lobi 3D")).toBeInTheDocument()
+    expect(screen.getByText("Ruang 3D")).toBeInTheDocument()
     expect(screen.getAllByRole("navigation")).toHaveLength(2)
     expect(mounts).toBe(1)
 

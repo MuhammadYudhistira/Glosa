@@ -11,7 +11,7 @@ import {
 test.describe.configure({ mode: "serial" })
 
 const sceneOf = (page: Page) =>
-  page.getByRole("region", { name: "Adegan lobi" })
+  page.getByRole("region", { name: "Adegan ruang baca" })
 
 /** Share of the screenshot painted with the magenta void of the test mode. */
 async function voidShare(png: Buffer): Promise<number> {
@@ -130,7 +130,7 @@ test("the 3D scene stays loaded behind Rak Saya", async ({ page }) => {
   })
 
   await page
-    .getByRole("navigation", { name: "Navigasi anggota" })
+    .getByRole("navigation", { name: "Navigasi utama" })
     .getByRole("link", { name: "Rak Saya" })
     .click()
   await expect(page.getByRole("main", { name: "Rak Saya" })).toBeVisible()

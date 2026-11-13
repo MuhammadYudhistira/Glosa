@@ -53,7 +53,7 @@ describe("lobbyHotspots", () => {
       book("c", { genre: null }),
     ])
     const hotspots = lobbyHotspots(counts)
-    expect(hotspots[0]).toMatchObject({ id: "meja-baca", label: "Meja Baca" })
+    expect(hotspots[0]).toMatchObject({ id: "meja-baca", label: "Kursi baca" })
     expect(hotspots.find(({ id }) => id === "misteri_thriller")).toMatchObject({
       label: "Misteri & Thriller",
       count: 1,
@@ -154,7 +154,7 @@ describe("finished books", () => {
     )
     expect(kiosk).toEqual({
       id: "toko",
-      label: "Toko lobi",
+      label: "Toko dekorasi",
       count: null,
       badge: null,
       dim: false,

@@ -16,7 +16,7 @@ export function RouteError({ error }: { error: unknown }) {
           Ada yang tidak beres
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Petugas sedang membereskannya. Coba muat ulang halaman ini.
+          Kami sedang membereskannya. Coba muat ulang halaman ini.
         </p>
         <div className="mt-6 grid gap-2.5">
           <button

@@ -53,11 +53,11 @@ export function lobbyHotspots(
 ): Array<HotspotModel> {
   return HOTSPOT_SPOTS.map(({ id }): HotspotModel => {
     const plain = { id, count: null, badge: null, dim: false }
-    if (id === "meja-baca") return { ...plain, label: "Meja Baca" }
+    if (id === "meja-baca") return { ...plain, label: "Kursi baca" }
     if (id === "meja-admin") return { ...plain, label: "Meja Admin" }
     if (id === "katalog") return { ...plain, label: "Kosakata" }
     if (id === "tanaman") return { ...plain, label: "Kebiasaan baca" }
-    if (id === "toko") return { ...plain, label: "Toko lobi" }
+    if (id === "toko") return { ...plain, label: "Toko dekorasi" }
     if (id === "perapian") return { ...plain, label: "Kilas balik" }
     if (id === "papan") return { ...plain, label: "Sorotan" }
     if (id === "pintu") return { ...plain, label: "Pengaturan" }

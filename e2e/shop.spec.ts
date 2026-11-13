@@ -22,10 +22,12 @@ test("buying a rug places it on the server, and taking it off removes it", async
 
   await page.goto("/lobby")
   await hydrated(page)
-  const scene = page.getByRole("region", { name: "Adegan lobi" })
-  await scene.getByRole("button", { name: "Toko lobi" }).press("Enter")
+  const scene = page.getByRole("region", { name: "Adegan ruang baca" })
+  await scene.getByRole("button", { name: "Toko dekorasi" }).press("Enter")
   await expect(page).toHaveURL(/\/shop$/)
-  await expect(page.getByRole("heading", { name: "Toko lobi" })).toBeVisible()
+  await expect(
+    page.getByRole("heading", { name: "Toko dekorasi" })
+  ).toBeVisible()
   const balance = page.locator(".shop-balance")
   await expect(balance).toHaveText("60 koin")
 

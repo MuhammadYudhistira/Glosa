@@ -5,7 +5,7 @@ export const Route = createFileRoute("/_member/_lobi/lobby")({
   validateSearch: (search: Record<string, unknown>): { kembali?: 1 } => ({
     kembali: search.kembali === 1 || search.kembali === "1" ? 1 : undefined,
   }),
-  head: () => ({ meta: [{ title: "Lobi — Glosa" }] }),
+  head: () => ({ meta: [{ title: "Ruang baca — Glosa" }] }),
   // The layout draws the lobby (LobbyStage); nothing goes over it here.
   component: () => null,
 })

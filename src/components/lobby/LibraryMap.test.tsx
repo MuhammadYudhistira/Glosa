@@ -33,7 +33,7 @@ describe("LibraryMap", () => {
     const onSelect = vi.fn()
     render(<LibraryMap hotspots={hotspots} anda={CENTRE} onSelect={onSelect} />)
     expect(screen.getAllByRole("button")).toHaveLength(18)
-    fireEvent.click(screen.getByRole("button", { name: "Meja Baca di peta" }))
+    fireEvent.click(screen.getByRole("button", { name: "Kursi baca di peta" }))
     expect(onSelect).toHaveBeenCalledWith("meja-baca")
   })
 
@@ -45,16 +45,16 @@ describe("LibraryMap", () => {
     const kindOf = (name: string) =>
       screen.getByRole("button", { name }).getAttribute("data-kind")
     expect(kindOf("Fiksi & Sastra di peta")).toBe("zone")
-    expect(kindOf("Meja Baca di peta")).toBe("meja-baca")
+    expect(kindOf("Kursi baca di peta")).toBe("meja-baca")
     expect(kindOf("Meja Admin di peta")).toBe("meja-admin")
     expect(kindOf("Troli Buku Baru di peta")).toBe("troli")
     expect(kindOf("Kosakata di peta")).toBe("katalog")
     expect(kindOf("Sudah dibaca di peta")).toBe("lemari")
     expect(kindOf("Kebiasaan baca di peta")).toBe("tanaman")
-    expect(kindOf("Toko lobi di peta")).toBe("toko")
+    expect(kindOf("Toko dekorasi di peta")).toBe("toko")
     const legend = container.querySelector(".lobby-legend")
     expect(legend).toHaveTextContent(
-      "Rak bukuMeja BacaMeja AdminTroli Buku BaruKosakataSudah dibacaKebiasaan bacaToko lobiPosisi Anda"
+      "Rak bukuKursi bacaMeja AdminTroli Buku BaruKosakataSudah dibacaKebiasaan bacaToko dekorasiPosisi Anda"
     )
   })
 
@@ -74,7 +74,7 @@ describe("LibraryMap", () => {
     expect(
       screen.getByText("Peta aktif saat adegan 3D tampil.")
     ).toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "Meja Baca di peta" }))
+    fireEvent.click(screen.getByRole("button", { name: "Kursi baca di peta" }))
     expect(onSelect).not.toHaveBeenCalled()
   })
 

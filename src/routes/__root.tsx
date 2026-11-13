@@ -41,7 +41,7 @@ export const Route = createRootRoute({
   notFoundComponent: () => (
     <main className="container mx-auto p-4 pt-16">
       <h1 className="font-heading text-2xl">404</h1>
-      <p>Halaman yang kamu cari tidak ada di perpustakaan ini.</p>
+      <p>Halaman yang kamu cari tidak ada di ruang baca ini.</p>
     </main>
   ),
   shellComponent: RootDocument,

@@ -48,10 +48,10 @@ describe("HotspotLayer", () => {
   it("starts at the reading table and ends at the fireplace, corkboard and door", () => {
     renderLayer([sherlock])
     const buttons = screen.getAllByRole("button")
-    expect(buttons[0]).toHaveAccessibleName("Meja Baca")
+    expect(buttons[0]).toHaveAccessibleName("Kursi baca")
     expect(buttons.at(-6)).toHaveAccessibleName("Sudah dibaca · 0 buku")
     expect(buttons.at(-5)).toHaveAccessibleName("Kebiasaan baca")
-    expect(buttons.at(-4)).toHaveAccessibleName("Toko lobi")
+    expect(buttons.at(-4)).toHaveAccessibleName("Toko dekorasi")
     expect(buttons.at(-3)).toHaveAccessibleName("Kilas balik")
     expect(buttons.at(-2)).toHaveAccessibleName("Sorotan")
     expect(buttons.at(-1)).toHaveAccessibleName("Pengaturan")
@@ -59,7 +59,7 @@ describe("HotspotLayer", () => {
 
   it("puts each hotspot where its spot appears on screen", () => {
     renderLayer([sherlock])
-    const anchor = screen.getByRole("button", { name: "Meja Baca" })
+    const anchor = screen.getByRole("button", { name: "Kursi baca" })
       .parentElement as HTMLElement
     const { x, y } = project(spotOf("meja-baca").label, STILL_VIEW, STILL_SIZE)
     expect(anchor.style.left).toBe(`${x}%`)

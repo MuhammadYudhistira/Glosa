@@ -14,11 +14,11 @@ import { useOnline } from "@/lib/use-online"
 const lobi = getRouteApi("/_member/_lobi")
 
 export const Route = createFileRoute("/_member/_lobi/shop")({
-  head: () => ({ meta: [{ title: "Toko lobi — Glosa" }] }),
+  head: () => ({ meta: [{ title: "Toko dekorasi — Glosa" }] }),
   component: ShopPage,
 })
 
-/** Toko lobi over the lobby (spec 3C §6.2). */
+/** Toko dekorasi over the lobby (spec 3C §6.2). */
 function ShopPage() {
   const { offline } = lobi.useLoaderData()
   const online = useOnline()
@@ -29,7 +29,7 @@ function ShopPage() {
     return () => previewItem(null)
   }, [])
   return (
-    <LobbyPopup label="Toko lobi" side>
+    <LobbyPopup label="Toko dekorasi" side>
       <ShopPanel
         view={shop}
         offline={offline || !online}

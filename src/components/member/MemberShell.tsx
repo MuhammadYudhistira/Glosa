@@ -9,7 +9,7 @@ import type { ReactNode } from "react"
 import { Logo } from "@/components/ui/logo"
 
 const LINKS = [
-  { to: "/lobby", label: "Lobi", short: "Lobi", Icon: LibraryIcon },
+  { to: "/lobby", label: "Ruang baca", short: "Ruang", Icon: LibraryIcon },
   { to: "/shelf", label: "Rak Saya", short: "Rak", Icon: BookOpenIcon },
   {
     to: "/vocabulary",
@@ -67,7 +67,7 @@ export function MemberShell({ children }: { children: ReactNode }) {
     <>
       {shown && (
         <nav
-          aria-label="Navigasi anggota"
+          aria-label="Navigasi utama"
           className="member-sidebar"
           data-floating={floating}
         >
@@ -93,7 +93,7 @@ export function MemberShell({ children }: { children: ReactNode }) {
         {children}
       </div>
       {shown && (
-        <nav aria-label="Navigasi anggota" className="member-tabbar">
+        <nav aria-label="Navigasi utama" className="member-tabbar">
           {LINKS.map(({ to, label, short, Icon }) => (
             <Link
               key={to}

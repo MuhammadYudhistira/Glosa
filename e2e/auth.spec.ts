@@ -47,7 +47,7 @@ test("a confirmed new member receives a card and enters the lobby", async ({
 
   await page.getByRole("button", { name: /Masuk ke ruang bacamu/ }).click()
   await expect(page).toHaveURL(/\/lobby$/)
-  await expect(page.getByRole("heading", { name: "Lobi" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Ruang baca" })).toBeVisible()
 })
 
 test("the sign-in form flags a wrong password, then a returning member goes straight to the lobby", async ({

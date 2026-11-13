@@ -21,7 +21,7 @@ async function memberWithBook(page: Page): Promise<string> {
 async function openLobby(page: Page) {
   await page.goto("/lobby")
   await hydrated(page)
-  return page.getByRole("region", { name: "Adegan lobi" })
+  return page.getByRole("region", { name: "Adegan ruang baca" })
 }
 
 test("zones count the books and open the shelf; the reading table opens the last book", async ({
@@ -37,7 +37,7 @@ test("zones count the books and open the shelf; the reading table opens the last
     scene.getByRole("button", { name: "Fiksi & Sastra · 0 buku" })
   ).toBeAttached()
   await scene
-    .getByRole("button", { name: "Meja Baca", exact: true })
+    .getByRole("button", { name: "Kursi baca", exact: true })
     .press("Enter")
   await expect(page).toHaveURL(new RegExp(`/read/${bookId}$`))
 
@@ -86,9 +86,9 @@ test("a new member is greeted, and the admin desk opens the upload", async ({
       .filter({ visible: true })
   ).toBeVisible()
 
-  const scene = page.getByRole("region", { name: "Adegan lobi" })
+  const scene = page.getByRole("region", { name: "Adegan ruang baca" })
   await scene
-    .getByRole("button", { name: "Meja Baca", exact: true })
+    .getByRole("button", { name: "Kursi baca", exact: true })
     .press("Enter")
   await expect(scene.getByText(/Belum ada buku yang dibaca/)).toBeAttached()
   await scene
@@ -132,7 +132,7 @@ test("on phones the sheet continues the last book and the tab bar leads to the s
 
   await openLobby(page)
   await page
-    .getByRole("navigation", { name: "Navigasi anggota" })
+    .getByRole("navigation", { name: "Navigasi utama" })
     .getByRole("link", { name: "Rak Saya" })
     .click()
   await expect(page).toHaveURL(/\/shelf$/)

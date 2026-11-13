@@ -35,13 +35,13 @@ const kindOf = (id: HotspotId, count: number | null): MapKind =>
 
 const LEGEND: ReadonlyArray<[MapKind | "anda", string]> = [
   ["zone", "Rak buku"],
-  ["meja-baca", "Meja Baca"],
+  ["meja-baca", "Kursi baca"],
   ["meja-admin", "Meja Admin"],
   ["troli", "Troli Buku Baru"],
   ["katalog", "Kosakata"],
   ["lemari", "Sudah dibaca"],
   ["tanaman", "Kebiasaan baca"],
-  ["toko", "Toko lobi"],
+  ["toko", "Toko dekorasi"],
   ["anda", "Posisi Anda"],
 ]
 
@@ -71,7 +71,7 @@ export function LibraryMap({
   return (
     <Panel className={cn("lobby-panel", className)}>
       <div className="lobby-panel-title">
-        <h2>Peta Perpustakaan</h2>
+        <h2>Denah ruangan</h2>
         {interactive && (
           <span className="lobby-panel-hint">ketuk untuk pindah</span>
         )}

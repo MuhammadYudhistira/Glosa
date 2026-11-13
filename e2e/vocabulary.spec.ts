@@ -37,7 +37,7 @@ test("a tapped word is saved, listed in Kosakata, and opens its place again", as
     await page.goto("/lobby")
     await hydrated(page)
     await page
-      .getByRole("navigation", { name: "Navigasi anggota" })
+      .getByRole("navigation", { name: "Navigasi utama" })
       .last()
       .getByRole("link", { name: "Kosakata" })
       .click()
@@ -45,7 +45,7 @@ test("a tapped word is saved, listed in Kosakata, and opens its place again", as
     await page.goto("/lobby")
     await hydrated(page)
     await page
-      .getByRole("region", { name: "Adegan lobi" })
+      .getByRole("region", { name: "Adegan ruang baca" })
       .getByRole("button", { name: "Kosakata", exact: true })
       .press("Enter")
   }

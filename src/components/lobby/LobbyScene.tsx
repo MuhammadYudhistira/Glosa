@@ -208,7 +208,7 @@ export function LobbyScene({
 
   return (
     <section
-      aria-label="Adegan lobi"
+      aria-label="Adegan ruang baca"
       tabIndex={0}
       data-quality={quality ?? undefined}
       data-live={live ? "true" : undefined}

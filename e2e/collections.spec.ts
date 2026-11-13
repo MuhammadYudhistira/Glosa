@@ -156,7 +156,7 @@ test("the display cabinet opens Sudah dibaca", async ({ page }) => {
   await markFinished(short)
   await page.goto("/lobby")
   await hydrated(page)
-  const scene = page.getByRole("region", { name: "Adegan lobi" })
+  const scene = page.getByRole("region", { name: "Adegan ruang baca" })
   await scene
     .getByRole("button", { name: "Sudah dibaca · 1 buku" })
     .press("Enter")

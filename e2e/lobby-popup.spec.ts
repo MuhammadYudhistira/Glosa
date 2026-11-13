@@ -12,7 +12,7 @@ import {
 
 const popupOf = (page: Page, name: string) => page.getByRole("main", { name })
 const navOf = (page: Page) =>
-  page.getByRole("navigation", { name: "Navigasi anggota" })
+  page.getByRole("navigation", { name: "Navigasi utama" })
 /** The scene by class: behind a popup it is aria-hidden, so out of getByRole. */
 const sceneOf = (page: Page) => page.locator(".lobby-scene")
 
@@ -32,7 +32,7 @@ test.describe("desktop", () => {
   }) => {
     await memberInLobby(page)
     await sceneOf(page).evaluate((element) => {
-      element.dataset.e2eMark = "lobi"
+      element.dataset.e2eMark = "ruang"
     })
 
     await navOf(page).getByRole("link", { name: "Rak Saya" }).click()
@@ -43,9 +43,9 @@ test.describe("desktop", () => {
         level: 1,
       })
     ).toBeFocused()
-    await expect(page.getByRole("region", { name: "Adegan lobi" })).toHaveCount(
-      0
-    )
+    await expect(
+      page.getByRole("region", { name: "Adegan ruang baca" })
+    ).toHaveCount(0)
 
     await navOf(page).getByRole("link", { name: "Pengaturan" }).click()
     await expect(
@@ -62,7 +62,7 @@ test.describe("desktop", () => {
       navOf(page).getByRole("link", { name: "Pengaturan" })
     ).toBeFocused()
     // The same scene element all along: the lobby was never mounted again.
-    await expect(sceneOf(page)).toHaveAttribute("data-e2e-mark", "lobi")
+    await expect(sceneOf(page)).toHaveAttribute("data-e2e-mark", "ruang")
   })
 
   test("Back and the close button close the popup; a refresh keeps it over the lobby", async ({
@@ -120,7 +120,7 @@ test.describe("desktop", () => {
   }) => {
     await memberInLobby(page)
     const hotspot = page
-      .getByRole("region", { name: "Adegan lobi" })
+      .getByRole("region", { name: "Adegan ruang baca" })
       .getByRole("button", { name: "Fiksi & Sastra · 0 buku" })
     await hotspot.focus()
     await hotspot.press("Enter")
@@ -132,7 +132,7 @@ test.describe("desktop", () => {
     await expect(popupOf(page, "Rak Saya")).toHaveCount(0)
     await expect(
       page
-        .getByRole("region", { name: "Adegan lobi" })
+        .getByRole("region", { name: "Adegan ruang baca" })
         .getByRole("button", { name: "Fiksi & Sastra · 0 buku" })
     ).toBeFocused()
   })

@@ -48,10 +48,10 @@ export function ShopPanel({
   if (!state) {
     return (
       <div className="shop-panel">
-        <h1 className="font-heading text-2xl">Toko lobi</h1>
+        <h1 className="font-heading text-2xl">Toko dekorasi</h1>
         {view.status === "failed" ? (
           <>
-            <p className="text-sm">Toko lobi belum bisa dimuat.</p>
+            <p className="text-sm">Toko dekorasi belum bisa dimuat.</p>
             <Button disabled={offline} onClick={onRetry}>
               Coba lagi
             </Button>
@@ -79,7 +79,7 @@ export function ShopPanel({
   return (
     <div className="shop-panel">
       <header className="shop-head">
-        <h1 className="font-heading text-2xl">Toko lobi</h1>
+        <h1 className="font-heading text-2xl">Toko dekorasi</h1>
         <p className="shop-balance">{coins(state.balance)}</p>
         <p className="text-sm text-muted-foreground">
           1 koin per menit baca, +50 per buku selesai (dibaca minimal 1 jam)
@@ -163,7 +163,7 @@ export function ShopPanel({
                             onPreview(view.preview === item.id ? null : item.id)
                           }
                         >
-                          Lihat di lobi
+                          Lihat di ruang baca
                         </Button>
                       )}
                     </div>

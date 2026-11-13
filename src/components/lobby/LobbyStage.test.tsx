@@ -28,7 +28,7 @@ vi.mock("./LobbyScene", () => ({
     onActivate?: (id: string) => void
   }) => {
     scene.props = props
-    return <section aria-label="Adegan lobi" className="lobby-scene" />
+    return <section aria-label="Adegan ruang baca" className="lobby-scene" />
   },
 }))
 
@@ -135,9 +135,11 @@ describe("LobbyStage", () => {
     stubWideScreen(true)
     renderStage(false)
     expect(await screen.findByRole("main")).toHaveClass("lobby-page")
-    expect(screen.getByRole("heading", { name: "Lobi" })).toBeInTheDocument()
     expect(
-      screen.getByRole("heading", { name: "Peta Perpustakaan" })
+      screen.getByRole("heading", { name: "Ruang baca" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("heading", { name: "Denah ruangan" })
     ).toBeInTheDocument()
     expect(scene.props).toMatchObject({ paused: false, allow3d: true })
   })
@@ -158,10 +160,8 @@ describe("LobbyStage", () => {
     const { container } = renderStage(true)
     await screen.findByLabelText("Cari di rakmu")
     expect(screen.queryByRole("main")).toBeNull()
-    expect(screen.queryByRole("heading", { name: "Lobi" })).toBeNull()
-    expect(
-      screen.queryByRole("heading", { name: "Peta Perpustakaan" })
-    ).toBeNull()
+    expect(screen.queryByRole("heading", { name: "Ruang baca" })).toBeNull()
+    expect(screen.queryByRole("heading", { name: "Denah ruangan" })).toBeNull()
     expect(scene.props).toMatchObject({ paused: true, allow3d: true })
     const wrapper = container.querySelector(".lobby-scene")?.parentElement
     expect(wrapper).toHaveAttribute("inert")

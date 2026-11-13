@@ -40,7 +40,7 @@ test("the plant opens Kebiasaan baca with today's streak", async ({ page }) => {
 
   await page.goto("/lobby")
   await hydrated(page)
-  const scene = page.getByRole("region", { name: "Adegan lobi" })
+  const scene = page.getByRole("region", { name: "Adegan ruang baca" })
   await scene.getByRole("button", { name: "Kebiasaan baca" }).press("Enter")
   await expect(page).toHaveURL(/\/habits$/)
   await expect(

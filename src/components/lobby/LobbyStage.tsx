@@ -261,7 +261,7 @@ export function LobbyStage({
       role={popup ? undefined : "main"}
       data-popup={popup ? "" : undefined}
     >
-      {!popup && <h1 className="sr-only">Lobi</h1>}
+      {!popup && <h1 className="sr-only">Ruang baca</h1>}
       <div
         className="contents"
         inert={popup}
@@ -308,7 +308,10 @@ export function LobbyStage({
             )}
           </div>
           {/* Each panel has its own corner, like mockups/lobi.html. */}
-          <aside aria-label="Panel lobi" className="lobby-side lobby-overlay">
+          <aside
+            aria-label="Panel ruang baca"
+            className="lobby-side lobby-overlay"
+          >
             <LibraryMap
               hotspots={hotspots}
               anda={anda}

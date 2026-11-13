@@ -40,7 +40,7 @@ const item = (name: string) => screen.getByRole("listitem", { name })
 describe("ShopPanel", () => {
   it("shows the balance and how coins are earned", () => {
     panel()
-    expect(screen.getByRole("heading", { name: "Toko lobi" })).toBeVisible()
+    expect(screen.getByRole("heading", { name: "Toko dekorasi" })).toBeVisible()
     // The cat costs 250 too: the balance is the one in .shop-balance.
     expect(
       screen.getByText("250 koin", { selector: ".shop-balance" })
@@ -142,7 +142,7 @@ describe("ShopPanel", () => {
     const { onPreview } = panel()
     fireEvent.click(
       within(item("Kucing tidur")).getByRole("button", {
-        name: "Lihat di lobi",
+        name: "Lihat di ruang baca",
       })
     )
     expect(onPreview).toHaveBeenCalledWith("pet_cat")

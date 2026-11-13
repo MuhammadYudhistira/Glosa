@@ -60,7 +60,7 @@ function renderScene(environment: Environment, extra: SceneProps = {}) {
     />
   )
   const { rerender } = render(ui({}))
-  const scene = screen.getByRole("region", { name: "Adegan lobi" })
+  const scene = screen.getByRole("region", { name: "Adegan ruang baca" })
   return {
     scene,
     onActivate,
@@ -182,7 +182,7 @@ describe("LobbyScene", () => {
 
     it("leaves the arrow keys alone when a hotspot has focus", async () => {
       const { stage } = await goLive()
-      fireEvent.keyDown(screen.getByRole("button", { name: "Meja Baca" }), {
+      fireEvent.keyDown(screen.getByRole("button", { name: "Kursi baca" }), {
         key: "ArrowRight",
       })
       expect(stage.setView).not.toHaveBeenCalled()
