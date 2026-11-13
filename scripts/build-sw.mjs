@@ -7,7 +7,7 @@ import { join, relative, sep } from "node:path"
 
 const CLIENT_DIR = "dist/client"
 // Source maps, woff (every browser here takes woff2), build metadata in dot
-// folders (not served), the worker itself and crawler files.
+// folders (not served), the worker itself, crawler files and licence notes.
 const SKIP = [
   /\.map$/,
   /\.woff$/,
@@ -15,6 +15,7 @@ const SKIP = [
   /^sw\.js$/,
   /^robots\.txt$/,
   /\.xml$/,
+  /(^|\/)LICENSE\.md$/,
 ]
 
 async function filesIn(dir) {

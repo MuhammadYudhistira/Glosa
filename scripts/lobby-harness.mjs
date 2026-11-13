@@ -54,7 +54,7 @@ async function thumbs(only) {
   mkdirSync("public/lobby/shop", { recursive: true })
   for (const { id } of SHOP_ITEMS) {
     if (only && id !== only) continue
-    const png = await render(THUMB, `mode=still&decor=${id}`)
+    const png = await render(THUMB, `mode=still&mood=night&decor=${id}`)
     const file = `public/lobby/shop/${id}.webp`
     const out = await sharp(png).webp({ quality: 75 }).toFile(file)
     console.log(`${file}: ${Math.round(out.size / 1024)} kB`)
@@ -93,7 +93,8 @@ async function moods(dir) {
 }
 
 async function still() {
-  const png = await render(STILL)
+  // Night, neutral signals and an empty corkboard (spec 3F §3.5).
+  const png = await render(STILL, "mode=still&mood=night")
   for (const width of [STILL.width, STILL.width / 2]) {
     const name = `lobby-still${width === STILL.width ? "" : `-${width}`}`
     const image = sharp(png).resize({ width })

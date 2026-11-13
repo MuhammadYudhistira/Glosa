@@ -9,15 +9,15 @@ describe("the still image", () => {
     expect(STILL_VIEW).toEqual(startView(STILL_SIZE))
   })
 
-  it("has the admin desk in its lower left, where the sign-in pages zoom in", () => {
+  it("has the admin desk well inside it, where the sign-in pages zoom in", () => {
     const desk = project(
       [ADMIN_DESK[0], 1, ADMIN_DESK[1]],
       STILL_VIEW,
       STILL_SIZE
     )
-    expect(desk.x).toBeGreaterThan(5)
-    expect(desk.x).toBeLessThan(40)
-    expect(desk.y).toBeGreaterThan(40)
-    expect(desk.y).toBeLessThan(85)
+    for (const at of [desk.x, desk.y]) {
+      expect(at).toBeGreaterThan(8)
+      expect(at).toBeLessThan(92)
+    }
   })
 })

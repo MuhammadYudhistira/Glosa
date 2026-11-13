@@ -50,6 +50,9 @@ export type LobbySceneHandle = {
 
 type Camera = { view: View; viewport: Viewport }
 
+/** How long the still image stays under the 3D room as it fades in (the CSS fade is 0.5 s). */
+const FADE_MS = 600
+
 /** Arrow keys move the camera by 15% of the screen. */
 const PAN_KEYS: Partial<Record<string, readonly [number, number]>> = {
   ArrowLeft: [-0.15, 0],
@@ -188,11 +191,27 @@ export function LobbyScene({
     onLiveChange?.(live)
   }, [live, onLiveChange])
 
+  // The 3D room fades in over the still image: the still stays under the
+  // canvas until the fade is done. Set while rendering, so no frame goes by
+  // without either of them.
+  const [fading, setFading] = useState(false)
+  const [wasLive, setWasLive] = useState(live)
+  if (wasLive !== live) {
+    setWasLive(live)
+    setFading(live)
+  }
+  useEffect(() => {
+    if (!fading) return
+    const timer = setTimeout(() => setFading(false), FADE_MS)
+    return () => clearTimeout(timer)
+  }, [fading])
+
   return (
     <section
       aria-label="Adegan lobi"
       tabIndex={0}
       data-quality={quality ?? undefined}
+      data-live={live ? "true" : undefined}
       className="lobby-scene"
       onKeyDown={onKeyDown}
     >
@@ -227,7 +246,7 @@ export function LobbyScene({
       {/* One tree position for the hotspots in every mode, so focus survives a switch. */}
       <div className={live ? "lobby-live-layer" : "lobby-still-frame"}>
         {/* The frame covers the scene: as wide as 16:9 at its full height. */}
-        {!live && (
+        {(!live || fading) && (
           <LobbyStill
             className="lobby-still"
             sizes="max(100vw, 178vh)"

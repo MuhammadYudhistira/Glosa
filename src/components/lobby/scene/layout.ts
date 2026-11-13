@@ -444,13 +444,8 @@ export const PREVIEW_SHIFT = 0.16
 export const ANDA_START: Point2 = [6.6, 7.8]
 export const ANDA_RADIUS = 0.3
 
-/**
- * Where the sign-in pages zoom the still image: the writing desk as the
- * still drew it, in front of the shelves. The desk now stands in the back
- * corner (LAPTOP_AT); this follows it when the still is redrawn (plan 3F-R1,
- * Task 7), as LobbyStill.test still expects the desk in the lower left.
- */
-export const ADMIN_DESK: Point2 = [1.1, 5.4]
+/** Where the sign-in pages zoom the still image: the laptop on the writing desk. */
+export const ADMIN_DESK: Point2 = LAPTOP_AT
 
 /** Where Anda may walk: the floor, clear of the shelf wall. */
 export const WALK_BOUNDS: Box2 = { x0: 0.5, x1: 10, z0: 0.5, z1: 10 }

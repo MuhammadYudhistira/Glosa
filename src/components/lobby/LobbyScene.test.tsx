@@ -275,7 +275,8 @@ describe("LobbyScene", () => {
 
     it("goes back to the poster when WebGL is held back, until a new stage is ready", async () => {
       const { scene, onLiveChange, update, stage } = await goLive()
-      expect(scene.querySelector("img")).toBeNull()
+      // Once the scene has faded in over it.
+      await vi.waitFor(() => expect(scene.querySelector("img")).toBeNull())
 
       update({ allow3d: false })
       expect(screen.queryByTestId("lobby-canvas")).toBeNull()
@@ -298,6 +299,69 @@ describe("LobbyScene", () => {
       expect(scene).toHaveAttribute("data-quality", "diam")
       expect(scene.querySelector("img")).toBeInTheDocument()
       expect(screen.queryByRole("button", { name: "Pusatkan" })).toBeNull()
+    })
+
+    describe("fading in over the still image", () => {
+      afterEach(() => {
+        vi.useRealTimers()
+      })
+
+      it("shows the still image and its hotspots until the scene is ready", async () => {
+        const { scene } = renderScene(desktop)
+        await vi.waitFor(() => expect(canvas.props).not.toBeNull())
+        expect(scene.querySelector("img")).toBeInTheDocument()
+        expect(
+          screen.getByRole("button", { name: "Meja Admin" })
+        ).toBeInTheDocument()
+        expect(scene).not.toHaveAttribute("data-live")
+      })
+
+      it("keeps the still image under the scene while it fades in, with the same hotspots", async () => {
+        vi.useFakeTimers()
+        const { scene } = renderScene(desktop)
+        await vi.waitFor(() => expect(canvas.props).not.toBeNull())
+        const button = screen.getByRole("button", { name: "Meja Admin" })
+        act(() => button.focus())
+        act(() => {
+          canvas.props?.onReady({
+            books: 0,
+            setView: vi.fn(),
+            walkTo: vi.fn(),
+            setPaused: vi.fn(),
+            setShowcase: vi.fn(),
+            setPlant: vi.fn(),
+            setSignals: vi.fn(),
+            setNotes: vi.fn(),
+            setShelves: vi.fn(),
+            setDecor: vi.fn(),
+            setMood: vi.fn(),
+            dispose: vi.fn(),
+          })
+          canvas.props?.onView(startView(viewport), viewport)
+        })
+        expect(scene).toHaveAttribute("data-live", "true")
+        expect(scene.querySelector("img")).toBeInTheDocument()
+
+        act(() => vi.advanceTimersByTime(599))
+        expect(scene.querySelector("img")).toBeInTheDocument()
+        act(() => vi.advanceTimersByTime(1))
+        expect(scene.querySelector("img")).toBeNull()
+        expect(scene).toHaveAttribute("data-live", "true")
+        expect(screen.getByRole("button", { name: "Meja Admin" })).toBe(button)
+        expect(document.activeElement).toBe(button)
+      })
+
+      it("stays on the still image, without a message, when the scene fails to load", async () => {
+        const { scene } = renderScene(desktop)
+        await vi.waitFor(() => expect(canvas.props).not.toBeNull())
+        act(() => canvas.props?.onFail())
+        expect(scene).toHaveAttribute("data-quality", "diam")
+        expect(scene).not.toHaveAttribute("data-live")
+        expect(scene.querySelector("img")).toBeInTheDocument()
+        expect(screen.queryByTestId("lobby-canvas")).toBeNull()
+        expect(screen.queryByRole("alert")).toBeNull()
+        expect(scene).not.toHaveTextContent(/gagal|error/i)
+      })
     })
 
     it("does not swallow the arrow keys before the scene is live", async () => {
