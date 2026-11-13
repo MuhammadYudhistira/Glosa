@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { LobbyCanvas } from "./LobbyCanvas"
+import type { HighlightColor } from "@/lib/annotations/types"
 import { NEUTRAL_SIGNALS, type RoomSignals } from "./room-signals"
 import { ANDA_START } from "./scene/layout"
 import { type Stage, createStage } from "./scene/stage"
@@ -14,6 +15,7 @@ const stage = vi.hoisted(() => ({
   setShowcase: vi.fn(),
   setPlant: vi.fn(),
   setSignals: vi.fn(),
+  setNotes: vi.fn(),
   setDecor: vi.fn(),
   setMood: vi.fn(),
   dispose: vi.fn(),
@@ -150,6 +152,32 @@ describe("LobbyCanvas", () => {
     const lit: RoomSignals = { fire: "besar", deskLamp: true, parcelOpen: true }
     rerender(canvas(lit))
     expect(stage.setSignals).toHaveBeenLastCalledWith(lit)
+  })
+
+  it("hands the corkboard's colours to the stage, now and on change", async () => {
+    const canvas = (notes: ReadonlyArray<HighlightColor>) => (
+      <LobbyCanvas
+        quality="tinggi"
+        test={false}
+        anda={ANDA_START}
+        paused={false}
+        showcase={[]}
+        plant="tunas"
+        signals={NEUTRAL_SIGNALS}
+        notes={notes}
+        decor={{}}
+        onReady={vi.fn()}
+        onView={vi.fn()}
+        onQuality={vi.fn()}
+        onFail={vi.fn()}
+      />
+    )
+    const { rerender } = render(canvas(["yellow"]))
+    await vi.waitFor(() =>
+      expect(stage.setNotes).toHaveBeenCalledWith(["yellow"])
+    )
+    rerender(canvas(["pink", "blue"]))
+    expect(stage.setNotes).toHaveBeenLastCalledWith(["pink", "blue"])
   })
 
   it("frees a stage that finishes loading after the canvas is gone", async () => {

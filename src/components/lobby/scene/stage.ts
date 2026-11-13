@@ -4,6 +4,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js"
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js"
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js"
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
+import type { HighlightColor } from "@/lib/annotations/types"
 import type { PlantStage } from "@/lib/reading-habit"
 import type { Placements } from "@/lib/shop/types"
 import {
@@ -78,6 +79,8 @@ export type Stage = {
   setDecor: (placed: Placements) => void
   /** The fire, the desk lamp and the parcel box show the member's reading (spec 3F §3.6). */
   setSignals: (signals: RoomSignals) => void
+  /** The corkboard's papers, one per newest highlight (spec 3F §3.2). */
+  setNotes: (colors: ReadonlyArray<HighlightColor>) => void
   /** Day, dusk or night: blends over 3 seconds while animating, else at once. */
   setMood: (mood: Mood) => void
   dispose: () => void
@@ -218,8 +221,9 @@ function buildStage(
     }
     try {
       const kit = createKit(scene)
-      buildRoom(kit, models)
+      const room = buildRoom(kit, models)
       return {
+        room,
         skyline: buildSkyline(kit),
         furniture: buildFurniture(kit, models, withLights),
         showcase: keep(buildShowcase(kit, () => requestRender())),
@@ -233,7 +237,7 @@ function buildStage(
       throw error
     }
   })()
-  const { skyline, furniture, showcase, plant, decor, people } = built
+  const { room, skyline, furniture, showcase, plant, decor, people } = built
   const motion = createMotion(people)
   motion.update(0, 0)
 
@@ -509,6 +513,10 @@ function buildStage(
     // The shelves fill from data in Task 5.
     books: 0,
     setMood,
+    setNotes(colors) {
+      room.setNotes(colors)
+      requestRender()
+    },
     setSignals(next) {
       signals = next
       applyRig(current)

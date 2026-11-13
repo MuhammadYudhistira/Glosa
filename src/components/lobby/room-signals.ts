@@ -1,3 +1,4 @@
+import type { HighlightColor } from "@/lib/annotations/types"
 import { addDays } from "@/lib/dates"
 import type { HabitDay } from "@/lib/habit/types"
 import { goalSeconds } from "@/lib/reading-habit"
@@ -60,3 +61,6 @@ export function roomSignals(input: {
     parcelOpen: input.trolley > 0,
   }
 }
+
+/** No papers on the corkboard; one constant, so an unset prop is not a change on every render. */
+export const NO_NOTES: ReadonlyArray<HighlightColor> = []

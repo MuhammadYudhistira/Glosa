@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start"
 import {
   AnnotationSyncSchema,
   BookAnnotationsSchema,
+  HighlightsRequestSchema,
 } from "@/lib/annotations/schemas"
 import type {
   Annotation,
@@ -10,6 +11,7 @@ import type {
   AnnotationSyncAnswer,
   AnnotationsAnswer,
   HighlightColor,
+  HighlightsAnswer,
 } from "@/lib/annotations/types"
 import type { Database } from "./database.types"
 import { logServerError } from "./monitoring"
@@ -107,5 +109,39 @@ export const listAnnotationsFn = createServerFn({ method: "GET" })
       }
       annotations.push(...rows.map(toAnnotation))
       if (rows.length < PAGE) return { ok: true, annotations }
+    }
+  })
+
+/** The member's newest highlights across books, without tombstones (spec 3F §3.2, §4A.3). */
+export const listHighlightsFn = createServerFn({ method: "GET" })
+  .validator((data: { limit: number }) => HighlightsRequestSchema.parse(data))
+  .handler(async ({ data }): Promise<HighlightsAnswer> => {
+    const supabase = getSupabaseServerClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return fail("not_authenticated")
+    const { data: rows, error } = await supabase
+      .from("annotations")
+      .select("id, book_id, cfi, color, note, excerpt, created_at")
+      .eq("kind", "highlight")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(data.limit)
+    if (error) {
+      logServerError("listing highlights failed", error)
+      return fail("unknown")
+    }
+    return {
+      ok: true,
+      highlights: rows.map((row) => ({
+        id: row.id,
+        bookId: row.book_id,
+        cfi: row.cfi,
+        color: row.color as HighlightColor,
+        note: row.note,
+        excerpt: row.excerpt,
+        createdAt: iso(row.created_at),
+      })),
     }
   })

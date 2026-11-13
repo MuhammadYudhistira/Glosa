@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react"
+import type { HighlightColor } from "@/lib/annotations/types"
 import type { PlantStage } from "@/lib/reading-habit"
 import type { Placements } from "@/lib/shop/types"
-import type { RoomSignals } from "./room-signals"
+import { NO_NOTES, type RoomSignals } from "./room-signals"
 import type { Point2, ShowcaseBook } from "./scene/layout"
 import { type View, type Viewport, startView } from "./scene/projection"
 import type { Quality } from "./scene/quality"
@@ -20,6 +21,7 @@ export function LobbyCanvas({
   showcase,
   plant,
   signals,
+  notes = NO_NOTES,
   decor,
   onReady,
   onView,
@@ -38,6 +40,8 @@ export function LobbyCanvas({
   plant: PlantStage
   /** What the room shows about the member's reading. */
   signals: RoomSignals
+  /** The colours of the corkboard's papers, newest highlight first. */
+  notes?: ReadonlyArray<HighlightColor>
   /** The shop's items, placed or tried on. */
   decor: Placements
   onReady: (stage: Stage) => void
@@ -52,6 +56,7 @@ export function LobbyCanvas({
   const showcaseRef = useRef(showcase)
   const plantRef = useRef(plant)
   const signalsRef = useRef(signals)
+  const notesRef = useRef(notes)
   const decorRef = useRef(decor)
   const callbacks = useRef({ onReady, onView, onQuality, onFail })
   const initial = useRef({ quality, test })
@@ -90,6 +95,7 @@ export function LobbyCanvas({
         stage.setShowcase(showcaseRef.current)
         stage.setPlant(plantRef.current)
         stage.setSignals(signalsRef.current)
+        stage.setNotes(notesRef.current)
         stage.setDecor(decorRef.current)
         stageRef.current = stage
         callbacks.current.onReady(stage)
@@ -130,6 +136,11 @@ export function LobbyCanvas({
     signalsRef.current = signals
     stageRef.current?.setSignals(signals)
   }, [signals])
+
+  useEffect(() => {
+    notesRef.current = notes
+    stageRef.current?.setNotes(notes)
+  }, [notes])
 
   useEffect(() => {
     decorRef.current = decor

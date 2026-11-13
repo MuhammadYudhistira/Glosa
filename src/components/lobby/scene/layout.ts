@@ -23,8 +23,7 @@ export const ROOM = { width: 10, depth: 10, height: 4.6, pad: 0.9 } as const
  * Parts of the walls rather than furniture (room.ts builds them): the window
  * in the Z = 0 wall (x0..x1, sill y0 to head y1), the door in the X = 0 wall
  * (centred on z) and the corkboard on the Z = 0 wall (centred on x, y).
- * The door serves the `pintu` hotspot, the corkboard is kept for `papan`
- * (Task 4C) and the window tells the time of day (spec 3F §3.6).
+ * The door serves the `pintu` hotspot, the corkboard serves `papan` and the window tells the time of day (spec 3F §3.6).
  */
 export const ROOM_PARTS = {
   window: { x0: 4.5, x1: 7.2, y0: 1.0, y1: 3.4 },
@@ -427,11 +426,12 @@ export type HotspotId =
   | "tanaman"
   | "toko"
   | "perapian"
+  | "papan"
   | "pintu"
 /** `label`: where the hotspot's label floats. `stand`: where "Anda" walks to. */
 export type HotspotSpot = { id: HotspotId; label: Point3; stand: Point2 }
 
-/** In tab order (spec 1D §6): reading chair, shelf sections, parcel box, laptop, notebook, cabinet, plant, catalogue, fireplace, door. */
+/** In tab order (spec 1D §6): reading chair, shelf sections, parcel box, laptop, notebook, cabinet, plant, catalogue, fireplace, corkboard, door. */
 export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   { id: "meja-baca", label: [3.65, 1.9, 2.0], stand: [3.65, 3.3] },
   ...WALL_SECTIONS.map(({ genre, z }): HotspotSpot => ({
@@ -446,6 +446,11 @@ export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   { id: "tanaman", label: [6.2, 1.9, 0.8], stand: [6.2, 2.0] },
   { id: "toko", label: [4.75, 1.2, 1.9], stand: [4.75, 3.0] },
   { id: "perapian", label: [3.0, 2.4, 0.35], stand: [4.5, 0.95] },
+  {
+    id: "papan",
+    label: [ROOM_PARTS.corkboard.x, ROOM_PARTS.corkboard.y + 0.7, 0.1],
+    stand: [ROOM_PARTS.corkboard.x, 1.6],
+  },
   {
     id: "pintu",
     label: [0.1, 2.4, ROOM_PARTS.door.z],

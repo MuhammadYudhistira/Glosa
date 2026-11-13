@@ -7,6 +7,7 @@ import {
   HIGHLIGHT_COLORS,
   MAX_ANNOTATION_BATCH,
   MAX_EXCERPT_LENGTH,
+  MAX_HIGHLIGHTS,
   MAX_NOTE_LENGTH,
 } from "./types"
 
@@ -35,6 +36,10 @@ export const AnnotationSchema = z
 
 export const AnnotationSyncSchema = z.object({
   entries: z.array(AnnotationSchema).min(1).max(MAX_ANNOTATION_BATCH),
+})
+
+export const HighlightsRequestSchema = z.object({
+  limit: z.number().int().min(1).max(MAX_HIGHLIGHTS),
 })
 
 export const BookAnnotationsSchema = z.object({ bookId: z.uuid() })

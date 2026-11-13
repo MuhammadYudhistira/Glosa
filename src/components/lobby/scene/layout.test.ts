@@ -47,6 +47,7 @@ describe("room layout", () => {
       "tanaman",
       "toko",
       "perapian",
+      "papan",
       "pintu",
     ])
   })

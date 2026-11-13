@@ -32,10 +32,25 @@ export type Annotation = {
   deletedAt: string | null
 }
 
+/** A highlight as the corkboard and the highlights page show it. */
+export type Highlight = {
+  id: string
+  bookId: string
+  cfi: string
+  color: HighlightColor
+  note: string
+  excerpt: string
+  createdAt: string
+}
+/** The most highlights one request may ask for. */
+export const MAX_HIGHLIGHTS = 500
+
 export type AnnotationResult = "ok" | "limit_reached" | "invalid"
 
 type Failed = { ok: false; code: string }
 export type AnnotationSyncAnswer =
   { ok: true; results: Array<AnnotationResult> } | Failed
+export type HighlightsAnswer =
+  { ok: true; highlights: Array<Highlight> } | Failed
 export type AnnotationsAnswer =
   { ok: true; annotations: Array<Annotation> } | Failed

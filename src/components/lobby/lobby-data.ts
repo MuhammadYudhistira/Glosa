@@ -59,6 +59,7 @@ export function lobbyHotspots(
     if (id === "tanaman") return { ...plain, label: "Kebiasaan baca" }
     if (id === "toko") return { ...plain, label: "Toko lobi" }
     if (id === "perapian") return { ...plain, label: "Kilas balik" }
+    if (id === "papan") return { ...plain, label: "Sorotan" }
     if (id === "pintu") return { ...plain, label: "Pengaturan" }
     if (id === "lemari") {
       return {

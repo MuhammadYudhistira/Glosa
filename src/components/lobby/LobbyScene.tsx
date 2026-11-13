@@ -8,6 +8,7 @@ import {
   useState,
 } from "react"
 import { Button } from "@/components/ui/button"
+import type { HighlightColor } from "@/lib/annotations/types"
 import type { PlantStage } from "@/lib/reading-habit"
 import type { SlotId } from "@/lib/shop/catalog"
 import type { Placements } from "@/lib/shop/types"
@@ -15,7 +16,7 @@ import { HotspotLayer } from "./HotspotLayer"
 import { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyStill, STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import type { HotspotModel } from "./lobby-data"
-import { NEUTRAL_SIGNALS, type RoomSignals } from "./room-signals"
+import { NEUTRAL_SIGNALS, NO_NOTES, type RoomSignals } from "./room-signals"
 import {
   DECOR_SLOTS,
   type HotspotId,
@@ -79,6 +80,7 @@ export function LobbyScene({
   showcase = [],
   plant = "tunas",
   signals = NEUTRAL_SIGNALS,
+  notes = NO_NOTES,
   decor = {},
   allow3d = true,
   ref,
@@ -97,6 +99,8 @@ export function LobbyScene({
   plant?: PlantStage
   /** What the room shows about the member's reading. */
   signals?: RoomSignals
+  /** The colours of the corkboard's papers, newest highlight first. */
+  notes?: ReadonlyArray<HighlightColor>
   /** The shop's items, placed or tried on. */
   decor?: Placements
   /** False keeps WebGL off, e.g. while the lobby is hidden behind a page on phones (spec 1F §5). */
@@ -197,6 +201,7 @@ export function LobbyScene({
           showcase={showcase}
           plant={plant}
           signals={signals}
+          notes={notes}
           decor={decor}
           onReady={(stage) => {
             stageRef.current = stage

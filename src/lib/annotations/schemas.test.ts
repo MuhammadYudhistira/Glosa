@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { AnnotationSyncSchema, isValidAnnotation } from "./schemas"
+import {
+  AnnotationSyncSchema,
+  HighlightsRequestSchema,
+  isValidAnnotation,
+} from "./schemas"
 import type { Annotation } from "./types"
 
 const highlight: Annotation = {
@@ -68,5 +72,16 @@ describe("AnnotationSyncSchema", () => {
         entries: Array.from({ length: 51 }, () => highlight),
       }).success
     ).toBe(false)
+  })
+})
+
+describe("HighlightsRequestSchema", () => {
+  it("takes a whole limit from 1 to 500", () => {
+    for (const limit of [3, 500, 1]) {
+      expect(HighlightsRequestSchema.safeParse({ limit }).success).toBe(true)
+    }
+    for (const limit of [0, 501, 1.5]) {
+      expect(HighlightsRequestSchema.safeParse({ limit }).success).toBe(false)
+    }
   })
 })

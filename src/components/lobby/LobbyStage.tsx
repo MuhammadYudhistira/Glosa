@@ -1,6 +1,10 @@
 import { useNavigate, useRouter, useSearch } from "@tanstack/react-router"
 import { PlusIcon } from "lucide-react"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
+import {
+  CORKBOARD_NOTES,
+  CorkboardPanel,
+} from "@/components/lobby/CorkboardPanel"
 import { AdminDeskCard } from "@/components/lobby/AdminDeskCard"
 import { BookDetailPanel } from "@/components/lobby/BookDetailPanel"
 import { ContinueSheet } from "@/components/lobby/ContinueSheet"
@@ -26,6 +30,7 @@ import { UploadPanel } from "@/components/shelf/UploadPanel"
 import { useLocalShelf } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
 import type { Collection, ShelfBook, StorageUsage } from "@/lib/book-types"
+import { useHighlights } from "@/lib/annotations/highlights-client"
 import { useReadingHabit } from "@/lib/habit/habit-client"
 import {
   type RecapBubble,
@@ -36,6 +41,7 @@ import {
 import { itemOf } from "@/lib/shop/catalog"
 import { useLobbyDecor, useShop } from "@/lib/shop/shop-client"
 import type { SessionUser } from "@/lib/session-types"
+import { useOnline } from "@/lib/use-online"
 import { useWideScreen } from "@/lib/use-wide-screen"
 import { useMeetingsTotal } from "@/lib/vocab/vocab-client"
 import { rememberVocabSeen, useVocabSeen } from "@/lib/vocab/vocab-seen"
@@ -71,6 +77,21 @@ export function LobbyStage({
   const habit = useReadingHabit()
   const decor = useLobbyDecor()
   const shop = useShop()
+  const online = useOnline()
+  const highlights = useHighlights(CORKBOARD_NOTES, online && !offline)
+  // The papers on the board: the newest highlights of books still on the shelf.
+  const notes = useMemo(
+    () =>
+      highlights.state.status === "ready"
+        ? highlights.state.highlights
+            .filter((highlight) =>
+              books.some((book) => book.id === highlight.bookId)
+            )
+            .slice(0, CORKBOARD_NOTES)
+            .map((highlight) => highlight.color)
+        : [],
+    [highlights.state, books]
+  )
   const summary = useMemo(() => summarizeLobby(books), [books])
   const meetingsTotal = useMeetingsTotal()
   const vocabSeen = useVocabSeen()
@@ -120,6 +141,7 @@ export function LobbyStage({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [sorting, setSorting] = useState(false)
+  const [corkboard, setCorkboard] = useState(false)
   const [readingHint, setReadingHint] = useState(false)
   const [sceneLive, setSceneLive] = useState(false)
   const [recapBubble, setRecapBubble] = useState<RecapBubble | null>(null)
@@ -199,6 +221,8 @@ export function LobbyStage({
       void navigate({ to: "/shelf", search: { koleksi: "selesai" } })
     } else if (id === "perapian") {
       void navigate({ to: "/recap", search: { periode: undefined } })
+    } else if (id === "papan") {
+      setCorkboard(true)
     } else if (id === "pintu") {
       void navigate({ to: "/settings" })
     } else {
@@ -236,6 +260,7 @@ export function LobbyStage({
           showcase={showcase}
           plant={habit.summary.stage}
           signals={signals}
+          notes={notes}
           decor={decor}
           anda={anda}
           bubbles={bubbles}
@@ -329,6 +354,13 @@ export function LobbyStage({
         onOpenChange={setSorting}
         books={summary.trolley}
         onSaved={refresh}
+      />
+      <CorkboardPanel
+        open={corkboard}
+        onOpenChange={setCorkboard}
+        state={highlights.state}
+        books={books}
+        onRetry={highlights.retry}
       />
     </div>
   )

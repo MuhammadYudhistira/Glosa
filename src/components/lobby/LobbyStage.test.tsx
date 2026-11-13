@@ -16,6 +16,7 @@ const scene = vi.hoisted(() => ({
     paused?: boolean
     allow3d?: boolean
     onActivate?: (id: string) => void
+    notes?: Array<string>
   } | null,
 }))
 vi.mock("./LobbyScene", () => ({
@@ -27,6 +28,16 @@ vi.mock("./LobbyScene", () => ({
     scene.props = props
     return <section aria-label="Adegan lobi" className="lobby-scene" />
   },
+}))
+
+const highlights = vi.hoisted(() => ({
+  state: { status: "ready", highlights: [] } as {
+    status: string
+    highlights?: Array<Record<string, unknown>>
+  },
+}))
+vi.mock("@/lib/annotations/highlights-client", () => ({
+  useHighlights: () => ({ state: highlights.state, retry: vi.fn() }),
 }))
 
 const bubbles = vi.hoisted(() => ({ remember: vi.fn() }))
@@ -113,6 +124,7 @@ describe("LobbyStage", () => {
   afterEach(() => {
     unstubWideScreen()
     scene.props = null
+    highlights.state = { status: "ready", highlights: [] }
     bubbles.remember.mockClear()
   })
 
@@ -159,6 +171,40 @@ describe("LobbyStage", () => {
     renderStage(true)
     await screen.findByLabelText("Cari di rakmu")
     expect(scene.props).toMatchObject({ paused: true, allow3d: false })
+  })
+
+  it("opens the highlights dialog from the corkboard", async () => {
+    stubWideScreen(true)
+    renderStage(false)
+    await screen.findByRole("main")
+    await act(async () => scene.props?.onActivate?.("papan"))
+    expect(
+      await screen.findByRole("dialog", { name: "Sorotan" })
+    ).toBeInTheDocument()
+  })
+
+  it("pins the colours of the newest highlights of books still on the shelf", async () => {
+    const mark = (bookId: string, color: string) => ({
+      id: `${bookId}-${color}`,
+      bookId,
+      cfi: "epubcfi(/6/4)",
+      color,
+      note: "",
+      excerpt: "x",
+      createdAt: "2026-10-24T08:00:00.000Z",
+    })
+    highlights.state = {
+      status: "ready",
+      highlights: [
+        mark("gone", "blue"),
+        mark(sherlock.id, "pink"),
+        mark(sherlock.id, "green"),
+      ],
+    }
+    stubWideScreen(true)
+    renderStage(false)
+    await screen.findByRole("main")
+    expect(scene.props?.notes).toEqual(["pink", "green"])
   })
 
   it("closes the popup when a search result is picked, and shows the book", async () => {

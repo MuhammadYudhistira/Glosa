@@ -83,6 +83,16 @@ describe("lobbyHotspots", () => {
     ).toBeNull()
   })
 
+  it("names the corkboard", () => {
+    const hotspots = lobbyHotspots(summarizeLobby([]).counts)
+    expect(hotspots.find(({ id }) => id === "papan")).toMatchObject({
+      label: "Sorotan",
+      count: null,
+      badge: null,
+      dim: false,
+    })
+  })
+
   it("names the fireplace and the door", () => {
     const hotspots = lobbyHotspots(summarizeLobby([]).counts)
     expect(hotspots.find(({ id }) => id === "perapian")).toMatchObject({

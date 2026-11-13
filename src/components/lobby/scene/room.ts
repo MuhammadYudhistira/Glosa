@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js"
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js"
+import type { HighlightColor } from "@/lib/annotations/types"
 import { type Kit, mergeStatic } from "./kit"
 import { ROOM, ROOM_PARTS, SHELF, WALL_SECTIONS } from "./layout"
 import { fitTo, type ModelSet } from "./models"
@@ -14,6 +15,13 @@ const PANEL = "#8f6a45"
 const FRAME = "#efe3cc"
 const CURTAIN = "#a4493a"
 const BRASS = "#c9a24a"
+/** The paper of a corkboard note, by the colour of its highlight. */
+const NOTE_PAPER: Record<HighlightColor, string> = {
+  yellow: "#fff3b0",
+  green: "#bfe3d0",
+  blue: "#cfe0f5",
+  pink: "#f2c6c2",
+}
 
 /** [width, height, depth, centre x, base y, centre z] */
 type Piece = readonly [number, number, number, number, number, number]
@@ -375,9 +383,9 @@ function windowFrame(kit: Kit, parent: THREE.Object3D) {
 }
 
 /**
- * The corkboard (spec 3F §3.2): it belongs to the `papan` hotspot (Task 4C),
- * which pins its feed here. A wooden frame,
- * speckled cork, paper notes and a postcard held by coloured pins.
+ * The corkboard (spec 3F §3.2): it belongs to the `papan` hotspot, which pins
+ * the newest highlights here. A wooden frame, speckled cork and up to three
+ * paper notes held by coloured pins.
  */
 function corkboard(kit: Kit, parent: THREE.Object3D) {
   const { x, y, size } = ROOM_PARTS.corkboard
@@ -406,23 +414,25 @@ function corkboard(kit: Kit, parent: THREE.Object3D) {
     0.055,
     { r: 0.01, parent }
   )
+  // Three papers, one per newest highlight; setNotes shows and colours them.
   const notes: ReadonlyArray<
-    readonly [number, number, number, number, string, string]
+    readonly [number, number, number, number, string]
   > = [
-    [-0.4, 0.68, 0.26, 0.22, "#fff3b0", "#d2462e"],
-    [-0.08, 0.6, 0.22, 0.3, "#f6efe0", "#3f7fb5"],
-    [0.32, 0.66, 0.3, 0.2, "#bfe3d0", "#e0b45c"],
-    [-0.3, 0.22, 0.32, 0.24, "#f2c6c2", "#3f7fb5"],
-    [0.22, 0.2, 0.28, 0.28, "#e8dcc4", "#d2462e"],
+    [-0.4, 0.68, 0.26, 0.22, "#d2462e"],
+    [-0.08, 0.6, 0.22, 0.3, "#3f7fb5"],
+    [0.32, 0.66, 0.3, 0.2, "#e0b45c"],
   ]
-  for (const [dx, dy, w, h, paper, pin] of notes) {
+  const papers = notes.map(([dx, dy, w, h, pin]) => {
+    const paper = new THREE.MeshStandardMaterial({ color: NOTE_PAPER.yellow })
     const note = kit.block(w, h, 0.006, paper, x + dx, y + dy, 0.074, {
       r: 0.002,
       parent,
       cast: false,
     })
     note.rotation.z = (kit.rand() - 0.5) * 0.18
-    kit.mesh(
+    // Left out of the static merge: they change colour and come and go.
+    note.userData.animated = true
+    const tack = kit.mesh(
       new THREE.SphereGeometry(0.022, 10, 8),
       pin,
       x + dx,
@@ -430,6 +440,18 @@ function corkboard(kit: Kit, parent: THREE.Object3D) {
       0.085,
       { parent, cast: false }
     )
+    tack.userData.animated = true
+    return { note, tack, paper }
+  })
+  return {
+    /** Shows one paper per colour, in the colour of the highlight; the rest of the board stays bare. */
+    setNotes(colors: ReadonlyArray<HighlightColor>) {
+      papers.forEach(({ note, tack, paper }, i) => {
+        const color = colors[i]
+        note.visible = tack.visible = color !== undefined
+        if (color !== undefined) paper.color.set(NOTE_PAPER[color])
+      })
+    },
   }
 }
 
@@ -556,15 +578,19 @@ function door(kit: Kit, models: ModelSet, parent: THREE.Object3D) {
  * corkboard (for `papan`), the bookcase and the door (`pintu`). Nothing here
  * is for show only (spec 3F §3.6).
  */
-export function buildRoom(kit: Kit, models: ModelSet): void {
+export function buildRoom(
+  kit: Kit,
+  models: ModelSet
+): { setNotes: (colors: ReadonlyArray<HighlightColor>) => void } {
   const shell = new THREE.Group()
   shell.name = "room"
   kit.scene.add(shell)
   floor(kit, shell)
   walls(kit, shell)
   windowFrame(kit, shell)
-  corkboard(kit, shell)
+  const board = corkboard(kit, shell)
   shelfWall(kit, shell)
   mergeStatic(shell)
   door(kit, models, shell)
+  return board
 }

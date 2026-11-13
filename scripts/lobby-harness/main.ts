@@ -7,6 +7,7 @@ import {
   centerOn,
   startView,
 } from "@/components/lobby/scene/projection"
+import { HIGHLIGHT_COLORS, type HighlightColor } from "@/lib/annotations/types"
 import { itemOf } from "@/lib/shop/catalog"
 import type { Mood } from "@/components/lobby/scene/daylight"
 import {
@@ -51,6 +52,13 @@ stage.setSignals({
   deskLamp: params.get("lamp") === "1",
   parcelOpen: params.get("parcel") === "1",
 })
+// ?notes=yellow,green,pink: the corkboard's papers (up to three).
+const noteColors = (params.get("notes") ?? "")
+  .split(",")
+  .filter((color): color is HighlightColor =>
+    (HIGHLIGHT_COLORS as ReadonlyArray<string>).includes(color)
+  )
+stage.setNotes(noteColors)
 // ?decor=all: one item in every slot, to check where they stand.
 // ?decor=<id>: that item alone, the camera close on its slot (the shop's pictures).
 const decorParam = params.get("decor")
