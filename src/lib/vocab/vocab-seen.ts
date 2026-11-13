@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react"
 import { VOCAB_SEEN_KEY } from "@/lib/local/keys"
 import type { WordMeetings } from "./types"
 
@@ -20,10 +21,26 @@ export function readVocabSeen(): number | null {
   }
 }
 
+const listeners = new Set<() => void>()
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
 export function rememberVocabSeen(total: number): void {
   try {
     localStorage.setItem(VOCAB_SEEN_KEY, String(total))
   } catch {
     // Storage can be off (private windows): the desk lamp then stays off.
   }
+  // The lobby stays mounted under Kosakata: it must see the new total.
+  for (const listener of listeners) listener()
+}
+
+/** The remembered total, live: opening Kosakata updates every reader. */
+export function useVocabSeen(): number | null {
+  return useSyncExternalStore(subscribe, readVocabSeen, () => null)
 }

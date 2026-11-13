@@ -1,6 +1,12 @@
+import { act, renderHook } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 import { VOCAB_SEEN_KEY } from "@/lib/local/keys"
-import { meetingsTotal, readVocabSeen, rememberVocabSeen } from "./vocab-seen"
+import {
+  meetingsTotal,
+  readVocabSeen,
+  rememberVocabSeen,
+  useVocabSeen,
+} from "./vocab-seen"
 
 describe("vocab seen", () => {
   afterEach(() => localStorage.clear())
@@ -19,5 +25,13 @@ describe("vocab seen", () => {
     expect(readVocabSeen()).toBe(12)
     localStorage.setItem(VOCAB_SEEN_KEY, "lots")
     expect(readVocabSeen()).toBeNull()
+  })
+  it("tells a mounted reader when Kosakata records a new total", () => {
+    const { result } = renderHook(() => useVocabSeen())
+    expect(result.current).toBeNull()
+    act(() => rememberVocabSeen(5))
+    expect(result.current).toBe(5)
+    act(() => rememberVocabSeen(9))
+    expect(result.current).toBe(9)
   })
 })

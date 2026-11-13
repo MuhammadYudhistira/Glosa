@@ -18,6 +18,7 @@ import { LobbyTopBar } from "@/components/lobby/LobbyTopBar"
 import { RecentBooks } from "@/components/lobby/RecentBooks"
 import { TrolleyPanel } from "@/components/lobby/TrolleyPanel"
 import { lobbyHotspots, summarizeLobby } from "@/components/lobby/lobby-data"
+import { roomSignals } from "@/components/lobby/room-signals"
 import { type HotspotId, spotOf } from "@/components/lobby/scene/layout"
 import { useAndaSpot } from "@/components/lobby/useAndaSpot"
 import { coverHue } from "@/components/shelf/BookCover"
@@ -26,9 +27,6 @@ import { useLocalShelf } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
 import type { Collection, ShelfBook, StorageUsage } from "@/lib/book-types"
 import { useReadingHabit } from "@/lib/habit/habit-client"
-import { useMeetingsTotal } from "@/lib/vocab/vocab-client"
-import { readVocabSeen, rememberVocabSeen } from "@/lib/vocab/vocab-seen"
-import { roomSignals } from "@/components/lobby/room-signals"
 import {
   type RecapBubble,
   readShownBubbles,
@@ -39,6 +37,8 @@ import { itemOf } from "@/lib/shop/catalog"
 import { useLobbyDecor, useShop } from "@/lib/shop/shop-client"
 import type { SessionUser } from "@/lib/session-types"
 import { useWideScreen } from "@/lib/use-wide-screen"
+import { useMeetingsTotal } from "@/lib/vocab/vocab-client"
+import { rememberVocabSeen, useVocabSeen } from "@/lib/vocab/vocab-seen"
 
 /**
  * The lobby (spec 1D), mounted under /lobby, /shelf, /vocabulary and /settings so the 3D
@@ -73,14 +73,13 @@ export function LobbyStage({
   const shop = useShop()
   const summary = useMemo(() => summarizeLobby(books), [books])
   const meetingsTotal = useMeetingsTotal()
-  const [vocabSeen, setVocabSeen] = useState<number | null>(null)
+  const vocabSeen = useVocabSeen()
   useEffect(() => {
-    if (meetingsTotal === null) return
-    const seen = readVocabSeen()
     // No record yet: this visit becomes the starting point, the lamp stays off.
-    if (seen === null) rememberVocabSeen(meetingsTotal)
-    setVocabSeen(seen ?? meetingsTotal)
-  }, [meetingsTotal])
+    if (meetingsTotal !== null && vocabSeen === null) {
+      rememberVocabSeen(meetingsTotal)
+    }
+  }, [meetingsTotal, vocabSeen])
   const signals = useMemo(
     () =>
       roomSignals({

@@ -9,13 +9,13 @@ import {
 } from "react"
 import { Button } from "@/components/ui/button"
 import type { PlantStage } from "@/lib/reading-habit"
-import { NEUTRAL_SIGNALS, type RoomSignals } from "./room-signals"
 import type { SlotId } from "@/lib/shop/catalog"
 import type { Placements } from "@/lib/shop/types"
 import { HotspotLayer } from "./HotspotLayer"
 import { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyStill, STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import type { HotspotModel } from "./lobby-data"
+import { NEUTRAL_SIGNALS, type RoomSignals } from "./room-signals"
 import {
   DECOR_SLOTS,
   type HotspotId,
