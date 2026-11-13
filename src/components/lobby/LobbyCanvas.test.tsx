@@ -20,7 +20,7 @@ vi.mock("./scene/stage", () => ({
   createStage: vi.fn(() => Promise.resolve(stage)),
 }))
 
-function canvasWith(paused: boolean, onReady = vi.fn()) {
+function canvasWith(paused: boolean, onReady = vi.fn(), onFail = vi.fn()) {
   return (
     <LobbyCanvas
       quality="tinggi"
@@ -33,7 +33,7 @@ function canvasWith(paused: boolean, onReady = vi.fn()) {
       onReady={onReady}
       onView={vi.fn()}
       onQuality={vi.fn()}
-      onFail={vi.fn()}
+      onFail={onFail}
     />
   )
 }
@@ -133,5 +133,18 @@ describe("LobbyCanvas", () => {
     finish(stage)
     await vi.waitFor(() => expect(stage.dispose).toHaveBeenCalled())
     expect(onReady).not.toHaveBeenCalled()
+  })
+
+  it("falls back to the still image when the models do not load", async () => {
+    vi.mocked(createStage).mockImplementationOnce(() =>
+      Promise.reject(new Error("model fetch failed"))
+    )
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const onReady = vi.fn()
+    const onFail = vi.fn()
+    render(canvasWith(false, onReady, onFail))
+    await vi.waitFor(() => expect(onFail).toHaveBeenCalledTimes(1))
+    expect(onReady).not.toHaveBeenCalled()
+    error.mockRestore()
   })
 })

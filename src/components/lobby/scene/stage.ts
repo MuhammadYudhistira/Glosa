@@ -191,14 +191,42 @@ function buildStage(
   const output = new OutputPass()
   composer.addPass(output)
 
-  const kit = createKit(scene)
-  buildRoom(kit, models)
-  const skyline = buildSkyline(kit)
-  const furniture = buildFurniture(kit, models, withLights)
-  const showcase = buildShowcase(kit, () => requestRender())
-  const plant = buildPlant(kit, () => requestRender())
-  const decor = buildDecor(scene, () => requestRender())
-  const people = buildPeople(kit, options.anda)
+  /** Frees what the scene and the passes hold; the caller frees the renderer. */
+  function releaseScene() {
+    disposeTree(scene)
+    key.dispose()
+    bloom.dispose()
+    output.dispose()
+    composer.dispose()
+  }
+
+  // A build that throws part-way frees what it made before createStage's
+  // catch drops the context (the furniture's textures, merged geometry,
+  // the bloom targets and the shadow map).
+  const built = (() => {
+    const parts: Array<{ dispose: () => void }> = []
+    const keep = <T extends { dispose: () => void }>(part: T): T => {
+      parts.push(part)
+      return part
+    }
+    try {
+      const kit = createKit(scene)
+      buildRoom(kit, models)
+      return {
+        skyline: buildSkyline(kit),
+        furniture: buildFurniture(kit, models, withLights),
+        showcase: keep(buildShowcase(kit, () => requestRender())),
+        plant: keep(buildPlant(kit, () => requestRender())),
+        decor: keep(buildDecor(scene, () => requestRender())),
+        people: buildPeople(kit, options.anda),
+      }
+    } catch (error) {
+      for (const part of parts) part.dispose()
+      releaseScene()
+      throw error
+    }
+  })()
+  const { skyline, furniture, showcase, plant, decor, people } = built
   const motion = createMotion(people)
   motion.update(0, 0)
 
@@ -494,11 +522,8 @@ function buildStage(
       showcase.dispose()
       plant.dispose()
       decor.dispose()
-      disposeTree(scene)
+      releaseScene()
       models.dispose()
-      bloom.dispose()
-      output.dispose()
-      composer.dispose()
       renderer.dispose()
       renderer.forceContextLoss()
       canvas.remove()

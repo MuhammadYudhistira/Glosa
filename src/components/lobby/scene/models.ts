@@ -55,7 +55,10 @@ export async function loadModels(): Promise<ModelSet> {
       return source ? source.clone(true) : null
     },
     dispose() {
-      // Geometry and materials are shared through the cache and live as long as the page.
+      // Nothing of its own to free. The clones share geometry and materials
+      // with the cached sources, and stage.dispose() frees them on the GPU
+      // through the clones. three uploads them again on their next use, so a
+      // stage built after that (remount, StrictMode) still draws them.
     },
   }
 }

@@ -15,8 +15,6 @@ export type Furnishings = {
   lamps: Array<THREE.PointLight>
   /** The fireplace's light (intensity 0 without point lights). */
   fire: THREE.PointLight
-  /** Window light is the skyline's; kept for the rigs' shape. */
-  windowGlow: Array<THREE.Mesh>
   emissives: Array<Glow>
 }
 
@@ -507,5 +505,5 @@ export function buildFurniture(
     if (piece.model === "parcelBox") parcelDetails(build)
   }
   if (!withLights) fire.removeFromParent()
-  return { lamps, fire, windowGlow: [], emissives }
+  return { lamps, fire, emissives }
 }

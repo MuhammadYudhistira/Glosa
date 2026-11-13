@@ -102,18 +102,43 @@ describe("diorama camera", () => {
   )
 
   it("keeps the room on screen however far it is panned", () => {
+    // The room's box on screen, with its pad: the screen's edges stay inside it.
+    const us = corners.map((corner) => dot(SCREEN_RIGHT, corner))
+    const vs = corners.map((corner) => dot(SCREEN_UP, corner))
+    const u0 = Math.min(...us) - ROOM.pad
+    const u1 = Math.max(...us) + ROOM.pad
+    const v0 = Math.min(...vs) - ROOM.pad
+    const v1 = Math.max(...vs) + ROOM.pad
+    const pushes: Array<Point3> = [
+      [500, 0, -500],
+      [-500, 0, 500],
+      [0, 500, 0],
+      [0, -500, 0],
+      [500, 500, 500],
+      [-500, -500, -500],
+    ]
     for (const viewport of [PHONE, DESKTOP]) {
-      const far = clampView(
-        { target: [500, 0, -500], zoom: MAX_ZOOM },
-        viewport
-      )
-      const { halfWidth, halfHeight } = halfExtents(far.zoom, viewport)
-      const u = dot(SCREEN_RIGHT, far.target)
-      const umax = ROOM.width / Math.SQRT2
-      // The edge of the screen never goes past the room's edge.
-      expect(Math.abs(u) - halfWidth).toBeLessThanOrEqual(umax + 1e-6)
-      expect(halfHeight).toBeGreaterThan(0)
-      expect(dot(SCREEN_UP, far.target)).toBeLessThan(1e3)
+      for (const target of pushes) {
+        const far = clampView({ target, zoom: MAX_ZOOM }, viewport)
+        const { halfWidth, halfHeight } = halfExtents(far.zoom, viewport)
+        const u = dot(SCREEN_RIGHT, far.target)
+        const v = dot(SCREEN_UP, far.target)
+        const label = `${viewport.width}x${viewport.height} ${target}`
+        // An axis the room fills keeps the screen's edges inside the room;
+        // one it does not fill (a phone's height) stays centred on it.
+        const axes = [
+          [u, halfWidth, u0, u1],
+          [v, halfHeight, v0, v1],
+        ] as const
+        for (const [at, half, min, max] of axes) {
+          if (max - min <= 2 * half) {
+            expect(at, label).toBeCloseTo((min + max) / 2, 6)
+          } else {
+            expect(at - half, label).toBeGreaterThanOrEqual(min - 1e-6)
+            expect(at + half, label).toBeLessThanOrEqual(max + 1e-6)
+          }
+        }
+      }
     }
   })
 
