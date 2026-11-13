@@ -23,7 +23,7 @@ import {
 } from "../room-signals"
 import { DECOR_BUILDERS, buildDecor } from "./decor"
 import { createFrameLoop, moving, viewMoved } from "./frame-loop"
-import { buildFurniture } from "./furniture"
+import { type Glow, buildFurniture } from "./furniture"
 import { createKit } from "./kit"
 import { type Point2, ROOM, type ShowcaseBook, decorBlockers } from "./layout"
 import { type ModelSet, loadModels } from "./models"
@@ -285,19 +285,18 @@ function buildStage(
     for (const lamp of furniture.lamps) lamp.intensity = rig.lamps * 1.6
     decor.setLamps(rig.lamps)
     const fire = FIRE_STRENGTH[signals.fire]
+    const desk = signals.deskLamp ? 1 : 0
     furniture.fire.intensity = fire * 2
-    if (furniture.deskLight) {
-      furniture.deskLight.intensity = signals.deskLamp ? 1.6 : 0
+    if (furniture.deskLight) furniture.deskLight.intensity = desk * 1.6
+    // How lit each kind of glow is: the fire and the desk lamp follow the
+    // signals, the reading lamps the mood.
+    const levels: Record<Glow["kind"], number> = {
+      fire,
+      desk,
+      lamps: rig.lamps,
     }
     for (const { material, max, kind } of furniture.emissives) {
-      const level =
-        kind === "fire"
-          ? fire
-          : kind === "desk"
-            ? signals.deskLamp
-              ? 1
-              : 0
-            : rig.lamps
+      const level = levels[kind]
       material.emissiveIntensity = max * level
       // An unlit flame or bulb is not drawn at all.
       material.visible = level > 0.02
