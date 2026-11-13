@@ -221,8 +221,8 @@
   }
 }
 
-/* Librarian speech bubble */
-.librarian-bubble {
+/* Note speech bubble */
+.note-bubble {
   position: relative;
   border-radius: 0.75rem;
   background: #fffaf0;
@@ -232,7 +232,7 @@
   line-height: 1.4;
   box-shadow: 0 6px 16px rgb(0 0 0 / 0.4);
 }
-.librarian-bubble::after {
+.note-bubble::after {
   content: "";
   position: absolute;
   left: 1.1rem;

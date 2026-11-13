@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Glosa adalah perpustakaan pribadimu untuk belajar bahasa Inggris lewat buku: unggah EPUB, baca dengan nyaman, dan pahami setiap kata.",
+          "Glosa adalah ruang baca pribadimu untuk belajar bahasa Inggris lewat buku: unggah EPUB, baca dengan nyaman, dan pahami setiap kata.",
       },
     ],
   }),
@@ -33,7 +33,7 @@ function WelcomePage() {
           Selamat datang di Glosa
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Perpustakaan pribadimu untuk belajar bahasa Inggris lewat buku.
+          Ruang baca pribadimu untuk belajar bahasa Inggris lewat buku.
         </p>
         <div className="mt-6 grid gap-2.5">
           <Link to="/login" className={buttonVariants({ size: "block" })}>
@@ -43,7 +43,7 @@ function WelcomePage() {
             to="/register"
             className={buttonVariants({ variant: "outline", size: "block" })}
           >
-            Daftar jadi anggota
+            Buat ruang baca
           </Link>
         </div>
       </Panel>

@@ -15,7 +15,7 @@ describe("LinkFailed", () => {
       screen.getByRole("heading", { name: "Masuk dibatalkan" })
     ).toBeInTheDocument()
     expect(screen.queryByText("Minta surat baru")).toBeNull()
-    expect(screen.getByText("Ke buku tamu")).toBeInTheDocument()
+    expect(screen.getByText("Ke halaman masuk")).toBeInTheDocument()
   })
 
   it("keeps the e-mail link wording and the new-letter link", () => {

@@ -11,7 +11,7 @@ import { BookDetailPanel } from "@/components/lobby/BookDetailPanel"
 import { ContinueSheet } from "@/components/lobby/ContinueSheet"
 import { LibraryMap } from "@/components/lobby/LibraryMap"
 import {
-  LibrarianWelcome,
+  ShelfWelcome,
   ReadingHint,
   RecapBubbleNote,
 } from "@/components/lobby/LobbyBubbles"
@@ -251,7 +251,7 @@ export function LobbyStage({
   }
   // Phones greet in the sheet instead: their first view leaves the desk out.
   if (!popup && books.length === 0) {
-    bubbles["meja-admin"] = <LibrarianWelcome className="hidden lg:grid" />
+    bubbles["meja-admin"] = <ShelfWelcome className="hidden lg:grid" />
   }
 
   // One element for every mode, so switching never remounts the WebGL scene.

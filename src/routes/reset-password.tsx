@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start"
 import { type FormEvent, useState } from "react"
 import { AdminDesk } from "@/components/auth/AdminDesk"
 import { GuestBook } from "@/components/auth/GuestBook"
-import { LibrarianBubble } from "@/components/auth/LibrarianBubble"
+import { NoteBubble } from "@/components/auth/NoteBubble"
 import { PaperField } from "@/components/auth/PaperField"
 import { Button } from "@/components/ui/button"
 import { resolveUser } from "@/lib/current-user"
@@ -60,9 +60,9 @@ function ResetPasswordPage() {
   return (
     <AdminDesk
       bubble={
-        <LibrarianBubble tone={message ? "error" : "info"}>
+        <NoteBubble tone={message ? "error" : "info"}>
           {message?.bubble ?? "Silakan tulis kata sandi barumu."}
-        </LibrarianBubble>
+        </NoteBubble>
       }
     >
       <GuestBook>

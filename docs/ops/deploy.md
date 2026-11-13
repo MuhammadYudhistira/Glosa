@@ -397,7 +397,7 @@ Saat domain prod sudah ada. Misalnya `<domain-prod>`:
 1. **Supabase prod:** proyek baru **glosa-prod**, region Singapore. Simpan *database password*, catat *project ref*, dan buat *Access Token* `github-actions-glosa`.
    - Authentication → URL Configuration: Site URL `https://<domain-prod>`, Redirect URLs `https://<domain-prod>/**`.
    - Provider Email: *Confirm email* ON, sandi minimum 8.
-   - Template: *Confirm signup* (subjek **Konfirmasi keanggotaan Glosa**, isi `supabase/templates/confirmation.html`) dan *Reset password* (subjek **Atur ulang kata sandi Glosa**, isi `supabase/templates/recovery.html`).
+   - Template: *Confirm signup* (subjek **Buka ruang baca Glosa**, isi `supabase/templates/confirmation.html`) dan *Reset password* (subjek **Atur ulang kata sandi Glosa**, isi `supabase/templates/recovery.html`).
    - Skema dibuat pipeline saat deploy prod pertama; hook undangan diaktifkan setelahnya.
 2. **DNS:** record untuk `<domain-prod>` ke IP VPS.
 3. **Resend, Sentry, Google:** lihat 8.3–8.5.

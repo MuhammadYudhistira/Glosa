@@ -10,7 +10,7 @@ import { AdminDesk } from "@/components/auth/AdminDesk"
 import { GoogleButton } from "@/components/auth/GoogleButton"
 import { GuestBook, PaperDivider } from "@/components/auth/GuestBook"
 import { GuestBookRules } from "@/components/auth/GuestBookRules"
-import { LibrarianBubble } from "@/components/auth/LibrarianBubble"
+import { NoteBubble } from "@/components/auth/NoteBubble"
 import { PaperField } from "@/components/auth/PaperField"
 import { Button } from "@/components/ui/button"
 import { resolveUser } from "@/lib/current-user"
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/login")({
     if (target) throw redirect({ href: target })
   },
   loader: () => visitorsTodayFn(),
-  head: () => ({ meta: [{ title: "Buku Tamu — Glosa" }] }),
+  head: () => ({ meta: [{ title: "Masuk — Glosa" }] }),
   component: LoginPage,
 })
 
@@ -73,16 +73,14 @@ function LoginPage() {
   return (
     <AdminDesk
       bubble={
-        <LibrarianBubble tone={message ? "error" : "info"}>
-          {message
-            ? message.bubble
-            : "Selamat datang! Silakan isi buku tamu, ya."}
-        </LibrarianBubble>
+        <NoteBubble tone={message ? "error" : "info"}>
+          {message ? message.bubble : "Selamat datang kembali!"}
+        </NoteBubble>
       }
     >
       <GuestBook aside={<GuestBookRules visitors={visitors} />}>
         <h1 className="mb-3 font-hand text-3xl font-bold text-maroon md:hidden">
-          Buku Tamu
+          Masuk ke ruang bacamu
         </h1>
         <form method="post" onSubmit={onSubmit}>
           <PaperField
@@ -107,16 +105,16 @@ function LoginPage() {
             disabled={pending}
             className="mt-1"
           >
-            {pending ? "Menandatangani…" : "Tanda tangan & masuk"}
+            {pending ? "Membuka ruang baca…" : "Masuk"}
           </Button>
         </form>
         <PaperDivider>atau</PaperDivider>
         <GoogleButton label="Masuk dengan Google" />
         <div className="mt-3 flex justify-between gap-3 text-xs text-sepia-muted">
           <span>
-            Belum jadi anggota?{" "}
+            Belum punya ruang baca?{" "}
             <Link to="/register" className="underline">
-              Daftar
+              Buat ruang baca
             </Link>
           </span>
           <Link to="/forgot-password" className="underline">

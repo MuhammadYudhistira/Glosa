@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start"
 import { type FormEvent, useCallback, useEffect, useState } from "react"
 import { AdminDesk } from "@/components/auth/AdminDesk"
 import { GoogleButton } from "@/components/auth/GoogleButton"
-import { LibrarianBubble } from "@/components/auth/LibrarianBubble"
+import { NoteBubble } from "@/components/auth/NoteBubble"
 import { PaperField } from "@/components/auth/PaperField"
 import {
   useUsernameCheck,
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/register")({
     const target = guestRedirect(await resolveUser(context.user))
     if (target) throw redirect({ href: target })
   },
-  head: () => ({ meta: [{ title: "Formulir Anggota — Glosa" }] }),
+  head: () => ({ meta: [{ title: "Buat ruang baca — Glosa" }] }),
   component: RegisterPage,
 })
 
@@ -89,26 +89,25 @@ function RegisterPage() {
   }
 
   const bubble = sentTo
-    ? `Kami kirim surat konfirmasi ke ${sentTo}. Buka tautannya untuk menerima kartu anggotamu.`
+    ? `Kami kirim surat konfirmasi ke ${sentTo}. Buka tautannya untuk membuka ruang bacamu.`
     : (message?.bubble ??
-      "Anggota baru? Isi satu formulir ini, kartumu langsung jadi.")
+      "Baru di sini? Isi satu formulir ini, ruang bacamu langsung siap.")
 
   return (
     <AdminDesk
       bubble={
-        <LibrarianBubble tone={message ? "error" : "info"}>
-          {bubble}
-        </LibrarianBubble>
+        <NoteBubble tone={message ? "error" : "info"}>{bubble}</NoteBubble>
       }
     >
       <div className="rotate-[1.2deg] border-t-[6px] border-[#1f5e45] bg-[#fbf5e6] p-5 text-sepia-ink shadow-[0_14px_26px_rgba(0,0,0,0.55)]">
         <div className="mb-3 flex justify-between font-type text-xs font-bold tracking-wide text-[#1f5e45]">
-          <h1>FORMULIR PENDAFTARAN ANGGOTA</h1>
+          <h1>BUAT RUANG BACA</h1>
           <span className="font-normal text-[#8b7556]">No. ______</span>
         </div>
         {sentTo ? (
           <p className="font-hand text-2xl text-pen">
-            Kami kirim surat konfirmasi ke {sentTo}. Sampai jumpa di meja admin!
+            Kami kirim surat konfirmasi ke {sentTo}. Sampai jumpa di ruang
+            bacamu!
           </p>
         ) : (
           <form method="post" onSubmit={onSubmit}>
@@ -182,7 +181,7 @@ function RegisterPage() {
                 className="mt-0.5 accent-[#1f5e45]"
               />
               <span>
-                Saya setuju dengan tata tertib (
+                Saya setuju dengan{" "}
                 <Link to="/terms" target="_blank" className="underline">
                   Syarat Layanan
                 </Link>{" "}
@@ -190,7 +189,6 @@ function RegisterPage() {
                 <Link to="/privacy" target="_blank" className="underline">
                   Kebijakan Privasi
                 </Link>
-                )
               </span>
             </label>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -200,7 +198,7 @@ function RegisterPage() {
                 size="block"
                 disabled={pending}
               >
-                {pending ? "Mengirim…" : "Ajukan keanggotaan"}
+                {pending ? "Mengirim…" : "Buat ruang baca"}
               </Button>
               <div>
                 <GoogleButton
@@ -213,7 +211,7 @@ function RegisterPage() {
                     id="google-terms-hint"
                     className="mt-1 block text-xs text-sepia-muted"
                   >
-                    Centang persetujuan tata tertib dulu.
+                    Centang persetujuan syarat layanan dulu.
                   </output>
                 )}
               </div>
@@ -221,9 +219,9 @@ function RegisterPage() {
           </form>
         )}
         <p className="mt-3 text-xs text-sepia-muted">
-          Sudah jadi anggota?{" "}
+          Sudah punya ruang baca?{" "}
           <Link to="/login" className="underline">
-            Isi buku tamu
+            Masuk
           </Link>
         </p>
       </div>

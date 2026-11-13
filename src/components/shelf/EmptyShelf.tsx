@@ -1,13 +1,11 @@
 import type { ReactNode } from "react"
-import { LibrarianBubble } from "@/components/auth/LibrarianBubble"
+import { NoteBubble } from "@/components/auth/NoteBubble"
 import { Panel } from "@/components/ui/panel"
 
 export function EmptyShelf({ action }: { action?: ReactNode }) {
   return (
     <Panel className="flex flex-col gap-4 p-6">
-      <LibrarianBubble>
-        Rakmu masih kosong. Bawa buku pertamamu ke sini!
-      </LibrarianBubble>
+      <NoteBubble>Rakmu masih kosong. Bawa buku pertamamu ke sini!</NoteBubble>
       {action}
       <p className="text-sm text-muted-foreground">
         Belum punya EPUB? Ambil yang legal dan gratis di{" "}

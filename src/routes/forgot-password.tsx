@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start"
 import { type FormEvent, useState } from "react"
 import { AdminDesk } from "@/components/auth/AdminDesk"
 import { GuestBook } from "@/components/auth/GuestBook"
-import { LibrarianBubble } from "@/components/auth/LibrarianBubble"
+import { NoteBubble } from "@/components/auth/NoteBubble"
 import { PaperField } from "@/components/auth/PaperField"
 import { Button } from "@/components/ui/button"
 import { resolveUser } from "@/lib/current-user"
@@ -53,12 +53,12 @@ function ForgotPasswordPage() {
   return (
     <AdminDesk
       bubble={
-        <LibrarianBubble tone={message ? "error" : "info"}>
+        <NoteBubble tone={message ? "error" : "info"}>
           {sent
             ? "Jika email itu terdaftar, surat untuk membuat kata sandi baru sudah kami kirim."
             : (message?.bubble ??
               "Lupa kata sandi? Tulis emailmu, nanti kami kirim surat.")}
-        </LibrarianBubble>
+        </NoteBubble>
       }
     >
       <GuestBook>
@@ -86,7 +86,7 @@ function ForgotPasswordPage() {
         )}
         <p className="mt-3 text-xs text-sepia-muted">
           <Link to="/login" className="underline">
-            Kembali ke buku tamu
+            Kembali ke halaman masuk
           </Link>
         </p>
       </GuestBook>

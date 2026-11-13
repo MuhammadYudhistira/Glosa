@@ -36,9 +36,9 @@ function PrivacyPage() {
           terhapus saat akunmu dihapus.
         </li>
         <li>
-          Toko lobi: barang lobi yang kamu beli dan pasang, serta koin dari
-          bacaanmu. Data ini tidak dibagikan dan ikut terhapus saat akunmu
-          dihapus.
+          Toko dekorasi: barang dekorasi yang kamu beli dan pasang di ruang
+          bacamu, serta koin dari bacaanmu. Data ini tidak dibagikan dan ikut
+          terhapus saat akunmu dihapus.
         </li>
         <li>
           Kosakata dari bacaan: kata yang kamu ketuk di tiap buku, kata dari bab
@@ -62,8 +62,7 @@ function PrivacyPage() {
       <h2>Untuk apa data dipakai</h2>
       <ul>
         <li>
-          Menyediakan perpustakaan pribadimu dan menyinkronkannya antar
-          perangkat.
+          Menyediakan ruang baca pribadimu dan menyinkronkannya antar perangkat.
         </li>
         <li>
           Mengirim email yang diperlukan, seperti konfirmasi akun dan atur ulang
@@ -75,7 +74,7 @@ function PrivacyPage() {
       <h2>Siapa yang bisa melihat bukumu</h2>
       <p>
         File EPUB yang kamu unggah bersifat pribadi dan hanya bisa dibaca
-        olehmu. Jumlah "pengunjung hari ini" di buku tamu hanya berupa angka
+        olehmu. Jumlah "pembaca hari ini" di halaman masuk hanya berupa angka
         tanpa nama.
       </p>
       <h2>Kamus</h2>

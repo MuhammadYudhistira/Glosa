@@ -15,7 +15,7 @@ test("a guest opening the lobby is sent to the guest book", async ({
   await page.goto("/lobby")
   await expect(page).toHaveURL(/\/login\?next=%2Flobby$/)
   await expect(
-    page.getByRole("status").filter({ hasText: "Silakan isi buku tamu" })
+    page.getByRole("status").filter({ hasText: "Selamat datang kembali" })
   ).toBeVisible()
 })
 
@@ -23,7 +23,7 @@ test("the membership form checks usernames as they are typed", async ({
   page,
 }) => {
   await page.goto("/")
-  await page.getByRole("link", { name: "Daftar jadi anggota" }).click()
+  await page.getByRole("link", { name: "Buat ruang baca" }).click()
   await expect(page).toHaveURL(/\/register$/)
   await hydrated(page)
   const usernameField = page.getByLabel("Nama pengguna")
@@ -39,18 +39,18 @@ test("a confirmed new member receives a card and enters the lobby", async ({
   const member = newMember()
   await page.goto(await signupConfirmPath(member))
   await expect(page).toHaveURL(/\/welcome$/)
-  await expect(page.getByText("DITERIMA")).toBeVisible()
+  await expect(page.getByText("SIAP", { exact: true })).toBeVisible()
   await hydrated(page)
-  const card = page.getByRole("figure", { name: "Kartu anggota Glosa" })
+  const card = page.getByRole("figure", { name: "Kartu pembaca Glosa" })
   await expect(card).toContainText(`@${member.username}`)
   await expect(card).toContainText("GRATIS · 100 MB")
 
-  await page.getByRole("button", { name: /Masuk ke perpustakaan/ }).click()
+  await page.getByRole("button", { name: /Masuk ke ruang bacamu/ }).click()
   await expect(page).toHaveURL(/\/lobby$/)
   await expect(page.getByRole("heading", { name: "Lobi" })).toBeVisible()
 })
 
-test("the librarian flags a wrong password, then a returning member goes straight to the lobby", async ({
+test("the sign-in form flags a wrong password, then a returning member goes straight to the lobby", async ({
   page,
 }) => {
   const member = await createConfirmedMember()
@@ -62,7 +62,7 @@ test("the librarian flags a wrong password, then a returning member goes straigh
   await expect(page.getByRole("alert").first()).toContainText("belum cocok")
 
   await page.getByLabel("Kata sandi", { exact: true }).fill(member.password)
-  await page.getByRole("button", { name: "Tanda tangan & masuk" }).click()
+  await page.getByRole("button", { name: "Masuk", exact: true }).click()
   await expect(page).toHaveURL(/\/lobby$/)
 
   await page.goto("/")
@@ -127,8 +127,10 @@ test.describe("with custom SMTP", () => {
     await expect(page.getByText("Nama pengguna tersedia ✓")).toBeVisible()
     await page.getByLabel("Email").fill(member.email)
     await page.getByLabel("Kata sandi", { exact: true }).fill(member.password)
-    await page.getByLabel("Saya setuju dengan tata tertib").check()
-    await page.getByRole("button", { name: "Ajukan keanggotaan" }).click()
+    await page.getByLabel("Saya setuju dengan Syarat Layanan").check()
+    await page
+      .getByRole("button", { name: "Buat ruang baca", exact: true })
+      .click()
     await expect(
       page
         .getByRole("status")

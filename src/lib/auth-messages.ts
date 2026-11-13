@@ -20,7 +20,7 @@ const MESSAGES: Record<string, AuthMessage> = {
   },
   email_address_not_authorized: {
     bubble:
-      "Meja admin belum bisa mengirim surat ke alamat itu. Coba alamat lain, ya.",
+      "Glosa belum bisa mengirim surat ke alamat itu. Coba alamat lain, ya.",
     field: "Email belum bisa menerima surat dari kami.",
   },
   weak_password: {
@@ -42,7 +42,7 @@ const MESSAGES: Record<string, AuthMessage> = {
     field: "Coba lagi beberapa menit lagi.",
   },
   over_request_rate_limit: {
-    bubble: "Meja admin sedang ramai. Tunggu sebentar, ya.",
+    bubble: "Glosa sedang ramai. Tunggu sebentar, ya.",
     field: "Coba lagi beberapa menit lagi.",
   },
   otp_expired: {
@@ -51,7 +51,7 @@ const MESSAGES: Record<string, AuthMessage> = {
     field: "Tautan kedaluwarsa.",
   },
   username_taken: {
-    bubble: "Nama pengguna itu sudah dipakai anggota lain.",
+    bubble: "Nama pengguna itu sudah dipakai pengguna lain.",
     field: "Nama pengguna sudah dipakai.",
   },
   username_invalid: {
@@ -64,8 +64,8 @@ const MESSAGES: Record<string, AuthMessage> = {
     field: "Nama wajib diisi (maks. 60 karakter).",
   },
   terms_required: {
-    bubble: "Sebelum jadi anggota, setujui tata tertib perpustakaan dulu, ya.",
-    field: "Centang persetujuan tata tertib.",
+    bubble: "Sebelum membuat ruang baca, setujui Syarat Layanan dulu, ya.",
+    field: "Centang persetujuan syarat layanan.",
   },
   confirm_mismatch: {
     bubble: "Nama pengguna yang kamu ketik belum sama.",
@@ -81,7 +81,7 @@ const MESSAGES: Record<string, AuthMessage> = {
     field: "Masuk dengan Google dibatalkan.",
   },
   not_authenticated: {
-    bubble: "Sesimu sudah berakhir. Silakan isi buku tamu lagi.",
+    bubble: "Sesimu sudah berakhir. Silakan masuk lagi.",
     field: "Silakan masuk lagi.",
   },
   signups_closed: {
@@ -92,7 +92,7 @@ const MESSAGES: Record<string, AuthMessage> = {
 }
 
 const FALLBACK: AuthMessage = {
-  bubble: "Maaf, ada gangguan di meja admin. Coba lagi sebentar lagi.",
+  bubble: "Maaf, ada gangguan. Coba lagi sebentar lagi.",
   field: "Terjadi kesalahan. Coba lagi.",
 }
 

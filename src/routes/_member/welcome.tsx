@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { useCallback, useState } from "react"
-import { LibrarianBubble } from "@/components/auth/LibrarianBubble"
+import { NoteBubble } from "@/components/auth/NoteBubble"
 import {
   useUsernameCheck,
   usernameStatusText,
@@ -15,7 +15,7 @@ import { normalizeUsername } from "@/lib/username"
 import { checkUsernameFn, completeOnboardingFn } from "@/server/profile"
 
 export const Route = createFileRoute("/_member/welcome")({
-  head: () => ({ meta: [{ title: "Kartu Anggota — Glosa" }] }),
+  head: () => ({ meta: [{ title: "Kartu Pembaca — Glosa" }] }),
   component: WelcomeCardPage,
 })
 
@@ -71,10 +71,10 @@ function WelcomeCardPage() {
   return (
     <main className="relative grid min-h-dvh place-items-center p-4">
       <div className="absolute top-[10%] left-[8%] md:left-[58%]">
-        <Stamp>DITERIMA</Stamp>
+        <Stamp>SIAP</Stamp>
       </div>
       <div className="flex w-full max-w-sm flex-col items-center gap-5">
-        <h1 className="sr-only">Kartu anggotamu sudah jadi</h1>
+        <h1 className="sr-only">Ruang bacamu sudah siap</h1>
         <MembershipCard
           member={{
             ...user,
@@ -111,16 +111,14 @@ function WelcomeCardPage() {
           </div>
         )}
         {errorCode && (
-          <LibrarianBubble tone="error">
-            {authMessage(errorCode).bubble}
-          </LibrarianBubble>
+          <NoteBubble tone="error">{authMessage(errorCode).bubble}</NoteBubble>
         )}
         <Button
           size="block"
           onClick={enterLibrary}
           disabled={pending || blocked}
         >
-          {pending ? "Membuka pintu…" : "Masuk ke perpustakaan →"}
+          {pending ? "Membuka pintu…" : "Masuk ke ruang bacamu →"}
         </Button>
       </div>
     </main>

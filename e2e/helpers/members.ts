@@ -94,7 +94,7 @@ export async function signIn(
   await hydrated(page)
   await page.getByLabel("Email").fill(member.email)
   await page.getByLabel("Kata sandi", { exact: true }).fill(password)
-  await page.getByRole("button", { name: "Tanda tangan & masuk" }).click()
+  await page.getByRole("button", { name: "Masuk", exact: true }).click()
 }
 
 export async function userIdOf(email: string): Promise<string> {
@@ -114,6 +114,6 @@ export async function signInAndOnboard(page: Page, member: TestMember) {
   await signIn(page, member)
   await expect(page).toHaveURL(/\/welcome$/)
   await hydrated(page)
-  await page.getByRole("button", { name: /Masuk ke perpustakaan/ }).click()
+  await page.getByRole("button", { name: /Masuk ke ruang bacamu/ }).click()
   await expect(page).toHaveURL(/\/lobby$/)
 }

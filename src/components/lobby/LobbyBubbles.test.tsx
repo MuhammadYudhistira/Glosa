@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { renderWithRouter } from "@/test/router"
-import { LibrarianWelcome, ReadingHint, RecapBubbleNote } from "./LobbyBubbles"
+import { ShelfWelcome, ReadingHint, RecapBubbleNote } from "./LobbyBubbles"
 
 describe("lobby bubbles", () => {
   it("links the recap bubble to its period", async () => {
@@ -29,7 +29,7 @@ describe("lobby bubbles", () => {
   })
 
   it("greets a member with an empty shelf and points to free EPUBs", () => {
-    render(<LibrarianWelcome />)
+    render(<ShelfWelcome />)
     expect(
       screen.getByText("Rakmu masih kosong. Bawa buku pertamamu ke sini!")
     ).toBeInTheDocument()

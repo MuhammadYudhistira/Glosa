@@ -19,7 +19,7 @@ const member: SessionUser = {
 describe("MembershipCard", () => {
   it("shows the member details printed on the card", () => {
     render(<MembershipCard member={member} />)
-    const card = screen.getByRole("figure", { name: "Kartu anggota Glosa" })
+    const card = screen.getByRole("figure", { name: "Kartu pembaca Glosa" })
     expect(card).toHaveTextContent("Yudhis")
     expect(card).toHaveTextContent("@yudhis")
     expect(card).toHaveTextContent("000342")
@@ -42,5 +42,17 @@ describe("MembershipCard", () => {
   it("leaves the streak out without one", () => {
     render(<MembershipCard member={member} />)
     expect(screen.queryByText(/Streak/)).toBeNull()
+  })
+
+  it("shows the shelf summary when it is given", () => {
+    render(
+      <MembershipCard member={member} shelf={{ total: 12, finished: 5 }} />
+    )
+    expect(screen.getByText("12 buku · 5 selesai")).toBeInTheDocument()
+  })
+
+  it("leaves the summary out when there is none", () => {
+    render(<MembershipCard member={member} />)
+    expect(screen.queryByText(/buku ·/)).toBeNull()
   })
 })

@@ -22,7 +22,7 @@ export function LinkFailed({ code }: { code: string }) {
         <p className="mt-2 text-sm text-muted-foreground">{message.bubble}</p>
         <div className="mt-6 flex justify-center gap-4 text-sm">
           <Link to="/login" className="text-mint underline">
-            Ke buku tamu
+            Ke halaman masuk
           </Link>
           {fromEmailLink && (
             <Link to="/forgot-password" className="text-mint underline">

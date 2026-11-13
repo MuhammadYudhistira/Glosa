@@ -13,15 +13,17 @@ export function MembershipCard({
   className,
   animate = false,
   habit,
+  shelf,
 }: {
   member: SessionUser
   className?: string
   animate?: boolean
   habit?: { streak: number; record: number } | null
+  shelf?: { total: number; finished: number } | null
 }) {
   return (
     <figure
-      aria-label="Kartu anggota Glosa"
+      aria-label="Kartu pembaca Glosa"
       className={cn(
         "member-card m-0",
         animate && "member-card-enter",
@@ -33,7 +35,7 @@ export function MembershipCard({
         <div>
           <b className="block font-heading text-sm tracking-[0.2em]">GLOSA</b>
           <small className="text-[8px] tracking-[0.15em] text-[#9cc9bf]">
-            KARTU ANGGOTA PERPUSTAKAAN
+            KARTU PEMBACA
           </small>
         </div>
       </div>
@@ -46,16 +48,21 @@ export function MembershipCard({
           <dd className="text-xs font-bold">{member.displayName}</dd>
           <dt className="text-[#8fb9b0]">Pengguna</dt>
           <dd className="text-xs font-bold">@{member.username}</dd>
-          <dt className="text-[#8fb9b0]">No. anggota</dt>
+          <dt className="text-[#8fb9b0]">No. pembaca</dt>
           <dd className="font-type text-xs font-bold tracking-wider">
             {formatMemberNo(member.memberNo)}
           </dd>
-          <dt className="text-[#8fb9b0]">Anggota sejak</dt>
+          <dt className="text-[#8fb9b0]">Bergabung sejak</dt>
           <dd className="text-xs font-bold">
             {formatMemberSince(member.memberSince)}
           </dd>
         </dl>
       </div>
+      {shelf && (
+        <p className="text-[10px] font-bold tracking-wide text-mint">
+          {shelf.total} buku · {shelf.finished} selesai
+        </p>
+      )}
       {habit && (
         <p className="text-[10px] font-bold tracking-wide text-mint">
           Streak {habit.streak} hari · Rekor {habit.record}

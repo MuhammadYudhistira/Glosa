@@ -1,4 +1,9 @@
-import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
+import {
+  Link,
+  createFileRoute,
+  getRouteApi,
+  useRouter,
+} from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { type FormEvent, useState } from "react"
 import { LobbyPopup } from "@/components/lobby/LobbyPopup"
@@ -13,6 +18,8 @@ import { clearLocalData } from "@/lib/local/device"
 import { normalizeUsername } from "@/lib/username"
 import { deleteAccountFn, updateProfileFn } from "@/server/profile"
 
+const lobi = getRouteApi("/_member/_lobi")
+
 export const Route = createFileRoute("/_member/_lobi/settings")({
   head: () => ({ meta: [{ title: "Pengaturan — Glosa" }] }),
   component: SettingsPage,
@@ -22,6 +29,7 @@ function SettingsPage() {
   const { user } = Route.useRouteContext()
   const router = useRouter()
   const habit = useReadingHabit()
+  const { books } = lobi.useLoaderData()
   const updateProfile = useServerFn(updateProfileFn)
   const deleteAccount = useServerFn(deleteAccountFn)
 
@@ -99,6 +107,10 @@ function SettingsPage() {
         <MembershipCard
           member={user}
           className="shrink-0"
+          shelf={{
+            total: books.length,
+            finished: books.filter((book) => book.finishedAt !== null).length,
+          }}
           habit={
             habit.summary.hasHistory
               ? {

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { LibrarianBubble } from "@/components/auth/LibrarianBubble"
+import { NoteBubble } from "@/components/auth/NoteBubble"
 import type { RecapBubble } from "@/lib/recap/bubble"
 import { cn } from "@/lib/utils"
 
@@ -15,13 +15,11 @@ export function ReadingHint() {
   )
 }
 
-/** The librarian's greeting for a member without books (spec 1D §5.2). */
-export function LibrarianWelcome({ className }: { className?: string }) {
+/** The greeting for a member without books (spec 1D §5.2). */
+export function ShelfWelcome({ className }: { className?: string }) {
   return (
     <div className={cn("lobby-bubble-stack", className)}>
-      <LibrarianBubble>
-        Rakmu masih kosong. Bawa buku pertamamu ke sini!
-      </LibrarianBubble>
+      <NoteBubble>Rakmu masih kosong. Bawa buku pertamamu ke sini!</NoteBubble>
       <p className="lobby-note">
         Belum punya EPUB? Ambil yang legal dan gratis di{" "}
         <a href="https://standardebooks.org" target="_blank" rel="noreferrer">

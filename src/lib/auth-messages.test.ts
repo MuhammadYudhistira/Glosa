@@ -5,7 +5,7 @@ const CLOSED =
   "Glosa sedang dalam uji coba tertutup. Pendaftaran baru dibuka untuk umum segera."
 
 describe("authMessage", () => {
-  it("speaks as the librarian for known codes", () => {
+  it("gives a short message for known codes", () => {
     expect(authMessage("invalid_credentials").bubble).toContain("belum cocok")
     expect(authMessage("invalid_credentials").field).toBe(
       "Email atau kata sandi salah."

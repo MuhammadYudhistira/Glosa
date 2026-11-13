@@ -10,11 +10,11 @@ import {
 } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
 import type { Collection, ShelfBook } from "@/lib/book-types"
-import { LibrarianWelcome, ReadingHint } from "./LobbyBubbles"
+import { ShelfWelcome, ReadingHint } from "./LobbyBubbles"
 
 /**
  * The phone's bottom sheet (spec 1D §5.2): the last book, whose details open
- * in the sheet. On an empty shelf it holds the librarian's greeting, since the
+ * in the sheet. On an empty shelf it holds the greeting, since the
  * admin desk is off screen in the phone's first view.
  */
 export function ContinueSheet({
@@ -39,7 +39,7 @@ export function ContinueSheet({
 
   let content: ReactNode
   if (empty) {
-    content = <LibrarianWelcome />
+    content = <ShelfWelcome />
   } else if (!book) {
     content = <ReadingHint />
   } else {

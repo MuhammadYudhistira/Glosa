@@ -9,13 +9,8 @@ export const Route = createFileRoute("/terms")({
 
 function TermsPage() {
   return (
-    <LegalPage
-      title="Syarat Layanan (Tata Tertib Perpustakaan)"
-      updated="15 Oktober 2026"
-    >
-      <p>
-        Dengan menjadi anggota Glosa, kamu setuju dengan tata tertib berikut.
-      </p>
+    <LegalPage title="Syarat Layanan" updated="15 Oktober 2026">
+      <p>Dengan memakai Glosa, kamu setuju dengan syarat berikut.</p>
       <h2>1. Buku yang kamu bawa</h2>
       <ul>
         <li>
@@ -34,7 +29,7 @@ function TermsPage() {
           Bagikan ulasan, bukan file. Jangan mengunggah konten yang melanggar
           hukum.
         </li>
-        <li>Hormati anggota lain. Ujaran kebencian dan spam akan dihapus.</li>
+        <li>Hormati pengguna lain. Ujaran kebencian dan spam akan dihapus.</li>
       </ul>
       <h2>3. Akun</h2>
       <ul>
@@ -51,8 +46,8 @@ function TermsPage() {
       </p>
       <h2>5. Perubahan layanan</h2>
       <p>
-        Kami dapat mengubah tata tertib ini. Perubahan penting akan
-        diberitahukan lewat aplikasi atau email.
+        Kami dapat mengubah syarat ini. Perubahan penting akan diberitahukan
+        lewat aplikasi atau email.
       </p>
       <h2>Kontak</h2>
       <p>

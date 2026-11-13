@@ -66,7 +66,7 @@ export function usernameStatusText(status: UsernameStatus): string | undefined {
     case "available":
       return "Nama pengguna tersedia ✓"
     case "taken":
-      return "Sudah dipakai anggota lain."
+      return "Sudah dipakai pengguna lain."
     case "invalid":
       return USERNAME_PROBLEM_TEXT[status.problem]
     default:
