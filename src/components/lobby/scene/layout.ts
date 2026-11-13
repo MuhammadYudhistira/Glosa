@@ -20,15 +20,33 @@ export type Point3 = readonly [number, number, number]
 export const ROOM = { width: 10, depth: 10, height: 4.6, pad: 0.9 } as const
 
 /**
+ * Where the groups of furniture stand; the small things on or beside each
+ * piece are placed from these, so they move with it. The writing desk sits
+ * in the window wall's left corner, under the corkboard; the reading corner
+ * (fireplace, armchair, side table) stands right of it, up to the window.
+ */
+const DESK_AT: Point2 = [1.24, 0.45]
+const FIRE_AT: Point2 = [3.1, 0.3]
+const ARMCHAIR_AT: Point2 = [FIRE_AT[0] + 0.65, 2.0]
+const SIDE_TABLE_AT: Point2 = [FIRE_AT[0] + 1.75, 1.9]
+
+/** A point `dx`, `dz` metres from a parent's centre. */
+const from = (parent: Point2, dx: number, dz: number): Point2 => [
+  parent[0] + dx,
+  parent[1] + dz,
+]
+
+/**
  * Parts of the walls rather than furniture (room.ts builds them): the window
  * in the Z = 0 wall (x0..x1, sill y0 to head y1), the door in the X = 0 wall
- * (centred on z) and the corkboard on the Z = 0 wall (centred on x, y).
+ * (centred on z) and the corkboard on the Z = 0 wall (centred on x, y), above
+ * the writing desk.
  * The door serves the `pintu` hotspot, the corkboard serves `papan` and the window tells the time of day (spec 3F §3.6).
  */
 export const ROOM_PARTS = {
   window: { x0: 4.5, x1: 7.2, y0: 1.0, y1: 3.4 },
   door: { z: 9.1, width: 1.3, height: 2.1 },
-  corkboard: { x: 1.15, y: 2.3, size: 1.0 },
+  corkboard: { x: DESK_AT[0], y: 2.3, size: 1.0 },
 } as const
 
 /**
@@ -53,13 +71,17 @@ const DESK_TOP = 0.78
 const SIDE_TOP = 0.6
 /** The top of the armchair's seat cushion, where its cushions rest. */
 const SEAT_TOP = 0.37
+/** The top of the fireplace's stone hearth. */
+const HEARTH_TOP = 0.13
+/** The laptop's place on the writing desk; the chair is pulled up to it. */
+const LAPTOP_AT = from(DESK_AT, 0.17, 0)
 
 export const FURNITURE: ReadonlyArray<Furnishing> = [
   // The reading corner: the armchair faces the room, the fire behind it.
   {
     id: "armchair",
     model: "armchair",
-    at: [3.65, 2.0],
+    at: ARMCHAIR_AT,
     size: [1.3, 0.9, 1.15],
     turn: 0,
     solid: true,
@@ -69,7 +91,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "cushion",
     model: "cushion",
-    at: [3.49, 1.876],
+    at: from(ARMCHAIR_AT, -0.16, -0.124),
     y: SEAT_TOP,
     size: [0.4, 0.33, 0.262],
     turn: 0,
@@ -79,27 +101,31 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "cushionSmall",
     model: "cushion",
-    at: [3.86, 1.881],
+    at: from(ARMCHAIR_AT, 0.21, -0.119),
     y: SEAT_TOP,
     size: [0.325, 0.267, 0.212],
     turn: 0,
     solid: false,
     serves: "meja-baca",
   },
+  // 1.6 m wide to fit between the desk and the window: its hearth stops
+  // short of the desk, its mantel short of the curtain.
   {
     id: "fireplace",
     model: "fireplace",
-    at: [3.0, 0.3],
-    size: [1.8, 1.6, 0.6],
+    at: FIRE_AT,
+    size: [1.6, 1.6, 0.6],
     turn: 0,
     solid: true,
     serves: "perapian",
   },
-  // Firewood beside the hearth (the mantel already holds the candles).
+  // Firewood on the hearth, before the left pillar (the mantel already
+  // holds the candles).
   {
     id: "logBasket",
     model: "logBasket",
-    at: [1.47, 0.4],
+    at: from(FIRE_AT, -0.62, 0.49),
+    y: HEARTH_TOP,
     size: [0.5, 0.42, 0.4],
     turn: 0,
     solid: false,
@@ -108,7 +134,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "sideTable",
     model: "sideTable",
-    at: [4.75, 1.9],
+    at: SIDE_TABLE_AT,
     size: [0.7, SIDE_TOP, 0.7],
     turn: 0,
     solid: true,
@@ -117,7 +143,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "readingLamp",
     model: "readingLamp",
-    at: [4.9, 1.75],
+    at: from(SIDE_TABLE_AT, 0.15, -0.15),
     y: SIDE_TOP,
     size: [0.36, 0.38, 0.36],
     turn: 0,
@@ -127,56 +153,58 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "catalogue",
     model: "catalogue",
-    at: [4.63, 2.08],
+    at: from(SIDE_TABLE_AT, -0.12, 0.18),
     y: SIDE_TOP,
     size: [0.34, 0.2, 0.15],
     turn: 0,
     solid: false,
     serves: "toko",
   },
-  // The writing desk against the shelf wall, with what a desk in use holds.
+  // The writing desk with its back to the window wall, under the corkboard,
+  // and what a desk in use holds; the chair faces the wall. 1.5 m long, so
+  // the fireplace still fits beside it.
   {
     id: "desk",
     model: "desk",
-    at: [1.1, 5.6],
-    size: [1.8, DESK_TOP, 0.9],
-    turn: Math.PI / 2,
+    at: DESK_AT,
+    size: [1.5, DESK_TOP, 0.9],
+    turn: 0,
     solid: true,
     serves: "katalog",
   },
   {
     id: "deskChair",
     model: "deskChair",
-    at: [1.95, 5.6],
+    at: [LAPTOP_AT[0], DESK_AT[1] + 0.8],
     size: [0.6, 1.0, 0.67],
-    turn: -Math.PI / 2,
+    turn: Math.PI,
     solid: true,
     serves: "katalog",
   },
   {
     id: "laptop",
     model: "laptop",
-    at: [1.1, 5.4],
+    at: LAPTOP_AT,
     y: DESK_TOP,
     size: [0.4, 0.26, 0.3],
-    turn: Math.PI / 2,
+    turn: 0,
     solid: false,
     serves: "meja-admin",
   },
   {
     id: "notebook",
     model: "notebook",
-    at: [1.15, 5.95],
+    at: from(DESK_AT, -0.27, 0.05),
     y: DESK_TOP,
     size: [0.24, 0.04, 0.3],
-    turn: Math.PI / 2,
+    turn: 0,
     solid: false,
     serves: "katalog",
   },
   {
     id: "deskLamp",
     model: "readingLamp",
-    at: [0.88, 6.25],
+    at: from(DESK_AT, -0.54, -0.22),
     y: DESK_TOP,
     size: [0.3, 0.32, 0.3],
     turn: 0,
@@ -186,30 +214,30 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "deskBooks",
     model: "deskBooks",
-    at: [0.8, 4.95],
+    at: from(DESK_AT, 0.54, -0.3),
     y: DESK_TOP,
     size: [0.3, 0.2, 0.14],
-    turn: Math.PI / 2,
+    turn: 0,
     solid: false,
     serves: "katalog",
   },
   {
     id: "mug",
     model: "mug",
-    at: [1.36, 4.95],
+    at: from(DESK_AT, 0.54, 0.26),
     y: DESK_TOP,
     size: [0.12, 0.1, 0.09],
-    turn: Math.PI / 2,
+    turn: 0,
     solid: false,
     serves: "katalog",
   },
   {
     id: "papers",
     model: "papers",
-    at: [1.25, 6.28],
+    at: from(DESK_AT, -0.57, 0.15),
     y: DESK_TOP,
     size: [0.34, 0.03, 0.26],
-    turn: Math.PI / 2,
+    turn: 0,
     solid: false,
     serves: "katalog",
   },
@@ -253,9 +281,10 @@ export const SHELF = {
   bottom: 0.15,
   top: 3.6,
   rows: 5,
-  z0: 0.5,
+  z0: 0.45,
 } as const
-const SECTION_WIDTH = 0.95
+/** Wide enough that the sections' labels clear each other on a desktop screen. */
+const SECTION_WIDTH = 0.98
 
 /** One shelf section per genre, in the order of GENRE_VALUES (spec 3F §3.2). */
 export const WALL_SECTIONS: ReadonlyArray<{
@@ -324,10 +353,12 @@ const SLOT_AT: Record<SlotId, Point3> = {
   // The lounge seat in the room, apart from the reading armchair.
   seat: [7.6, 0, 3.4],
   // Above the mantelpiece.
-  wall: [3.0, 2.7, 0.06],
+  wall: [FIRE_AT[0], 2.7, 0.06],
   // In front of the reading corner, where the seat does not hide it.
   pet: [5.6, 0, 3.2],
-  ceiling: [5.4, 3.9, 5.4],
+  // Above the front floor, so from the camera nothing hanging falls in
+  // front of the reading corner or the writing desk.
+  ceiling: [5.8, 3.9, 7.2],
 }
 
 /**
@@ -390,7 +421,12 @@ export const PREVIEW_SHIFT = 0.16
 export const ANDA_START: Point2 = [6.6, 7.8]
 export const ANDA_RADIUS = 0.3
 
-/** The laptop on the writing desk; the sign-in pages zoom the still image here. */
+/**
+ * Where the sign-in pages zoom the still image: the writing desk as the
+ * still drew it, in front of the shelves. The desk now stands in the back
+ * corner (LAPTOP_AT); this follows it when the still is redrawn (plan 3F-R1,
+ * Task 7), as LobbyStill.test still expects the desk in the lower left.
+ */
 export const ADMIN_DESK: Point2 = [1.1, 5.4]
 
 /** Where Anda may walk: the floor, clear of the shelf wall. */
@@ -433,23 +469,43 @@ export type HotspotSpot = { id: HotspotId; label: Point3; stand: Point2 }
 
 /** In tab order (spec 1D §6): reading chair, shelf sections, parcel box, laptop, notebook, cabinet, plant, catalogue, fireplace, corkboard, door. */
 export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
-  { id: "meja-baca", label: [3.65, 1.9, 2.0], stand: [3.65, 3.3] },
+  {
+    id: "meja-baca",
+    label: [ARMCHAIR_AT[0], 1.9, ARMCHAIR_AT[1]],
+    stand: [ARMCHAIR_AT[0], 3.3],
+  },
   ...WALL_SECTIONS.map(({ genre, z }): HotspotSpot => ({
     id: genre,
     label: [0.4, 3.9, z],
     stand: [2.65, z],
   })),
   { id: "troli", label: [0.8, 1.0, 7.7], stand: [1.9, 7.7] },
-  { id: "meja-admin", label: [1.1, 1.4, 5.3], stand: [2.65, 5.1] },
-  { id: "katalog", label: [1.1, 1.4, 6.3], stand: [2.65, 6.4] },
+  {
+    id: "meja-admin",
+    label: [LAPTOP_AT[0], 1.4, LAPTOP_AT[1]],
+    stand: [LAPTOP_AT[0] + 0.4, 2.0],
+  },
+  {
+    id: "katalog",
+    label: [DESK_AT[0] - 0.54, 1.6, DESK_AT[1]],
+    stand: [DESK_AT[0] - 0.4, 2.0],
+  },
   { id: "lemari", label: [8.8, 2.5, 0.3], stand: [8.8, 1.9] },
   { id: "tanaman", label: [6.2, 1.9, 0.8], stand: [6.2, 2.0] },
-  { id: "toko", label: [4.75, 1.2, 1.9], stand: [4.75, 3.0] },
-  { id: "perapian", label: [3.0, 2.4, 0.35], stand: [4.5, 0.95] },
+  {
+    id: "toko",
+    label: [SIDE_TABLE_AT[0], 1.2, SIDE_TABLE_AT[1]],
+    stand: [SIDE_TABLE_AT[0], 3.0],
+  },
+  {
+    id: "perapian",
+    label: [FIRE_AT[0], 2.7, FIRE_AT[1] + 0.05],
+    stand: [FIRE_AT[0] + 1.5, 0.95],
+  },
   {
     id: "papan",
     label: [ROOM_PARTS.corkboard.x, ROOM_PARTS.corkboard.y + 0.7, 0.1],
-    stand: [ROOM_PARTS.corkboard.x, 1.6],
+    stand: [ROOM_PARTS.corkboard.x, 2.3],
   },
   {
     id: "pintu",

@@ -89,6 +89,26 @@ describe("room layout", () => {
     }
   )
 
+  it("keeps the hotspot labels apart on a desktop screen", () => {
+    // A label is an HTML pill about 110 × 26 px around its projected point.
+    const viewport = { width: 1440, height: 900 }
+    const view = startView(viewport)
+    const points = HOTSPOT_SPOTS.map(({ id, label }) => {
+      const { x, y } = project(label, view, viewport)
+      return {
+        id,
+        x: (x / 100) * viewport.width,
+        y: (y / 100) * viewport.height,
+      }
+    })
+    points.forEach((a, i) =>
+      points.slice(i + 1).forEach((b) => {
+        const apart = Math.abs(a.y - b.y) >= 26 || Math.abs(a.x - b.x) >= 110
+        expect(apart, `${a.id} / ${b.id}`).toBe(true)
+      })
+    )
+  })
+
   it("lets Anda stand at every hotspot and reach it from the start", () => {
     const blocked = walkBlockers()
     expect(walkable(ANDA_START, WALK_BOUNDS, blocked, ANDA_RADIUS)).toBe(true)
