@@ -65,9 +65,10 @@ export const RIGS: Record<Mood, LightRig> = {
   },
   night: {
     background: "#120d12",
-    hemiSky: "#7d86c4",
+    hemiSky: "#9088bc",
     hemiGround: "#4a3428",
-    hemi: 0.62,
+    // A soft fill, so the floor away from the fire still reads.
+    hemi: 1.1,
     sun: "#9fb0ff",
     sunIntensity: 0.55,
     sunPosition: [6, 14, -10],

@@ -323,7 +323,7 @@ function windowFrame(kit: Kit, parent: THREE.Object3D) {
 
   // Brass rod with round finials.
   const rodY = y1 + 0.28
-  const rodLength = width + 1.3
+  const rodLength = width + 1.0
   kit.mesh(
     new THREE.CylinderGeometry(0.022, 0.022, rodLength, 10).rotateZ(
       Math.PI / 2
@@ -344,7 +344,8 @@ function windowFrame(kit: Kit, parent: THREE.Object3D) {
       { parent }
     )
   }
-  // Curtains: soft folds, gathered at the sides of the window.
+  // Curtains: soft folds, gathered tight at the sides of the window, so
+  // the fireplace and the cabinet can stand close to it.
   const curtain = kit.mat(CURTAIN, { roughness: 0.95 })
   const fold = curtain.clone()
   fold.color.offsetHSL(0, 0, -0.06)
@@ -354,7 +355,7 @@ function windowFrame(kit: Kit, parent: THREE.Object3D) {
   for (const side of [-1, 1]) {
     const edge = side < 0 ? x0 - 0.12 : x1 + 0.12
     for (let i = 0; i < 5; i++) {
-      const x = edge + side * (i * 0.11 - 0.1)
+      const x = edge + side * (i * 0.08 - 0.1)
       const radius = 0.07 + (i % 2) * 0.012
       kit.mesh(
         new THREE.CapsuleGeometry(radius, length - 2 * radius, 4, 10),
@@ -366,7 +367,7 @@ function windowFrame(kit: Kit, parent: THREE.Object3D) {
       )
     }
     // A tie-back band around the gathered folds.
-    kit.block(0.5, 0.06, 0.12, "#c98d4a", edge + side * 0.12, 1.45, 0.24, {
+    kit.block(0.4, 0.06, 0.12, "#c98d4a", edge + side * 0.1, 1.45, 0.24, {
       r: 0.03,
       parent,
     })

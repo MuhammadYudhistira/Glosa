@@ -415,7 +415,6 @@ function buildStage(
   }
 
   /** At 05, 16 and 19 o'clock the light follows the clock (plan 3F-R1, decision 9). */
-  let moodTimer = setTimeout(rollMood, msUntilNextMood(new Date()))
   function rollMood() {
     setMood(daylight(new Date()))
     moodTimer = setTimeout(rollMood, msUntilNextMood(new Date()))
@@ -478,6 +477,8 @@ function buildStage(
   // The still image shows a sprout (plan 3B, decision 5). Set only here: the
   // render flag that onChange flips is declared above this point.
   plant.set("tunas")
+  // The clock's timer last of all: nothing after it can throw and leave it running.
+  let moodTimer = setTimeout(rollMood, msUntilNextMood(new Date()))
 
   return {
     // The shelves fill from data in Task 5.

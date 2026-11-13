@@ -26,6 +26,11 @@ Tinggi nyata = perkiraan tinggi di ruangan (m); `fitTo` menskala model ke angka 
 | windowFrame | kode | tak ada jendela di paket | 1,6 |
 | corkboard | kode | tak ada papan gabus di paket | 0,9 |
 | plantPot | paket | `cactus_medium_A` — kaktus berpot | 0,6 |
+| cushion | paket | `pillow_A` — bantal jingga, bersandar di kursi berlengan (Task 4R) | 0,33 |
+| deskBooks | paket | `book_set` (berkas sama dengan catalogue) — buku berdiri di meja tulis (Task 4R) | 0,2 |
+| mug | kode | tak ada cangkir di paket; cangkir teh di meja tulis (Task 4R) | 0,1 |
+| papers | kode | tak ada kertas/pena di paket; kertas, pena, pensil di meja tulis (Task 4R) | 0,03 |
+| logBasket | kode | tak ada keranjang kayu bakar di paket; di sisi perapian (Task 4R) | 0,42 |
 | baseRug | paket | `rug_rectangle_A` — karpet dasar (dibuang 2026-11-13) | 0,02 |
 | anda | kode | lihat (b) | 1,5 |
 | decor_rug_woven | paket | `rug_rectangle_stripes_A` | 0,02 |
@@ -94,6 +99,16 @@ Hasil per benda (kunci manifest tidak berubah):
 | anda | tetap kode | tak ada karakter statis satu-mesh di paket yang diperiksa |
 
 Ukuran baru: 562.496 byte (19 berkas), batas 3.145.728 byte.
+
+## (f) Task 4R: hiasan yang menempel pada benda bertujuan (2026-11-13)
+
+Ruangan diperkecil ke 10 × 10 m. Hiasan kecil hanya sebagai bagian benda yang punya hotspot (spec 3F §3.6):
+bantal di kursi berlengan (`meja-baca`), buku, cangkir, kertas dan pena di meja tulis (`katalog`), keranjang kayu
+bakar di sisi perapian (`perapian`). Dari paket yang sudah diunduh dipakai `pillow_A` (Furniture Bits, CC0; berkas
+baru `pillow-a.glb`, 19.984 byte, dikonversi `gltf-pipeline` tanpa Draco) dan `book_set` (berkas yang sudah ada).
+Cangkir, kertas/pena dan keranjang dibuat lewat kode (gaya membulat yang sama). Kini 39 kunci: 20 memakai model,
+19 dibuat lewat kode. Ukuran: **563.488 byte** (19 berkas `.glb`; `rug-rectangle-a.glb` sudah dibuang di Task 4A),
+batas 3.145.728 byte.
 
 ## Persetujuan arah visual
 

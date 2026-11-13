@@ -17,7 +17,7 @@ export type Point2 = readonly [number, number]
 export type Point3 = readonly [number, number, number]
 
 /** The floor is width × depth; `pad` is the margin the camera keeps around the room. */
-export const ROOM = { width: 12, depth: 12, height: 4.6, pad: 0.9 } as const
+export const ROOM = { width: 10, depth: 10, height: 4.6, pad: 0.9 } as const
 
 /**
  * Parts of the walls rather than furniture (room.ts builds them): the window
@@ -27,9 +27,9 @@ export const ROOM = { width: 12, depth: 12, height: 4.6, pad: 0.9 } as const
  * (Task 4C) and the window tells the time of day (spec 3F §3.6).
  */
 export const ROOM_PARTS = {
-  window: { x0: 5.6, x1: 8.9, y0: 1.0, y1: 3.4 },
-  door: { z: 10.7, width: 1.3, height: 2.1 },
-  corkboard: { x: 1.6, y: 2.3, size: 1.0 },
+  window: { x0: 4.5, x1: 7.2, y0: 1.0, y1: 3.4 },
+  door: { z: 9.1, width: 1.3, height: 2.1 },
+  corkboard: { x: 1.15, y: 2.3, size: 1.0 },
 } as const
 
 /**
@@ -52,31 +52,64 @@ export type Furnishing = {
 
 const DESK_TOP = 0.78
 const SIDE_TOP = 0.6
+/** The top of the armchair's seat cushion, where its cushions rest. */
+const SEAT_TOP = 0.37
 
 export const FURNITURE: ReadonlyArray<Furnishing> = [
   // The reading corner: the armchair faces the room, the fire behind it.
   {
     id: "armchair",
     model: "armchair",
-    at: [4.0, 2.3],
+    at: [3.65, 2.0],
     size: [1.3, 0.9, 1.15],
     turn: 0,
     solid: true,
     serves: "meja-baca",
   },
+  // Two cushions leaning on its back: part of the chair, not on their own.
+  {
+    id: "cushion",
+    model: "cushion",
+    at: [3.49, 1.876],
+    y: SEAT_TOP,
+    size: [0.4, 0.33, 0.262],
+    turn: 0,
+    solid: false,
+    serves: "meja-baca",
+  },
+  {
+    id: "cushionSmall",
+    model: "cushion",
+    at: [3.86, 1.881],
+    y: SEAT_TOP,
+    size: [0.325, 0.267, 0.212],
+    turn: 0,
+    solid: false,
+    serves: "meja-baca",
+  },
   {
     id: "fireplace",
     model: "fireplace",
-    at: [4.0, 0.3],
+    at: [3.0, 0.3],
     size: [1.8, 1.6, 0.6],
     turn: 0,
     solid: true,
     serves: "perapian",
   },
+  // Firewood beside the hearth (the mantel already holds the candles).
+  {
+    id: "logBasket",
+    model: "logBasket",
+    at: [1.47, 0.4],
+    size: [0.5, 0.42, 0.4],
+    turn: 0,
+    solid: false,
+    serves: "perapian",
+  },
   {
     id: "sideTable",
     model: "sideTable",
-    at: [5.3, 2.1],
+    at: [4.75, 1.9],
     size: [0.7, SIDE_TOP, 0.7],
     turn: 0,
     solid: true,
@@ -85,7 +118,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "readingLamp",
     model: "readingLamp",
-    at: [5.45, 1.95],
+    at: [4.9, 1.75],
     y: SIDE_TOP,
     size: [0.36, 0.38, 0.36],
     turn: 0,
@@ -95,18 +128,18 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "catalogue",
     model: "catalogue",
-    at: [5.18, 2.28],
+    at: [4.63, 2.08],
     y: SIDE_TOP,
     size: [0.34, 0.2, 0.15],
     turn: 0,
     solid: false,
     serves: "toko",
   },
-  // The writing desk against the shelf wall.
+  // The writing desk against the shelf wall, with what a desk in use holds.
   {
     id: "desk",
     model: "desk",
-    at: [1.1, 7.0],
+    at: [1.1, 5.6],
     size: [1.8, DESK_TOP, 0.9],
     turn: Math.PI / 2,
     solid: true,
@@ -115,7 +148,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "deskChair",
     model: "deskChair",
-    at: [2.1, 7.0],
+    at: [1.95, 5.6],
     size: [0.6, 1.0, 0.67],
     turn: -Math.PI / 2,
     solid: true,
@@ -124,7 +157,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "laptop",
     model: "laptop",
-    at: [1.1, 6.4],
+    at: [1.1, 5.4],
     y: DESK_TOP,
     size: [0.4, 0.26, 0.3],
     turn: Math.PI / 2,
@@ -134,7 +167,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "notebook",
     model: "notebook",
-    at: [1.15, 7.2],
+    at: [1.15, 5.95],
     y: DESK_TOP,
     size: [0.24, 0.04, 0.3],
     turn: Math.PI / 2,
@@ -144,10 +177,40 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "deskLamp",
     model: "readingLamp",
-    at: [0.95, 7.65],
+    at: [0.88, 6.25],
     y: DESK_TOP,
     size: [0.3, 0.32, 0.3],
     turn: 0,
+    solid: false,
+    serves: "katalog",
+  },
+  {
+    id: "deskBooks",
+    model: "deskBooks",
+    at: [0.8, 4.95],
+    y: DESK_TOP,
+    size: [0.3, 0.2, 0.14],
+    turn: Math.PI / 2,
+    solid: false,
+    serves: "katalog",
+  },
+  {
+    id: "mug",
+    model: "mug",
+    at: [1.36, 4.95],
+    y: DESK_TOP,
+    size: [0.12, 0.1, 0.09],
+    turn: Math.PI / 2,
+    solid: false,
+    serves: "katalog",
+  },
+  {
+    id: "papers",
+    model: "papers",
+    at: [1.25, 6.28],
+    y: DESK_TOP,
+    size: [0.34, 0.03, 0.26],
+    turn: Math.PI / 2,
     solid: false,
     serves: "katalog",
   },
@@ -155,7 +218,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "parcelBox",
     model: "parcelBox",
-    at: [0.8, 9.8],
+    at: [0.8, 7.7],
     size: [0.72, 0.48, 0.5],
     turn: Math.PI / 2,
     solid: true,
@@ -164,7 +227,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "glassCabinet",
     model: "glassCabinet",
-    at: [10.75, 0.3],
+    at: [8.8, 0.3],
     size: [2.2, 2.2, 0.5],
     turn: 0,
     solid: true,
@@ -191,9 +254,9 @@ export const SHELF = {
   bottom: 0.15,
   top: 3.6,
   rows: 5,
-  z0: 0.6,
+  z0: 0.5,
 } as const
-const SECTION_WIDTH = 1.1
+const SECTION_WIDTH = 0.95
 
 /** One shelf section per genre, in the order of GENRE_VALUES (spec 3F §3.2). */
 export const WALL_SECTIONS: ReadonlyArray<{
@@ -210,7 +273,7 @@ export const WALL_SECTIONS: ReadonlyArray<{
  * The glass cabinet of finished books (spec Tahap 3 §4.5), against the
  * window wall. Its local front faces +Z before SHOWCASE_TURN.
  */
-export const SHOWCASE: Point2 = [10.75, 0.3]
+export const SHOWCASE: Point2 = [8.8, 0.3]
 export const SHOWCASE_SIZE = { width: 2.2, height: 2.2, depth: 0.5 } as const
 export const SHOWCASE_TURN = 0
 /** The top of each shelf a cover stands on, from the floor up. */
@@ -237,8 +300,8 @@ export function showcaseSlots(): Array<Point3> {
   )
 }
 
-/** The habit plant (spec 3B §4.1): a pot by the window. */
-export const PLANT: Point2 = [9.2, 0.9]
+/** The habit plant (spec 3B §4.1): a pot under the window. */
+export const PLANT: Point2 = [6.2, 0.8]
 export const PLANT_POT = { width: 0.7, height: 0.6 } as const
 
 /** What grows on the stem at each stage, in metres before the plant's scale. */
@@ -257,14 +320,15 @@ export const PLANT_SHAPES: Record<
 const raised = (at: Point3, y: number): Point3 => [at[0], y, at[2]]
 
 const SLOT_AT: Record<SlotId, Point3> = {
-  rug: [7.0, 0, 6.5],
-  lamp: [10.8, 0, 6.5],
-  // The lounge seat under the window, apart from the reading armchair.
-  seat: [7.25, 0, 0.8],
+  rug: [5.6, 0, 5.6],
+  lamp: [9.25, 0, 3.4],
+  // The lounge seat in the room, apart from the reading armchair.
+  seat: [7.6, 0, 3.4],
   // Above the mantelpiece.
-  wall: [4.0, 2.7, 0.06],
-  pet: [9.2, 0, 3.6],
-  ceiling: [6.5, 3.9, 6.5],
+  wall: [3.0, 2.7, 0.06],
+  // In front of the reading corner, where the seat does not hide it.
+  pet: [5.6, 0, 3.2],
+  ceiling: [5.4, 3.9, 5.4],
 }
 
 /**
@@ -324,14 +388,14 @@ export const DECOR_SIZES: Record<SlotId, Point3> = {
 export const PREVIEW_SHIFT = 0.16
 
 /** Where "Anda" stands on a first visit, and how much room they take. */
-export const ANDA_START: Point2 = [8.0, 9.5]
+export const ANDA_START: Point2 = [6.6, 7.8]
 export const ANDA_RADIUS = 0.3
 
 /** The laptop on the writing desk; the sign-in pages zoom the still image here. */
-export const ADMIN_DESK: Point2 = [1.1, 6.4]
+export const ADMIN_DESK: Point2 = [1.1, 5.4]
 
 /** Where Anda may walk: the floor, clear of the shelf wall. */
-export const WALK_BOUNDS: Box2 = { x0: 0.5, x1: 12, z0: 0.5, z1: 12 }
+export const WALK_BOUNDS: Box2 = { x0: 0.5, x1: 10, z0: 0.5, z1: 10 }
 
 /** The base furniture (the cabinet included) and the plant pot. Never the decor. */
 export function walkBlockers(): Array<Box2> {
@@ -369,20 +433,24 @@ export type HotspotSpot = { id: HotspotId; label: Point3; stand: Point2 }
 
 /** In tab order (spec 1D §6): reading chair, shelf sections, parcel box, laptop, notebook, cabinet, plant, catalogue, fireplace, door. */
 export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
-  { id: "meja-baca", label: [4.0, 1.9, 2.3], stand: [4.0, 3.8] },
+  { id: "meja-baca", label: [3.65, 1.9, 2.0], stand: [3.65, 3.3] },
   ...WALL_SECTIONS.map(({ genre, z }): HotspotSpot => ({
     id: genre,
     label: [0.4, 3.9, z],
-    stand: [3.0, z],
+    stand: [2.65, z],
   })),
-  { id: "troli", label: [0.8, 1.0, 9.8], stand: [2.0, 9.8] },
-  { id: "meja-admin", label: [1.1, 1.4, 6.4], stand: [2.9, 6.2] },
-  { id: "katalog", label: [1.1, 1.4, 7.4], stand: [2.9, 7.8] },
-  { id: "lemari", label: [10.75, 2.5, 0.3], stand: [10.75, 2.0] },
-  { id: "tanaman", label: [9.2, 1.9, 0.9], stand: [9.2, 2.2] },
-  { id: "toko", label: [5.3, 1.2, 2.1], stand: [5.3, 3.3] },
-  { id: "perapian", label: [4.0, 2.0, 0.35], stand: [5.6, 1.0] },
-  { id: "pintu", label: [0.1, 2.4, ROOM_PARTS.door.z], stand: [1.4, 11.0] },
+  { id: "troli", label: [0.8, 1.0, 7.7], stand: [1.9, 7.7] },
+  { id: "meja-admin", label: [1.1, 1.4, 5.3], stand: [2.65, 5.1] },
+  { id: "katalog", label: [1.1, 1.4, 6.3], stand: [2.65, 6.4] },
+  { id: "lemari", label: [8.8, 2.5, 0.3], stand: [8.8, 1.9] },
+  { id: "tanaman", label: [6.2, 1.9, 0.8], stand: [6.2, 2.0] },
+  { id: "toko", label: [4.75, 1.2, 1.9], stand: [4.75, 3.0] },
+  { id: "perapian", label: [3.0, 2.4, 0.35], stand: [4.5, 0.95] },
+  {
+    id: "pintu",
+    label: [0.1, 2.4, ROOM_PARTS.door.z],
+    stand: [1.4, ROOM_PARTS.door.z],
+  },
 ]
 
 export function spotOf(id: HotspotId): HotspotSpot {
