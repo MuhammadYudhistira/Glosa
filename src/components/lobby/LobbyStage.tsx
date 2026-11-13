@@ -280,7 +280,8 @@ export function LobbyStage({
           bubbles={bubbles}
           onActivate={activate}
           onLiveChange={setSceneLive}
-          paused={popup}
+          // The corkboard's dialog covers the scene like a route popup.
+          paused={popup || corkboard}
           allow3d={!popup || wide}
         />
       </div>

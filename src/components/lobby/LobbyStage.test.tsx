@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto"
-import { act, fireEvent, screen } from "@testing-library/react"
+import { act, fireEvent, screen, within } from "@testing-library/react"
 import { useRouterState } from "@tanstack/react-router"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { coverHue } from "@/components/shelf/BookCover"
@@ -176,14 +176,20 @@ describe("LobbyStage", () => {
     expect(scene.props).toMatchObject({ paused: true, allow3d: false })
   })
 
-  it("opens the highlights dialog from the corkboard", async () => {
+  it("opens the highlights dialog from the corkboard, the scene paused behind it", async () => {
     stubWideScreen(true)
     renderStage(false)
     await screen.findByRole("main")
+    expect(scene.props).toMatchObject({ paused: false })
     await act(async () => scene.props?.onActivate?.("papan"))
-    expect(
-      await screen.findByRole("dialog", { name: "Sorotan" })
-    ).toBeInTheDocument()
+    const dialog = await screen.findByRole("dialog", { name: "Sorotan" })
+    expect(dialog).toBeInTheDocument()
+    expect(scene.props).toMatchObject({ paused: true })
+    fireEvent.click(within(dialog).getByRole("button", { name: "Tutup" }))
+    await vi.waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Sorotan" })).toBeNull()
+    )
+    expect(scene.props).toMatchObject({ paused: false })
   })
 
   it("pins the colours of the newest highlights of books still on the shelf", async () => {
