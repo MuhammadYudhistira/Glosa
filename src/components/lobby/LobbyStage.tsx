@@ -212,18 +212,26 @@ export function LobbyStage({
   // True while a page covers the lobby or once it is gone: a popup or a
   // page opened during the activity ends it (the scene pauses or goes), and
   // the tapped hotspot's page must not open over it.
-  const covered = useRef(popup)
+  // The scene pauses for a popup or the corkboard's dialog alike.
+  const paused = popup || corkboard
+  const covered = useRef(paused)
   useEffect(() => {
-    covered.current = popup
+    covered.current = paused
     return () => {
       covered.current = true
     }
-  }, [popup])
+  }, [paused])
+  /** The hotspot tapped during the activity, whose page opens instead. */
+  const newer = useRef<HotspotId | null>(null)
+  /** The hotspot Anda is on the way to. */
+  const target = useRef<HotspotId | null>(null)
 
   /** Anda walks over and does the activity, then the page opens (spec 3F §4A.1; replaces 1D §5.1). */
   async function activate(id: HotspotId, how: { keyboard: boolean }) {
     // A second tap while Anda is on the way: skip to the page (spec 3F §4A.1).
     if (running.current) {
+      // Another hotspot: its page opens instead of the first one's.
+      if (id !== target.current) newer.current = id
       sceneRef.current?.skip()
       return
     }
@@ -232,12 +240,19 @@ export function LobbyStage({
     // From the keyboard the page opens at once, without the activity.
     if (!how.keyboard && sceneRef.current) {
       running.current = true
+      target.current = id
+      newer.current = null
       try {
         await sceneRef.current.perform(id)
       } finally {
         running.current = false
       }
+      // Set by a tap during the await, which the compiler cannot see.
+      const next = (newer.current as HotspotId | null) ?? id
+      newer.current = null
       if (covered.current) return
+      open(next)
+      return
     }
     open(id)
   }
@@ -314,7 +329,7 @@ export function LobbyStage({
           onActivate={(id, how) => void activate(id, how)}
           onLiveChange={setSceneLive}
           // The corkboard's dialog covers the scene like a route popup.
-          paused={popup || corkboard}
+          paused={paused}
           allow3d={!popup || wide}
         />
       </div>

@@ -8,6 +8,7 @@ export const finishRun = (): Run => ({ phase: "done", t: ACTIVITY_SECONDS })
 export function stepRun(run: Run, dt: number, walking: boolean): Run {
   if (run.phase === "done") return run
   if (run.phase === "walk") return walking ? run : { phase: "act", t: 0 }
-  const t = run.t + dt
+  // A broken time counts as no time, so the run still ends later.
+  const t = run.t + (Number.isFinite(dt) ? dt : 0)
   return t >= ACTIVITY_SECONDS ? finishRun() : { phase: "act", t }
 }

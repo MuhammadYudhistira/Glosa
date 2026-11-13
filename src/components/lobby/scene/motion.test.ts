@@ -80,8 +80,39 @@ describe("motion: the activity after a tap (spec 3F §4A.1)", () => {
     // In the pose, facing the plant (-Z), the can in hand.
     expect(built.anda.torso.rotation.x).toBeCloseTo(POSES.menyiram.lean)
     expect(Math.abs(built.anda.root.rotation.y)).toBeCloseTo(Math.PI)
-    expect(built.held.kaleng.visible).toBe(true)
+    // The can shows only during the activity: gone at done, pose kept.
+    expect(built.held.kaleng.visible).toBe(false)
     expect(built.held.buku.visible).toBe(false)
+  })
+
+  it("shows the prop mid-activity and hides it at done", () => {
+    const { built, motion } = people()
+    void motion.perform("menyiram", [NEAR[0], NEAR[1] - 2])
+    motion.walkTo(NEAR, true)
+    motion.update(0, 0.02)
+    motion.update(0, 0.02)
+    expect(motion.acting()).toBe(true)
+    expect(built.held.kaleng.visible).toBe(true)
+    tick(motion, ACTIVITY_SECONDS / 0.02 + 2)
+    expect(motion.acting()).toBe(false)
+    expect(built.held.kaleng.visible).toBe(false)
+  })
+
+  it("pausing resolves an activity but leaves a plain walk to resume", async () => {
+    const { motion } = people()
+    const done = vi.fn()
+    void motion.perform("menyiram", NEAR).then(done)
+    motion.walkTo(NEAR, false)
+    // The stage's setPaused: only an activity under way is skipped.
+    if (motion.acting()) motion.skip()
+    await Promise.resolve()
+    expect(done).toHaveBeenCalledTimes(1)
+    expect(motion.walking()).toBe(false)
+
+    const other = people()
+    other.motion.walkTo(NEAR, false)
+    expect(other.motion.acting()).toBe(false)
+    expect(other.motion.walking()).toBe(true)
   })
 
   it("skip: in the pose at once, the promise kept", async () => {
@@ -117,7 +148,7 @@ describe("motion: the activity after a tap (spec 3F §4A.1)", () => {
     motion.skip()
     expect(built.anda.root.position.x).toBeCloseTo(seat[0])
     expect(built.anda.root.position.z).toBeCloseTo(seat[1])
-    expect(built.held.buku.visible).toBe(true)
+    expect(built.held.buku.visible).toBe(false)
     motion.walkTo(ANDA_START, false)
     expect(built.anda.body.position.y).toBeCloseTo(0)
     expect(built.held.buku.visible).toBe(false)

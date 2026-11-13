@@ -180,13 +180,21 @@ export function createMotion(people: People): Motion {
     }
   }
 
+  /** The prop shows only during the activity; the pose stays after. */
+  function dropProp() {
+    for (const thing of Object.values(people.held)) thing.visible = false
+  }
+
   function update(t: number, dt: number) {
     walk(t, dt)
     if (!run || run.phase === "done") return
     run = stepRun(run, dt, route.length > 0)
     if (run.phase === "walk") return
     act(run.t / ACTIVITY_SECONDS)
-    if (run.phase === "done") settle()
+    if (run.phase === "done") {
+      dropProp()
+      settle()
+    }
   }
 
   function rest() {
@@ -296,6 +304,7 @@ export function createMotion(people: People): Motion {
       run = finishRun()
       act(1)
     }
+    dropProp()
     settle()
   }
 

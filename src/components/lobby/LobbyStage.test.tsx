@@ -197,6 +197,40 @@ describe("LobbyStage", () => {
     expect(router.state.location.pathname).toBe("/settings")
   })
 
+  it("a tap on another hotspot skips and opens the newer page only", async () => {
+    stubWideScreen(true)
+    let finish = () => undefined as void
+    handle.perform.mockImplementation(
+      () => new Promise<void>((resolve) => (finish = resolve))
+    )
+    const { router } = renderStage(false)
+    await vi.waitFor(() => expect(scene.props).not.toBeNull())
+    const activate = scene.props!.onActivate!
+    await act(async () => activate("perapian", { keyboard: false }))
+    await act(async () => activate("pintu", { keyboard: false }))
+    expect(handle.skip).toHaveBeenCalledTimes(1)
+    expect(handle.perform).toHaveBeenCalledTimes(1)
+    await act(async () => finish())
+    expect(router.state.location.pathname).toBe("/settings")
+  })
+
+  it("opens nothing over the corkboard dialog when the activity ends", async () => {
+    stubWideScreen(true)
+    let finish = () => undefined as void
+    handle.perform.mockImplementation(
+      () => new Promise<void>((resolve) => (finish = resolve))
+    )
+    const { router } = renderStage(false)
+    await vi.waitFor(() => expect(scene.props).not.toBeNull())
+    const activate = scene.props!.onActivate!
+    await act(async () => activate("papan", { keyboard: true }))
+    await screen.findByRole("dialog", { name: "Sorotan" })
+    // An activity under way as the dialog covers the scene ends without a page.
+    await act(async () => activate("perapian", { keyboard: false }))
+    await act(async () => finish())
+    expect(router.state.location.pathname).toBe("/lobby")
+  })
+
   it("opens nothing when the lobby is gone before the activity ends", async () => {
     stubWideScreen(true)
     let finish = () => undefined as void

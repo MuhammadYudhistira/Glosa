@@ -13,6 +13,14 @@ describe("stepRun", () => {
     run = stepRun(run, ACTIVITY_SECONDS, false)
     expect(run).toEqual({ phase: "done", t: ACTIVITY_SECONDS })
   })
+  it("treats a non-finite step as 0 and still completes", () => {
+    let run = stepRun({ phase: "act", t: 0 }, Number.NaN, false)
+    expect(run).toEqual({ phase: "act", t: 0 })
+    run = stepRun(run, Number.POSITIVE_INFINITY, false)
+    expect(run).toEqual({ phase: "act", t: 0 })
+    run = stepRun(run, ACTIVITY_SECONDS, false)
+    expect(run.phase).toBe("done")
+  })
   it("stays done", () => {
     expect(stepRun(finishRun(), 1, true)).toEqual(finishRun())
   })
