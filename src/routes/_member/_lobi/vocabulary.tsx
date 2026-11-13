@@ -8,7 +8,12 @@ import { VocabularyList } from "@/components/vocabulary/VocabularyList"
 import { VocabularyNotice } from "@/components/vocabulary/VocabularyNotice"
 import { claimLocalData } from "@/lib/local/device"
 import { replaceLocalWords } from "@/lib/local/saved-words"
-import { dropWordMeetings, useWordMeetings } from "@/lib/vocab/vocab-client"
+import {
+  dropWordMeetings,
+  useMeetingsTotal,
+  useWordMeetings,
+} from "@/lib/vocab/vocab-client"
+import { rememberVocabSeen } from "@/lib/vocab/vocab-seen"
 import { loadVocabulary } from "@/lib/vocabulary-loader"
 import type { SavedWord } from "@/lib/words/types"
 import {
@@ -38,6 +43,11 @@ function VocabularyPage() {
   const { books } = lobi.useLoaderData()
   const { buku } = Route.useSearch()
   const meetings = useWordMeetings()
+  const total = useMeetingsTotal()
+  // Opening Kosakata puts the desk lamp out (spec 3F §3.6).
+  useEffect(() => {
+    if (total !== null) rememberVocabSeen(total)
+  }, [total])
   const words = useLocalWords(loaded.words)
   const forms = useSavedForms()
   const shelfIds = useMemo(() => new Set(books.map((book) => book.id)), [books])

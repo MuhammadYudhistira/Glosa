@@ -14,6 +14,11 @@ import {
   mixRig,
   msUntilNextMood,
 } from "./daylight"
+import {
+  FIRE_STRENGTH,
+  NEUTRAL_SIGNALS,
+  type RoomSignals,
+} from "../room-signals"
 import { buildDecor } from "./decor"
 import { buildFurniture } from "./furniture"
 import { createKit } from "./kit"
@@ -71,6 +76,8 @@ export type Stage = {
   setPlant: (stage: PlantStage) => void
   /** The shop's items in their slots (spec 3C §6.3). */
   setDecor: (placed: Placements) => void
+  /** The fire, the desk lamp and the parcel box show the member's reading (spec 3F §3.6). */
+  setSignals: (signals: RoomSignals) => void
   /** Day, dusk or night: blends over 3 seconds while animating, else at once. */
   setMood: (mood: Mood) => void
   dispose: () => void
@@ -230,7 +237,9 @@ function buildStage(
   const motion = createMotion(people)
   motion.update(0, 0)
 
-  /** Sets every light to a rig (spec 3F §3.4). */
+  let signals: RoomSignals = NEUTRAL_SIGNALS
+
+  /** Sets every light to a rig (spec 3F §3.4) and the room to its signals (§3.6). */
   function applyRig(rig: LightRig) {
     if (mode !== "test") background.set(rig.background)
     hemi.color.set(rig.hemiSky)
@@ -244,12 +253,27 @@ function buildStage(
       centre.z + rig.sunPosition[2]
     )
     for (const lamp of furniture.lamps) lamp.intensity = rig.lamps * 1.6
-    furniture.fire.intensity = rig.fire * 2
+    const fire = FIRE_STRENGTH[signals.fire]
+    furniture.fire.intensity = fire * 2
+    if (furniture.deskLight) {
+      furniture.deskLight.intensity = signals.deskLamp ? 1.6 : 0
+    }
     for (const { material, max, kind } of furniture.emissives) {
-      const level = kind === "fire" ? rig.fire : rig.lamps
+      const level =
+        kind === "fire"
+          ? fire
+          : kind === "desk"
+            ? signals.deskLamp
+              ? 1
+              : 0
+            : rig.lamps
       material.emissiveIntensity = max * level
       // An unlit flame or bulb is not drawn at all.
       material.visible = level > 0.02
+    }
+    for (const flame of furniture.flames) flame.scale.y = fire
+    for (const flap of furniture.flaps) {
+      flap.rotation.x = signals.parcelOpen ? flap.userData.side * 1.9 : 0
     }
     skyline.setCity(rig.city)
     renderer.toneMappingExposure = rig.exposure
@@ -341,6 +365,7 @@ function buildStage(
     key.castShadow = fancy && next === "tinggi"
     for (const lamp of furniture.lamps) lamp.visible = next === "tinggi"
     furniture.fire.visible = next === "tinggi"
+    if (furniture.deskLight) furniture.deskLight.visible = next === "tinggi"
     // The loop stops at "diam": "Anda" must not stay frozen mid-walk, nor
     // the light mid-blend.
     if (next === "diam") {
@@ -484,6 +509,11 @@ function buildStage(
     // The shelves fill from data in Task 5.
     books: 0,
     setMood,
+    setSignals(next) {
+      signals = next
+      applyRig(current)
+      requestRender()
+    },
     setView(next) {
       view = clampView(next, viewport)
       frameCamera()

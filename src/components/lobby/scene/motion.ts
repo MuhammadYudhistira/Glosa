@@ -24,7 +24,7 @@ export type Motion = {
   finishWalk: () => void
 }
 
-/** The study's light animation: Anda walking and their ring (spec 3F §3.1). */
+/** The study's light animation: Anda walking (spec 3F §3.1); the ring stays still (§3.6). */
 export function createMotion(people: People): Motion {
   const from = new THREE.Vector3()
   const to = new THREE.Vector3()
@@ -37,7 +37,6 @@ export function createMotion(people: People): Motion {
       people.anda.root.position.lerpVectors(from, to, eased)
       stride(people.anda, progress < 1 ? Math.sin(t * 9) * 0.45 : 0)
     }
-    people.ring.material.opacity = 0.55 + Math.sin(t * 2.6) * 0.35
   }
 
   function walkTo([x, z]: Point2, instant: boolean) {

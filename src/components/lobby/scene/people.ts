@@ -111,7 +111,7 @@ export function buildPeople(kit: Kit, anda: Point2): People {
     new THREE.MeshBasicMaterial({
       color: "#4fd8ff",
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.8,
     })
   )
   ring.rotation.x = -Math.PI / 2

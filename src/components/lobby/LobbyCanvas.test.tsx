@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { LobbyCanvas } from "./LobbyCanvas"
+import { NEUTRAL_SIGNALS, type RoomSignals } from "./room-signals"
 import { ANDA_START } from "./scene/layout"
 import { type Stage, createStage } from "./scene/stage"
 
@@ -12,6 +13,7 @@ const stage = vi.hoisted(() => ({
   setPaused: vi.fn(),
   setShowcase: vi.fn(),
   setPlant: vi.fn(),
+  setSignals: vi.fn(),
   setDecor: vi.fn(),
   setMood: vi.fn(),
   dispose: vi.fn(),
@@ -29,6 +31,7 @@ function canvasWith(paused: boolean, onReady = vi.fn(), onFail = vi.fn()) {
       paused={paused}
       showcase={[]}
       plant="tunas"
+      signals={NEUTRAL_SIGNALS}
       decor={{}}
       onReady={onReady}
       onView={vi.fn()}
@@ -62,6 +65,7 @@ describe("LobbyCanvas", () => {
         paused={false}
         showcase={books}
         plant="tunas"
+        signals={NEUTRAL_SIGNALS}
         decor={{}}
         onReady={vi.fn()}
         onView={vi.fn()}
@@ -81,6 +85,7 @@ describe("LobbyCanvas", () => {
         paused={false}
         showcase={more}
         plant="berbunga"
+        signals={NEUTRAL_SIGNALS}
         decor={{}}
         onReady={vi.fn()}
         onView={vi.fn()}
@@ -102,6 +107,7 @@ describe("LobbyCanvas", () => {
         paused={false}
         showcase={[]}
         plant="tunas"
+        signals={NEUTRAL_SIGNALS}
         decor={decor}
         onReady={vi.fn()}
         onView={vi.fn()}
@@ -118,6 +124,32 @@ describe("LobbyCanvas", () => {
       rug: "rug_round",
       pet: "pet_cat",
     })
+  })
+
+  it("hands the room's signals to the stage, now and on change", async () => {
+    const canvas = (signals: RoomSignals) => (
+      <LobbyCanvas
+        quality="tinggi"
+        test={false}
+        anda={ANDA_START}
+        paused={false}
+        showcase={[]}
+        plant="tunas"
+        signals={signals}
+        decor={{}}
+        onReady={vi.fn()}
+        onView={vi.fn()}
+        onQuality={vi.fn()}
+        onFail={vi.fn()}
+      />
+    )
+    const { rerender } = render(canvas(NEUTRAL_SIGNALS))
+    await vi.waitFor(() =>
+      expect(stage.setSignals).toHaveBeenCalledWith(NEUTRAL_SIGNALS)
+    )
+    const lit: RoomSignals = { fire: "besar", deskLamp: true, parcelOpen: true }
+    rerender(canvas(lit))
+    expect(stage.setSignals).toHaveBeenLastCalledWith(lit)
   })
 
   it("frees a stage that finishes loading after the canvas is gone", async () => {

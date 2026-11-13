@@ -9,6 +9,10 @@ import {
 } from "@/components/lobby/scene/projection"
 import { itemOf } from "@/lib/shop/catalog"
 import type { Mood } from "@/components/lobby/scene/daylight"
+import {
+  NEUTRAL_SIGNALS,
+  type FireLevel,
+} from "@/components/lobby/room-signals"
 import { type StageMode, createStage } from "@/components/lobby/scene/stage"
 
 const params = new URLSearchParams(window.location.search)
@@ -36,6 +40,16 @@ const stage = await createStage({
   onLost: () => {
     document.body.dataset.lost = "true"
   },
+})
+// ?fire=bara|kecil|besar, ?lamp=1, ?parcel=1: the room's reading signals.
+const fireParam = params.get("fire")
+stage.setSignals({
+  fire:
+    fireParam === "bara" || fireParam === "kecil" || fireParam === "besar"
+      ? (fireParam as FireLevel)
+      : NEUTRAL_SIGNALS.fire,
+  deskLamp: params.get("lamp") === "1",
+  parcelOpen: params.get("parcel") === "1",
 })
 // ?decor=all: one item in every slot, to check where they stand.
 // ?decor=<id>: that item alone, the camera close on its slot (the shop's pictures).

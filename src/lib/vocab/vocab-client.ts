@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useSyncExternalStore } from "react"
 import { onMemberDataWiped } from "@/lib/local/device"
 import { loadSavedForms } from "@/lib/local/saved-words"
 import {
@@ -24,6 +24,7 @@ import {
 } from "@/server/vocab"
 import type { VocabSummary } from "./comprehension"
 import { countMeetings } from "./meetings"
+import { meetingsTotal } from "./vocab-seen"
 import {
   MAX_MEET_BATCH,
   MAX_TAP_BATCH,
@@ -291,4 +292,13 @@ const NO_MEETINGS: WordMeetings = {}
 /** Every saved word's meetings, by headword. */
 export function useWordMeetings(): WordMeetings {
   return useVocabState().cache?.meetings ?? NO_MEETINGS
+}
+
+/** The meetings added up; null until the vocabulary cache is read (spec 3F §3.6). */
+export function useMeetingsTotal(): number | null {
+  const cache = useVocabState().cache
+  return useMemo(
+    () => (cache === null ? null : meetingsTotal(cache.meetings)),
+    [cache]
+  )
 }

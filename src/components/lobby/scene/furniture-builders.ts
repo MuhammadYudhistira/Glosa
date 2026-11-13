@@ -7,7 +7,7 @@ import type { ModelKey } from "./model-manifest"
 export type Glow = {
   material: THREE.MeshStandardMaterial
   max: number
-  kind: "lamps" | "fire"
+  kind: "lamps" | "fire" | "desk"
 }
 
 /** What a builder gets for one piece of furniture (spec 3F §5.2). */
@@ -21,7 +21,9 @@ export type Build = {
     max: number,
     kind: Glow["kind"]
   ) => THREE.MeshStandardMaterial
-  light: (color: string, at: Point3, kind: "lamp" | "fire") => void
+  light: (color: string, at: Point3, kind: "lamp" | "desk" | "fire") => void
+  /** Collects an object the room's signals move; it is left out of the merge. */
+  mark: (role: "flame" | "flap", object: THREE.Object3D) => void
 }
 
 const BRASS = "#c9a24a"
@@ -73,7 +75,7 @@ const STONES = ["#b9a184", "#c7b293", "#ad957a", "#bfa98c"]
  * sooty firebox with logs and flames, and a wooden mantel with candles and
  * books. The flames and candles glow with the rig's `fire` and `lamps`.
  */
-function fireplace({ kit, group, size, glow, light }: Build) {
+function fireplace({ kit, group, size, glow, light, mark }: Build) {
   const [w, h, d] = size
   const parent = group
   const front = d / 2
@@ -180,6 +182,12 @@ function fireplace({ kit, group, size, glow, light }: Build) {
     cast: false,
   })
   bed.userData.animated = true
+  // The flames share one group pivoting at their base, so the fire's
+  // strength scales them (spec 3F §3.6).
+  const flames = new THREE.Group()
+  flames.position.y = 0.32
+  parent.add(flames)
+  mark("flame", flames)
   for (const [x, height, s, material] of [
     [-0.16, 0.36, 0.1, outer],
     [0.04, 0.46, 0.13, outer],
@@ -191,9 +199,9 @@ function fireplace({ kit, group, size, glow, light }: Build) {
       new THREE.SphereGeometry(1, 14, 12),
       material,
       x,
-      0.32 + height / 2,
+      height / 2,
       0.04 + (material === inner ? 0.05 : 0),
-      { parent, cast: false, receive: false }
+      { parent: flames, cast: false, receive: false }
     )
     flame.scale.set(s, height / 2, s * 0.8)
     flame.userData.animated = true
@@ -227,7 +235,8 @@ function fireplace({ kit, group, size, glow, light }: Build) {
   const top = mantelY + 0.16
   // Two candles in brass holders, a clock and a small stack of books.
   const wax = kit.mat("#f3e7cf", { roughness: 0.7 })
-  const flame = glow("#ffc35c", 2.2, "lamps")
+  // The candles are part of the fire's signal (spec 3F §3.6).
+  const flame = glow("#ffc35c", 2.2, "fire")
   for (const [x, height] of [
     [-0.62, 0.2],
     [-0.5, 0.14],
@@ -513,13 +522,13 @@ function logBasket({ kit, group, size }: Build) {
  */
 const LAMP_BULB = { y: 0.62, shade: 0.4 } as const
 
-function lampGlow(build: Build) {
+function lampGlow(build: Build, kind: "lamps" | "desk") {
   const { kit, group, size, glow, light } = build
   const [w, h] = size
   // A warm bulb under the shade, and the shade's inside lit through its top.
   const bulb = kit.mesh(
     new THREE.SphereGeometry(w * 0.16, 14, 10),
-    glow("#ffe2a8", 2.6, "lamps"),
+    glow("#ffe2a8", 2.6, kind),
     0,
     h * LAMP_BULB.y,
     0,
@@ -533,18 +542,18 @@ function lampGlow(build: Build) {
       0.01,
       24
     ),
-    glow("#ffd89a", 1.4, "lamps"),
+    glow("#ffd89a", 1.4, kind),
     0,
     h * 0.995,
     0,
     { parent: group, cast: false }
   )
   liner.userData.animated = true
-  light("#ffcf8a", [0, h * 0.7, 0], "lamp")
+  light("#ffcf8a", [0, h * 0.7, 0], kind === "desk" ? "desk" : "lamp")
 }
 
 /** Packing tape and an address label on the parcel box. */
-function parcelDetails({ kit, group, size }: Build) {
+function parcelDetails({ kit, group, size, mark }: Build) {
   const [w, h, d] = size
   const tape = kit.mat("#d9b98a", { roughness: 0.4 })
   kit.block(0.1, 0.006, d + 0.004, tape, 0, h, 0, {
@@ -562,6 +571,20 @@ function parcelDetails({ kit, group, size }: Build) {
     parent: group,
     cast: false,
   })
+  // Two flaps hinged on the long sides: open (±1.9 rad) when a book has no
+  // genre, closed otherwise (spec 3F §3.6).
+  for (const side of [-1, 1] as const) {
+    const hinge = new THREE.Group()
+    hinge.position.set(0, h, (side * d) / 2)
+    hinge.userData.side = side
+    group.add(hinge)
+    kit.block(w * 0.98, 0.006, d / 2, "#c8a06a", 0, 0, (-side * d) / 4, {
+      r: 0.002,
+      parent: hinge,
+      cast: false,
+    })
+    mark("flap", hinge)
+  }
 }
 
 /** A rounded stand-in for a model that is missing. */
@@ -584,7 +607,11 @@ export const BUILDERS: Partial<Record<ModelKey, (build: Build) => void>> = {
 }
 
 /** What is added to a piece after its model or builder: glows and labels. */
-export const DETAILS: Partial<Record<ModelKey, (build: Build) => void>> = {
-  readingLamp: lampGlow,
+export const DETAILS: Partial<
+  Record<ModelKey, (build: Build, id: string) => void>
+> = {
+  // The desk lamp follows the vocabulary signal, the reading lamp the clock.
+  readingLamp: (build, id) =>
+    lampGlow(build, id === "deskLamp" ? "desk" : "lamps"),
   parcelBox: parcelDetails,
 }

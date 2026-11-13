@@ -26,6 +26,9 @@ import { useLocalShelf } from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
 import type { Collection, ShelfBook, StorageUsage } from "@/lib/book-types"
 import { useReadingHabit } from "@/lib/habit/habit-client"
+import { useMeetingsTotal } from "@/lib/vocab/vocab-client"
+import { readVocabSeen, rememberVocabSeen } from "@/lib/vocab/vocab-seen"
+import { roomSignals } from "@/components/lobby/room-signals"
 import {
   type RecapBubble,
   readShownBubbles,
@@ -69,6 +72,26 @@ export function LobbyStage({
   const decor = useLobbyDecor()
   const shop = useShop()
   const summary = useMemo(() => summarizeLobby(books), [books])
+  const meetingsTotal = useMeetingsTotal()
+  const [vocabSeen, setVocabSeen] = useState<number | null>(null)
+  useEffect(() => {
+    if (meetingsTotal === null) return
+    const seen = readVocabSeen()
+    // No record yet: this visit becomes the starting point, the lamp stays off.
+    if (seen === null) rememberVocabSeen(meetingsTotal)
+    setVocabSeen(seen ?? meetingsTotal)
+  }, [meetingsTotal])
+  const signals = useMemo(
+    () =>
+      roomSignals({
+        days: habit.days,
+        today: habit.today,
+        meetingsTotal,
+        vocabSeen,
+        trolley: summary.trolley.length,
+      }),
+    [habit.days, habit.today, meetingsTotal, vocabSeen, summary.trolley.length]
+  )
   const hotspots = useMemo(
     () => lobbyHotspots(summary.counts, summary.finishedCount),
     [summary]
@@ -213,6 +236,7 @@ export function LobbyStage({
           hotspots={hotspots}
           showcase={showcase}
           plant={habit.summary.stage}
+          signals={signals}
           decor={decor}
           anda={anda}
           bubbles={bubbles}

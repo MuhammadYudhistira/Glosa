@@ -9,6 +9,7 @@ import {
 } from "react"
 import { Button } from "@/components/ui/button"
 import type { PlantStage } from "@/lib/reading-habit"
+import { NEUTRAL_SIGNALS, type RoomSignals } from "./room-signals"
 import type { SlotId } from "@/lib/shop/catalog"
 import type { Placements } from "@/lib/shop/types"
 import { HotspotLayer } from "./HotspotLayer"
@@ -77,6 +78,7 @@ export function LobbyScene({
   paused = false,
   showcase = [],
   plant = "tunas",
+  signals = NEUTRAL_SIGNALS,
   decor = {},
   allow3d = true,
   ref,
@@ -93,6 +95,8 @@ export function LobbyScene({
   showcase?: ReadonlyArray<ShowcaseBook>
   /** The habit plant's stage. */
   plant?: PlantStage
+  /** What the room shows about the member's reading. */
+  signals?: RoomSignals
   /** The shop's items, placed or tried on. */
   decor?: Placements
   /** False keeps WebGL off, e.g. while the lobby is hidden behind a page on phones (spec 1F §5). */
@@ -192,6 +196,7 @@ export function LobbyScene({
           paused={paused}
           showcase={showcase}
           plant={plant}
+          signals={signals}
           decor={decor}
           onReady={(stage) => {
             stageRef.current = stage

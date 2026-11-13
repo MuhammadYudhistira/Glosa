@@ -13,10 +13,16 @@ import { fitTo, type ModelSet } from "./models"
 
 export type { Glow } from "./furniture-builders"
 export type Furnishings = {
-  /** The reading lamp and the desk lamp; empty without point lights. */
+  /** The reading lamp's light; empty without point lights. */
   lamps: Array<THREE.PointLight>
+  /** The desk lamp's light; null without point lights. */
+  deskLight: THREE.PointLight | null
   /** The fireplace's light (intensity 0 without point lights). */
   fire: THREE.PointLight
+  /** The fireplace's flames; the fire's strength scales them. */
+  flames: Array<THREE.Object3D>
+  /** The parcel box's flaps (userData.side is -1 or 1); they open or close. */
+  flaps: Array<THREE.Object3D>
   emissives: Array<Glow>
 }
 
@@ -76,6 +82,9 @@ export function buildFurniture(
 ): Furnishings {
   const lamps: Array<THREE.PointLight> = []
   const fire = new THREE.PointLight("#ff9a4a", 0, 9, 1)
+  let deskLight: THREE.PointLight | null = null
+  const flames: Array<THREE.Object3D> = []
+  const flaps: Array<THREE.Object3D> = []
   const emissives: Array<Glow> = []
   const glows = new Map<string, THREE.MeshStandardMaterial>()
 
@@ -114,7 +123,13 @@ export function buildFurniture(
         const lamp = new THREE.PointLight(color, 0, 7, 1)
         lamp.position.set(x, y, z)
         holder.add(lamp)
-        lamps.push(lamp)
+        if (kind === "desk") deskLight = lamp
+        else lamps.push(lamp)
+      },
+      mark(role, object) {
+        // Signals move it: the merge must leave it alone.
+        object.userData.animated = true
+        ;(role === "flame" ? flames : flaps).push(object)
       },
     }
     const model = models.get(piece.model)
@@ -124,8 +139,8 @@ export function buildFurniture(
       ;(BUILDERS[piece.model] ?? fallback)(build)
       mergeStatic(holder)
     }
-    DETAILS[piece.model]?.(build)
+    DETAILS[piece.model]?.(build, piece.id)
   }
   if (!withLights) fire.removeFromParent()
-  return { lamps, fire, emissives }
+  return { lamps, deskLight, fire, flames, flaps, emissives }
 }

@@ -26,7 +26,6 @@ export type LightRig = {
   sunIntensity: number
   sunPosition: readonly [number, number, number]
   lamps: number // 0..1: reading lamp, desk lamp
-  fire: number // 0..1: fireplace
   city: number // 0..1: window glow and city lights
   exposure: number
 }
@@ -46,7 +45,6 @@ export const RIGS: Record<Mood, LightRig> = {
     sunIntensity: 2.3,
     sunPosition: [7, 15, -11],
     lamps: 0,
-    fire: 0,
     city: 0,
     exposure: 0.95,
   },
@@ -59,7 +57,6 @@ export const RIGS: Record<Mood, LightRig> = {
     sunIntensity: 1.9,
     sunPosition: [9, 6.5, -12],
     lamps: 0.8,
-    fire: 0.6,
     city: 0.45,
     exposure: 0.92,
   },
@@ -73,7 +70,6 @@ export const RIGS: Record<Mood, LightRig> = {
     sunIntensity: 0.55,
     sunPosition: [6, 14, -10],
     lamps: 1,
-    fire: 1,
     city: 1,
     exposure: 1.05,
   },
@@ -111,7 +107,6 @@ export function mixRig(a: LightRig, b: LightRig, k: number): LightRig {
       mixNumber(a.sunPosition[2], b.sunPosition[2], t),
     ],
     lamps: mixNumber(a.lamps, b.lamps, t),
-    fire: mixNumber(a.fire, b.fire, t),
     city: mixNumber(a.city, b.city, t),
     exposure: mixNumber(a.exposure, b.exposure, t),
   }
