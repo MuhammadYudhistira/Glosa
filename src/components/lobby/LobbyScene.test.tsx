@@ -127,8 +127,19 @@ describe("LobbyScene", () => {
       "src",
       "/lobby/lobby-still.webp"
     )
-    fireEvent.click(screen.getByRole("button", { name: "Meja Admin" }))
-    expect(onActivate).toHaveBeenCalledWith("meja-admin")
+    fireEvent.click(screen.getByRole("button", { name: "Meja Admin" }), {
+      detail: 1,
+    })
+    expect(onActivate).toHaveBeenCalledWith("meja-admin", { keyboard: false })
+  })
+
+  it("has Anda's activity over at once without a live 3D scene", async () => {
+    const { scene, ref } = renderScene({ ...desktop, webgl: false })
+    await vi.waitFor(() =>
+      expect(scene).toHaveAttribute("data-quality", "diam")
+    )
+    await expect(ref.current?.perform("perapian")).resolves.toBeUndefined()
+    expect(() => ref.current?.skip()).not.toThrow()
   })
 
   it("fills the frame's width with the still image, not just the screen's", async () => {
@@ -165,6 +176,8 @@ describe("LobbyScene", () => {
         setShelves: vi.fn(),
         setDecor: vi.fn(),
         setMood: vi.fn(),
+        perform: vi.fn((_id: string) => Promise.resolve()),
+        skip: vi.fn(),
         dispose: vi.fn(),
       }
       act(() => {
@@ -192,6 +205,14 @@ describe("LobbyScene", () => {
       const { stage } = await goLive()
       fireEvent.click(screen.getByRole("button", { name: "Pusatkan" }))
       expect(stage.setView).toHaveBeenCalledWith(startView(viewport))
+    })
+
+    it("hands Anda's activity and its skip to the live stage", async () => {
+      const { stage, ref } = await goLive()
+      await ref.current?.perform("tanaman")
+      expect(stage.perform).toHaveBeenCalledWith("tanaman")
+      ref.current?.skip()
+      expect(stage.skip).toHaveBeenCalledTimes(1)
     })
 
     it("moves the camera to a spot on showSpot", async () => {
@@ -258,6 +279,8 @@ describe("LobbyScene", () => {
           setShelves: vi.fn(),
           setDecor: vi.fn(),
           setMood: vi.fn(),
+          perform: vi.fn(() => Promise.resolve()),
+          skip: vi.fn(),
           dispose: vi.fn(),
         })
       })
@@ -335,6 +358,8 @@ describe("LobbyScene", () => {
             setShelves: vi.fn(),
             setDecor: vi.fn(),
             setMood: vi.fn(),
+            perform: vi.fn(() => Promise.resolve()),
+            skip: vi.fn(),
             dispose: vi.fn(),
           })
           canvas.props?.onView(startView(viewport), viewport)

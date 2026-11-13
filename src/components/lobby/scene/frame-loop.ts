@@ -24,6 +24,8 @@ export type Activity = {
   measuring: boolean
   /** A shop item is in its few seconds of motion after being placed. */
   decor: boolean
+  /** Anda is on the way to a hotspot or doing its activity (spec 3F §4A.1). */
+  acting: boolean
 }
 
 export function moving(activity: Activity): boolean {
@@ -32,7 +34,8 @@ export function moving(activity: Activity): boolean {
     activity.panning ||
     activity.blending ||
     activity.measuring ||
-    activity.decor
+    activity.decor ||
+    activity.acting
   )
 }
 

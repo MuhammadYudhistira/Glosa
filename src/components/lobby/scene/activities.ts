@@ -5,6 +5,7 @@ import {
   type HotspotId,
   PLANT,
   type Point2,
+  ROOM,
   ROOM_PARTS,
   SHOWCASE,
   WALL_SECTIONS,
@@ -50,16 +51,34 @@ export const ACTIVITY_OF: Record<HotspotId, ActivityId> = {
   pintu: "pegang-pintu",
 }
 
+const ROOM_DEPTH_MID = ROOM.depth / 2
+
 const at = (id: string): Point2 => {
   const piece = FURNITURE.find((f) => f.id === id)
   if (!piece) throw new Error(`No furniture ${id}`)
   return piece.at
 }
 
+/**
+ * The activities done sitting: where Anda sits, in the chair (spec 3F
+ * §4A.1). Anda slides there from the stand point as the pose sits down,
+ * and back to the stand point before walking on.
+ */
+const SEATS: Partial<Record<HotspotId, Point2>> = {
+  "meja-baca": [at("armchair")[0], at("armchair")[1] + 0.12],
+  katalog: [at("deskChair")[0], at("deskChair")[1] - 0.04],
+  "meja-admin": [at("deskChair")[0], at("deskChair")[1] - 0.04],
+}
+
+export function seatOf(id: HotspotId): Point2 | null {
+  return SEATS[id] ?? null
+}
+
 export function facingOf(id: HotspotId): Point2 {
   switch (id) {
     case "meja-baca":
-      return at("armchair")
+      // Seated in the armchair, looking out into the room.
+      return [at("armchair")[0], ROOM_DEPTH_MID]
     case "troli":
       return at("parcelBox")
     case "katalog":
@@ -107,7 +126,7 @@ export const STAND: Pose = {
 /** Starting values; tune by eye in the harness (Task 2), the tests only check the shape. */
 export const POSES: Record<ActivityId, Pose> = {
   "duduk-baca": {
-    drop: 0.42,
+    drop: 0.31,
     lean: -0.15,
     head: 0.35,
     arms: [0.9, 0.9],
@@ -131,7 +150,7 @@ export const POSES: Record<ActivityId, Pose> = {
     knees: [0.3, 0.3],
   },
   menulis: {
-    drop: 0.42,
+    drop: 0.31,
     lean: 0.25,
     head: 0.5,
     arms: [0.7, 1.1],
@@ -139,7 +158,7 @@ export const POSES: Record<ActivityId, Pose> = {
     knees: [1.5, 1.5],
   },
   mengetik: {
-    drop: 0.42,
+    drop: 0.31,
     lean: 0.2,
     head: 0.35,
     arms: [1.1, 1.1],
@@ -166,7 +185,7 @@ export const POSES: Record<ActivityId, Pose> = {
     drop: 0,
     lean: 0.1,
     head: 0.45,
-    arms: [1.0, 1.0],
+    arms: [1.25, 1.25],
     hips: [0, 0],
     knees: [0, 0],
   },

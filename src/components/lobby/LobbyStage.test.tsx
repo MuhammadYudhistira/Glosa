@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto"
 import { act, fireEvent, screen, within } from "@testing-library/react"
 import { useRouterState } from "@tanstack/react-router"
+import type { Ref } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { coverHue } from "@/components/shelf/BookCover"
 import { sherlock } from "@/components/shelf/fixtures"
@@ -11,26 +12,40 @@ import { renderWithRouter } from "@/test/router"
 import { isPopupPath } from "./LobbyPopup"
 import { LobbyStage } from "./LobbyStage"
 
-// The real scene starts three.js; here it only shows what it was given.
+type Activate = (id: string, how: { keyboard: boolean }) => void
+
+// The real scene starts three.js; here it only shows what it was given, and
+// its handle's activity ends at once unless a test says otherwise.
 const scene = vi.hoisted(() => ({
   props: null as {
     paused?: boolean
     allow3d?: boolean
-    onActivate?: (id: string) => void
+    onActivate?: Activate
     notes?: Array<string>
     shelves?: Record<string, ReadonlyArray<number>>
   } | null,
 }))
-vi.mock("./LobbyScene", () => ({
-  LobbyScene: (props: {
-    paused?: boolean
-    allow3d?: boolean
-    onActivate?: (id: string) => void
-  }) => {
-    scene.props = props
-    return <section aria-label="Adegan ruang baca" className="lobby-scene" />
-  },
+const handle = vi.hoisted(() => ({
+  perform: vi.fn((_id: string) => Promise.resolve()),
+  skip: vi.fn(),
+  showSpot: vi.fn(),
+  showDecor: vi.fn(),
 }))
+vi.mock("./LobbyScene", async () => {
+  const { useImperativeHandle } = await import("react")
+  return {
+    LobbyScene: (props: {
+      paused?: boolean
+      allow3d?: boolean
+      onActivate?: Activate
+      ref?: Ref<typeof handle>
+    }) => {
+      scene.props = props
+      useImperativeHandle(props.ref, () => handle)
+      return <section aria-label="Adegan ruang baca" className="lobby-scene" />
+    },
+  }
+})
 
 const highlights = vi.hoisted(() => {
   const state: {
@@ -127,6 +142,9 @@ describe("LobbyStage", () => {
   afterEach(() => {
     unstubWideScreen()
     scene.props = null
+    handle.perform.mockReset()
+    handle.perform.mockImplementation(() => Promise.resolve())
+    handle.skip.mockClear()
     highlights.state = { status: "ready", highlights: [] }
     bubbles.remember.mockClear()
   })
@@ -149,10 +167,49 @@ describe("LobbyStage", () => {
     const { router } = renderStage(false)
     await vi.waitFor(() => expect(scene.props).not.toBeNull())
     const activate = scene.props!.onActivate!
-    await act(async () => activate("perapian"))
+    await act(async () => activate("perapian", { keyboard: true }))
     expect(router.state.location.pathname).toBe("/recap")
-    await act(async () => activate("pintu"))
+    await act(async () => activate("pintu", { keyboard: true }))
     expect(router.state.location.pathname).toBe("/settings")
+  })
+
+  it("opens the page after Anda's activity, at once from the keyboard, and skips on a second tap", async () => {
+    stubWideScreen(true)
+    let finish = () => undefined as void
+    handle.perform.mockImplementation(
+      () => new Promise<void>((resolve) => (finish = resolve))
+    )
+    const { router } = renderStage(false)
+    await vi.waitFor(() => expect(scene.props).not.toBeNull())
+    const activate = scene.props!.onActivate!
+    await act(async () => activate("perapian", { keyboard: false }))
+    expect(handle.perform).toHaveBeenCalledWith("perapian")
+    expect(router.state.location.pathname).toBe("/lobby")
+    await act(async () => activate("perapian", { keyboard: false }))
+    expect(handle.skip).toHaveBeenCalledTimes(1)
+    await act(async () => finish())
+    expect(router.state.location.pathname).toBe("/recap")
+
+    await act(async () => void router.navigate({ to: "/lobby" }))
+    handle.perform.mockClear()
+    await act(async () => activate("pintu", { keyboard: true }))
+    expect(handle.perform).not.toHaveBeenCalled()
+    expect(router.state.location.pathname).toBe("/settings")
+  })
+
+  it("opens nothing when the lobby is gone before the activity ends", async () => {
+    stubWideScreen(true)
+    let finish = () => undefined as void
+    handle.perform.mockImplementation(
+      () => new Promise<void>((resolve) => (finish = resolve))
+    )
+    const { router, unmount } = renderStage(false)
+    await vi.waitFor(() => expect(scene.props).not.toBeNull())
+    const activate = scene.props!.onActivate!
+    await act(async () => activate("perapian", { keyboard: false }))
+    unmount()
+    await act(async () => finish())
+    expect(router.state.location.pathname).toBe("/lobby")
   })
 
   it("behind a popup keeps only a paused, hidden scene and the top bar", async () => {
@@ -181,7 +238,9 @@ describe("LobbyStage", () => {
     renderStage(false)
     await screen.findByRole("main")
     expect(scene.props).toMatchObject({ paused: false })
-    await act(async () => scene.props?.onActivate?.("papan"))
+    await act(async () =>
+      scene.props?.onActivate?.("papan", { keyboard: true })
+    )
     const dialog = await screen.findByRole("dialog", { name: "Sorotan" })
     expect(dialog).toBeInTheDocument()
     expect(scene.props).toMatchObject({ paused: true })

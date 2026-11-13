@@ -46,6 +46,13 @@ export type LobbySceneHandle = {
   showSpot: (id: HotspotId) => void
   /** Brings a shop slot into view, a little aside for the shop panel. */
   showDecor: (slot: SlotId) => void
+  /**
+   * Anda walks to the hotspot and does its activity (spec 3F §4A.1);
+   * resolves when it is done, at once without a live 3D scene.
+   */
+  perform: (id: HotspotId) => Promise<void>
+  /** Ends the walk and the activity at once (a second tap). */
+  skip: () => void
 }
 
 type Camera = { view: View; viewport: Viewport }
@@ -93,7 +100,7 @@ export function LobbyScene({
   hotspots: ReadonlyArray<HotspotModel>
   anda: Point2
   bubbles?: Partial<Record<HotspotId, ReactNode>>
-  onActivate: (id: HotspotId) => void
+  onActivate: (id: HotspotId, how: { keyboard: boolean }) => void
   /** Whether a live 3D camera is on screen, so showSpot can move it. */
   onLiveChange?: (live: boolean) => void
   /** Behind a popup: the 3D scene keeps its last frame (spec 1F §4.5). */
@@ -151,6 +158,8 @@ export function LobbyScene({
     if (current && stageRef.current) stageRef.current.setView(next(current))
   }
 
+  const live = mode === "3d" && camera !== null
+
   useImperativeHandle(ref, () => ({
     showSpot: (id) =>
       moveCamera((current) => centerOn(current.view, spotOf(id).label)),
@@ -163,6 +172,9 @@ export function LobbyScene({
           current.viewport
         )
       ),
+    perform: (id) =>
+      (live ? stageRef.current?.perform(id) : undefined) ?? Promise.resolve(),
+    skip: () => stageRef.current?.skip(),
   }))
 
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -186,7 +198,6 @@ export function LobbyScene({
     )
   }
 
-  const live = mode === "3d" && camera !== null
   useEffect(() => {
     onLiveChange?.(live)
   }, [live, onLiveChange])

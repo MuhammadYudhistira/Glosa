@@ -20,6 +20,8 @@ const stage = vi.hoisted(() => ({
   setShelves: vi.fn(),
   setDecor: vi.fn(),
   setMood: vi.fn(),
+  perform: vi.fn(() => Promise.resolve()),
+  skip: vi.fn(),
   dispose: vi.fn(),
 }))
 vi.mock("./scene/stage", () => ({

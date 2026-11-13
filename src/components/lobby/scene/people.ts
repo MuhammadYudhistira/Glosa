@@ -1,6 +1,8 @@
 import * as THREE from "three"
+import type { Pose } from "./activities"
 import type { Kit } from "./kit"
 import type { Point2 } from "./layout"
+import { type Held, buildHeld } from "./props"
 
 /** Anda's warm palette, in the rounded style of the room's models. */
 const LOOK = {
@@ -16,16 +18,46 @@ const LOOK = {
 
 export type Figure = {
   root: THREE.Group
-  /** Everything but the ring: it bobs and sways while walking. */
+  /** Everything but the ring: it bobs and sways while walking, and drops to sit or crouch. */
   body: THREE.Group
+  /** The upper body (sweater, arms, head), turning about the hips to lean. */
+  torso: THREE.Group
   legs: Array<{ hip: THREE.Group; knee: THREE.Group }>
   arms: Array<THREE.Group>
   head: THREE.Group
+  /** At the end of `arms[1]`: what Anda holds hangs here. */
+  hand: THREE.Group
 }
 export type People = {
   anda: Figure
   /** The mint ring on the floor around "Anda". */
   ring: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>
+  /** The small things the activities hold, hidden until one starts (spec 3F §4A.1). */
+  held: Record<Held, THREE.Object3D>
+}
+
+/** Where the legs meet the body, above the floor. */
+const HIP_Y = 0.62
+
+/**
+ * Turns the joints to a pose (spec 3F §4A.1). Positive values bend forward:
+ * the arms and thighs swing ahead, the knees fold back, the torso and the
+ * head tip toward where Anda faces (+Z).
+ */
+export function applyPose(figure: Figure, pose: Pose) {
+  figure.body.position.y = -pose.drop
+  figure.body.rotation.z = 0
+  figure.torso.rotation.x = pose.lean
+  figure.head.rotation.x = pose.head
+  figure.arms.forEach((arm, i) => {
+    arm.rotation.x = -pose.arms[i]
+  })
+  figure.legs.forEach(({ hip, knee }, i) => {
+    hip.rotation.x = -pose.hips[i]
+    knee.rotation.x = pose.knees[i]
+  })
+  // The hand stays level, so what it holds keeps upright whatever the arm does.
+  figure.hand.rotation.x = pose.arms[1] - pose.lean
 }
 
 const capsule = (radius: number, length: number) =>
@@ -41,11 +73,14 @@ function anda(kit: Kit): Figure {
   const root = new THREE.Group()
   const body = new THREE.Group()
   root.add(body)
-  const hipY = 0.62
+  // The upper body turns about the hips; its parts are placed from there.
+  const torso = new THREE.Group()
+  torso.position.y = HIP_Y
+  body.add(torso)
 
   const legs = [-1, 1].map((side) => {
     const hip = new THREE.Group()
-    hip.position.set(side * 0.1, hipY, 0)
+    hip.position.set(side * 0.1, HIP_Y, 0)
     body.add(hip)
     kit.mesh(capsule(0.078, 0.2), LOOK.trousers, 0, -0.16, 0, { parent: hip })
     const knee = new THREE.Group()
@@ -62,32 +97,33 @@ function anda(kit: Kit): Figure {
   })
 
   // A round body in a chunky sweater, with a pale collar.
-  kit.mesh(capsule(0.22, 0.26), LOOK.sweater, 0, hipY + 0.28, 0, {
-    parent: body,
-  })
+  kit.mesh(capsule(0.22, 0.26), LOOK.sweater, 0, 0.28, 0, { parent: torso })
   kit.mesh(
     new THREE.TorusGeometry(0.11, 0.035, 10, 24).rotateX(Math.PI / 2),
     LOOK.collar,
     0,
-    hipY + 0.6,
+    0.6,
     0,
-    { parent: body }
+    { parent: torso }
   )
 
   const arms = [-1, 1].map((side) => {
     const shoulder = new THREE.Group()
-    shoulder.position.set(side * 0.25, hipY + 0.47, 0)
-    body.add(shoulder)
+    shoulder.position.set(side * 0.25, 0.47, 0)
+    torso.add(shoulder)
     kit.mesh(capsule(0.062, 0.24), LOOK.sweater, 0, -0.17, 0, {
       parent: shoulder,
     })
     kit.mesh(ball(0.06), LOOK.skin, 0, -0.35, 0, { parent: shoulder })
     return shoulder
   })
+  const hand = new THREE.Group()
+  hand.position.y = -0.35
+  arms[1].add(hand)
 
   const head = new THREE.Group()
-  head.position.y = hipY + 0.8
-  body.add(head)
+  head.position.y = 0.8
+  torso.add(head)
   kit.mesh(ball(0.2), LOOK.skin, 0, 0, 0, { parent: head })
   // Hair: a cap over the crown and the back of the head.
   const cap = kit.mesh(
@@ -112,7 +148,7 @@ function anda(kit: Kit): Figure {
     cheek.scale.z = 0.4
   }
   kit.scene.add(root)
-  return { root, body, legs, arms, head }
+  return { root, body, torso, legs, arms, head, hand }
 }
 
 /** "Anda", the only person in the study (spec 3F §2, decision 5). */
@@ -130,5 +166,7 @@ export function buildPeople(kit: Kit, at: Point2): People {
   ring.position.y = 0.02
   member.root.add(ring)
   member.root.position.set(at[0], 0, at[1])
-  return { anda: member, ring }
+  const held = buildHeld(kit)
+  for (const thing of Object.values(held)) member.hand.add(thing)
+  return { anda: member, ring, held }
 }

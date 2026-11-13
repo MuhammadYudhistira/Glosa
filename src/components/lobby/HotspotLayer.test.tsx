@@ -68,8 +68,18 @@ describe("HotspotLayer", () => {
 
   it("acts on a tap and shows a speech bubble above its hotspot", () => {
     const onActivate = renderLayer([sherlock], "Halo dari meja baca")
-    fireEvent.click(screen.getByRole("button", { name: "Meja Admin" }))
-    expect(onActivate).toHaveBeenCalledWith("meja-admin")
+    fireEvent.click(screen.getByRole("button", { name: "Meja Admin" }), {
+      detail: 1,
+    })
+    expect(onActivate).toHaveBeenCalledWith("meja-admin", { keyboard: false })
     expect(screen.getByText("Halo dari meja baca")).toBeInTheDocument()
+  })
+
+  it("tells a press from Enter or Space (a click without a pointer)", () => {
+    const onActivate = renderLayer([sherlock])
+    fireEvent.click(screen.getByRole("button", { name: "Meja Admin" }), {
+      detail: 0,
+    })
+    expect(onActivate).toHaveBeenCalledWith("meja-admin", { keyboard: true })
   })
 })

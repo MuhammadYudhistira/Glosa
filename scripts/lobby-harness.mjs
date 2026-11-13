@@ -3,6 +3,7 @@
 //   node scripts/lobby-harness.mjs shot <file> [all | query]   1440 × 900 screenshot (PNG);
 //                                 `phone` in the query takes it at 390 × 844
 //   node scripts/lobby-harness.mjs moods [dir]   day, dusk and night, desktop and phone (PNG)
+//   node scripts/lobby-harness.mjs acts [dir]    Anda in each hotspot's activity pose (PNG)
 //   node scripts/lobby-harness.mjs still         public/lobby/lobby-still*.{avif,webp}
 //   node scripts/lobby-harness.mjs thumbs        public/lobby/shop/<id>.webp
 import { mkdirSync } from "node:fs"
@@ -92,6 +93,30 @@ async function moods(dir) {
   }
 }
 
+async function acts(dir) {
+  mkdirSync(dir, { recursive: true })
+  for (const id of [
+    "meja-baca",
+    "fiksi_sastra",
+    "troli",
+    "katalog",
+    "meja-admin",
+    "lemari",
+    "tanaman",
+    "toko",
+    "perapian",
+    "papan",
+    "pintu",
+  ]) {
+    const png = await render(
+      { width: 1440, height: 900 },
+      `mode=still&mood=dusk&act=${id}&focus=${id}`
+    )
+    await sharp(png).toFile(`${dir}/${id}.png`)
+    console.log(`wrote ${dir}/${id}.png`)
+  }
+}
+
 async function still() {
   // Night, neutral signals and an empty corkboard (spec 3F §3.5).
   const png = await render(STILL, "mode=still&mood=night")
@@ -133,6 +158,7 @@ if (command === "serve") {
     else if (command === "still") await still()
     else if (command === "thumbs") await thumbs(file)
     else if (command === "moods") await moods(file ?? "scratch/moods")
+    else if (command === "acts") await acts(file ?? "scratch/acts")
     else throw new Error(`Unknown command: ${command}`)
   } finally {
     await server.close()

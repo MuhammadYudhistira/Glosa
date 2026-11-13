@@ -21,11 +21,19 @@ import {
   NEUTRAL_SIGNALS,
   type RoomSignals,
 } from "../room-signals"
+import { ACTIVITY_OF, facingOf, seatOf } from "./activities"
 import { DECOR_BUILDERS, buildDecor } from "./decor"
 import { createFrameLoop, moving, viewMoved } from "./frame-loop"
 import { type Glow, buildFurniture } from "./furniture"
 import { createKit } from "./kit"
-import { type Point2, ROOM, type ShowcaseBook, decorBlockers } from "./layout"
+import {
+  type HotspotId,
+  type Point2,
+  ROOM,
+  type ShowcaseBook,
+  decorBlockers,
+  spotOf,
+} from "./layout"
 import { type ModelSet, loadModels } from "./models"
 import { createMotion } from "./motion"
 import { buildPeople } from "./people"
@@ -73,6 +81,14 @@ export type Stage = {
   /** Moves the camera; the view is kept inside the map. */
   setView: (view: View) => void
   walkTo: (spot: Point2) => void
+  /**
+   * Anda does the hotspot's activity once the walk under way ends (spec 3F
+   * §4A.1); resolves when it is done. Where the room does not move ("diam",
+   * a still image, behind a popup): in the pose at once, resolved.
+   */
+  perform: (id: HotspotId) => Promise<void>
+  /** Ends the walk and the activity at once (a second tap); perform's promise resolves. */
+  skip: () => void
   /** Stops the animation behind a popup; it goes on from the same moment (spec 1F §4.5). */
   setPaused: (paused: boolean) => void
   /** The finished books in the display cabinet (spec Tahap 3 §4.5). */
@@ -382,10 +398,11 @@ function buildStage(
     for (const lamp of furniture.lamps) lamp.visible = next === "tinggi"
     furniture.fire.visible = next === "tinggi"
     if (furniture.deskLight) furniture.deskLight.visible = next === "tinggi"
-    // The loop stops at "diam": "Anda" must not stay frozen mid-walk, nor
-    // the light mid-blend.
+    // The loop stops at "diam": "Anda" must not stay frozen mid-walk or
+    // mid-activity, nor the light mid-blend.
     if (next === "diam") {
       motion.finishWalk()
+      motion.skip()
       finishBlend()
       decor.rest()
     }
@@ -431,6 +448,7 @@ function buildStage(
       blending: blend < 1,
       measuring,
       decor: decorMoving,
+      acting: motion.acting(),
     })
   }
 
@@ -551,6 +569,21 @@ function buildStage(
       motion.walkTo(spot, !animates())
       requestRender()
     },
+    perform(id) {
+      // Where nothing moves, Anda is at the hotspot in the pose at once; the
+      // walk there that the page asks for next then finds them in place.
+      const instant = !animates() || paused
+      if (instant) motion.walkTo(spotOf(id).stand, true)
+      const done = motion.perform(ACTIVITY_OF[id], facingOf(id), seatOf(id))
+      if (instant) motion.skip()
+      // Wakes the loop: it runs until the activity is done (Activity.acting).
+      requestRender()
+      return done
+    },
+    skip() {
+      motion.skip()
+      requestRender()
+    },
     setPlant(stage) {
       plant.set(stage)
     },
@@ -571,11 +604,16 @@ function buildStage(
       if (next === paused) return
       paused = next
       // The time spent paused does not count (the loop stopped), and the
-      // speed check starts over.
+      // speed check starts over. An activity under way ends in its pose
+      // (its page must not wait behind the popup); a plain walk goes on
+      // after it.
       measureStart = 0
+      if (next && motion.acting()) motion.skip()
       requestRender()
     },
     dispose() {
+      // No promise may be left waiting on a stage that is gone.
+      motion.skip()
       loop.dispose()
       clearTimeout(moodTimer)
       observer.disconnect()

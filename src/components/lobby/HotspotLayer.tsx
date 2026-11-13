@@ -29,7 +29,8 @@ export function HotspotLayer({
   viewport: Viewport
   /** Speech bubbles shown above a hotspot. */
   bubbles?: Partial<Record<HotspotId, ReactNode>>
-  onActivate: (id: HotspotId) => void
+  /** `keyboard`: Enter or Space, a click without a pointer (no walk, no activity). */
+  onActivate: (id: HotspotId, how: { keyboard: boolean }) => void
   onFocusSpot?: (id: HotspotId) => void
 }) {
   return (
@@ -47,7 +48,9 @@ export function HotspotLayer({
               type="button"
               className="lobby-hotspot"
               data-empty={hotspot.dim ? "" : undefined}
-              onClick={() => onActivate(hotspot.id)}
+              onClick={(event) =>
+                onActivate(hotspot.id, { keyboard: event.detail === 0 })
+              }
               onFocus={(event) => {
                 // A press must not move the button before the click lands.
                 if (isKeyboardFocus(event.currentTarget)) {

@@ -9,9 +9,10 @@ import {
   WALK_SPEED,
   facingOf,
   poseAt,
+  seatOf,
   walkSpeed,
 } from "./activities"
-import { HOTSPOT_SPOTS, ROOM } from "./layout"
+import { FURNITURE, HOTSPOT_SPOTS, ROOM, footprint } from "./layout"
 
 describe("activities", () => {
   it("gives every hotspot an activity (spec 3F §4A.1)", () => {
@@ -61,5 +62,31 @@ describe("activities", () => {
     expect(POSES["duduk-baca"].drop).toBeGreaterThan(0.3)
     expect(POSES.hangatkan.drop).toBeGreaterThan(0.2)
     expect(POSES["pegang-pintu"].drop).toBe(0)
+  })
+
+  it("sits in the armchair and on the desk chair, everywhere else at the stand point", () => {
+    const inside = (
+      id: "meja-baca" | "katalog" | "meja-admin",
+      chair: string
+    ) => {
+      const seat = seatOf(id)
+      const piece = FURNITURE.find((f) => f.id === chair)
+      expect(seat, id).not.toBeNull()
+      const box = footprint(piece!)
+      expect(seat![0], id).toBeGreaterThan(box.x0)
+      expect(seat![0], id).toBeLessThan(box.x1)
+      expect(seat![1], id).toBeGreaterThan(box.z0)
+      expect(seat![1], id).toBeLessThan(box.z1)
+    }
+    inside("meja-baca", "armchair")
+    inside("katalog", "deskChair")
+    inside("meja-admin", "deskChair")
+    for (const { id } of HOTSPOT_SPOTS) {
+      if (id === "meja-baca" || id === "katalog" || id === "meja-admin")
+        continue
+      expect(seatOf(id), id).toBeNull()
+    }
+    // The armchair faces the room: seated in it, so does Anda.
+    expect(facingOf("meja-baca")[1]).toBeGreaterThan(seatOf("meja-baca")![1])
   })
 })

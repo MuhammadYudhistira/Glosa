@@ -207,10 +207,43 @@ export function LobbyStage({
     refresh()
   }
 
-  /** Every tap acts at once, while "Anda" walks over (spec 1D §5.1). */
-  function activate(id: HotspotId) {
+  /** Whether Anda is on the way to a hotspot or doing its activity. */
+  const running = useRef(false)
+  // True while a page covers the lobby or once it is gone: a popup or a
+  // page opened during the activity ends it (the scene pauses or goes), and
+  // the tapped hotspot's page must not open over it.
+  const covered = useRef(popup)
+  useEffect(() => {
+    covered.current = popup
+    return () => {
+      covered.current = true
+    }
+  }, [popup])
+
+  /** Anda walks over and does the activity, then the page opens (spec 3F §4A.1; replaces 1D §5.1). */
+  async function activate(id: HotspotId, how: { keyboard: boolean }) {
+    // A second tap while Anda is on the way: skip to the page (spec 3F §4A.1).
+    if (running.current) {
+      sceneRef.current?.skip()
+      return
+    }
     moveAnda(spotOf(id).stand)
     setReadingHint(false)
+    // From the keyboard the page opens at once, without the activity.
+    if (!how.keyboard && sceneRef.current) {
+      running.current = true
+      try {
+        await sceneRef.current.perform(id)
+      } finally {
+        running.current = false
+      }
+      if (covered.current) return
+    }
+    open(id)
+  }
+
+  /** What each hotspot opens. */
+  function open(id: HotspotId) {
     if (id === "meja-baca") {
       if (summary.lastRead) {
         void navigate({
@@ -278,7 +311,7 @@ export function LobbyStage({
           decor={decor}
           anda={anda}
           bubbles={bubbles}
-          onActivate={activate}
+          onActivate={(id, how) => void activate(id, how)}
           onLiveChange={setSceneLive}
           // The corkboard's dialog covers the scene like a route popup.
           paused={popup || corkboard}

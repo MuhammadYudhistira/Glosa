@@ -1,7 +1,13 @@
 // The 3D lobby on a page of its own, served by scripts/lobby-harness.mjs: for
 // looking at the scene while working on it, and for rendering the still image.
 // Not part of the app.
-import { ANDA_START, DECOR_SLOTS } from "@/components/lobby/scene/layout"
+import {
+  ANDA_START,
+  DECOR_SLOTS,
+  HOTSPOT_SPOTS,
+  type HotspotId,
+  spotOf,
+} from "@/components/lobby/scene/layout"
 import { genreHues } from "@/components/lobby/scene/shelf-books"
 import {
   MAX_ZOOM,
@@ -98,12 +104,29 @@ if (decorParam === "all") {
     zoom: MAX_ZOOM,
   })
 }
+const hotspot = (id: string | null): HotspotId | null =>
+  HOTSPOT_SPOTS.find((spot) => spot.id === id)?.id ?? null
 // ?focus=x,y,z: the camera close on a point, to look at details.
+// ?focus=<hotspotId>: close on where Anda stands for it, at waist height
+// (the activity; its seat is within a metre).
 const focusParam = params.get("focus")
 if (focusParam) {
-  const [x = 0, y = 0, z = 0] = focusParam.split(",").map(Number)
+  const focusSpot = hotspot(focusParam)
+  const stand = focusSpot ? spotOf(focusSpot).stand : null
+  const [x = 0, y = 0, z = 0] = stand
+    ? [stand[0], 0.8, stand[1]]
+    : focusParam.split(",").map(Number)
   const view = startView({ width: host.clientWidth, height: host.clientHeight })
   stage.setView({ ...centerOn(view, [x, y, z]), zoom: MAX_ZOOM })
+}
+// ?act=<hotspotId>: Anda walks there and does its activity (spec 3F
+// §4A.1), played out in the normal mode, in the pose at once when still.
+const actParam = params.get("act")
+if (actParam) {
+  const id = hotspot(actParam)
+  if (!id) throw new Error(`No hotspot ${actParam}`)
+  stage.walkTo(spotOf(id).stand)
+  await stage.perform(id)
 }
 document.body.dataset.books = String(stage.books)
 // For a script or the devtools to drive the room (walk, mood, pause).
