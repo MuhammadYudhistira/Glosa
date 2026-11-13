@@ -35,7 +35,7 @@
 ## Keputusan dan penyimpangan dari spec
 
 1. **Diorama, bukan peta tertutup.** Spec §3.1 meminta seluruh ruangan terlihat dalam satu layar, juga di HP. Dengan kamera isometrik tetap, ruangan 12 × 12 m selebar ±17 m di layar, sehingga pada layar tegak (390 × 844) hanya muat bila latar di luar ruangan boleh terlihat. Maka: ruangan melayang di latar gelap hangat; `MIN_ZOOM` 1 = "seluruh ruangan pas di layar"; `clampView` memusatkan sumbu yang lebih sempit dari layar dan menjepit sumbu yang lebih lebar ke batas ruangan. Tes E2E "kamera tidak pernah menampilkan apa pun di luar peta" diganti "ruangan tidak pernah hilang dari layar". Mode `test` tetap memakai latar magenta.
-2. **"Bersudut L" = pandangan sudut dua dinding** (dinding rak di X = 0, dinding jendela di Z = 0), lantai persegi 12 × 12 m, tinggi 4,6 m. Lantai persegi menjaga rumus proyeksi sederhana.
+2. **"Bersudut L" = pandangan sudut dua dinding** (dinding rak di X = 0, dinding jendela di Z = 0), lantai persegi 12 × 12 m (menjadi **±10 × 10 m** di Task 4R atas keputusan pemilik 2026-11-13), tinggi 4,6 m. Lantai persegi menjaga rumus proyeksi sederhana.
 3. **Posisi di rencana adalah nilai awal** (Task 3 dan 5). Tes unit (di dalam ruangan, tidak bertabrakan, terproyeksi di layar HP dan desktop) adalah penentunya; geser angka bila tes gagal, jangan melonggarkan tes. Arah visual dikunci pemilik di Task 4.
 4. **Tata letak adalah sumber kebenaran ukuran.** `FURNITURE` di `layout.ts` memberi tiap perabot `size` (m) dan `turn` (kelipatan π/2); model di-`fitTo` ke tinggi itu. Telapak tabrakan dihitung dari `size`/`turn`, bukan dari model, sehingga tes tak butuh membaca berkas glb.
 5. **Karakter Anda:** tetap dibuat lewat kode (dibulatkan, palet baru) kecuali audit menemukan karakter CC0 statis satu-mesh; Furniture Bits tidak memuat karakter. Keputusan akhir ditulis di berkas audit (Task 1).
@@ -1182,6 +1182,47 @@ npx prettier --write <berkas yang disentuh>
 git add -A src public/lobby/models docs/superpowers/plans/2026-11-07-tahap-3f-r1-audit-aset.md
 git commit -m "feat(3f): every object has a use; fireplace opens the recap, the door settings" -m "Co-Authored-By: <sesuai pengingat atribusi>"
 ```
+
+---
+
+### Task 4R: Ruangan lebih kecil (revisi titik cek 2026-11-07, diputuskan ulang 2026-11-13)
+
+Dikerjakan **setelah 4A dan sebelum 4B**. Di titik cek 2026-11-07 pemilik menilai ruangan terlalu kosong. Pada 2026-11-13 pemilik memutuskan: prinsip benda bertujuan tetap berlaku, ruangan diperkecil, hiasan kecil hanya boleh **menempel pada benda yang punya hotspot**, tanpa hiasan berdiri sendiri, tanpa meja kopi atau sudut baca di tengah.
+
+**Files:**
+- Modify: `src/components/lobby/scene/layout.ts`, `layout.test.ts`, `projection.test.ts` (hanya bila menyebut angka 12), `room.ts`, `furniture.ts` → dipecah (lihat Step 3), `stage.ts`, `daylight.ts` (bila cahaya isi malam diatur lewat rig), `skyline.ts` (kotak di balik jendela ikut jendela), `scripts/lobby-harness/main.ts` (bila ada angka ruangan), `src/components/lobby/scene/model-manifest.ts`, `public/lobby/models/LICENSE.md`, `docs/superpowers/plans/2026-11-07-tahap-3f-r1-audit-aset.md` (bila menambah model)
+- Create: `src/components/lobby/scene/furniture-builders.ts` (bila `furniture.ts` dipecah), `src/components/lobby/scene/kit.test.ts` (opsional, Step 4)
+
+**Interfaces:**
+- Consumes: semua ekspor `layout.ts` setelah Task 4A (`serves`, hotspot `perapian`/`pintu`).
+- Produces: nama dan bentuk ekspor tidak berubah; hanya angka. `ROOM = { width: 10, depth: 10, height: 4.6, pad: 0.9 }` (nilai awal; tinggi tetap kecuali tampak salah). Perabot baru (hiasan yang menempel) masuk `FURNITURE` dengan `serves` ke hotspot induknya dan `solid: false`, atau dibangun di dalam pembangun benda induknya.
+
+- [ ] **Step 1: Perkecil ruangan**
+
+`ROOM.width`/`depth` 12 → 10. Tempatkan ulang `FURNITURE`, `ROOM_PARTS`, `WALL_SECTIONS` (8 bagian tetap muat di dinding X = 0: lebar bagian dikecilkan bila perlu, `SHELF.z0` disesuaikan), `SHOWCASE`, `PLANT`, `DECOR_SLOTS`, `ANDA_START`, `WALK_BOUNDS`, `ADMIN_DESK`, dan `HOTSPOT_SPOTS`, dengan perabot lebih berdekatan dan pintu tetap bebas. Tes yang ada (di dalam ruangan, tidak bertabrakan, terproyeksi di layar HP dan desktop, terjangkau dari `ANDA_START`, slot dekor bebas) menentukan angkanya; jangan melonggarkan tes. Kota di jendela (`skyline.ts`) tetap di dalam kotak di balik bukaan.
+
+- [ ] **Step 2: Hiasan yang menempel pada benda bertujuan**
+
+Hanya jenis ini, masing-masing bagian dari benda induk:
+- kursi berlengan (`meja-baca`): satu atau dua bantal;
+- meja tulis (`katalog`): tumpukan buku kecil, cangkir, pena dan kertas;
+- perapian (`perapian`): keranjang kayu bakar menempel di sisinya (mantel sudah berisi lilin);
+- meja samping (`toko`): tidak ada tambahan selain katalog.
+
+Tidak ada tumpukan buku di lantai, foto berbingkai, tanaman kecil di sudut, meja kopi, atau karpet tengah. Pakai model KayKit yang sudah diunduh bila ada (cek daftar audit), selain itu kode dengan gaya membulat yang sama. Total model tetap ≤ 3 MB; model baru dicatat di manifest, audit, dan `LICENSE.md`. Tes `layout.test.ts` "gives every piece of base furniture the hotspot it serves" mencakup entri baru.
+
+- [ ] **Step 3: Rapikan kode yang tersentuh**
+
+- `furniture.ts` (±511 baris): bila hiasan menambah panjangnya, pindahkan pembangun per benda ke `furniture-builders.ts`; `buildFurniture` tetap satu-satunya pintu masuk.
+- `stage.ts`: pastikan pewaktu suasana (`moodTimer`) dipasang **setelah** semua bagian yang bisa melempar selesai dibangun, atau dibersihkan di jalur gagal (temuan review Task 3).
+
+- [ ] **Step 4: Cahaya lantai malam dan tes kecil**
+
+Lantai depan agak keruh di malam hari: naikkan sedikit lewat cahaya isi lembut (mis. `hemi` malam di `RIGS.night`, atau satu `PointLight` lemah di tengah ruangan hanya di `tinggi`) tanpa menghilangkan suasana hangat. Opsional: `kit.test.ts` untuk `mergeStatic` (dua kotak satu material → satu mesh; `userData.animated` tidak disentuh; transformasi dunia terpanggang).
+
+- [ ] **Step 5: Verifikasi dan commit**
+
+`npx tsc --noEmit`, `npx vitest run --maxWorkers=2` → hijau. `node scripts/lobby-harness.mjs moods scratch/moods`, lihat keenam gambar sendiri: ruangan tampak lebih penuh dan lebih besar di HP, tak ada benda melayang/menembus, label hotspot tidak saling menimpa, lantai malam terbaca. Format dan commit `feat(3f): a smaller, fuller study`. Laporkan jalur gambar ke pengendali (pemilik melihatnya sebelum Task 5).
 
 ---
 
