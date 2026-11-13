@@ -12,7 +12,9 @@
 
 **Tech Stack:** TanStack Start + Router, React 19, TypeScript, Tailwind CSS 4, three.js (`three/addons`: `GLTFLoader`, `OrbitControls`, post-processing), Vitest + Testing Library, Playwright (WebGL lewat SwiftShader).
 
-**Spec:** [`docs/superpowers/specs/2026-11-07-tahap-3f-ruang-baca-pribadi-design.md`](../specs/2026-11-07-tahap-3f-ruang-baca-pribadi-design.md) §1–§3, §5–§7. Rencana pasangannya: R2 (bahasa dan alur masuk), dikerjakan setelah R1.
+**Spec:** [`docs/superpowers/specs/2026-11-07-tahap-3f-ruang-baca-pribadi-design.md`](../specs/2026-11-07-tahap-3f-ruang-baca-pribadi-design.md) §1–§3 (termasuk §3.6), §5–§7. Rencana pasangannya: R2 (bahasa dan alur masuk), lalu R3 (ruangan yang bercerita, [`2026-11-13-tahap-3f-r3-ruangan-bercerita.md`](2026-11-13-tahap-3f-r3-ruangan-bercerita.md)).
+
+**Pembaruan 2026-11-13:** Task 1–4 selesai. Prinsip pemilik "setiap benda dan animasi punya tujuan" (spec keputusan 9–12, §3.6) menambah **Task 4A–4C** sebelum Task 5, dan mengubah Task 7–8 seperlunya.
 
 ## Global Constraints
 
@@ -25,9 +27,10 @@
 - **Perilaku:** model gagal dimuat → ruangan tetap di mode diam tanpa pesan error; selama model dimuat, gambar diam tampil dengan hotspot yang sudah bisa diketuk, lalu 3D memudar masuk; bayangan hanya di `tinggi`; mesh statis digabung; buku di rak memakai instancing; model di-cache service worker PWA.
 - **Line ending dan encoding:** LF, UTF-8. Jangan menulis file lewat PowerShell `Set-Content` atau Python tanpa `encoding='utf-8', newline=''`.
 - **Route tree:** jangan pakai `npm run generate-routes`. R1 tidak menambah route.
+- **Benda bertujuan (spec §3.6):** setiap perabot dasar punya `serves` (hotspot pemiliknya); tidak ada benda atau animasi dekoratif baru. Animasi hanya respons atas tindakan atau sinyal keadaan bacaan.
 - **CI** menjalankan `npm run check` (prettier): setiap task menjalankan `npx prettier --write` pada file yang disentuh sebelum commit.
 - **Tes unit:** `npx vitest run --maxWorkers=2` (`--maxWorkers=1` bila worker timeout; laptop lemah). **E2E:** `--workers=2`; cek port 3000 dulu (`curl -sL localhost:3000/login | grep -o "<title>[^<]*"`), bila dipegang aplikasi lain pakai config sementara di port 3100 lalu hapus; satu kegagalan dijalankan ulang sendirian dulu.
-- **Tidak ada push ke GitHub** (pemilik yang memutuskan). Commit lokal saja. Pesan commit diakhiri `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- **Tidak ada push ke GitHub** (pemilik yang memutuskan). Commit lokal saja. Pesan commit diakhiri baris `Co-Authored-By` dari pengingat atribusi sesi yang berlaku (contoh di rencana ini memakai `Claude Opus 5.5`; ganti sesuai pengingat).
 
 ## Keputusan dan penyimpangan dari spec
 
@@ -41,6 +44,11 @@
 8. **Cache PWA tanpa perubahan kode:** `scripts/build-sw.mjs` sudah men-precache semua berkas `dist/client` (termasuk `lobby/models/*.glb`). Task 7 hanya menambahkan `LICENSE.md` ke daftar `SKIP` dan satu tes yang memastikan glb masuk daftar.
 9. **Suasana otomatis berganti** lewat `setTimeout(msUntilNextMood)` di stage; peralihan 3 detik di mode animasi, seketika di `diam`/`test`. Parameter `?mood=day|dusk|night` di harness (dan opsi `mood` di `StageOptions`) memaksa suasana untuk tangkapan layar dan tes.
 10. **Penggantian nama tugas dari daftar pemilik:** lemari kaca, tanaman, dan karakter Anda masuk Task 5 bersama rak (satu tugas "isi ruangan"), slot dekorasi dan 18 barang di Task 6.
+11. **(2026-11-13) Yang dibuang lebih luas dari daftar spec §3.1,** dengan alasan yang sama (keputusan 9): selain tangga, dua tanaman kecil, lukisan, dan karpet dasar, juga **rel kuningan tangga** dan **karpet panjang di depan rak** (fungsi `dressing()` di `room.ts` seluruhnya) serta **buku di ambang jendela**. Keset di depan pintu tetap (bagian dari pintu); lilin di mantel menjadi bagian dari sinyal api.
+12. **(2026-11-13) Pintu membuka `/settings` langsung,** bukan popup kecil berisi dua tombol (spec §3.2): halaman Pengaturan sudah memuat tautan **Keluar** (`src/routes/_member/_lobi/settings.tsx`). Satu ketukan lebih sedikit, tanpa komponen baru.
+13. **(2026-11-13) Lampu meja memakai cache Kosakata yang ada.** `useWordMeetings` sudah tersedia di lobi (layout `_lobi` memanggil `refreshVocab`); total pertemuan dihitung di klien, tanpa fungsi server baru. Total baru dicatat setelah cache terbaca (`useMeetingsTotal` mengembalikan `null` sebelum itu), supaya catatan pertama tidak tertulis `0`.
+14. **(2026-11-13) Sorotan untuk papan gabus lewat satu fungsi server baru** `listHighlightsFn({ limit })` (sorotan belum dihapus, terbaru dulu, `limit` 1–500). Data sorotan di perangkat hanya ada per buku yang pernah dibuka, jadi daftar lintas buku harus dari server. R3 memakai fungsi yang sama untuk `/highlights`.
+15. **(2026-11-13) Api tidak lagi diatur rig.** `LightRig.fire` dihapus dari `daylight.ts`; kekuatan api hanya dari sinyal (`FIRE_STRENGTH`), di semua suasana.
 
 ## Struktur file
 
@@ -60,6 +68,9 @@
 | `src/components/lobby/LobbyStage.tsx`, `LobbyScene.tsx`, `LobbyCanvas.tsx` (+ tes) | Prop `shelves`, `await createStage`, memudar masuk (Task 5, 7) |
 | `src/components/lobby/scene/decor.ts` (+ `.test.ts`) | 18 barang dibuat ulang, kiosk dihapus (Task 6) |
 | `src/styles.css`, `src/components/lobby/LobbyStill.tsx`, `public/lobby/lobby-still*`, `public/lobby/shop/*`, `scripts/build-sw.mjs` | Memudar masuk, gambar diam malam, thumbnail, cache (Task 7) |
+| `src/components/lobby/room-signals.ts` (+ `.test.ts`) | Murni: `RoomSignals`, `FireLevel`, `fireLevel`, `roomSignals`, `FIRE_STRENGTH`, `NEUTRAL_SIGNALS` (Task 4B) |
+| `src/lib/vocab/vocab-seen.ts` (+ `.test.ts`), `src/lib/local/keys.ts`, `src/lib/vocab/vocab-client.ts`, `src/routes/_member/_lobi/vocabulary.tsx` | Total pertemuan dan catatan "Kosakata terakhir dibuka" (Task 4B) |
+| `src/server/annotations.ts`, `src/lib/annotations/types.ts`, `src/lib/annotations/highlights-client.ts` (+ `.test.ts`), `src/components/lobby/CorkboardPanel.tsx` (+ `.test.tsx`) | Sorotan terbaru untuk papan gabus (Task 4C) |
 | `e2e/lobby-3d.spec.ts`, `e2e/shop.spec.ts`, `e2e/lobby.spec.ts` | Penyesuaian E2E (Task 8) |
 
 ---
@@ -1061,6 +1072,487 @@ Hasil: `day-desktop.png`, `day-phone.png`, `dusk-*.png`, `night-*.png` (1440 × 
 
 Laporkan ke pengendali: jalur enam gambar, ringkasan satu kalimat per suasana, dan daftar pilihan yang perlu diputuskan pemilik (palet, ukuran ruangan, kerapatan perabot, kesan di HP). Tunggu keputusan. Bila pemilik minta perubahan: lakukan di `layout.ts`/`daylight.ts`/`furniture.ts`/`room.ts`, ulangi Step 1, commit `fix(3f): visual direction` dengan `Co-Authored-By`, dan minta persetujuan lagi. Setelah disetujui, catat "disetujui pemilik, <tanggal>" di berkas audit (`docs/superpowers/plans/2026-11-07-tahap-3f-r1-audit-aset.md`, bagian akhir) dan commit; baru lanjut.
 
+> **Status 2026-11-13:** tangkapan layar dibuat dan dilihat pemilik. Arah visual disetujui dengan syarat benda tanpa fungsi dibuang (spec keputusan 9). Catatan persetujuan di berkas audit ditulis di Task 4A Step 1.
+
+---
+
+### Task 4A: Benda bertujuan — buang benda tanpa fungsi, hotspot perapian dan pintu
+
+**Files:**
+- Modify: `src/components/lobby/scene/layout.ts`, `layout.test.ts`, `room.ts`, `model-manifest.ts`, `src/components/lobby/lobby-data.ts`, `lobby-data.test.ts`, `src/components/lobby/LobbyStage.tsx`, `LobbyStage.test.tsx`, `public/lobby/models/LICENSE.md`, `docs/superpowers/plans/2026-11-07-tahap-3f-r1-audit-aset.md`
+- Delete: `public/lobby/models/rug-rectangle-a.glb` (hanya dipakai `baseRug`; cek dulu dengan `grep -n "rug-rectangle-a" src/components/lobby/scene/model-manifest.ts`)
+
+**Interfaces:**
+- Consumes: `FURNITURE`, `HOTSPOT_SPOTS`, `HotspotId`, `spotOf` (Task 3); `lobbyHotspots` (lobi lama).
+- Produces:
+  ```ts
+  // layout.ts
+  export type Furnishing = { id: string; model: ModelKey; at: Point2; y?: number; size: Point3; turn: number; solid: boolean; serves: HotspotId }
+  export type HotspotId = Genre | "meja-baca" | "meja-admin" | "troli" | "katalog" | "lemari" | "tanaman" | "toko" | "perapian" | "pintu"
+  // HOTSPOT_SPOTS: urutan tab ... "toko", "perapian", "pintu" (Task 4C menyisipkan "papan" di antara keduanya)
+  ```
+  Label hotspot baru (`lobby-data.ts`): `perapian` → `"Kilas balik"`, `pintu` → `"Pengaturan"`.
+
+- [ ] **Step 1: Catat persetujuan Task 4**
+
+Di akhir `docs/superpowers/plans/2026-11-07-tahap-3f-r1-audit-aset.md` tambahkan bagian:
+```markdown
+## Persetujuan arah visual
+
+Disetujui pemilik, 2026-11-13, dengan syarat benda tanpa fungsi dibuang (spec 3F keputusan 9): tangga dan relnya, karpet panjang di depan rak, tanaman dekat pintu, tanaman dan buku di ambang jendela, lukisan di atas pintu, karpet dasar (`baseRug`, model `rug-rectangle-a.glb` dihapus).
+```
+Di tabel audit, baris `baseRug` diberi catatan "dibuang 2026-11-13".
+
+- [ ] **Step 2: Tes (gagal dulu) di `layout.test.ts`**
+
+Ganti harapan urutan tab di tes "lists the hotspots in tab order, once each" menjadi:
+```ts
+expect(HOTSPOT_SPOTS.map(({ id }) => id)).toEqual([
+  "meja-baca", ...GENRE_VALUES, "troli", "meja-admin", "katalog", "lemari", "tanaman", "toko",
+  "perapian", "pintu",
+])
+```
+Tambah:
+```ts
+it("gives every piece of base furniture the hotspot it serves (spec 3F §3.6)", () => {
+  const ids = new Set<string>(HOTSPOT_SPOTS.map(({ id }) => id))
+  for (const f of FURNITURE) expect(ids.has(f.serves), f.id).toBe(true)
+})
+
+it("keeps nothing without a use in the room", () => {
+  const ids = FURNITURE.map(({ id }) => id)
+  for (const gone of ["baseRug", "doorPlant"]) expect(ids, gone).not.toContain(gone)
+  expect(MODEL_KEYS).not.toContain("baseRug")
+})
+```
+Run `npx vitest run src/components/lobby/scene/layout.test.ts` → FAIL (`serves` belum ada, urutan tab lama).
+
+- [ ] **Step 3: `layout.ts` dan `model-manifest.ts`**
+
+- `Furnishing` mendapat `serves: HotspotId`. Isi per perabot: `armchair`, `readingLamp` → `"meja-baca"`; `fireplace` → `"perapian"`; `sideTable`, `catalogue` → `"toko"`; `desk`, `deskChair`, `notebook`, `deskLamp` → `"katalog"`; `laptop` → `"meja-admin"`; `parcelBox` → `"troli"`; `glassCabinet` → `"lemari"`.
+- Hapus entri `baseRug` dan `doorPlant` dari `FURNITURE` (komentar "A potted plant in the corner by the door" ikut).
+- `HotspotId` mendapat `"perapian" | "pintu"`. `HOTSPOT_SPOTS` mendapat di akhir (nilai awal, keputusan 3):
+  ```ts
+  { id: "perapian", label: [4.0, 2.0, 0.35], stand: [5.6, 1.0] },
+  { id: "pintu", label: [0.1, 2.4, ROOM_PARTS.door.z], stand: [1.4, 11.0] },
+  ```
+  Perbarui komentar di atas `HOTSPOT_SPOTS` (urutan tab: ..., katalog toko, perapian, pintu).
+- Komentar di atas `ROOM_PARTS`: pintu melayani hotspot `pintu`, papan gabus disiapkan untuk `papan` (Task 4C), jendela adalah penunjuk waktu (spec §3.6).
+- `model-manifest.ts`: hapus `"baseRug"` dari `MODEL_KEYS` dan `baseRug` dari `MODELS`. Hapus berkas glb-nya dan barisnya di `LICENSE.md`.
+
+Run layout test → PASS. Bila hotspot baru gagal tes layar/jangkauan, geser `label`/`stand` (bukan tes).
+
+- [ ] **Step 4: `room.ts` — buang hiasan tanpa fungsi**
+
+- Hapus fungsi `dressing()` seluruhnya (rel kuningan, tangga, karpet panjang, lukisan di atas pintu) dan panggilannya di `buildRoom`. Hapus impor/konstanta yang jadi tak terpakai (`tsc` dan eslint menunjukkannya).
+- Di `windowFrame`: hapus pot herba dan buku di ambang jendela (blok berkomentar "A small pot of herbs and a book on the sill").
+- Ubah komentar `buildRoom` dan `corkboard` (papan gabus kini milik hotspot `papan`, Task 4C).
+
+- [ ] **Step 5: Label dan aksi (tes dulu)**
+
+`lobby-data.test.ts`: tambah
+```ts
+it("names the fireplace and the door", () => {
+  const hotspots = lobbyHotspots(counts)
+  expect(hotspots.find(({ id }) => id === "perapian")).toMatchObject({ label: "Kilas balik", count: null, badge: null, dim: false })
+  expect(hotspots.find(({ id }) => id === "pintu")).toMatchObject({ label: "Pengaturan", count: null, badge: null, dim: false })
+})
+```
+(`counts` = objek hitungan yang sudah dipakai tes lain di berkas itu.) `LobbyStage.test.tsx`: tambah
+```ts
+it("opens Kilas balik from the fireplace and Pengaturan from the door", async () => {
+  const { router } = renderStage(false)
+  await vi.waitFor(() => expect(scene.props).not.toBeNull())
+  const activate = (scene.props as unknown as { onActivate: (id: string) => void }).onActivate
+  await act(async () => activate("perapian"))
+  expect(router.state.location.pathname).toBe("/recap")
+  await act(async () => activate("pintu"))
+  expect(router.state.location.pathname).toBe("/settings")
+})
+```
+(Perluas tipe `scene.props` di mock bila perlu: `{ paused?: boolean; allow3d?: boolean; onActivate?: (id: string) => void }`.) Run → FAIL.
+
+Implementasi: `lobby-data.ts` → `if (id === "perapian") return { ...plain, label: "Kilas balik" }`, `if (id === "pintu") return { ...plain, label: "Pengaturan" }`. `LobbyStage.activate`: `else if (id === "perapian") void navigate({ to: "/recap", search: { periode: undefined } })`, `else if (id === "pintu") void navigate({ to: "/settings" })` (keduanya sebelum cabang `else` genre). Run → PASS.
+
+- [ ] **Step 6: Verifikasi dan commit**
+
+`npx tsc --noEmit`, `npx vitest run --maxWorkers=2` → hijau. `node scripts/lobby-harness.mjs shot scratch/purpose.png` lalu lihat gambarnya: tak ada tangga, lukisan, karpet, tanaman kecil; label hotspot baru tidak menimpa label lain. Format dan commit:
+```bash
+npx prettier --write <berkas yang disentuh>
+git add -A src public/lobby/models docs/superpowers/plans/2026-11-07-tahap-3f-r1-audit-aset.md
+git commit -m "feat(3f): every object has a use; fireplace opens the recap, the door settings" -m "Co-Authored-By: <sesuai pengingat atribusi>"
+```
+
+---
+
+### Task 4B: Sinyal ruangan — api, lampu meja, tutup kotak paket; cincin diam
+
+**Files:**
+- Create: `src/components/lobby/room-signals.ts`, `room-signals.test.ts`, `src/lib/vocab/vocab-seen.ts`, `vocab-seen.test.ts`
+- Modify: `src/lib/local/keys.ts`, `src/lib/vocab/vocab-client.ts`, `src/routes/_member/_lobi/vocabulary.tsx`, `src/components/lobby/scene/daylight.ts`, `daylight.test.ts`, `furniture.ts`, `stage.ts`, `motion.ts`, `people.ts`, `src/components/lobby/{LobbyStage,LobbyScene,LobbyCanvas}.tsx`, `LobbyCanvas.test.tsx`, `scripts/lobby-harness/main.ts`
+
+**Interfaces:**
+- Consumes: `HabitDay` (`@/lib/habit/types`), `goalSeconds` (`@/lib/reading-habit`), `addDays` (`@/lib/dates`), `WordMeetings` (`@/lib/vocab/types`), `useReadingHabit`, `summarizeLobby(...).trolley`.
+- Produces:
+  ```ts
+  // room-signals.ts (tanpa three; boleh diimpor React dan adegan)
+  export type FireLevel = "bara" | "kecil" | "besar"
+  export type RoomSignals = { fire: FireLevel; deskLamp: boolean; parcelOpen: boolean }
+  export const NEUTRAL_SIGNALS: RoomSignals            // { fire: "kecil", deskLamp: false, parcelOpen: false }
+  export const FIRE_STRENGTH: Record<FireLevel, number>  // { bara: 0.25, kecil: 0.6, besar: 1 }
+  export function fireLevel(days: ReadonlyArray<HabitDay>, today: string): FireLevel
+  export function roomSignals(input: { days: ReadonlyArray<HabitDay>; today: string; meetingsTotal: number | null; vocabSeen: number | null; trolley: number }): RoomSignals
+  // vocab-seen.ts
+  export function meetingsTotal(meetings: WordMeetings): number
+  export function readVocabSeen(): number | null
+  export function rememberVocabSeen(total: number): void
+  // vocab-client.ts
+  export function useMeetingsTotal(): number | null     // null sampai cache Kosakata terbaca
+  // keys.ts
+  export const VOCAB_SEEN_KEY = "glosa:vocab-seen"
+  // stage.ts
+  Stage.setSignals: (signals: RoomSignals) => void       // StageOptions tidak berubah; awal = NEUTRAL_SIGNALS
+  ```
+  `LobbyScene`/`LobbyCanvas` mendapat prop `signals?: RoomSignals` (default `NEUTRAL_SIGNALS`).
+
+- [ ] **Step 1: Tes fungsi murni (gagal dulu)**
+
+`src/components/lobby/room-signals.test.ts`:
+```ts
+import { describe, expect, it } from "vitest"
+import type { HabitDay } from "@/lib/habit/types"
+import { NEUTRAL_SIGNALS, fireLevel, roomSignals } from "./room-signals"
+
+const TODAY = "2026-11-13"
+const read = (day: string): HabitDay => ({ day, seconds: 600, goalMinutes: 5 })
+const short = (day: string): HabitDay => ({ day, seconds: 60, goalMinutes: 5 })
+
+describe("fireLevel", () => {
+  it("is embers without a reading day in the last 7 days", () => {
+    expect(fireLevel([], TODAY)).toBe("bara")
+    expect(fireLevel([short(TODAY), read("2026-11-06")], TODAY)).toBe("bara")
+  })
+  it("is small for 1–2 reading days and big from 3", () => {
+    expect(fireLevel([read("2026-11-07")], TODAY)).toBe("kecil")
+    expect(fireLevel([read(TODAY), read("2026-11-12")], TODAY)).toBe("kecil")
+    expect(fireLevel([read(TODAY), read("2026-11-12"), read("2026-11-10")], TODAY)).toBe("besar")
+  })
+  it("counts a day once and ignores days after today", () => {
+    expect(fireLevel([read(TODAY), read(TODAY), read("2026-11-14")], TODAY)).toBe("kecil")
+  })
+})
+
+describe("roomSignals", () => {
+  const base = { days: [], today: TODAY, meetingsTotal: 10, vocabSeen: 10, trolley: 0 }
+  it("lights the desk lamp only when words met again since Kosakata was opened", () => {
+    expect(roomSignals(base).deskLamp).toBe(false)
+    expect(roomSignals({ ...base, meetingsTotal: 12 }).deskLamp).toBe(true)
+    expect(roomSignals({ ...base, meetingsTotal: null }).deskLamp).toBe(false)
+    expect(roomSignals({ ...base, vocabSeen: null }).deskLamp).toBe(false)
+  })
+  it("opens the parcel box when a book has no genre", () => {
+    expect(roomSignals(base).parcelOpen).toBe(false)
+    expect(roomSignals({ ...base, trolley: 2 }).parcelOpen).toBe(true)
+  })
+  it("has neutral signals for the still image", () => {
+    expect(NEUTRAL_SIGNALS).toEqual({ fire: "kecil", deskLamp: false, parcelOpen: false })
+  })
+})
+```
+`src/lib/vocab/vocab-seen.test.ts`:
+```ts
+import { afterEach, describe, expect, it } from "vitest"
+import { VOCAB_SEEN_KEY } from "@/lib/local/keys"
+import { meetingsTotal, readVocabSeen, rememberVocabSeen } from "./vocab-seen"
+
+describe("vocab seen", () => {
+  afterEach(() => localStorage.clear())
+  it("adds up every saved word's meetings", () => {
+    expect(meetingsTotal({})).toBe(0)
+    expect(meetingsTotal({ run: { meetings: 3, books: 1 }, keen: { meetings: 4, books: 2 } })).toBe(7)
+  })
+  it("remembers the total on this device and ignores a broken value", () => {
+    expect(readVocabSeen()).toBeNull()
+    rememberVocabSeen(12)
+    expect(readVocabSeen()).toBe(12)
+    localStorage.setItem(VOCAB_SEEN_KEY, "lots")
+    expect(readVocabSeen()).toBeNull()
+  })
+})
+```
+Run kedua berkas → FAIL.
+
+- [ ] **Step 2: Implementasi fungsi murni**
+
+`room-signals.ts`:
+```ts
+import { addDays } from "@/lib/dates"
+import type { HabitDay } from "@/lib/habit/types"
+import { goalSeconds } from "@/lib/reading-habit"
+
+/** The fireplace's state (spec 3F §3.6): reading days in the last 7 days. */
+export type FireLevel = "bara" | "kecil" | "besar"
+/** What the room shows about the member's reading (spec 3F §3.6). */
+export type RoomSignals = { fire: FireLevel; deskLamp: boolean; parcelOpen: boolean }
+
+/** For the still image and before the data arrives. */
+export const NEUTRAL_SIGNALS: RoomSignals = { fire: "kecil", deskLamp: false, parcelOpen: false }
+
+/** Flame size and glow, 0..1. */
+export const FIRE_STRENGTH: Record<FireLevel, number> = { bara: 0.25, kecil: 0.6, besar: 1 }
+
+/** A reading day is a day whose goal was met (spec 3B §3.2), as for the streak. */
+export function fireLevel(days: ReadonlyArray<HabitDay>, today: string): FireLevel {
+  const from = addDays(today, -6)
+  const read = new Set(
+    days
+      .filter((d) => d.day >= from && d.day <= today && d.seconds >= goalSeconds(d.goalMinutes))
+      .map((d) => d.day)
+  )
+  if (read.size === 0) return "bara"
+  return read.size <= 2 ? "kecil" : "besar"
+}
+
+export function roomSignals(input: {
+  days: ReadonlyArray<HabitDay>
+  today: string
+  meetingsTotal: number | null
+  vocabSeen: number | null
+  trolley: number
+}): RoomSignals {
+  const { meetingsTotal, vocabSeen } = input
+  return {
+    fire: fireLevel(input.days, input.today),
+    deskLamp: meetingsTotal !== null && vocabSeen !== null && meetingsTotal > vocabSeen,
+    parcelOpen: input.trolley > 0,
+  }
+}
+```
+`keys.ts`: `export const VOCAB_SEEN_KEY = "glosa:vocab-seen"` (dengan komentar: total pertemuan kata saat Kosakata terakhir dibuka, spec 3F §3.6).
+`vocab-seen.ts`:
+```ts
+import { VOCAB_SEEN_KEY } from "@/lib/local/keys"
+import type { WordMeetings } from "./types"
+
+/** Every saved word's meetings added up: it only grows while the member reads (spec 3D). */
+export function meetingsTotal(meetings: WordMeetings): number {
+  let total = 0
+  for (const { meetings: count } of Object.values(meetings)) total += count
+  return total
+}
+
+/** The total when Kosakata was last opened on this device; null when unknown. */
+export function readVocabSeen(): number | null {
+  try {
+    const raw = localStorage.getItem(VOCAB_SEEN_KEY)
+    if (raw === null) return null
+    const total = Number(raw)
+    return Number.isInteger(total) && total >= 0 ? total : null
+  } catch {
+    return null
+  }
+}
+
+export function rememberVocabSeen(total: number): void {
+  try {
+    localStorage.setItem(VOCAB_SEEN_KEY, String(total))
+  } catch {
+    // Storage can be off (private windows): the desk lamp then stays off.
+  }
+}
+```
+`vocab-client.ts` (dekat `useWordMeetings`):
+```ts
+/** The meetings added up; null until the vocabulary cache is read (spec 3F §3.6). */
+export function useMeetingsTotal(): number | null {
+  const cache = useVocabState().cache
+  return useMemo(() => (cache === null ? null : meetingsTotal(cache.meetings)), [cache])
+}
+```
+(impor `useMemo` dan `meetingsTotal`.) `vocabulary.tsx` (`VocabularyPage`): `const total = useMeetingsTotal()` dan `useEffect(() => { if (total !== null) rememberVocabSeen(total) }, [total])` — membuka Kosakata memadamkan lampu. Run tes Step 1 → PASS.
+
+- [ ] **Step 3: Rig tanpa api**
+
+`daylight.ts`: hapus `fire` dari `LightRig`, dari ketiga `RIGS`, dan dari `mixRig`; perbarui `daylight.test.ts` (hapus harapan `fire`). `stage.ts` `applyRig` sementara memakai `FIRE_STRENGTH[signals.fire]` (Step 4).
+
+- [ ] **Step 4: Adegan menampilkan sinyal**
+
+`furniture.ts`:
+- `Glow.kind` menjadi `"lamps" | "fire" | "desk"`; `Build.light` menerima `kind: "lamp" | "desk" | "fire"`; `Build` mendapat `mark: (role: "flame" | "flap", object: THREE.Object3D) => void` yang mengumpulkan objek ke `flames`/`flaps` dan menandai `object.userData.animated = true` (supaya `mergeStatic` melewatinya).
+- `Furnishings` menjadi `{ lamps: Array<THREE.PointLight>; deskLight: THREE.PointLight | null; fire: THREE.PointLight; flames: Array<THREE.Object3D>; flaps: Array<THREE.Object3D>; emissives: Array<Glow> }`.
+- `lampGlow(build, kind)`: perabot `deskLamp` memakai `"desk"` untuk glow dan cahayanya (`light(..., "desk")` → `deskLight`, hanya bila `withLights`); `readingLamp` tetap `"lamps"`. Panggil dengan `piece.id === "deskLamp" ? "desk" : "lamps"`.
+- `fireplace`: lilin di mantel memakai glow `"fire"` (bagian dari sinyal api, keputusan 11); mesh nyala api dibungkus satu `Group` berporos di dasar perapian lalu `mark("flame", group)`.
+- `parcelDetails`: dua tutup berengsel di tepi atas sisi panjang:
+  ```ts
+  for (const side of [-1, 1] as const) {
+    const hinge = new THREE.Group()
+    hinge.position.set(0, h, (side * d) / 2)
+    hinge.userData.side = side
+    group.add(hinge)
+    kit.block(w * 0.98, 0.006, d / 2, "#c8a06a", 0, 0, (-side * d) / 4, { r: 0.002, parent: hinge, cast: false })
+    mark("flap", hinge)
+  }
+  ```
+  Terbuka = `hinge.rotation.x = side × 1.9`, tertutup = `0`.
+
+`stage.ts`: `let signals: RoomSignals = NEUTRAL_SIGNALS`. Di `applyRig`: emisif `kind === "fire"` → `FIRE_STRENGTH[signals.fire]`, `"desk"` → `signals.deskLamp ? 1 : 0`, `"lamps"` → `rig.lamps`; `furniture.fire.intensity = FIRE_STRENGTH[signals.fire] × 2`; `furniture.deskLight.intensity = signals.deskLamp ? 1.6 : 0`; untuk tiap `flames` `scale.y = FIRE_STRENGTH[signals.fire]`; untuk tiap `flaps` `rotation.x = signals.parcelOpen ? side × 1.9 : 0`. `setSignals(next)`: `signals = next; applyRig(current); requestRender()`. `setQuality`: `deskLight.visible` ikut aturan lampu titik seperti `lamps`.
+
+`motion.ts`: hapus denyut cincin (`people.ring.material.opacity = 0.55 + …`). `people.ts`: opasitas cincin tetap `0.8`. (Cincin diam, spec §3.6.)
+
+React: `LobbyStage.tsx` menghitung
+```ts
+const meetingsTotal = useMeetingsTotal()
+const [vocabSeen, setVocabSeen] = useState<number | null>(null)
+useEffect(() => {
+  if (meetingsTotal === null) return
+  const seen = readVocabSeen()
+  // No record yet: this visit becomes the starting point, the lamp stays off.
+  if (seen === null) rememberVocabSeen(meetingsTotal)
+  setVocabSeen(seen ?? meetingsTotal)
+}, [meetingsTotal])
+const signals = useMemo(
+  () => roomSignals({ days: habit.days, today: habit.today, meetingsTotal, vocabSeen, trolley: summary.trolley.length }),
+  [habit.days, habit.today, meetingsTotal, vocabSeen, summary.trolley.length]
+)
+```
+dan meneruskan `signals={signals}` ke `LobbyScene`. `LobbyScene`/`LobbyCanvas`: prop `signals` dengan pola yang sama persis seperti `plant` (ref, efek `stageRef.current?.setSignals`, dan `stage.setSignals(signalsRef.current)` setelah stage siap). `LobbyCanvas.test.tsx`: mock stage mendapat `setSignals: vi.fn()`; tambah tes "hands the room's signals to the stage, now and on change" dengan pola tes `plant`.
+
+Harness `main.ts`: `?fire=bara|kecil|besar`, `?lamp=1`, `?parcel=1` → `stage.setSignals({ fire, deskLamp, parcelOpen })` (default `NEUTRAL_SIGNALS`).
+
+- [ ] **Step 5: Verifikasi dan commit**
+
+`npx tsc --noEmit`, `npx vitest run --maxWorkers=2` → hijau. Lihat dua gambar:
+```bash
+node scripts/lobby-harness.mjs shot scratch/signals-off.png "mood=day&fire=bara"
+node scripts/lobby-harness.mjs shot scratch/signals-on.png "mood=day&fire=besar&lamp=1&parcel=1"
+```
+(argumen ketiga `shot` diteruskan apa adanya ke query). Di siang hari: api besar dan lampu meja menyala terlihat pada gambar kedua, bara dan lampu padam pada gambar pertama; tutup kotak terbuka. Format dan commit `feat(3f): the fire, desk lamp and parcel box show your reading`.
+
+---
+
+### Task 4C: Papan gabus — sorotan terbaru
+
+**Files:**
+- Modify: `src/lib/annotations/types.ts`, `src/server/annotations.ts`, `src/components/lobby/scene/layout.ts`, `layout.test.ts`, `room.ts`, `stage.ts`, `src/components/lobby/lobby-data.ts`, `lobby-data.test.ts`, `src/components/lobby/{LobbyStage,LobbyScene,LobbyCanvas}.tsx`, `LobbyStage.test.tsx`, `LobbyCanvas.test.tsx`, `scripts/lobby-harness/main.ts`
+- Create: `src/lib/annotations/highlights-client.ts`, `highlights-client.test.ts`, `src/components/lobby/CorkboardPanel.tsx`, `CorkboardPanel.test.tsx`
+
+**Interfaces:**
+- Consumes: tabel `annotations` (RLS yang ada), `HighlightColor`, `ShelfBook`, pola `TrolleyPanel` (dialog di atas lobi), pola klien `useRecap` (`src/lib/recap/recap-client.ts`).
+- Produces:
+  ```ts
+  // types.ts
+  export type Highlight = { id: string; bookId: string; cfi: string; color: HighlightColor; note: string; excerpt: string; createdAt: string }
+  export type HighlightsAnswer = { ok: true; highlights: Array<Highlight> } | { ok: false; code: string }
+  export const MAX_HIGHLIGHTS = 500
+  // annotations.ts (server)
+  export const listHighlightsFn: ({ data }: { data: { limit: number } }) => Promise<HighlightsAnswer>
+  // highlights-client.ts
+  export type HighlightsState = { status: "loading" } | { status: "offline" } | { status: "failed" } | { status: "ready"; highlights: Array<Highlight> }
+  export function useHighlights(limit: number, online: boolean): { state: HighlightsState; retry: () => void }
+  // CorkboardPanel.tsx
+  export function CorkboardPanel(props: { open: boolean; onOpenChange: (open: boolean) => void; state: HighlightsState; books: ReadonlyArray<ShelfBook>; onRetry: () => void }): JSX.Element
+  // room.ts
+  export function buildRoom(kit: Kit, models: ModelSet): { setNotes: (colors: ReadonlyArray<HighlightColor>) => void }
+  // stage.ts
+  Stage.setNotes: (colors: ReadonlyArray<HighlightColor>) => void
+  // layout.ts: HotspotId + "papan"; HOTSPOT_SPOTS ..., "toko", "perapian", "papan", "pintu"
+  ```
+  Label `papan` → `"Sorotan"`.
+
+- [ ] **Step 1: Fungsi server (tes skema dulu)**
+
+`types.ts`: tambah `Highlight`, `HighlightsAnswer`, `MAX_HIGHLIGHTS`. `src/lib/annotations/schemas.ts`: `export const HighlightsRequestSchema = z.object({ limit: z.number().int().min(1).max(MAX_HIGHLIGHTS) })`; `schemas.test.ts`: `limit` 0, 501, 1.5 ditolak; 3 dan 500 diterima. Run → FAIL lalu tulis skema → PASS.
+
+`annotations.ts`:
+```ts
+/** The member's newest highlights across books, without tombstones (spec 3F §3.2, §4A.3). */
+export const listHighlightsFn = createServerFn({ method: "GET" })
+  .validator((data: { limit: number }) => HighlightsRequestSchema.parse(data))
+  .handler(async ({ data }): Promise<HighlightsAnswer> => {
+    const supabase = getSupabaseServerClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return fail("not_authenticated")
+    const { data: rows, error } = await supabase
+      .from("annotations")
+      .select("id, book_id, cfi, color, note, excerpt, created_at")
+      .eq("kind", "highlight")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(data.limit)
+    if (error) {
+      logServerError("listing highlights failed", error)
+      return fail("unknown")
+    }
+    return {
+      ok: true,
+      highlights: rows.map((row) => ({
+        id: row.id,
+        bookId: row.book_id,
+        cfi: row.cfi,
+        color: row.color as HighlightColor,
+        note: row.note,
+        excerpt: row.excerpt,
+        createdAt: row.created_at,
+      })),
+    }
+  })
+```
+RLS sudah membatasi ke baris milik anggota; tidak perlu `.eq("user_id", …)` (ikuti `listAnnotationsFn`, yang juga tidak memakainya).
+
+- [ ] **Step 2: Klien (tes dulu)**
+
+`highlights-client.test.ts` dengan `vi.mock("@/server/annotations", () => ({ listHighlightsFn: vi.fn() }))` dan `renderHook`:
+```ts
+it("loads the newest highlights when online", async () => {
+  vi.mocked(listHighlightsFn).mockResolvedValue({ ok: true, highlights: [one] })
+  const { result } = renderHook(() => useHighlights(3, true))
+  expect(result.current.state).toEqual({ status: "loading" })
+  await waitFor(() => expect(result.current.state).toEqual({ status: "ready", highlights: [one] }))
+  expect(listHighlightsFn).toHaveBeenCalledWith({ data: { limit: 3 } })
+})
+it("says offline without asking the server", () => {
+  const { result } = renderHook(() => useHighlights(3, false))
+  expect(result.current.state).toEqual({ status: "offline" })
+  expect(listHighlightsFn).not.toHaveBeenCalled()
+})
+it("fails on a refused answer and asks again on retry", async () => {
+  vi.mocked(listHighlightsFn).mockResolvedValueOnce({ ok: false, code: "unknown" })
+  const { result } = renderHook(() => useHighlights(3, true))
+  await waitFor(() => expect(result.current.state).toEqual({ status: "failed" }))
+  vi.mocked(listHighlightsFn).mockResolvedValueOnce({ ok: true, highlights: [] })
+  act(() => result.current.retry())
+  await waitFor(() => expect(result.current.state).toEqual({ status: "ready", highlights: [] }))
+})
+```
+(`one`: `Highlight` contoh.) Implementasi mengikuti pola `useRecap`: efek bergantung `[limit, online, attempt]`, penanda `live` untuk jawaban yang terlambat, `console.error` saat ditolak/melempar. Run → PASS.
+
+- [ ] **Step 3: Panel papan (tes dulu)**
+
+`CorkboardPanel.test.tsx` (render di router uji seperti tes `TrolleyPanel`):
+- `ready` dengan dua sorotan → dialog berjudul "Sorotan" menampilkan kutipan, catatan, judul buku, dan tautan "Buka di buku" ke `/read/<bookId>?cfi=<cfi ter-encode>`;
+- sorotan dari buku yang sudah tidak ada di `books` tidak tampil;
+- `ready` kosong → "Belum ada sorotan. Tandai kalimat yang kamu suka saat membaca; tiga yang terbaru tertempel di sini.";
+- `offline` → "Sorotan bisa dilihat saat online.";
+- `failed` → "Sorotan belum bisa dimuat." dengan tombol "Coba lagi" yang memanggil `onRetry`.
+
+Implementasi: komponen `Dialog` yang sama dengan `TrolleyPanel` (judul "Sorotan"), daftar paling banyak 3 sorotan (`state.highlights.slice(0, 3)` setelah disaring ke buku yang ada), kutipan dipotong 4 baris (`line-clamp-4`), garis warna kiri dari `color`, tautan `<Link to="/read/$bookId" params={{ bookId }} search={{ cfi }}>Buka di buku</Link>`. Run → PASS.
+
+- [ ] **Step 4: Kertas di papan dan hotspot (tes dulu)**
+
+`layout.test.ts`: urutan tab menjadi `..., "toko", "perapian", "papan", "pintu"`. `HOTSPOT_SPOTS` mendapat (nilai awal) `{ id: "papan", label: [ROOM_PARTS.corkboard.x, ROOM_PARTS.corkboard.y + 0.7, 0.1], stand: [ROOM_PARTS.corkboard.x, 1.6] }` di antara `perapian` dan `pintu`. `lobby-data.ts`: `papan` → `"Sorotan"` (tes di `lobby-data.test.ts`). `LobbyStage.test.tsx`: `activate("papan")` → dialog "Sorotan" tampil (mock `@/lib/annotations/highlights-client` mengembalikan `{ state: { status: "ready", highlights: [] }, retry: vi.fn() }`).
+
+`room.ts`: `corkboard` tidak lagi menggambar lima kertas tetap. Buat tiga kertas sekali (ukuran dan posisi dari tiga baris pertama tabel `notes` yang ada, masing-masing `userData.animated = true`, tidak digabung) dan kembalikan `setNotes(colors)`: kertas ke-`i` tampil bila `i < colors.length`, warna kertas dari `NOTE_PAPER[color]` (`yellow #fff3b0`, `green #bfe3d0`, `blue #cfe0f5`, `pink #f2c6c2`), pin tetap. Papan kosong bila belum ada sorotan. `buildRoom` mengembalikan `{ setNotes }`; `stage.ts` menyimpannya dan menambah `setNotes(colors) { room.setNotes(colors); requestRender() }` ke `Stage`.
+
+React: `LobbyStage` memanggil `const highlights = useHighlights(3, online && !offline)` (pakai `useOnline` dari `@/lib/use-online`), `notes = state.status === "ready" ? highlights.filter(buku ada).slice(0, 3).map((h) => h.color) : []`, state `corkboard` + `<CorkboardPanel open={corkboard} … />` di samping `TrolleyPanel`, dan `activate("papan")` → `setCorkboard(true)`. `LobbyScene`/`LobbyCanvas` mendapat prop `notes?: ReadonlyArray<HighlightColor>` (default `[]`) dengan pola `plant`; mock stage di `LobbyCanvas.test.tsx` mendapat `setNotes: vi.fn()`. Harness: `?notes=yellow,blue` → `stage.setNotes(...)`.
+
+Run `npx vitest run src/components/lobby src/lib/annotations --maxWorkers=2` → PASS.
+
+- [ ] **Step 5: Verifikasi dan commit**
+
+`npx tsc --noEmit`, `npx vitest run --maxWorkers=2` → hijau. `node scripts/lobby-harness.mjs shot scratch/notes.png "notes=yellow,green,pink"` lalu lihat: tiga kertas berwarna di papan, label "papan" tidak menimpa label lain. Format dan commit `feat(3f): the corkboard pins your newest highlights`.
+
 ---
 
 ### Task 5: Isi ruangan — rak genre dan hotspot, lemari kaca, tanaman, Anda, batas jalan
@@ -1201,7 +1693,7 @@ Run → PASS bila Task 1 mengisi manifest (tes penjaga), lalu tulis tes tabrakan
 
 - [ ] **Step 2: Buat ulang 18 barang**
 
-Untuk tiap barang: bila `MODELS["decor_<id>"].file !== null`, `DECOR_BUILDERS[id]` memakai `models.get(key)` → `fitTo(group, tinggi)` (tinggi di tabel di bawah) dan menempelkannya ke `part` (di titik dan putaran slot); selain itu pembangun kode yang ada diperbarui bergaya membulat/palet hangat (`r` pada balok, bentuk bulat untuk lentera/bola/akuarium). Tinggi (m): rug_* 0,03; lamp_floor 1,5; lamp_arc 1,7; lamp_lantern 0,5 (menggantung dari `y = 3,3` bila lentera; atur `at[1]` di pembangun, bukan di slot); seat_beanbag 0,55; seat_armchair 0,9; seat_sofa 0,9; wall_map 1,0; wall_painting 0,9; wall_clock 0,8; pet_cat 0,35; pet_bird 0,7; pet_aquarium 0,7; ceiling_lights 0,5; ceiling_books 0,7; ceiling_globe 0,7. Efek berjalan (burung, ikan, buku berputar, bola berputar) memakai `onChange` seperti sekarang; barang menyala (`lamp_*`, `ceiling_lights`) menaikkan emisif dengan `RIGS[mood].lamps` (kait `setMood` lewat `decor.setLamps(k: number)` yang dipanggil `applyRig`). `buildDecor` kini menerima `models`; `stage.ts` meneruskannya dan memanggil `decor.setLamps(rig.lamps)`. Kiosk toko sudah dihapus di Task 3; katalog toko = hotspot `toko` di meja samping.
+Untuk tiap barang: bila `MODELS["decor_<id>"].file !== null`, `DECOR_BUILDERS[id]` memakai `models.get(key)` → `fitTo(group, tinggi)` (tinggi di tabel di bawah) dan menempelkannya ke `part` (di titik dan putaran slot); selain itu pembangun kode yang ada diperbarui bergaya membulat/palet hangat (`r` pada balok, bentuk bulat untuk lentera/bola/akuarium). Tinggi (m): rug_* 0,03; lamp_floor 1,5; lamp_arc 1,7; lamp_lantern 0,5 (menggantung dari `y = 3,3` bila lentera; atur `at[1]` di pembangun, bukan di slot); seat_beanbag 0,55; seat_armchair 0,9; seat_sofa 0,9; wall_map 1,0; wall_painting 0,9; wall_clock 0,8; pet_cat 0,35; pet_bird 0,7; pet_aquarium 0,7; ceiling_lights 0,5; ceiling_books 0,7; ceiling_globe 0,7. Efek berjalan (burung, ikan, buku berputar, bola berputar) **hanya bermain selama 4 detik setelah barang itu muncul di slotnya** lewat `decor.set(placed)` (dipratinjau di toko atau baru dipasang: respons atas tindakan, spec §3.6), lalu berhenti di pose awalnya. Barang yang sudah terpasang saat lobi dimuat langsung diam. Animasi memakai `onChange` seperti sekarang selama jendela 4 detik itu; tes di `decor.test.ts`: fungsi murni `animating(since: number | null, now: number): boolean` (benar hanya untuk `0 ≤ now − since < 4000`, `null` → salah); barang menyala (`lamp_*`, `ceiling_lights`) menaikkan emisif dengan `RIGS[mood].lamps` (kait `setMood` lewat `decor.setLamps(k: number)` yang dipanggil `applyRig`). `buildDecor` kini menerima `models`; `stage.ts` meneruskannya dan memanggil `decor.setLamps(rig.lamps)`. Kiosk toko sudah dihapus di Task 3; katalog toko = hotspot `toko` di meja samping.
 
 - [ ] **Step 3: Pratinjau toko dan jalan**
 
@@ -1234,7 +1726,7 @@ Di `LobbyScene.test.tsx`, dengan `LobbyCanvas` yang sudah di-mock di file itu: (
 
 - [ ] **Step 3: Gambar diam dan thumbnail dari adegan baru**
 
-Harness `still`: tambahkan `?mood=night` pada query (`render(STILL, "mode=still&mood=night")`), batas 250 kB avif tetap. Harness `thumbs`: `render(THUMB, \`mode=still&mood=night&decor=${id}\`)`; batas 60 kB tetap. Jalankan (lambat; SwiftShader):
+Harness `still`: tambahkan `?mood=night` pada query (`render(STILL, "mode=still&mood=night")`), batas 250 kB avif tetap. Gambar diam memakai sinyal netral dan papan kosong (default stage `NEUTRAL_SIGNALS` dan `setNotes([])`; jangan memberi `fire`/`lamp`/`parcel`/`notes` di query `still`), sesuai spec §3.5. Hotspot `perapian`, `papan`, dan `pintu` ikut tampil di atas gambar diam lewat `HotspotLayer` (sudah dari `HOTSPOT_SPOTS`); periksa di gambar bahwa titiknya jatuh di perapian, papan, dan pintu. Harness `thumbs`: `render(THUMB, \`mode=still&mood=night&decor=${id}\`)`; batas 60 kB tetap. Jalankan (lambat; SwiftShader):
 ```bash
 node scripts/lobby-harness.mjs still
 node scripts/lobby-harness.mjs thumbs
@@ -1271,6 +1763,8 @@ harus sama dengan jumlah berkas glb unik di `MODELS` (`node -e` pada `public/lob
 
 Jalankan lobi/toko/lemari/tanaman: `npx playwright test e2e/lobby-3d.spec.ts e2e/lobby.spec.ts e2e/lobby-popup.spec.ts e2e/shop.spec.ts e2e/collections.spec.ts e2e/habit.spec.ts e2e/offline.spec.ts --workers=2` (cek port 3000 lebih dulu, lihat Global Constraints). Perbaiki hanya yang bergantung pada letak benda/koordinat/jumlah buku lama; jangan melonggarkan pernyataan tentang perilaku (toko: pratinjau dan pasang; lemari; tanaman; offline menampilkan gambar diam). Offline: E2E tanpa WebGL sudah memakai gambar diam; tambahkan satu pernyataan di `offline.spec.ts` bila file itu memeriksa aset lobi: gambar diam malam dimuat.
 
+Tambah di `e2e/lobby.spec.ts` (benda bertujuan, spec §3.2): ketuk hotspot "Kilas balik" → URL `/recap` dan popup Kilas balik tampil; ketuk "Pengaturan" (hotspot pintu, bukan tombol bilah atas; pilih lewat wadah hotspot yang dipakai tes lain di berkas itu) → URL `/settings` dengan tautan "Keluar"; ketuk "Sorotan" → dialog "Sorotan" dengan teks kosong "Belum ada sorotan." untuk anggota uji tanpa sorotan.
+
 - [ ] **Step 3: Verifikasi akhir**
 
 ```bash
@@ -1294,6 +1788,8 @@ git commit -m "test(3f): E2E for the study room" -m "Co-Authored-By: Claude Opus
 ## Self-review (dijalankan penulis rencana)
 
 **Cakupan spec.** §3.1 ruangan → Task 3 (+ keputusan 1, 2); §3.2 benda/hotspot → Task 3 (perabot, hotspot), Task 5 (rak, lemari, tanaman, Anda), katalog toko = `catalogue` di meja samping (Task 3); jendela/papan gabus tanpa hotspot → `ROOM_PARTS` (Task 3); §3.3 slot/18 barang → Task 6; §3.4 cahaya → Task 2–3; §3.5 kualitas, diam, pemuatan → Task 3 (`rendah` tanpa lampu titik/bayangan), Task 7, kegagalan model → keputusan 7; §5.1 aset → Task 1; §5.2 kode → Task 3/5/6; §5.3 → Task 1 (loader), Task 7 (PWA), Task 3/5 (gabung mesh, instancing); §5.4 modul → tabel file; §7 tes → hotspot di ruangan + terproyeksi (Task 3), daylight (Task 2), manifest (Task 1), slot dekor (Task 3/6), Anda tak menembus perabot (Task 5), harness tiga suasana/gambar diam/thumbnail (Task 3, 7), E2E (Task 8). §6 titik cek → Task 4. Pemindaian teks dan bahasa → R2.
+
+**Pembaruan 2026-11-13.** Spec keputusan 9 (buang benda tanpa fungsi) → Task 4A Step 3–4 (+ keputusan 11); §3.2 hotspot `perapian`, `pintu` → Task 4A, `papan` → Task 4C (+ keputusan 12 untuk pintu); §3.4 catatan sinyal di semua suasana dan §3.6 sinyal → Task 4B (+ keputusan 13, 15); §3.5 sinyal netral di gambar diam → Task 7 Step 3; §3.6 tes "setiap perabot punya tujuan" → Task 4A Step 2; cincin diam → Task 4B Step 4; §7 E2E perapian/papan/pintu → Task 8 Step 2. Kegiatan Anda, momen perubahan, dan `/highlights` (§4A) ada di R3.
 
 **Placeholder.** Nilai posisi/palet berlabel "nilai awal" dengan tes penentu (keputusan 3); langkah audit bergantung isi paket yang sengaja tidak ditebak (aturan pemetaan dan keputusan ada di Task 1).
 
