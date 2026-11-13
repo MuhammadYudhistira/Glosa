@@ -1,5 +1,10 @@
 import { localDb } from "./db"
-import { COVER_CACHE, READER_SETTINGS_KEY, USER_KEY } from "./keys"
+import {
+  COVER_CACHE,
+  READER_SETTINGS_KEY,
+  USER_KEY,
+  VOCAB_SEEN_KEY,
+} from "./keys"
 
 const OWNER_KEY = "owner"
 
@@ -13,7 +18,7 @@ export function onMemberDataWiped(listener: () => void): () => void {
   }
 }
 
-/** Drops the member's books, positions, Kosakata, annotations, reading time, section time, vocabulary queues, shelf snapshot, cached covers and reader settings. */
+/** Drops the member's books, positions, Kosakata, annotations, reading time, section time, vocabulary queues, shelf snapshot, cached covers, reader settings and the desk lamp's remembered total. */
 async function wipeMemberData(): Promise<void> {
   const db = localDb()
   const tables = [
@@ -33,6 +38,7 @@ async function wipeMemberData(): Promise<void> {
   })
   try {
     localStorage.removeItem(READER_SETTINGS_KEY)
+    localStorage.removeItem(VOCAB_SEEN_KEY)
   } catch {
     // No localStorage (private mode or tests): nothing to remove.
   }
