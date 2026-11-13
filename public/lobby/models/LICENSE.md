@@ -29,7 +29,6 @@ binary `.glb` with `gltf-pipeline` (no Draco, geometry unchanged).
 | lamp-table.glb | lamp_table | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
 | pictureframe-large-a.glb | pictureframe_large_A | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
 | rug-oval-a.glb | rug_oval_A | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
-| rug-rectangle-a.glb | rug_rectangle_A | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
 | rug-rectangle-b.glb | rug_rectangle_B | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
 | rug-rectangle-stripes-a.glb | rug_rectangle_stripes_A | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |
 | table-medium-long.glb | table_medium_long | Kay Lousberg | CC0 1.0 | https://kaylousberg.itch.io/furniture-bits |

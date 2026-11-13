@@ -83,6 +83,22 @@ describe("lobbyHotspots", () => {
     ).toBeNull()
   })
 
+  it("names the fireplace and the door", () => {
+    const hotspots = lobbyHotspots(summarizeLobby([]).counts)
+    expect(hotspots.find(({ id }) => id === "perapian")).toMatchObject({
+      label: "Kilas balik",
+      count: null,
+      badge: null,
+      dim: false,
+    })
+    expect(hotspots.find(({ id }) => id === "pintu")).toMatchObject({
+      label: "Pengaturan",
+      count: null,
+      badge: null,
+      dim: false,
+    })
+  })
+
   it("has the card catalogue, which opens Kosakata", () => {
     const hotspots = lobbyHotspots(summarizeLobby([]).counts)
     expect(hotspots.find(({ id }) => id === "katalog")).toEqual({

@@ -28,7 +28,7 @@ describe("LibraryMap", () => {
   it("sends the camera to a place picked on the map", () => {
     const onSelect = vi.fn()
     render(<LibraryMap hotspots={hotspots} anda={[6, 6]} onSelect={onSelect} />)
-    expect(screen.getAllByRole("button")).toHaveLength(15)
+    expect(screen.getAllByRole("button")).toHaveLength(17)
     fireEvent.click(screen.getByRole("button", { name: "Meja Baca di peta" }))
     expect(onSelect).toHaveBeenCalledWith("meja-baca")
   })

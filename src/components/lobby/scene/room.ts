@@ -320,37 +320,6 @@ function windowFrame(kit: Kit, parent: THREE.Object3D) {
   glass.position.set(cx, y0 + height / 2, -0.08)
   glass.renderOrder = 2
   parent.add(glass)
-  // A small pot of herbs and a book on the sill.
-  kit.mesh(
-    new THREE.CylinderGeometry(0.09, 0.07, 0.14, 16),
-    "#b4643c",
-    x0 + 0.45,
-    y0 + 0.07,
-    0.06,
-    { parent }
-  )
-  for (const [dx, dy, s] of [
-    [0, 0.2, 0.1],
-    [0.06, 0.25, 0.07],
-    [-0.05, 0.24, 0.075],
-  ] as const) {
-    kit.mesh(
-      new THREE.SphereGeometry(s, 12, 10),
-      "#6c9a4e",
-      x0 + 0.45 + dx,
-      y0 + dy,
-      0.06,
-      { parent }
-    )
-  }
-  kit.block(0.3, 0.05, 0.2, "#3f5d8a", x1 - 0.5, y0, 0.08, {
-    r: 0.012,
-    parent,
-  })
-  kit.block(0.28, 0.04, 0.18, "#e0b45c", x1 - 0.5, y0 + 0.05, 0.08, {
-    r: 0.012,
-    parent,
-  })
 
   // Brass rod with round finials.
   const rodY = y1 + 0.28
@@ -405,7 +374,8 @@ function windowFrame(kit: Kit, parent: THREE.Object3D) {
 }
 
 /**
- * The corkboard (spec 3F §3.2; Tahap 4 pins its feed here): a wooden frame,
+ * The corkboard (spec 3F §3.2): it belongs to the `papan` hotspot (Task 4C),
+ * which pins its feed here. A wooden frame,
  * speckled cork, paper notes and a postcard held by coloured pins.
  */
 function corkboard(kit: Kit, parent: THREE.Object3D) {
@@ -545,122 +515,6 @@ function shelfWall(kit: Kit, parent: THREE.Object3D) {
   }
 }
 
-/**
- * Small things that make the room lived in: a library ladder on a brass
- * rail, a runner rug along the bookcase and a framed print above the door.
- */
-function dressing(kit: Kit, parent: THREE.Object3D) {
-  const { depth, top } = SHELF
-  // The brass rail the ladder hangs from, along the whole bookcase.
-  const brass = kit.mat(BRASS, { metalness: 0.6, roughness: 0.35 })
-  const z0 = SHELF.z0 + 0.1
-  const z1 = WALL_SECTIONS.at(-1)!.z + WALL_SECTIONS[0].width / 2 - 0.1
-  kit.mesh(
-    new THREE.CylinderGeometry(0.018, 0.018, z1 - z0, 8).rotateX(Math.PI / 2),
-    brass,
-    depth + 0.06,
-    top - 0.45,
-    (z0 + z1) / 2,
-    { parent }
-  )
-  // The ladder leans from the rail to the floor.
-  const ladder = new THREE.Group()
-  ladder.position.set(depth + 0.06, top - 0.45, 3.9)
-  ladder.rotation.z = 0.22
-  parent.add(ladder)
-  const length = (top - 0.45) / Math.cos(0.22)
-  const wood = kit.mat("#9a6a40", { roughness: 0.6 })
-  for (const side of [-1, 1]) {
-    kit.block(0.05, length, 0.05, wood, 0, -length, side * 0.22, {
-      r: 0.015,
-      parent: ladder,
-    })
-  }
-  for (let y = 0.3; y < length - 0.1; y += 0.32) {
-    kit.block(0.04, 0.035, 0.44, wood, 0, -y, 0, { r: 0.012, parent: ladder })
-  }
-  kit.mesh(new THREE.TorusGeometry(0.035, 0.012, 6, 12), brass, 0, 0, 0, {
-    parent: ladder,
-  }).rotation.y = Math.PI / 2
-
-  // A runner rug along the bookcase, where Anda browses.
-  const runner = kit.canvasTexture(128, 512, (g, w, h) => {
-    g.fillStyle = "#8c3b2f"
-    g.fillRect(0, 0, w, h)
-    g.strokeStyle = "#e9d6b4"
-    g.lineWidth = 6
-    g.strokeRect(10, 10, w - 20, h - 20)
-    g.strokeStyle = "#c98d4a"
-    g.lineWidth = 3
-    g.strokeRect(20, 20, w - 40, h - 40)
-    g.fillStyle = "#e0b45c"
-    for (let y = 60; y < h - 40; y += 64) {
-      g.beginPath()
-      g.moveTo(w / 2, y - 18)
-      g.lineTo(w / 2 + 22, y)
-      g.lineTo(w / 2, y + 18)
-      g.lineTo(w / 2 - 22, y)
-      g.closePath()
-      g.fill()
-      g.fillStyle = "#2f5d62"
-      g.fillRect(w / 2 - 5, y - 5, 10, 10)
-      g.fillStyle = "#e0b45c"
-    }
-    g.fillStyle = "#e9d6b4"
-    for (let x = 6; x < w; x += 10) {
-      g.fillRect(x, 0, 3, 8)
-      g.fillRect(x, h - 8, 3, 8)
-    }
-  })
-  const rug = kit.block(
-    1.0,
-    0.015,
-    4.2,
-    new THREE.MeshStandardMaterial({ map: runner, roughness: 0.95 }),
-    2.0,
-    0,
-    3.3,
-    { r: 0.006, parent, cast: false }
-  )
-  rug.userData.animated = true
-
-  // A framed print over the door: hills at dusk.
-  const { z } = ROOM_PARTS.door
-  const print = kit.canvasTexture(256, 160, (g, w, h) => {
-    const sky = g.createLinearGradient(0, 0, 0, h)
-    sky.addColorStop(0, "#f2c58a")
-    sky.addColorStop(1, "#f6e3c4")
-    g.fillStyle = sky
-    g.fillRect(0, 0, w, h)
-    g.fillStyle = "#f7f0dc"
-    g.beginPath()
-    g.arc(w * 0.7, h * 0.35, 18, 0, Math.PI * 2)
-    g.fill()
-    for (const [y, color] of [
-      [0.6, "#a7b58a"],
-      [0.72, "#6f8a5e"],
-      [0.85, "#4d6a4a"],
-    ] as const) {
-      g.fillStyle = color
-      g.beginPath()
-      g.moveTo(0, h)
-      for (let x = 0; x <= w; x += 16) {
-        g.lineTo(x, h * y + Math.sin(x / 40 + y * 9) * 10)
-      }
-      g.lineTo(w, h)
-      g.fill()
-    }
-  })
-  kit.block(0.05, 0.62, 0.9, TRIM, 0.025, 2.75, z, { r: 0.015, parent })
-  const art = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.76, 0.48),
-    new THREE.MeshStandardMaterial({ map: print, roughness: 0.8 })
-  )
-  art.position.set(0.052, 2.75 + 0.31, z)
-  art.rotation.y = Math.PI / 2
-  parent.add(art)
-}
-
 /** The panelled door in the shelf wall, from Prototype Bits (code if missing). */
 function door(kit: Kit, models: ModelSet, parent: THREE.Object3D) {
   const { z, width, height } = ROOM_PARTS.door
@@ -696,7 +550,11 @@ function door(kit: Kit, models: ModelSet, parent: THREE.Object3D) {
   })
 }
 
-/** Floor, walls, window, corkboard, the bookcase and the door (spec 3F §3.1). */
+/**
+ * The shell of the room: floor, walls, the window (tells the time), the
+ * corkboard (for `papan`), the bookcase and the door (`pintu`). Nothing here
+ * is for show only (spec 3F §3.6).
+ */
 export function buildRoom(kit: Kit, models: ModelSet): void {
   const shell = new THREE.Group()
   shell.name = "room"
@@ -706,7 +564,6 @@ export function buildRoom(kit: Kit, models: ModelSet): void {
   windowFrame(kit, shell)
   corkboard(kit, shell)
   shelfWall(kit, shell)
-  dressing(kit, shell)
   mergeStatic(shell)
   door(kit, models, shell)
 }

@@ -175,6 +175,10 @@ export function LobbyStage({
       void navigate({ to: "/shop" })
     } else if (id === "lemari") {
       void navigate({ to: "/shelf", search: { koleksi: "selesai" } })
+    } else if (id === "perapian") {
+      void navigate({ to: "/recap", search: { periode: undefined } })
+    } else if (id === "pintu") {
+      void navigate({ to: "/settings" })
     } else {
       void navigate({ to: "/shelf", search: { genre: id } })
     }

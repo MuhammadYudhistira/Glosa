@@ -26,7 +26,7 @@ Tinggi nyata = perkiraan tinggi di ruangan (m); `fitTo` menskala model ke angka 
 | windowFrame | kode | tak ada jendela di paket | 1,6 |
 | corkboard | kode | tak ada papan gabus di paket | 0,9 |
 | plantPot | paket | `cactus_medium_A` — kaktus berpot | 0,6 |
-| baseRug | paket | `rug_rectangle_A` — karpet dasar | 0,02 |
+| baseRug | paket | `rug_rectangle_A` — karpet dasar (dibuang 2026-11-13) | 0,02 |
 | anda | kode | lihat (b) | 1,5 |
 | decor_rug_woven | paket | `rug_rectangle_stripes_A` | 0,02 |
 | decor_rug_round | paket | `rug_oval_A` (oval, terdekat dengan bulat) | 0,02 |
@@ -94,3 +94,7 @@ Hasil per benda (kunci manifest tidak berubah):
 | anda | tetap kode | tak ada karakter statis satu-mesh di paket yang diperiksa |
 
 Ukuran baru: 562.496 byte (19 berkas), batas 3.145.728 byte.
+
+## Persetujuan arah visual
+
+Disetujui pemilik, 2026-11-13, dengan syarat benda tanpa fungsi dibuang (spec 3F keputusan 9): tangga dan relnya, karpet panjang di depan rak, tanaman dekat pintu, tanaman dan buku di ambang jendela, lukisan di atas pintu, karpet dasar (`baseRug`, model `rug-rectangle-a.glb` dihapus).

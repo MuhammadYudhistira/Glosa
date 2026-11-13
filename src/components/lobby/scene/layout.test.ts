@@ -46,7 +46,22 @@ describe("room layout", () => {
       "lemari",
       "tanaman",
       "toko",
+      "perapian",
+      "pintu",
     ])
+  })
+
+  it("gives every piece of base furniture the hotspot it serves (spec 3F §3.6)", () => {
+    const ids = new Set<string>(HOTSPOT_SPOTS.map(({ id }) => id))
+    for (const f of FURNITURE) expect(ids.has(f.serves), f.id).toBe(true)
+  })
+
+  it("keeps nothing without a use in the room", () => {
+    const ids = FURNITURE.map(({ id }) => id)
+    for (const gone of ["baseRug", "doorPlant"]) {
+      expect(ids, gone).not.toContain(gone)
+    }
+    expect(MODEL_KEYS).not.toContain("baseRug")
   })
 
   it("gives every genre one wall section, side by side inside the room", () => {

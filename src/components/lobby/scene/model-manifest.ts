@@ -24,7 +24,6 @@ export const MODEL_KEYS = [
   "windowFrame",
   "corkboard",
   "plantPot",
-  "baseRug",
   "anda",
   "decor_rug_woven",
   "decor_rug_round",
@@ -76,7 +75,6 @@ export const MODELS: Record<ModelKey, ModelEntry> = {
   windowFrame: code,
   corkboard: code,
   plantPot: kay("cactus-medium-a.glb", "cactus_medium_A"),
-  baseRug: kay("rug-rectangle-a.glb", "rug_rectangle_A"),
   anda: code,
   decor_rug_woven: kay(
     "rug-rectangle-stripes-a.glb",

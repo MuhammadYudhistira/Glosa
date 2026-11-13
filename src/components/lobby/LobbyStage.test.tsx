@@ -12,10 +12,18 @@ import { LobbyStage } from "./LobbyStage"
 
 // The real scene starts three.js; here it only shows what it was given.
 const scene = vi.hoisted(() => ({
-  props: null as { paused?: boolean; allow3d?: boolean } | null,
+  props: null as {
+    paused?: boolean
+    allow3d?: boolean
+    onActivate?: (id: string) => void
+  } | null,
 }))
 vi.mock("./LobbyScene", () => ({
-  LobbyScene: (props: { paused?: boolean; allow3d?: boolean }) => {
+  LobbyScene: (props: {
+    paused?: boolean
+    allow3d?: boolean
+    onActivate?: (id: string) => void
+  }) => {
     scene.props = props
     return <section aria-label="Adegan lobi" className="lobby-scene" />
   },
@@ -117,6 +125,17 @@ describe("LobbyStage", () => {
       screen.getByRole("heading", { name: "Peta Perpustakaan" })
     ).toBeInTheDocument()
     expect(scene.props).toMatchObject({ paused: false, allow3d: true })
+  })
+
+  it("opens Kilas balik from the fireplace and Pengaturan from the door", async () => {
+    stubWideScreen(true)
+    const { router } = renderStage(false)
+    await vi.waitFor(() => expect(scene.props).not.toBeNull())
+    const activate = scene.props!.onActivate!
+    await act(async () => activate("perapian"))
+    expect(router.state.location.pathname).toBe("/recap")
+    await act(async () => activate("pintu"))
+    expect(router.state.location.pathname).toBe("/settings")
   })
 
   it("behind a popup keeps only a paused, hidden scene and the top bar", async () => {

@@ -23,6 +23,8 @@ export const ROOM = { width: 12, depth: 12, height: 4.6, pad: 0.9 } as const
  * Parts of the walls rather than furniture (room.ts builds them): the window
  * in the Z = 0 wall (x0..x1, sill y0 to head y1), the door in the X = 0 wall
  * (centred on z) and the corkboard on the Z = 0 wall (centred on x, y).
+ * The door serves the `pintu` hotspot, the corkboard is kept for `papan`
+ * (Task 4C) and the window tells the time of day (spec 3F §3.6).
  */
 export const ROOM_PARTS = {
   window: { x0: 5.6, x1: 8.9, y0: 1.0, y1: 3.4 },
@@ -44,6 +46,8 @@ export type Furnishing = {
   size: Point3
   turn: number
   solid: boolean
+  /** The hotspot this piece belongs to: nothing in the room is without a use. */
+  serves: HotspotId
 }
 
 const DESK_TOP = 0.78
@@ -58,6 +62,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     size: [1.3, 0.9, 1.15],
     turn: 0,
     solid: true,
+    serves: "meja-baca",
   },
   {
     id: "fireplace",
@@ -66,14 +71,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     size: [1.8, 1.6, 0.6],
     turn: 0,
     solid: true,
-  },
-  {
-    id: "baseRug",
-    model: "baseRug",
-    at: [4.4, 3.1],
-    size: [2.7, 0.02, 1.8],
-    turn: 0,
-    solid: false,
+    serves: "perapian",
   },
   {
     id: "sideTable",
@@ -82,6 +80,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     size: [0.7, SIDE_TOP, 0.7],
     turn: 0,
     solid: true,
+    serves: "toko",
   },
   {
     id: "readingLamp",
@@ -91,6 +90,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     size: [0.36, 0.38, 0.36],
     turn: 0,
     solid: false,
+    serves: "meja-baca",
   },
   {
     id: "catalogue",
@@ -100,6 +100,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     size: [0.34, 0.2, 0.15],
     turn: 0,
     solid: false,
+    serves: "toko",
   },
   // The writing desk against the shelf wall.
   {
@@ -109,6 +110,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     size: [1.8, DESK_TOP, 0.9],
     turn: Math.PI / 2,
     solid: true,
+    serves: "katalog",
   },
   {
     id: "deskChair",
@@ -117,6 +119,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     size: [0.6, 1.0, 0.67],
     turn: -Math.PI / 2,
     solid: true,
+    serves: "katalog",
   },
   {
     id: "laptop",
@@ -126,6 +129,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     size: [0.4, 0.26, 0.3],
     turn: Math.PI / 2,
     solid: false,
+    serves: "meja-admin",
   },
   {
     id: "notebook",
@@ -135,6 +139,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     size: [0.24, 0.04, 0.3],
     turn: Math.PI / 2,
     solid: false,
+    serves: "katalog",
   },
   {
     id: "deskLamp",
@@ -144,6 +149,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     size: [0.3, 0.32, 0.3],
     turn: 0,
     solid: false,
+    serves: "katalog",
   },
   // The parcel box by the door: new books (the trolley hotspot).
   {
@@ -153,15 +159,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     size: [0.72, 0.48, 0.5],
     turn: Math.PI / 2,
     solid: true,
-  },
-  // A potted plant in the corner by the door.
-  {
-    id: "doorPlant",
-    model: "plantPot",
-    at: [0.75, 11.45],
-    size: [0.62, 0.6, 0.6],
-    turn: 0,
-    solid: true,
+    serves: "troli",
   },
   {
     id: "glassCabinet",
@@ -170,6 +168,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     size: [2.2, 2.2, 0.5],
     turn: 0,
     solid: true,
+    serves: "lemari",
   },
 ]
 
@@ -363,10 +362,12 @@ export type HotspotId =
   | "lemari"
   | "tanaman"
   | "toko"
+  | "perapian"
+  | "pintu"
 /** `label`: where the hotspot's label floats. `stand`: where "Anda" walks to. */
 export type HotspotSpot = { id: HotspotId; label: Point3; stand: Point2 }
 
-/** In tab order (spec 1D §6): reading chair, shelf sections, parcel box, laptop, notebook, cabinet, plant, catalogue. */
+/** In tab order (spec 1D §6): reading chair, shelf sections, parcel box, laptop, notebook, cabinet, plant, catalogue, fireplace, door. */
 export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   { id: "meja-baca", label: [4.0, 1.9, 2.3], stand: [4.0, 3.8] },
   ...WALL_SECTIONS.map(({ genre, z }): HotspotSpot => ({
@@ -380,6 +381,8 @@ export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   { id: "lemari", label: [10.75, 2.5, 0.3], stand: [10.75, 2.0] },
   { id: "tanaman", label: [9.2, 1.9, 0.9], stand: [9.2, 2.2] },
   { id: "toko", label: [5.3, 1.2, 2.1], stand: [5.3, 3.3] },
+  { id: "perapian", label: [4.0, 2.0, 0.35], stand: [5.6, 1.0] },
+  { id: "pintu", label: [0.1, 2.4, ROOM_PARTS.door.z], stand: [1.4, 11.0] },
 ]
 
 export function spotOf(id: HotspotId): HotspotSpot {
