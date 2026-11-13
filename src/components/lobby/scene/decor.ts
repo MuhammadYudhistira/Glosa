@@ -573,6 +573,13 @@ export const DECOR_BUILDERS: Record<string, (part: Part) => void> = {
 export type Decor = {
   /** Shows these items; slots that did not change stay as they are. */
   set: (placed: Placements) => void
+  /**
+   * Poses the items in their motion, now; true while one still moves. The
+   * stage calls it on each of its frames (one loop, not two).
+   */
+  update: () => boolean
+  /** Puts every moving item at rest (the stage stops moving). */
+  rest: () => void
   /** The lamps' share of light, 0 by day to 1 at night (RIGS[mood].lamps). */
   setLamps: (k: number) => void
   dispose: () => void
@@ -642,8 +649,9 @@ function placeModel(
  * The shop's items in the lobby (spec 3C §6.3, 3F §3.3): from their model
  * where the manifest has one, else by code. Paint of its own, not the kit's
  * shared materials, so changing an item frees what it used (plan 3C,
- * decision 7). onChange asks the stage to draw again; `canMove` says whether
- * the lobby moves at all (not in the still image, nor at quality "diam").
+ * decision 7). onChange asks the stage to draw again; its frames then call
+ * `update` while an item moves. `canMove` says whether the lobby moves at all
+ * (not in the still image, nor at quality "diam", nor behind a popup).
  */
 export function buildDecor(
   scene: THREE.Scene,
@@ -782,10 +790,8 @@ export function buildDecor(
     }
   }
 
-  let frame = 0
   let loaded = false
-  function step() {
-    frame = 0
+  function update(): boolean {
     const now = performance.now()
     let busy = false
     for (const motion of motions.values()) {
@@ -799,14 +805,12 @@ export function buildDecor(
         motion.since = null
       }
     }
-    onChange()
-    if (busy) frame = requestAnimationFrame(step)
+    return busy
   }
 
   return {
     set(placed) {
       let changed = false
-      let started = false
       for (const slot of SLOT_IDS) {
         const next = placed[slot]
         const build =
@@ -831,14 +835,21 @@ export function buildDecor(
             since: moves ? performance.now() : null,
             poses,
           })
-          started ||= moves
         } else {
           shown.delete(slot)
         }
       }
       loaded = true
-      if (started && frame === 0) frame = requestAnimationFrame(step)
+      // A new motion is drawn by the stage's frames, which this starts.
       if (changed) onChange()
+    },
+    update,
+    rest() {
+      for (const motion of motions.values()) {
+        if (motion.since === null) continue
+        for (const pose of motion.poses) pose(0)
+        motion.since = null
+      }
     },
     setLamps(k) {
       lamps = k
@@ -847,8 +858,6 @@ export function buildDecor(
       }
     },
     dispose() {
-      cancelAnimationFrame(frame)
-      frame = 0
       motions.clear()
       for (const group of groups.values()) {
         clearGroup(group, shared)

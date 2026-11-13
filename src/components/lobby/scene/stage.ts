@@ -22,6 +22,7 @@ import {
   type RoomSignals,
 } from "../room-signals"
 import { DECOR_BUILDERS, buildDecor } from "./decor"
+import { createFrameLoop, moving, viewMoved } from "./frame-loop"
 import { buildFurniture } from "./furniture"
 import { createKit } from "./kit"
 import { type Point2, ROOM, type ShowcaseBook, decorBlockers } from "./layout"
@@ -206,6 +207,15 @@ function buildStage(
   const output = new OutputPass()
   composer.addPass(output)
 
+  // Frames run only while something changes (spec 3F §3.6: nothing moves
+  // on its own). Made before the parts, whose onChange asks for a frame.
+  const loop = createFrameLoop({
+    step,
+    draw: () => composer.render(),
+    canRun: () => !document.hidden,
+  })
+  const requestRender = () => loop.invalidate()
+
   /** Frees what the scene and the passes hold; the caller frees the renderer. */
   function releaseScene() {
     disposeTree(scene)
@@ -350,31 +360,17 @@ function buildStage(
     camera.lookAt(controls.target)
   }
 
-  let frame = 0
-  let disposed = false
-  let needsRender = true
   let paused = false
-  let last = performance.now()
-  // The animation's own time: it moves only while the loop runs, so nothing
-  // jumps after a pause or a hidden tab.
-  let clock = last / 1000
+  // The animation's own time: it moves only while frames run, so nothing
+  // jumps after a pause, a hidden tab or an idle spell.
+  let clock = performance.now() / 1000
+  // The first seconds of each animated tier run frame after frame, so the
+  // measured rate is the real one (an idle, stopped loop is never "slow").
   let measuring = animates()
   let measureStart = 0
   let measureFrames = 0
-
-  function draw() {
-    composer.render()
-    needsRender = false
-  }
-  function schedule() {
-    if (frame === 0 && !disposed && !document.hidden) {
-      frame = requestAnimationFrame(tick)
-    }
-  }
-  function requestRender() {
-    needsRender = true
-    schedule()
-  }
+  /** Whether the controls moved the camera in their last update (before clamping). */
+  let gliding = false
 
   function setQuality(next: Quality) {
     quality = next
@@ -392,6 +388,7 @@ function buildStage(
     if (next === "diam") {
       motion.finishWalk()
       finishBlend()
+      decor.rest()
     }
     resize()
     options.onQuality(next)
@@ -414,28 +411,28 @@ function buildStage(
     else setQuality(next)
   }
 
-  function tick(now: number) {
-    frame = 0
-    if (disposed || document.hidden) return
-    const dt = Math.min(0.05, (now - last) / 1000)
-    last = now
+  /** One frame's change; true while something still moves (see Activity). */
+  function step(now: number, dt: number): boolean {
+    // Still, "diam" and behind a popup: a frame only shows what was set.
+    if (!animates() || paused) return false
+    clock += dt
     if (blend < 1) {
       blend = Math.min(1, blend + dt / BLEND_SECONDS)
       current = mixRig(from, to, blend)
       applyRig(current)
-      needsRender = true
     }
-    if (animates() && !paused) {
-      clock += dt
-      motion.update(clock, dt)
-      controls.update()
-      draw()
-      measure(now)
-      schedule()
-    } else if (needsRender) {
-      draw()
-      if (blend < 1) schedule()
-    }
+    motion.update(clock, dt)
+    gliding = false
+    controls.update()
+    const decorMoving = decor.update()
+    measure(now)
+    return moving({
+      walking: motion.walking(),
+      panning: gliding,
+      blending: blend < 1,
+      measuring,
+      decor: decorMoving,
+    })
   }
 
   function finishBlend() {
@@ -469,7 +466,10 @@ function buildStage(
   /** After every pan or zoom: keep the view inside the map (spec 1D §3.1). */
   function onControlsChange() {
     const { x, y, z } = controls.target
-    const next = clampView({ target: [x, y, z], zoom: camera.zoom }, viewport)
+    const wanted: View = { target: [x, y, z], zoom: camera.zoom }
+    // Pushing against the map's edge still glides: the damping runs down.
+    gliding = viewMoved(view, wanted)
+    const next = clampView(wanted, viewport)
     const same =
       Math.abs(next.zoom - view.zoom) < 1e-9 &&
       next.target.every((value, i) => Math.abs(value - view.target[i]) < 1e-9)
@@ -502,9 +502,8 @@ function buildStage(
 
   const onVisibility = () => {
     if (document.hidden) return
-    last = performance.now()
     measureStart = 0
-    requestRender()
+    loop.resume()
   }
   const onContextLost = (event: Event) => {
     event.preventDefault()
@@ -520,8 +519,7 @@ function buildStage(
   document.addEventListener("visibilitychange", onVisibility)
   canvas.addEventListener("webglcontextlost", onContextLost)
 
-  // The still image shows a sprout (plan 3B, decision 5). Set only here: the
-  // render flag that onChange flips is declared above this point.
+  // The still image shows a sprout (plan 3B, decision 5).
   plant.set("tunas")
   // The clock's timer last of all: nothing after it can throw and leave it running.
   let moodTimer = setTimeout(rollMood, msUntilNextMood(new Date()))
@@ -573,14 +571,13 @@ function buildStage(
     setPaused(next) {
       if (next === paused) return
       paused = next
-      // The time spent paused does not count, and the speed check starts over.
-      last = performance.now()
+      // The time spent paused does not count (the loop stopped), and the
+      // speed check starts over.
       measureStart = 0
       requestRender()
     },
     dispose() {
-      disposed = true
-      cancelAnimationFrame(frame)
+      loop.dispose()
       clearTimeout(moodTimer)
       observer.disconnect()
       document.removeEventListener("visibilitychange", onVisibility)

@@ -44,6 +44,8 @@ export type Motion = {
   walkTo: (spot: Point2, instant: boolean) => void
   /** Ends a walk under way at its spot (the loop is about to stop). */
   finishWalk: () => void
+  /** Whether a walk is under way (the stage keeps drawing until it ends). */
+  walking: () => boolean
   /**
    * What else Anda walks around (the placed shop items' footprints). One
    * standing inside a new footprint steps out to the nearest free point; a
@@ -145,5 +147,11 @@ export function createMotion(people: People): Motion {
     }
   }
 
-  return { update, walkTo, finishWalk, setExtraBlockers }
+  return {
+    update,
+    walkTo,
+    finishWalk,
+    walking: () => route.length > 0,
+    setExtraBlockers,
+  }
 }

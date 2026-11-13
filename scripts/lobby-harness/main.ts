@@ -106,6 +106,8 @@ if (focusParam) {
   stage.setView({ ...centerOn(view, [x, y, z]), zoom: MAX_ZOOM })
 }
 document.body.dataset.books = String(stage.books)
+// For a script or the devtools to drive the room (walk, mood, pause).
+Object.assign(window, { lobbyStage: stage })
 // The first frame draws the scene; the second shows it.
 requestAnimationFrame(() =>
   requestAnimationFrame(() => {
