@@ -11,10 +11,7 @@ import {
 import { HIGHLIGHT_COLORS, type HighlightColor } from "@/lib/annotations/types"
 import { itemOf } from "@/lib/shop/catalog"
 import type { Mood } from "@/components/lobby/scene/daylight"
-import {
-  NEUTRAL_SIGNALS,
-  type FireLevel,
-} from "@/components/lobby/room-signals"
+import { NEUTRAL_SIGNALS } from "@/components/lobby/room-signals"
 import { type StageMode, createStage } from "@/components/lobby/scene/stage"
 
 const params = new URLSearchParams(window.location.search)
@@ -48,7 +45,7 @@ const fireParam = params.get("fire")
 stage.setSignals({
   fire:
     fireParam === "bara" || fireParam === "kecil" || fireParam === "besar"
-      ? (fireParam as FireLevel)
+      ? fireParam
       : NEUTRAL_SIGNALS.fire,
   deskLamp: params.get("lamp") === "1",
   parcelOpen: params.get("parcel") === "1",

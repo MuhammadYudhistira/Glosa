@@ -32,12 +32,13 @@ vi.mock("./LobbyScene", () => ({
   },
 }))
 
-const highlights = vi.hoisted(() => ({
-  state: { status: "ready", highlights: [] } as {
+const highlights = vi.hoisted(() => {
+  const state: {
     status: string
     highlights?: Array<Record<string, unknown>>
-  },
-}))
+  } = { status: "ready", highlights: [] }
+  return { state }
+})
 vi.mock("@/lib/annotations/highlights-client", () => ({
   useHighlights: () => ({ state: highlights.state, retry: vi.fn() }),
 }))

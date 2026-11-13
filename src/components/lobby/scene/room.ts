@@ -451,9 +451,9 @@ function corkboard(kit: Kit, parent: THREE.Object3D) {
     /** Shows one paper per colour, in the colour of the highlight; the rest of the board stays bare. */
     setNotes(colors: ReadonlyArray<HighlightColor>) {
       papers.forEach(({ note, tack, paper }, i) => {
-        const color = colors[i]
-        note.visible = tack.visible = color !== undefined
-        if (color !== undefined) paper.color.set(NOTE_PAPER[color])
+        const has = i < colors.length
+        note.visible = tack.visible = has
+        if (has) paper.color.set(NOTE_PAPER[colors[i]])
       })
     },
   }
