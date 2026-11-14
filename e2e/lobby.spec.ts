@@ -92,7 +92,7 @@ test("a new member is greeted, and the admin desk opens the upload", async ({
     .press("Enter")
   await expect(scene.getByText(/Belum ada buku yang dibaca/)).toBeAttached()
   await scene
-    .getByRole("button", { name: "Meja Admin", exact: true })
+    .getByRole("button", { name: "Meja tulis", exact: true })
     .press("Enter")
   await expect(
     page.getByRole("dialog", { name: "Bawa buku ke rak" })

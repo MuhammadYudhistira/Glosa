@@ -137,7 +137,7 @@ describe("LobbyScene", () => {
       "src",
       "/lobby/lobby-still.webp"
     )
-    fireEvent.click(screen.getByRole("button", { name: "Meja Admin" }), {
+    fireEvent.click(screen.getByRole("button", { name: "Meja tulis" }), {
       detail: 1,
     })
     expect(onActivate).toHaveBeenCalledWith("meja-admin", { keyboard: false })
@@ -275,7 +275,7 @@ describe("LobbyScene", () => {
     it("keeps the same focused hotspot when the scene goes live", async () => {
       renderScene(desktop)
       await vi.waitFor(() => expect(canvas.props).not.toBeNull())
-      const button = screen.getByRole("button", { name: "Meja Admin" })
+      const button = screen.getByRole("button", { name: "Meja tulis" })
       act(() => button.focus())
       act(() => {
         canvas.props?.onView(startView(viewport), viewport)
@@ -298,7 +298,7 @@ describe("LobbyScene", () => {
         })
       })
       expect(screen.getByRole("button", { name: "Pusatkan" })).toBeVisible()
-      expect(screen.getByRole("button", { name: "Meja Admin" })).toBe(button)
+      expect(screen.getByRole("button", { name: "Meja tulis" })).toBe(button)
       expect(document.activeElement).toBe(button)
     })
 
@@ -374,7 +374,7 @@ describe("LobbyScene", () => {
         await vi.waitFor(() => expect(canvas.props).not.toBeNull())
         expect(scene.querySelector("img")).toBeInTheDocument()
         expect(
-          screen.getByRole("button", { name: "Meja Admin" })
+          screen.getByRole("button", { name: "Meja tulis" })
         ).toBeInTheDocument()
         expect(scene).not.toHaveAttribute("data-live")
       })
@@ -383,7 +383,7 @@ describe("LobbyScene", () => {
         vi.useFakeTimers()
         const { scene } = renderScene(desktop)
         await vi.waitFor(() => expect(canvas.props).not.toBeNull())
-        const button = screen.getByRole("button", { name: "Meja Admin" })
+        const button = screen.getByRole("button", { name: "Meja tulis" })
         act(() => button.focus())
         act(() => {
           canvas.props?.onReady({
@@ -413,7 +413,7 @@ describe("LobbyScene", () => {
         act(() => vi.advanceTimersByTime(1))
         expect(scene.querySelector("img")).toBeNull()
         expect(scene).toHaveAttribute("data-live", "true")
-        expect(screen.getByRole("button", { name: "Meja Admin" })).toBe(button)
+        expect(screen.getByRole("button", { name: "Meja tulis" })).toBe(button)
         expect(document.activeElement).toBe(button)
       })
 

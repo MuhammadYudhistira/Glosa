@@ -16,6 +16,10 @@ describe("AdminDeskCard", () => {
   it("shows the storage and opens the upload", () => {
     const onUpload = vi.fn()
     render(<AdminDeskCard usage={usage} onUpload={onUpload} />)
+    // Every member writes at this desk, not only admins.
+    expect(
+      screen.getByRole("heading", { name: "Meja tulis" })
+    ).toBeInTheDocument()
     expect(screen.getByLabelText("Penyimpanan")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "Bawa buku" }))
     expect(onUpload).toHaveBeenCalled()

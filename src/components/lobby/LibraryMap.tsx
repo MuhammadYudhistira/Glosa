@@ -41,7 +41,7 @@ const kindOf = (id: HotspotId, count: number | null): MapKind =>
 const LEGEND: ReadonlyArray<[MapKind | "anda", string]> = [
   ["zone", "Rak buku"],
   ["meja-baca", "Kursi baca"],
-  ["meja-admin", "Meja Admin"],
+  ["meja-admin", "Meja tulis"],
   ["troli", "Troli Buku Baru"],
   ["katalog", "Kosakata"],
   ["lemari", "Sudah dibaca"],

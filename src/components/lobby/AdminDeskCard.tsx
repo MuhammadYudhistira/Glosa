@@ -6,7 +6,7 @@ import type { StorageUsage } from "@/lib/book-types"
 import { cn } from "@/lib/utils"
 import { useOnline } from "@/lib/use-online"
 
-/** Upload and storage, beside the scene's admin desk (spec 1D §5.2). */
+/** Upload and storage, beside the scene's writing desk (spec 1D §5.2); every member uses it. */
 export function AdminDeskCard({
   usage,
   onUpload,
@@ -20,7 +20,7 @@ export function AdminDeskCard({
   const hintId = useId()
   return (
     <Panel className={cn("lobby-panel space-y-3", className)}>
-      <h2 className="lobby-panel-title">Meja Admin</h2>
+      <h2 className="lobby-panel-title">Meja tulis</h2>
       <button
         type="button"
         aria-label="Bawa buku"

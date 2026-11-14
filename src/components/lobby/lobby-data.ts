@@ -54,7 +54,7 @@ export function lobbyHotspots(
   return HOTSPOT_SPOTS.map(({ id }): HotspotModel => {
     const plain = { id, count: null, badge: null, dim: false }
     if (id === "meja-baca") return { ...plain, label: "Kursi baca" }
-    if (id === "meja-admin") return { ...plain, label: "Meja Admin" }
+    if (id === "meja-admin") return { ...plain, label: "Meja tulis" }
     if (id === "katalog") return { ...plain, label: "Kosakata" }
     if (id === "tanaman") return { ...plain, label: "Kebiasaan baca" }
     if (id === "toko") return { ...plain, label: "Toko dekorasi" }

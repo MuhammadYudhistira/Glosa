@@ -105,7 +105,7 @@ test("a hotspot on the 3D scene opens the upload", async ({ page }) => {
   await signInAndOnboard(page, await createConfirmedMember())
   const scene = sceneOf(page)
   await expect(scene.locator("canvas")).toBeVisible({ timeout: 120_000 })
-  await scene.getByRole("button", { name: "Meja Admin", exact: true }).click()
+  await scene.getByRole("button", { name: "Meja tulis", exact: true }).click()
   await expect(
     page.getByRole("dialog", { name: "Bawa buku ke rak" })
   ).toBeVisible()

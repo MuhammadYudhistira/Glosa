@@ -70,7 +70,7 @@ describe("lobbyHotspots", () => {
     })
     expect(hotspots.find(({ id }) => id === "meja-admin")).toMatchObject({
       id: "meja-admin",
-      label: "Meja Admin",
+      label: "Meja tulis",
       count: null,
       badge: null,
     })
