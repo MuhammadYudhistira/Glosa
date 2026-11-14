@@ -1219,7 +1219,7 @@
     color: var(--muted-foreground);
   }
   /* No room for its pill on this screen (label-layout.ts): a mark at its
-     spot, 14 px (MARK_SIZE) with a 24 px tap target; hovered or focused it
+     spot, 14 px (MARK_SIZE) with a 20 px tap target; hovered or focused it
      shows its name above the others. */
   .lobby-hotspot[data-look="mark"]:not(:hover, :focus-visible) {
     position: relative;
@@ -1233,7 +1233,7 @@
   .lobby-hotspot[data-look="mark"]:not(:hover, :focus-visible)::before {
     content: "";
     position: absolute;
-    inset: -3px;
+    inset: -5px;
   }
   .lobby-hotspot[data-look="mark"]:not(:hover, :focus-visible) > * {
     position: absolute;
