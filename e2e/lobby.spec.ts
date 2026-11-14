@@ -77,14 +77,26 @@ test("trolley books get their shelf from the lobby", async ({ page }) => {
 
 test("a new member is greeted, and the admin desk opens the upload", async ({
   page,
+  isMobile,
 }) => {
   await signInAndOnboard(page, await createConfirmedMember())
   await hydrated(page)
+  const greeting = "Rakmu masih kosong. Bawa buku pertamamu ke sini!"
+  await expect(page.getByText(greeting).filter({ visible: true })).toBeVisible()
+  // Once, in its place: the sheet on phones, beside the desk card on
+  // desktop (each hides the other's copy), with nothing else in that slot.
+  await expect(page.getByText(greeting).filter({ visible: true })).toHaveCount(
+    1
+  )
   await expect(
-    page
-      .getByText("Rakmu masih kosong. Bawa buku pertamamu ke sini!")
-      .filter({ visible: true })
+    (isMobile
+      ? page.getByRole("region", { name: "Lanjutkan membaca" })
+      : page.getByRole("complementary", { name: "Panel ruang baca" })
+    ).getByText(greeting)
   ).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Baru Dibuka" })).toHaveCount(
+    0
+  )
 
   const scene = page.getByRole("region", { name: "Adegan ruang baca" })
   await scene

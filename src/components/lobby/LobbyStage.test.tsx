@@ -441,6 +441,10 @@ describe("LobbyStage", () => {
     expect(
       within(side).getByRole("link", { name: "Standard Ebooks" })
     ).toBeInTheDocument()
+    // Its slot holds nothing else: no recent books on an empty shelf.
+    expect(
+      within(side).queryByRole("heading", { name: "Baru Dibuka" })
+    ).toBeNull()
     // No hotspot carries it: the labels can never cover it.
     expect(scene.props?.bubbles?.["meja-admin"]).toBeUndefined()
   })
