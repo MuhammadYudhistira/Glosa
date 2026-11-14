@@ -111,6 +111,17 @@ export function CorkboardPanel({
             ))}
           </ul>
         )}
+        {shown.length > 0 && (
+          <Link
+            to="/highlights"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "justify-self-start"
+            )}
+          >
+            Lihat semua
+          </Link>
+        )}
       </DialogContent>
     </Dialog>
   )

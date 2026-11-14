@@ -12,6 +12,7 @@ const PATHS = [
   "/lobby",
   "/shelf",
   "/recap",
+  "/highlights",
   "/vocabulary",
   "/settings",
   "/logout",

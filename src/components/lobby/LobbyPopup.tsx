@@ -13,6 +13,7 @@ export const POPUP_PATHS: ReadonlyArray<string> = [
   "/habits",
   "/shop",
   "/recap",
+  "/highlights",
 ]
 
 export const isPopupPath = (pathname: string): boolean =>

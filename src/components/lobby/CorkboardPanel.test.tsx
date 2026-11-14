@@ -96,6 +96,18 @@ describe("CorkboardPanel", () => {
     expect(screen.queryByText("Fourth")).not.toBeInTheDocument()
   })
 
+  it("links to the page with every highlight", async () => {
+    renderPanel({ status: "ready", highlights: [first] })
+    const link = await screen.findByRole("link", { name: "Lihat semua" })
+    expect(link).toHaveAttribute("href", "/highlights")
+  })
+
+  it("has no link to all of them when there are none", async () => {
+    renderPanel({ status: "ready", highlights: [] })
+    await screen.findByText(/Belum ada sorotan/)
+    expect(screen.queryByRole("link", { name: "Lihat semua" })).toBeNull()
+  })
+
   it("invites the member to mark a line when there are none", async () => {
     renderPanel({ status: "ready", highlights: [] })
     expect(

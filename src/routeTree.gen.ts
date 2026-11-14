@@ -24,6 +24,7 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AuthConfirmRouteImport } from './routes/auth/confirm'
 import { Route as MemberLobiHabitsRouteImport } from './routes/_member/_lobi/habits'
+import { Route as MemberLobiHighlightsRouteImport } from './routes/_member/_lobi/highlights'
 import { Route as MemberLobiLobbyRouteImport } from './routes/_member/_lobi/lobby'
 import { Route as MemberLobiRecapRouteImport } from './routes/_member/_lobi/recap'
 import { Route as MemberLobiSettingsRouteImport } from './routes/_member/_lobi/settings'
@@ -105,6 +106,11 @@ const MemberLobiHabitsRoute = MemberLobiHabitsRouteImport.update({
   path: '/habits',
   getParentRoute: () => MemberLobiRoute,
 } as any)
+const MemberLobiHighlightsRoute = MemberLobiHighlightsRouteImport.update({
+  id: '/highlights',
+  path: '/highlights',
+  getParentRoute: () => MemberLobiRoute,
+} as any)
 const MemberLobiLobbyRoute = MemberLobiLobbyRouteImport.update({
   id: '/lobby',
   path: '/lobby',
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/habits': typeof MemberLobiHabitsRoute
+  '/highlights': typeof MemberLobiHighlightsRoute
   '/lobby': typeof MemberLobiLobbyRoute
   '/recap': typeof MemberLobiRecapRoute
   '/settings': typeof MemberLobiSettingsRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/habits': typeof MemberLobiHabitsRoute
+  '/highlights': typeof MemberLobiHighlightsRoute
   '/lobby': typeof MemberLobiLobbyRoute
   '/recap': typeof MemberLobiRecapRoute
   '/settings': typeof MemberLobiSettingsRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/_member/_lobi/habits': typeof MemberLobiHabitsRoute
+  '/_member/_lobi/highlights': typeof MemberLobiHighlightsRoute
   '/_member/_lobi/lobby': typeof MemberLobiLobbyRoute
   '/_member/_lobi/recap': typeof MemberLobiRecapRoute
   '/_member/_lobi/settings': typeof MemberLobiSettingsRoute
@@ -226,6 +235,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/confirm'
     | '/habits'
+    | '/highlights'
     | '/lobby'
     | '/recap'
     | '/settings'
@@ -248,6 +258,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/confirm'
     | '/habits'
+    | '/highlights'
     | '/lobby'
     | '/recap'
     | '/settings'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/confirm'
     | '/_member/_lobi/habits'
+    | '/_member/_lobi/highlights'
     | '/_member/_lobi/lobby'
     | '/_member/_lobi/recap'
     | '/_member/_lobi/settings'
@@ -403,6 +415,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MemberLobiHabitsRouteImport
       parentRoute: typeof MemberLobiRoute
     }
+    '/_member/_lobi/highlights': {
+      id: '/_member/_lobi/highlights'
+      path: '/highlights'
+      fullPath: '/highlights'
+      preLoaderRoute: typeof MemberLobiHighlightsRouteImport
+      parentRoute: typeof MemberLobiRoute
+    }
     '/_member/_lobi/lobby': {
       id: '/_member/_lobi/lobby'
       path: '/lobby'
@@ -457,6 +476,7 @@ declare module '@tanstack/react-router' {
 
 interface MemberLobiRouteChildren {
   MemberLobiHabitsRoute: typeof MemberLobiHabitsRoute
+  MemberLobiHighlightsRoute: typeof MemberLobiHighlightsRoute
   MemberLobiLobbyRoute: typeof MemberLobiLobbyRoute
   MemberLobiRecapRoute: typeof MemberLobiRecapRoute
   MemberLobiSettingsRoute: typeof MemberLobiSettingsRoute
@@ -467,6 +487,7 @@ interface MemberLobiRouteChildren {
 
 const MemberLobiRouteChildren: MemberLobiRouteChildren = {
   MemberLobiHabitsRoute: MemberLobiHabitsRoute,
+  MemberLobiHighlightsRoute: MemberLobiHighlightsRoute,
   MemberLobiLobbyRoute: MemberLobiLobbyRoute,
   MemberLobiRecapRoute: MemberLobiRecapRoute,
   MemberLobiSettingsRoute: MemberLobiSettingsRoute,
