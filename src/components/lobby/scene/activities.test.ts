@@ -12,7 +12,25 @@ import {
   seatOf,
   walkSpeed,
 } from "./activities"
-import { FURNITURE, HOTSPOT_SPOTS, ROOM, footprint } from "./layout"
+import {
+  ANDA_RADIUS,
+  ANDA_START,
+  FURNITURE,
+  HOTSPOT_SPOTS,
+  type HotspotId,
+  PLANT,
+  type Point2,
+  ROOM,
+  ROOM_PARTS,
+  SHELF,
+  SHOWCASE,
+  WALK_BOUNDS,
+  WALL_SECTIONS,
+  footprint,
+  spotOf,
+  walkBlockers,
+} from "./layout"
+import { findPath, walkable } from "./walk"
 
 describe("activities", () => {
   it("gives every hotspot an activity (spec 3F §4A.1)", () => {
@@ -88,5 +106,97 @@ describe("activities", () => {
     }
     // The armchair faces the room: seated in it, so does Anda.
     expect(facingOf("meja-baca")[1]).toBeGreaterThan(seatOf("meja-baca")![1])
+  })
+})
+
+describe("where Anda stands for each hotspot", () => {
+  const piece = (id: string) => FURNITURE.find((f) => f.id === id)!
+  const angle = (a: Point2, b: Point2) => {
+    const turn = Math.atan2(b[1], b[0]) - Math.atan2(a[1], a[0])
+    return Math.abs(Math.atan2(Math.sin(turn), Math.cos(turn)))
+  }
+  const toward = (from: Point2, to: Point2): Point2 => [
+    to[0] - from[0],
+    to[1] - from[1],
+  ]
+  const DEG = Math.PI / 180
+
+  /** What each standing activity is done to: its centre and, against a wall, its front. */
+  const OBJECTS: Partial<Record<HotspotId, { at: Point2; front?: Point2 }>> = {
+    ...Object.fromEntries(
+      WALL_SECTIONS.map(({ genre, z }) => [
+        genre,
+        { at: [SHELF.depth, z] as Point2, front: [1, 0] as Point2 },
+      ])
+    ),
+    troli: { at: piece("parcelBox").at },
+    lemari: { at: SHOWCASE, front: [0, 1] },
+    tanaman: { at: PLANT },
+    toko: { at: piece("catalogue").at },
+    perapian: { at: piece("fireplace").at, front: [0, 1] },
+    papan: { at: [ROOM_PARTS.corkboard.x, 0], front: [0, 1] },
+    pintu: { at: [0, ROOM_PARTS.door.z], front: [1, 0] },
+  }
+
+  it("covers every hotspot Anda stands at (the seated ones sit in their chair)", () => {
+    for (const { id } of HOTSPOT_SPOTS) {
+      if (seatOf(id)) continue
+      expect(OBJECTS[id], id).toBeDefined()
+    }
+  })
+
+  it("stands on clear, walkable floor: off the furniture and off what lies on the floor", () => {
+    const blocked = walkBlockers()
+    // Things on the floor or the hearth that Anda may not walk around
+    // (the log basket): standing on one is the bug the owner saw.
+    const low = FURNITURE.filter((f) => !f.solid && (f.y ?? 0) < 0.3)
+    for (const { id, stand } of HOTSPOT_SPOTS) {
+      expect(walkable(stand, WALK_BOUNDS, blocked, ANDA_RADIUS), id).toBe(true)
+      expect(
+        findPath(ANDA_START, stand, WALK_BOUNDS, blocked, ANDA_RADIUS).length,
+        id
+      ).toBeGreaterThan(0)
+      for (const f of low) {
+        expect(
+          walkable(stand, WALK_BOUNDS, [footprint(f)], 0.2),
+          `${id} on ${f.id}`
+        ).toBe(true)
+      }
+    }
+  })
+
+  it("faces the hotspot's object, and faces a wall's object from its front", () => {
+    for (const { id, stand } of HOTSPOT_SPOTS) {
+      const object = OBJECTS[id]
+      if (!object) continue
+      const facing = toward(stand, facingOf(id))
+      expect(angle(facing, toward(stand, object.at)), id).toBeLessThan(15 * DEG)
+      if (object.front) {
+        // Not from the side (the review note "perapian is faced from the side").
+        expect(angle(object.front, toward(object.at, stand)), id).toBeLessThan(
+          40 * DEG
+        )
+      }
+    }
+  })
+
+  it("reaches each shelf section across nothing taller than the waist, a step from it", () => {
+    const tall = FURNITURE.filter(
+      (f) => f.solid && (f.y ?? 0) + f.size[1] > 0.6
+    )
+    for (const { genre, z } of WALL_SECTIONS) {
+      const { stand } = spotOf(genre)
+      expect(stand[1], genre).toBe(z)
+      expect(stand[0] - SHELF.depth, genre).toBeLessThanOrEqual(1)
+      for (let t = 0; t <= 1; t += 0.02) {
+        const p: Point2 = [stand[0] + (SHELF.depth - stand[0]) * t, stand[1]]
+        for (const f of tall) {
+          expect(
+            walkable(p, { x0: 0, x1: 10, z0: 0, z1: 10 }, [footprint(f)], 0),
+            `${genre} across ${f.id}`
+          ).toBe(true)
+        }
+      }
+    }
   })
 })

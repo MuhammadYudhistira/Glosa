@@ -14,7 +14,11 @@ const PLATE_FRAME = "#7a5a3a"
 const PLATE_FACE = "#efe3cc"
 /** How much light an empty section keeps: 60% darker. */
 const DIM = 0.4
-const LABEL = { width: 0.88, height: 0.2 } as const
+/** A section's plate: as wide as the section allows, with a gap between plates. */
+const LABEL = {
+  width: Math.min(0.88, WALL_SECTIONS[0].width - 0.12),
+  height: 0.2,
+} as const
 
 /** `hex` with its sRGB channels scaled by `light`, as the eye sees it darker. */
 function shade(color: THREE.Color, hex: string, light: number): THREE.Color {

@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import { describe, expect, it } from "vitest"
 import { createKit } from "./kit"
+import { WALL_SECTIONS } from "./layout"
 import { buildShelves } from "./shelves"
 
 describe("buildShelves", () => {
@@ -24,6 +25,10 @@ describe("buildShelves", () => {
     for (const plate of plates) {
       const material = plate.material as THREE.MeshStandardMaterial
       expect(material.map).toBeNull()
+      // Each plate (with its 5 cm frame) fits its section, apart from the next.
+      expect(
+        (plate.geometry as THREE.PlaneGeometry).parameters.width + 0.05
+      ).toBeLessThan(WALL_SECTIONS[0].width)
     }
     shelves.dispose()
   })

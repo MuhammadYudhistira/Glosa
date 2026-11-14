@@ -2,7 +2,7 @@ import { GENRE_VALUES, type Genre } from "@/lib/genre"
 import type { PlantStage } from "@/lib/reading-habit"
 import type { SlotId } from "@/lib/shop/catalog"
 import type { ModelKey } from "./model-manifest"
-import type { Box2 } from "./walk"
+import { type Box2, walkable } from "./walk"
 
 /**
  * The study room, in metres (spec 3F §3.1). X runs along the window wall
@@ -88,6 +88,13 @@ const SEAT_TOP = 0.37
 const HEARTH_TOP = 0.13
 /** The laptop's place on the writing desk; the chair is pulled up to it. */
 const LAPTOP_AT = from(DESK_AT, 0.17, 0)
+const DESK_CHAIR_AT: Point2 = [LAPTOP_AT[0], DESK_AT[1] + 0.8]
+const DESK_CHAIR_SIZE: Point3 = [0.6, 1.0, 0.67]
+const ARMCHAIR_SIZE: Point3 = [1.3, 0.9, 1.15]
+const FIREPLACE_SIZE: Point3 = [1.6, 1.6, 0.6]
+/** How far the fireplace's stone hearth runs out in front of it (furniture-builders.ts). */
+const HEARTH_REACH = 0.4
+const PARCEL_AT: Point2 = [0.8, 7.7]
 
 export const FURNITURE: ReadonlyArray<Furnishing> = [
   // The reading corner: the armchair faces the room, the fire behind it.
@@ -95,7 +102,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     id: "armchair",
     model: "armchair",
     at: ARMCHAIR_AT,
-    size: [1.3, 0.9, 1.15],
+    size: ARMCHAIR_SIZE,
     turn: 0,
     solid: true,
     serves: "meja-baca",
@@ -127,7 +134,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
     id: "fireplace",
     model: "fireplace",
     at: FIRE_AT,
-    size: [1.6, 1.6, 0.6],
+    size: FIREPLACE_SIZE,
     turn: 0,
     solid: true,
     serves: "perapian",
@@ -188,8 +195,8 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "deskChair",
     model: "deskChair",
-    at: [LAPTOP_AT[0], DESK_AT[1] + 0.8],
-    size: [0.6, 1.0, 0.67],
+    at: DESK_CHAIR_AT,
+    size: DESK_CHAIR_SIZE,
     turn: Math.PI,
     solid: true,
     serves: "katalog",
@@ -258,7 +265,7 @@ export const FURNITURE: ReadonlyArray<Furnishing> = [
   {
     id: "parcelBox",
     model: "parcelBox",
-    at: [0.8, 7.7],
+    at: PARCEL_AT,
     size: [0.72, 0.48, 0.5],
     turn: Math.PI / 2,
     solid: true,
@@ -288,16 +295,22 @@ export function footprint(f: { at: Point2; size: Point3; turn: number }): Box2 {
   }
 }
 
-/** The wall of shelves on X = 0: `rows` shelves from `bottom` to `top`, sections from z0. */
+/**
+ * The wall of shelves on X = 0: `rows` shelves from `bottom` to `top`,
+ * sections from z0. It starts past the writing desk's chair and stops short
+ * of the door, so every section has clear floor in front of it (owner,
+ * 2026-11-13: Anda reached across the desk for the first section).
+ */
 export const SHELF = {
   depth: 0.45,
   bottom: 0.15,
   top: 3.6,
   rows: 5,
-  z0: 0.45,
+  z0: DESK_CHAIR_AT[1] + DESK_CHAIR_SIZE[2] / 2 + 0.05,
 } as const
-/** Wide enough that the sections' labels clear each other on a desktop screen. */
-const SECTION_WIDTH = 0.98
+const SHELF_END = ROOM_PARTS.door.z - ROOM_PARTS.door.width / 2 - 0.1
+/** The sections share the wall between the desk chair and the door equally. */
+const SECTION_WIDTH = (SHELF_END - SHELF.z0) / GENRE_VALUES.length
 
 /** One shelf section per genre, in the order of GENRE_VALUES (spec 3F §3.2). */
 export const WALL_SECTIONS: ReadonlyArray<{
@@ -482,6 +495,40 @@ export type HotspotId =
   | "perapian"
   | "papan"
   | "pintu"
+/** How far in front of the bookcase Anda stands to take a book: a short step. */
+const SHELF_STEP = 0.25
+
+/**
+ * Where Anda stands for a shelf section at `z`: a step in front of it, or a
+ * little further out where something low stands there (the parcel box).
+ */
+function shelfStand(z: number): Point2 {
+  const blocked = walkBlockers()
+  const near = SHELF.depth + ANDA_RADIUS + SHELF_STEP
+  for (let i = 0; i < 40; i++) {
+    const at: Point2 = [Math.round((near + i * 0.05) * 100) / 100, z]
+    // A margin, so Anda does not brush what it steps past.
+    if (walkable(at, WALK_BOUNDS, blocked, ANDA_RADIUS + 0.05)) return at
+  }
+  throw new Error(`No floor in front of the shelf at z = ${z}`)
+}
+
+/**
+ * Before the fireplace, between its hearth and the armchair's back, so
+ * Anda warms its hands facing the fire (not from the side), off the log
+ * basket.
+ */
+const FIRE_STAND: Point2 = [
+  FIRE_AT[0] - 0.1,
+  (FIRE_AT[1] +
+    FIREPLACE_SIZE[2] / 2 +
+    HEARTH_REACH +
+    ARMCHAIR_AT[1] -
+    ARMCHAIR_SIZE[2] / 2 -
+    ANDA_RADIUS) /
+    2,
+]
+
 /** `label`: where the hotspot's label floats. `stand`: where "Anda" walks to. */
 export type HotspotSpot = { id: HotspotId; label: Point3; stand: Point2 }
 
@@ -492,12 +539,16 @@ export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
     label: [ARMCHAIR_AT[0], 1.9, ARMCHAIR_AT[1]],
     stand: [ARMCHAIR_AT[0], 3.3],
   },
-  ...WALL_SECTIONS.map(({ genre, z }): HotspotSpot => ({
+  ...WALL_SECTIONS.map(({ genre, z }, i): HotspotSpot => ({
     id: genre,
-    label: [0.4, 3.9, z],
-    stand: [2.65, z],
+    label: [0.4, 3.9 - 0.08 * i, z],
+    stand: shelfStand(z),
   })),
-  { id: "troli", label: [0.8, 1.0, 7.7], stand: [1.9, 7.7] },
+  {
+    id: "troli",
+    label: [PARCEL_AT[0], 1.0, PARCEL_AT[1]],
+    stand: [PARCEL_AT[0] + 1.1, PARCEL_AT[1]],
+  },
   {
     id: "meja-admin",
     label: [LAPTOP_AT[0], 1.4, LAPTOP_AT[1]],
@@ -518,7 +569,7 @@ export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   {
     id: "perapian",
     label: [FIRE_AT[0], 2.7, FIRE_AT[1] + 0.05],
-    stand: [FIRE_AT[0] + 1.5, 0.95],
+    stand: FIRE_STAND,
   },
   {
     id: "papan",
