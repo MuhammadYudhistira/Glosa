@@ -13,6 +13,16 @@ export const FREE_GAPS_PER_WEEK = 2
 export type PlantStage =
   "biji" | "tunas" | "daun" | "rimbun" | "kuncup" | "berbunga"
 
+/** The plant's stages in the order it grows them. */
+export const PLANT_STAGES: ReadonlyArray<PlantStage> = [
+  "biji",
+  "tunas",
+  "daun",
+  "rimbun",
+  "kuncup",
+  "berbunga",
+]
+
 export const PLANT_STAGE_LABELS: Record<PlantStage, string> = {
   biji: "Biji",
   tunas: "Tunas",

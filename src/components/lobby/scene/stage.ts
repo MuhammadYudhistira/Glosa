@@ -17,10 +17,11 @@ import {
   msUntilNextMood,
 } from "./daylight"
 import {
-  FIRE_STRENGTH,
-  NEUTRAL_SIGNALS,
-  type RoomSignals,
-} from "../room-signals"
+  type RoomChange,
+  type RoomSnapshot,
+  signalLevels,
+} from "../room-memory"
+import { NEUTRAL_SIGNALS, type RoomSignals } from "../room-signals"
 import { ACTIVITY_OF, facingOf, seatOf } from "./activities"
 import { DECOR_BUILDERS, buildDecor } from "./decor"
 import { createFrameLoop, moving, viewMoved } from "./frame-loop"
@@ -35,6 +36,7 @@ import {
   spotOf,
 } from "./layout"
 import { type ModelSet, loadModels } from "./models"
+import { MOMENT_SECONDS, easeOut } from "./moment"
 import { createMotion, endActivityOnPause } from "./motion"
 import { buildPeople } from "./people"
 import {
@@ -105,6 +107,12 @@ export type Stage = {
   setShelves: (hues: GenreHues) => void
   /** Day, dusk or night: blends over 3 seconds while animating, else at once. */
   setMood: (mood: Mood) => void
+  /**
+   * What changed since the member's last visit plays for about a second,
+   * from the room as it was (spec 3F §4A.2). Where the room does not move
+   * ("diam", a still image, behind a popup) it already shows how it is now.
+   */
+  playMoments: (from: RoomSnapshot, changes: ReadonlyArray<RoomChange>) => void
   dispose: () => void
 }
 
@@ -284,6 +292,12 @@ function buildStage(
   motion.update(0, 0)
 
   let signals: RoomSignals = NEUTRAL_SIGNALS
+  /** The moment of change under way: the room it starts from, and how far it is (0..1). */
+  let moment: {
+    from: RoomSnapshot
+    changes: ReadonlyArray<RoomChange>
+    t: number
+  } | null = null
 
   /** Sets every light to a rig (spec 3F §3.4) and the room to its signals (§3.6). */
   function applyRig(rig: LightRig) {
@@ -300,8 +314,11 @@ function buildStage(
     )
     for (const lamp of furniture.lamps) lamp.intensity = rig.lamps * 1.6
     decor.setLamps(rig.lamps)
-    const fire = FIRE_STRENGTH[signals.fire]
-    const desk = signals.deskLamp ? 1 : 0
+    // In a moment of change, what changed comes in from the last visit's room.
+    const { fire, desk, lid } = signalLevels(
+      signals,
+      moment && { ...moment, k: easeOut(moment.t) }
+    )
     furniture.fire.intensity = fire * 2
     if (furniture.deskLight) furniture.deskLight.intensity = desk * 1.6
     // How lit each kind of glow is: the fire and the desk lamp follow the
@@ -319,7 +336,7 @@ function buildStage(
     }
     for (const flame of furniture.flames) flame.scale.y = fire
     for (const flap of furniture.flaps) {
-      flap.rotation.x = signals.parcelOpen ? flap.userData.side * 1.9 : 0
+      flap.rotation.x = flap.userData.side * 1.9 * lid
     }
     skyline.setCity(rig.city)
     renderer.toneMappingExposure = rig.exposure
@@ -404,6 +421,7 @@ function buildStage(
       motion.finishWalk()
       motion.skip()
       finishBlend()
+      finishMoment()
       decor.rest()
     }
     resize()
@@ -432,11 +450,20 @@ function buildStage(
     // Still, "diam" and behind a popup: a frame only shows what was set.
     if (!animates() || paused) return false
     clock += dt
+    let relight = false
     if (blend < 1) {
       blend = Math.min(1, blend + dt / BLEND_SECONDS)
       current = mixRig(from, to, blend)
-      applyRig(current)
+      relight = true
     }
+    if (moment) {
+      moment.t = Math.min(1, moment.t + dt / MOMENT_SECONDS)
+      if (moment.t >= 1) moment = null
+      relight = true
+    }
+    if (relight) applyRig(current)
+    const growing = plant.update(dt)
+    const arriving = showcase.update(dt)
     motion.update(clock, dt)
     gliding = false
     controls.update()
@@ -449,7 +476,17 @@ function buildStage(
       measuring,
       decor: decorMoving,
       acting: motion.acting(),
+      moment: moment !== null || growing || arriving,
     })
+  }
+
+  /** Ends a moment of change at once: the room as it is now. */
+  function finishMoment() {
+    plant.rest()
+    showcase.rest()
+    if (!moment) return
+    moment = null
+    applyRig(current)
   }
 
   function finishBlend() {
@@ -584,6 +621,15 @@ function buildStage(
       motion.skip()
       requestRender()
     },
+    playMoments(start, changes) {
+      if (!animates() || paused || changes.length === 0) return
+      moment = { from: start, changes: [...changes], t: 0 }
+      applyRig(current)
+      if (changes.includes("plant")) plant.grow()
+      if (changes.includes("showcase")) showcase.arrive()
+      // Wakes the loop: it runs until the moment is over (Activity.moment).
+      requestRender()
+    },
     setPlant(stage) {
       plant.set(stage)
     },
@@ -609,6 +655,8 @@ function buildStage(
       // after it.
       measureStart = 0
       endActivityOnPause(next, motion)
+      // A moment behind the popup would go by unseen: the room as it is now.
+      if (next) finishMoment()
       requestRender()
     },
     dispose() {

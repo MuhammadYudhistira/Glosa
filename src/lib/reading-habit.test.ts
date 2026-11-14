@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import type { HabitDay } from "./habit/types"
 import {
+  PLANT_STAGES,
+  PLANT_STAGE_LABELS,
   booksThisYear,
   calendarCells,
   habitSummary,
@@ -153,6 +155,12 @@ describe("plantStage", () => {
       "berbunga",
       "berbunga",
     ])
+  })
+
+  it("lists every stage once, in the order the streak grows them", () => {
+    expect(PLANT_STAGES).toEqual(Object.keys(PLANT_STAGE_LABELS))
+    const grown = [0, 1, 3, 7, 21, 50].map(plantStage)
+    expect(grown).toEqual(PLANT_STAGES)
   })
 })
 

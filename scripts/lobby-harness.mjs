@@ -1,7 +1,8 @@
 // The 3D lobby on its own page, without the app (plan 1D, Task 5):
 //   node scripts/lobby-harness.mjs serve         open it in a browser
 //   node scripts/lobby-harness.mjs shot <file> [all | query]   1440 × 900 screenshot (PNG);
-//                                 `phone` in the query takes it at 390 × 844
+//                                 `phone` in the query takes it at 390 × 844;
+//                                 `mode=normal` in it draws the moving room
 //   node scripts/lobby-harness.mjs moods [dir]   day, dusk and night, desktop and phone (PNG)
 //   node scripts/lobby-harness.mjs acts [dir]    Anda in each hotspot's activity pose (PNG)
 //   node scripts/lobby-harness.mjs still         public/lobby/lobby-still*.{avif,webp}
@@ -66,11 +67,13 @@ async function thumbs(only) {
 async function shot(path, extra) {
   mkdirSync(dirname(path), { recursive: true })
   // `all` puts an item in every slot; anything else is added to the query
-  // as it is (e.g. mood=day&focus=4,1,2).
+  // as it is (e.g. mood=day&focus=4,1,2). A query with its own mode keeps it.
   const query =
     extra === "all"
       ? "mode=still&decor=all"
-      : `mode=still${extra ? `&${extra}` : ""}`
+      : /(^|&)mode=/.test(extra ?? "")
+        ? extra
+        : `mode=still${extra ? `&${extra}` : ""}`
   const viewport = /(^|&)phone(=|&|$)/.test(extra ?? "")
     ? { width: 390, height: 844 }
     : { width: 1440, height: 900 }

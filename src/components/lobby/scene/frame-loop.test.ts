@@ -63,6 +63,7 @@ const IDLE: Activity = {
   measuring: false,
   decor: false,
   acting: false,
+  moment: false,
 }
 
 describe("what keeps the frames coming (spec 3F §3.6)", () => {

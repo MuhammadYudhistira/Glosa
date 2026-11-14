@@ -9,14 +9,26 @@ import {
   showcaseSlots,
 } from "./layout"
 import { type ModelSet, fitTo } from "./models"
+import { MOMENT_SECONDS, easeOut } from "./moment"
 
 const BODY = "#6a4228"
 const TRIM = "#b98552"
 const COVER = { width: 0.42, height: 0.6, depth: 0.05 } as const
+/** How far in front of its slot the newest cover starts its arrival, in metres. */
+const ARRIVE_FROM = 0.3
 
 export type Showcase = {
   /** Shows these books, the newest first; the same list again does nothing. */
   set: (books: ReadonlyArray<ShowcaseBook>) => void
+  /**
+   * The moment a book was finished (spec 3F §4A.2): the cover in the first
+   * slot slides in from the front and fades in over a second.
+   */
+  arrive: () => void
+  /** Moves the arrival on by dt seconds; true while it still moves. */
+  update: (dt: number) => boolean
+  /** Ends the arrival at once, the cover in its slot. */
+  rest: () => void
   dispose: () => void
 }
 
@@ -142,6 +154,38 @@ export function buildShowcase(
   const slots = showcaseSlots()
   let shownIds = ""
   let disposed = false
+  /** The newest cover, in the first slot, and where it stands. */
+  let first: { mesh: THREE.Mesh; home: THREE.Vector3 } | null = null
+  /** How far the arrival is, 0..1; 1 when nothing arrives. */
+  let arrival = 1
+  // Out of the cabinet's front: its local +Z, turned like the slots.
+  const front = new THREE.Vector3(
+    Math.sin(SHOWCASE_TURN),
+    0,
+    Math.cos(SHOWCASE_TURN)
+  ).multiplyScalar(ARRIVE_FROM)
+
+  const materialsOf = (mesh: THREE.Mesh) =>
+    new Set(mesh.material as Array<THREE.MeshStandardMaterial>)
+  /** The newest cover at k (0..1) of its arrival. */
+  const pose = (k: number) => {
+    if (!first) return
+    first.mesh.position.copy(first.home).addScaledVector(front, 1 - k)
+    for (const material of materialsOf(first.mesh)) material.opacity = k
+  }
+  /** Fading needs blending; a cover at rest is drawn opaque. */
+  const fading = (on: boolean) => {
+    if (!first) return
+    for (const material of materialsOf(first.mesh)) {
+      material.transparent = on
+      material.needsUpdate = true
+    }
+  }
+  const settle = () => {
+    arrival = 1
+    pose(1)
+    fading(false)
+  }
 
   const clear = () => {
     for (const child of [...covers.children]) {
@@ -161,6 +205,9 @@ export function buildShowcase(
       if (disposed || ids === shownIds) return
       shownIds = ids
       clear()
+      // New covers stand in their slots, also in the middle of an arrival.
+      first = null
+      arrival = 1
       books.slice(0, slots.length).forEach((book, i) => {
         const [x, y, z] = slots[i]
         const face = new THREE.MeshStandardMaterial({
@@ -177,6 +224,7 @@ export function buildShowcase(
         mesh.rotation.y = SHOWCASE_TURN
         mesh.castShadow = true
         covers.add(mesh)
+        if (i === 0) first = { mesh, home: mesh.position.clone() }
         if (!book.coverUrl) return
         loader.load(
           book.coverUrl,
@@ -200,8 +248,29 @@ export function buildShowcase(
       })
       onChange()
     },
+    arrive() {
+      if (!first) return
+      arrival = 0
+      fading(true)
+      pose(0)
+      onChange()
+    },
+    update(dt) {
+      if (arrival >= 1) return false
+      arrival = Math.min(1, arrival + dt / MOMENT_SECONDS)
+      if (arrival < 1) pose(easeOut(arrival))
+      else settle()
+      onChange()
+      return arrival < 1
+    },
+    rest() {
+      if (arrival >= 1) return
+      settle()
+      onChange()
+    },
     dispose() {
       disposed = true
+      first = null
       clear()
     },
   }

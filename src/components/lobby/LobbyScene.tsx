@@ -16,6 +16,7 @@ import { HotspotLayer } from "./HotspotLayer"
 import { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyStill, STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import type { HotspotModel } from "./lobby-data"
+import type { RoomChange, RoomSnapshot } from "./room-memory"
 import { NEUTRAL_SIGNALS, NO_NOTES, type RoomSignals } from "./room-signals"
 import {
   DECOR_SLOTS,
@@ -53,6 +54,11 @@ export type LobbySceneHandle = {
   perform: (id: HotspotId) => Promise<void>
   /** Ends the walk and the activity at once (a second tap). */
   skip: () => void
+  /**
+   * The room plays what changed since the last visit (spec 3F §4A.2), once
+   * it has faded in; nothing without a live 3D scene.
+   */
+  playMoments: (from: RoomSnapshot, changes: ReadonlyArray<RoomChange>) => void
 }
 
 type Camera = { view: View; viewport: Viewport }
@@ -160,6 +166,35 @@ export function LobbyScene({
 
   const live = mode === "3d" && camera !== null
 
+  // The 3D room fades in over the still image: the still stays under the
+  // canvas until the fade is done. Set while rendering, so no frame goes by
+  // without either of them.
+  const [fading, setFading] = useState(false)
+  const [wasLive, setWasLive] = useState(live)
+  if (wasLive !== live) {
+    setWasLive(live)
+    setFading(live)
+  }
+  useEffect(() => {
+    if (!fading) return
+    const timer = setTimeout(() => setFading(false), FADE_MS)
+    return () => clearTimeout(timer)
+  }, [fading])
+
+  /** Moments asked for while the room fades in: they play once it is in full view. */
+  const waitingMoments = useRef<{
+    from: RoomSnapshot
+    changes: ReadonlyArray<RoomChange>
+  } | null>(null)
+  useEffect(() => {
+    if (fading) return
+    const waiting = waitingMoments.current
+    waitingMoments.current = null
+    if (waiting && live) {
+      stageRef.current?.playMoments(waiting.from, waiting.changes)
+    }
+  }, [fading, live])
+
   useImperativeHandle(ref, () => ({
     showSpot: (id) =>
       moveCamera((current) => centerOn(current.view, spotOf(id).label)),
@@ -175,6 +210,11 @@ export function LobbyScene({
     perform: (id) =>
       (live ? stageRef.current?.perform(id) : undefined) ?? Promise.resolve(),
     skip: () => stageRef.current?.skip(),
+    playMoments: (from, changes) => {
+      if (!live) return
+      if (fading) waitingMoments.current = { from, changes }
+      else stageRef.current?.playMoments(from, changes)
+    },
   }))
 
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -201,21 +241,6 @@ export function LobbyScene({
   useEffect(() => {
     onLiveChange?.(live)
   }, [live, onLiveChange])
-
-  // The 3D room fades in over the still image: the still stays under the
-  // canvas until the fade is done. Set while rendering, so no frame goes by
-  // without either of them.
-  const [fading, setFading] = useState(false)
-  const [wasLive, setWasLive] = useState(live)
-  if (wasLive !== live) {
-    setWasLive(live)
-    setFading(live)
-  }
-  useEffect(() => {
-    if (!fading) return
-    const timer = setTimeout(() => setFading(false), FADE_MS)
-    return () => clearTimeout(timer)
-  }, [fading])
 
   return (
     <section

@@ -18,6 +18,8 @@ import { HIGHLIGHT_COLORS, type HighlightColor } from "@/lib/annotations/types"
 import { itemOf } from "@/lib/shop/catalog"
 import type { Mood } from "@/components/lobby/scene/daylight"
 import { NEUTRAL_SIGNALS } from "@/components/lobby/room-signals"
+import type { RoomChange, RoomSnapshot } from "@/components/lobby/room-memory"
+import { PLANT_STAGES, type PlantStage } from "@/lib/reading-habit"
 import { type StageMode, createStage } from "@/components/lobby/scene/stage"
 
 const params = new URLSearchParams(window.location.search)
@@ -128,12 +130,54 @@ if (actParam) {
   stage.walkTo(spotOf(id).stand)
   await stage.perform(id)
 }
+// ?plant=<stage>: the habit plant's stage (a sprout by default).
+const plantParam = params.get("plant")
+if (plantParam) {
+  if (!PLANT_STAGES.includes(plantParam as PlantStage)) {
+    throw new Error(`No plant stage ${plantParam}`)
+  }
+  stage.setPlant(plantParam as PlantStage)
+}
+// ?showcase=<n>: n sample finished books in the display cabinet.
+const showcaseCount = Number(params.get("showcase") ?? 0)
+if (showcaseCount > 0) {
+  stage.setShowcase(
+    Array.from({ length: showcaseCount }, (_, i) => ({
+      id: `book-${i}`,
+      coverUrl: null,
+      hue: (i * 67 + 20) % 360,
+    }))
+  )
+}
+// ?from=<snapshot JSON>&changes=fire,plant: the room plays what changed since
+// that visit (spec 3F §4A.2; mode=normal, else it is over at once). The
+// page says it is ready ?wait=<ms> after the moments start (1200 by default).
+const MOMENT_CHANGES: ReadonlyArray<RoomChange> = [
+  "fire",
+  "deskLamp",
+  "parcel",
+  "plant",
+  "showcase",
+]
+const fromParam = params.get("from")
+let wait = 0
+if (fromParam) {
+  const changes = (params.get("changes") ?? "")
+    .split(",")
+    .filter((change): change is RoomChange =>
+      (MOMENT_CHANGES as ReadonlyArray<string>).includes(change)
+    )
+  stage.playMoments(JSON.parse(fromParam) as RoomSnapshot, changes)
+  wait = Number(params.get("wait") ?? 1200)
+}
 document.body.dataset.books = String(stage.books)
 // For a script or the devtools to drive the room (walk, mood, pause).
 Object.assign(window, { lobbyStage: stage })
 // The first frame draws the scene; the second shows it.
-requestAnimationFrame(() =>
-  requestAnimationFrame(() => {
-    document.body.dataset.ready = "true"
-  })
-)
+setTimeout(() => {
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      document.body.dataset.ready = "true"
+    })
+  )
+}, wait)

@@ -6,11 +6,13 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { coverHue } from "@/components/shelf/BookCover"
 import { sherlock } from "@/components/shelf/fixtures"
 import type { StorageUsage } from "@/lib/book-types"
+import { ROOM_SEEN_KEY } from "@/lib/local/keys"
 import type { SessionUser } from "@/lib/session-types"
 import { stubWideScreen, unstubWideScreen } from "@/test/media"
 import { renderWithRouter } from "@/test/router"
 import { isPopupPath } from "./LobbyPopup"
 import { LobbyStage } from "./LobbyStage"
+import { type RoomSnapshot, readRoomSnapshot } from "./room-memory"
 
 type Activate = (id: string, how: { keyboard: boolean }) => void
 
@@ -21,6 +23,7 @@ const scene = vi.hoisted(() => ({
     paused?: boolean
     allow3d?: boolean
     onActivate?: Activate
+    onLiveChange?: (live: boolean) => void
     notes?: Array<string>
     shelves?: Record<string, ReadonlyArray<number>>
   } | null,
@@ -30,6 +33,7 @@ const handle = vi.hoisted(() => ({
   skip: vi.fn(),
   showSpot: vi.fn(),
   showDecor: vi.fn(),
+  playMoments: vi.fn(),
 }))
 vi.mock("./LobbyScene", async () => {
   const { useImperativeHandle } = await import("react")
@@ -59,15 +63,31 @@ vi.mock("@/lib/annotations/highlights-client", () => ({
 }))
 
 const bubbles = vi.hoisted(() => ({ remember: vi.fn() }))
+// The reading habit and the words' meetings as the room's tests set them.
+const habit = vi.hoisted(() => ({
+  status: "ready",
+  days: [] as Array<Record<string, unknown>>,
+  stage: "tunas",
+}))
 vi.mock("@/lib/habit/habit-client", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   useReadingHabit: () => ({
-    status: "ready",
+    status: habit.status,
     today: "2026-11-03",
-    days: [],
+    days: habit.days,
     goals: { dailyGoalMinutes: null },
-    summary: { todayDone: false, todaySeconds: 0, todayGoalSeconds: null },
+    summary: {
+      todayDone: false,
+      todaySeconds: 0,
+      todayGoalSeconds: null,
+      stage: habit.stage,
+    },
   }),
+}))
+const vocab = vi.hoisted((): { total: number | null } => ({ total: 0 }))
+vi.mock("@/lib/vocab/vocab-client", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useMeetingsTotal: () => vocab.total,
 }))
 vi.mock("@/lib/recap/bubble", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -147,6 +167,12 @@ describe("LobbyStage", () => {
     handle.skip.mockClear()
     highlights.state = { status: "ready", highlights: [] }
     bubbles.remember.mockClear()
+    handle.playMoments.mockClear()
+    habit.status = "ready"
+    habit.days = []
+    habit.stage = "tunas"
+    vocab.total = 0
+    localStorage.clear()
   })
 
   it("is the lobby page, with its panels and a live scene", async () => {
@@ -408,5 +434,95 @@ describe("LobbyStage", () => {
     await vi.waitFor(() =>
       expect(bubbles.remember).toHaveBeenCalledWith("2026-10")
     )
+  })
+
+  describe("what changed since the last visit (spec 3F §4A.2)", () => {
+    /** The room these tests show: one reading day (a small fire), Sherlock unfinished. */
+    const now: RoomSnapshot = {
+      fire: "kecil",
+      deskLamp: false,
+      parcelOpen: false,
+      plant: "tunas",
+      finished: 0,
+    }
+    const read = [{ day: "2026-11-02", seconds: 900, goalMinutes: null }]
+
+    /** The scene goes (again) live, which also renders the stage with the data as set. */
+    const goLive = async () => {
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onLiveChange!(false))
+      await act(async () => scene.props!.onLiveChange!(true))
+    }
+
+    it("plays it once the scene is live, and remembers the room", async () => {
+      stubWideScreen(true)
+      habit.days = read
+      const before: RoomSnapshot = { ...now, fire: "bara" }
+      localStorage.setItem(ROOM_SEEN_KEY, JSON.stringify(before))
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      expect(handle.playMoments).not.toHaveBeenCalled()
+      await goLive()
+      expect(handle.playMoments).toHaveBeenCalledTimes(1)
+      expect(handle.playMoments).toHaveBeenCalledWith(before, ["fire"])
+      expect(readRoomSnapshot()).toEqual(now)
+
+      // Once per visit: the scene going again and coming back plays nothing.
+      await goLive()
+      expect(handle.playMoments).toHaveBeenCalledTimes(1)
+    })
+
+    it("plays nothing on the first visit on this device, but remembers the room", async () => {
+      stubWideScreen(true)
+      habit.days = read
+      renderStage(false)
+      await goLive()
+      expect(handle.playMoments).not.toHaveBeenCalled()
+      expect(readRoomSnapshot()).toEqual(now)
+    })
+
+    it("waits for the habit and the words' meetings: nothing played, nothing saved before", async () => {
+      stubWideScreen(true)
+      habit.days = read
+      habit.status = "loading"
+      vocab.total = null
+      const before: RoomSnapshot = { ...now, fire: "bara" }
+      localStorage.setItem(ROOM_SEEN_KEY, JSON.stringify(before))
+      renderStage(false)
+      await goLive()
+      habit.status = "ready"
+      await goLive()
+      expect(handle.playMoments).not.toHaveBeenCalled()
+      expect(readRoomSnapshot()).toEqual(before)
+
+      // A copy from this device (offline) is the room the member sees too.
+      habit.status = "stale"
+      vocab.total = 0
+      await goLive()
+      expect(handle.playMoments).toHaveBeenCalledWith(before, ["fire"])
+      expect(readRoomSnapshot()).toEqual(now)
+    })
+
+    it("plays nothing behind a popup, where nobody sees the room", async () => {
+      stubWideScreen(true)
+      habit.days = read
+      const before: RoomSnapshot = { ...now, fire: "bara" }
+      localStorage.setItem(ROOM_SEEN_KEY, JSON.stringify(before))
+      renderStage(true)
+      await goLive()
+      expect(handle.playMoments).not.toHaveBeenCalled()
+      expect(readRoomSnapshot()).toEqual(before)
+    })
+
+    it("keeps the remembered room up to date as it changes during the visit", async () => {
+      stubWideScreen(true)
+      habit.days = read
+      renderStage(false)
+      await goLive()
+      habit.stage = "daun"
+      await goLive()
+      expect(readRoomSnapshot()).toEqual({ ...now, plant: "daun" })
+      expect(handle.playMoments).not.toHaveBeenCalled()
+    })
   })
 })

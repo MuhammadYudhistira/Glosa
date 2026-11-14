@@ -1,7 +1,8 @@
 import * as THREE from "three"
-import type { PlantStage } from "@/lib/reading-habit"
+import { PLANT_STAGES, type PlantStage } from "@/lib/reading-habit"
 import type { Kit } from "./kit"
 import { PLANT, PLANT_POT, PLANT_SHAPES } from "./layout"
+import { MOMENT_SECONDS, easeOut } from "./moment"
 
 const POT = "#b4643c"
 const RIM = "#c97a4e"
@@ -12,6 +13,15 @@ const SCALE = 2.6
 export type Plant = {
   /** Shows the stage; the same stage again does nothing. */
   set: (stage: PlantStage) => void
+  /**
+   * The moment the plant grew (spec 3F §4A.2): what the shown stage added to
+   * the stage before it grows from nothing over a second.
+   */
+  grow: () => void
+  /** Moves the growth on by dt seconds; true while it still grows. */
+  update: (dt: number) => boolean
+  /** Ends the growth at once, full grown. */
+  rest: () => void
   dispose: () => void
 }
 
@@ -68,6 +78,10 @@ export function buildPlant(kit: Kit, onChange: () => void): Plant {
     heart: new THREE.MeshStandardMaterial({ color: "#f2c14e", roughness: 0.5 }),
   }
   let shown: PlantStage | null = null
+  /** The parts the shown stage added to the one before it, with their full size. */
+  let added: Array<{ part: THREE.Object3D; size: THREE.Vector3 }> = []
+  /** How far the growth is, 0..1; 1 when the plant is not growing. */
+  let growth = 1
 
   const blob = (
     material: THREE.Material,
@@ -81,6 +95,14 @@ export function buildPlant(kit: Kit, onChange: () => void): Plant {
     mesh.rotation.y = turn
     mesh.castShadow = true
     group.add(mesh)
+    return mesh
+  }
+  const fresh = (part: THREE.Object3D) => {
+    added.push({ part, size: part.scale.clone() })
+  }
+  /** The added parts at k (0..1) of their full size. */
+  const pose = (k: number) => {
+    for (const { part, size } of added) part.scale.copy(size).multiplyScalar(k)
   }
 
   return {
@@ -88,7 +110,13 @@ export function buildPlant(kit: Kit, onChange: () => void): Plant {
       if (stage === shown) return
       shown = stage
       group.clear()
+      // A new stage shows full grown, also in the middle of a growth.
+      added = []
+      growth = 1
       const shape = PLANT_SHAPES[stage]
+      // The seed is the first stage: nothing grows into it.
+      const index = PLANT_STAGES.indexOf(stage)
+      const was = index > 0 ? PLANT_SHAPES[PLANT_STAGES[index - 1]] : shape
       if (shape.stem === 0) {
         blob(paint.seed, [0.05, 0.03, 0.05], [0, 0.01, 0])
         onChange()
@@ -99,40 +127,69 @@ export function buildPlant(kit: Kit, onChange: () => void): Plant {
       stalk.position.y = shape.stem / 2
       stalk.castShadow = true
       group.add(stalk)
+      if (was.stem === 0) fresh(stalk)
       for (let i = 0; i < shape.leaves; i++) {
         const height = (shape.stem * (i + 1)) / (shape.leaves + 1)
         const angle = i * 2.4
-        blob(
+        const leaf = blob(
           paint.leaf,
           [0.09, 0.022, 0.05],
           [Math.cos(angle) * 0.08, height, Math.sin(angle) * 0.08],
           -angle
         )
+        if (i >= was.leaves) fresh(leaf)
       }
       for (let i = 0; i < shape.buds; i++) {
         const angle = (i / shape.buds) * Math.PI * 2
-        blob(
+        const bud = blob(
           paint.bud,
           [0.03, 0.045, 0.03],
           [Math.cos(angle) * 0.05, shape.stem + 0.02, Math.sin(angle) * 0.05]
         )
+        if (i >= was.buds) fresh(bud)
       }
       for (let i = 0; i < shape.flowers; i++) {
         const angle = (i / shape.flowers) * Math.PI * 2
         const fx = Math.cos(angle) * 0.08
         const fz = Math.sin(angle) * 0.08
         const fy = shape.stem - 0.03 * i
-        blob(paint.heart, [0.022, 0.018, 0.022], [fx, fy, fz])
+        const parts = [blob(paint.heart, [0.022, 0.018, 0.022], [fx, fy, fz])]
         for (let petal = 0; petal < 5; petal++) {
           const around = (petal / 5) * Math.PI * 2
-          blob(
-            paint.petal,
-            [0.03, 0.01, 0.018],
-            [fx + Math.cos(around) * 0.035, fy, fz + Math.sin(around) * 0.035],
-            -around
+          parts.push(
+            blob(
+              paint.petal,
+              [0.03, 0.01, 0.018],
+              [
+                fx + Math.cos(around) * 0.035,
+                fy,
+                fz + Math.sin(around) * 0.035,
+              ],
+              -around
+            )
           )
         }
+        if (i >= was.flowers) parts.forEach(fresh)
       }
+      onChange()
+    },
+    grow() {
+      if (added.length === 0) return
+      growth = 0
+      pose(0)
+      onChange()
+    },
+    update(dt) {
+      if (growth >= 1) return false
+      growth = Math.min(1, growth + dt / MOMENT_SECONDS)
+      pose(easeOut(growth))
+      onChange()
+      return growth < 1
+    },
+    rest() {
+      if (growth >= 1) return
+      growth = 1
+      pose(1)
       onChange()
     },
     dispose() {

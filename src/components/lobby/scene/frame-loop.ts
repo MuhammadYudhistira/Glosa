@@ -26,6 +26,8 @@ export type Activity = {
   decor: boolean
   /** Anda is on the way to a hotspot or doing its activity (spec 3F §4A.1). */
   acting: boolean
+  /** The room plays what changed since the last visit (spec 3F §4A.2). */
+  moment: boolean
 }
 
 export function moving(activity: Activity): boolean {
@@ -35,7 +37,8 @@ export function moving(activity: Activity): boolean {
     activity.blending ||
     activity.measuring ||
     activity.decor ||
-    activity.acting
+    activity.acting ||
+    activity.moment
   )
 }
 

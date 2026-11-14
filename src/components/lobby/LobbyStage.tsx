@@ -23,6 +23,12 @@ import { LobbyTopBar } from "@/components/lobby/LobbyTopBar"
 import { RecentBooks } from "@/components/lobby/RecentBooks"
 import { TrolleyPanel } from "@/components/lobby/TrolleyPanel"
 import { lobbyHotspots, summarizeLobby } from "@/components/lobby/lobby-data"
+import {
+  type RoomSnapshot,
+  changesSince,
+  readRoomSnapshot,
+  rememberRoomSnapshot,
+} from "@/components/lobby/room-memory"
 import { roomSignals } from "@/components/lobby/room-signals"
 import { type HotspotId, spotOf } from "@/components/lobby/scene/layout"
 import { genreHues } from "@/components/lobby/scene/shelf-books"
@@ -221,6 +227,42 @@ export function LobbyStage({
       covered.current = true
     }
   }, [paused])
+  // What changed since the last visit on this device plays once, when the
+  // member first sees the live room (spec 3F §4A.2). Every input of the
+  // snapshot must be known first: the habit (or this device's copy of it)
+  // and the words' meetings. The books come from the route's loader, so
+  // they are there from the start.
+  const room = useMemo<RoomSnapshot>(
+    () => ({
+      ...signals,
+      plant: habit.summary.stage,
+      // All finished books, not only those in the cabinet's slots: a new
+      // one still arrives in the first slot when the cabinet is full.
+      finished: summary.finishedCount,
+    }),
+    [signals, habit.summary.stage, summary.finishedCount]
+  )
+  const roomKnown =
+    (habit.status === "ready" || habit.status === "stale") &&
+    meetingsTotal !== null
+  // Seen: the live 3D room, not behind a popup or the corkboard's dialog.
+  const roomSeen = sceneLive && !paused && roomKnown
+  const momentsPlayed = useRef(false)
+  useEffect(() => {
+    if (!roomSeen) return
+    if (!momentsPlayed.current) {
+      momentsPlayed.current = true
+      const before = readRoomSnapshot()
+      const changes = changesSince(before, room)
+      if (before && changes.length > 0) {
+        sceneRef.current?.playMoments(before, changes)
+      }
+    }
+    // Kept up to date while the visit lasts: what changes in view now is
+    // not played again next time.
+    rememberRoomSnapshot(room)
+  }, [roomSeen, room])
+
   /** The hotspot tapped during the activity, whose page opens instead. */
   const newer = useRef<HotspotId | null>(null)
   /** The hotspot Anda is on the way to. */

@@ -22,6 +22,7 @@ const stage = vi.hoisted(() => ({
   setMood: vi.fn(),
   perform: vi.fn(() => Promise.resolve()),
   skip: vi.fn(),
+  playMoments: vi.fn(),
   dispose: vi.fn(),
 }))
 vi.mock("./scene/stage", () => ({

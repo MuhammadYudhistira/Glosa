@@ -10,3 +10,5 @@ export const RECAP_BUBBLE_KEY = "glosa:recap-bubble"
 export const COVER_CACHE = "glosa-covers"
 /** The total of the saved words' meetings when Kosakata was last opened (spec 3F §3.6). */
 export const VOCAB_SEEN_KEY = "glosa:vocab-seen"
+/** What the room showed when the member last saw it on this device (spec 3F §4A.2). */
+export const ROOM_SEEN_KEY = "glosa:room-seen"

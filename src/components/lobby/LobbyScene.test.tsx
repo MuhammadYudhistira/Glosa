@@ -5,6 +5,7 @@ import { sherlock } from "@/components/shelf/fixtures"
 import type { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyScene, type LobbySceneHandle } from "./LobbyScene"
 import { lobbyHotspots, summarizeLobby } from "./lobby-data"
+import type { RoomSnapshot } from "./room-memory"
 import { ANDA_START, DECOR_SLOTS, spotOf } from "./scene/layout"
 import {
   MAX_ZOOM,
@@ -40,6 +41,15 @@ const desktop: Environment = {
 const hotspots = lobbyHotspots(summarizeLobby([sherlock]).counts)
 
 const viewport = { width: 1280, height: 720 }
+
+/** The room at the member's last visit. */
+const MOMENT_FROM: RoomSnapshot = {
+  fire: "bara",
+  deskLamp: false,
+  parcelOpen: false,
+  plant: "tunas",
+  finished: 0,
+}
 
 type SceneProps = Partial<ComponentProps<typeof LobbyScene>>
 
@@ -140,6 +150,7 @@ describe("LobbyScene", () => {
     )
     await expect(ref.current?.perform("perapian")).resolves.toBeUndefined()
     expect(() => ref.current?.skip()).not.toThrow()
+    expect(() => ref.current?.playMoments(MOMENT_FROM, ["fire"])).not.toThrow()
   })
 
   it("fills the frame's width with the still image, not just the screen's", async () => {
@@ -178,6 +189,7 @@ describe("LobbyScene", () => {
         setMood: vi.fn(),
         perform: vi.fn((_id: string) => Promise.resolve()),
         skip: vi.fn(),
+        playMoments: vi.fn(),
         dispose: vi.fn(),
       }
       act(() => {
@@ -281,6 +293,7 @@ describe("LobbyScene", () => {
           setMood: vi.fn(),
           perform: vi.fn(() => Promise.resolve()),
           skip: vi.fn(),
+          playMoments: vi.fn(),
           dispose: vi.fn(),
         })
       })
@@ -329,6 +342,33 @@ describe("LobbyScene", () => {
         vi.useRealTimers()
       })
 
+      it("plays the moments of change once the room has faded in", async () => {
+        vi.useFakeTimers()
+        const { stage, ref } = await goLive()
+        ref.current?.playMoments(MOMENT_FROM, ["fire", "plant"])
+        expect(stage.playMoments).not.toHaveBeenCalled()
+        act(() => vi.advanceTimersByTime(600))
+        expect(stage.playMoments).toHaveBeenCalledTimes(1)
+        expect(stage.playMoments).toHaveBeenCalledWith(MOMENT_FROM, [
+          "fire",
+          "plant",
+        ])
+        // In full view, at once.
+        ref.current?.playMoments(MOMENT_FROM, ["parcel"])
+        expect(stage.playMoments).toHaveBeenLastCalledWith(MOMENT_FROM, [
+          "parcel",
+        ])
+      })
+
+      it("drops the moments when the 3D scene goes before the fade is done", async () => {
+        vi.useFakeTimers()
+        const { stage, ref, update } = await goLive()
+        ref.current?.playMoments(MOMENT_FROM, ["fire"])
+        update({ allow3d: false })
+        act(() => vi.advanceTimersByTime(600))
+        expect(stage.playMoments).not.toHaveBeenCalled()
+      })
+
       it("shows the still image and its hotspots until the scene is ready", async () => {
         const { scene } = renderScene(desktop)
         await vi.waitFor(() => expect(canvas.props).not.toBeNull())
@@ -360,6 +400,7 @@ describe("LobbyScene", () => {
             setMood: vi.fn(),
             perform: vi.fn(() => Promise.resolve()),
             skip: vi.fn(),
+            playMoments: vi.fn(),
             dispose: vi.fn(),
           })
           canvas.props?.onView(startView(viewport), viewport)
