@@ -64,7 +64,7 @@ describe("lobbyHotspots", () => {
       dim: true,
     })
     expect(hotspots.find(({ id }) => id === "troli")).toMatchObject({
-      label: "Troli Buku Baru",
+      label: "Kotak buku baru",
       count: null,
       badge: 2,
     })

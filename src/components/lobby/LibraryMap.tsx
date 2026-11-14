@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react"
 import { Button } from "@/components/ui/button"
 import { Panel } from "@/components/ui/panel"
-import type { Genre } from "@/lib/genre"
+import { type Genre, TROLLEY_LABEL } from "@/lib/genre"
 import { cn } from "@/lib/utils"
 import type { HotspotModel } from "./lobby-data"
 import { type HotspotId, type Point2, ROOM, spotOf } from "./scene/layout"
@@ -42,7 +42,7 @@ const LEGEND: ReadonlyArray<[MapKind | "anda", string]> = [
   ["zone", "Rak buku"],
   ["meja-baca", "Kursi baca"],
   ["meja-admin", "Meja tulis"],
-  ["troli", "Troli Buku Baru"],
+  ["troli", TROLLEY_LABEL],
   ["katalog", "Kosakata"],
   ["lemari", "Sudah dibaca"],
   ["tanaman", "Kebiasaan baca"],

@@ -55,7 +55,7 @@ test("trolley books get their shelf from the lobby", async ({ page }) => {
   await memberWithBook(page)
   const scene = await openLobby(page)
   await scene
-    .getByRole("button", { name: "Troli Buku Baru · 1 buku" })
+    .getByRole("button", { name: "Kotak buku baru · 1 buku" })
     .press("Enter")
 
   const dialog = page.getByRole("dialog", { name: "Susun buku" })
@@ -64,14 +64,14 @@ test("trolley books get their shelf from the lobby", async ({ page }) => {
     .selectOption("fiksi_sastra")
   await expect(dialog.getByText("Dipindahkan ke Fiksi & Sastra.")).toBeVisible()
   await expect(
-    dialog.getByText("Troli kosong. Semua buku sudah punya rak.")
+    dialog.getByText("Kotak buku baru kosong. Semua buku sudah punya rak.")
   ).toBeVisible()
   await page.keyboard.press("Escape")
   await expect(
     scene.getByRole("button", { name: "Fiksi & Sastra · 1 buku" })
   ).toBeAttached()
   await expect(
-    scene.getByRole("button", { name: "Troli Buku Baru", exact: true })
+    scene.getByRole("button", { name: "Kotak buku baru", exact: true })
   ).toBeAttached()
 })
 

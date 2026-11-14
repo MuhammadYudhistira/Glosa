@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { type Genre, genreLabel, isGenre, suggestGenre } from "./genre"
+import {
+  type Genre,
+  TROLLEY_LABEL,
+  genreLabel,
+  isGenre,
+  suggestGenre,
+} from "./genre"
+import { SHELF_FILTERS } from "./shelf"
 
 describe("suggestGenre", () => {
   const cases: Array<[string, ReadonlyArray<string>, Genre | null]> = [
@@ -75,7 +82,16 @@ describe("genre labels", () => {
   it("labels genres and the trolley", () => {
     expect(genreLabel("misteri_thriller")).toBe("Misteri & Thriller")
     expect(genreLabel("lainnya")).toBe("Rak Lainnya")
-    expect(genreLabel(null)).toBe("Troli Buku Baru")
+    expect(genreLabel(null)).toBe("Kotak buku baru")
+  })
+
+  it("only displays the new books' name: the stored value stays null and the URL value troli", () => {
+    // The parcel box in the room and the shelf share one name (owner, 2026-11-13).
+    expect(TROLLEY_LABEL).toBe("Kotak buku baru")
+    expect(isGenre(TROLLEY_LABEL)).toBe(false)
+    expect(
+      SHELF_FILTERS.find(({ label }) => label === TROLLEY_LABEL)?.value
+    ).toBe("troli")
   })
 
   it("recognises only stored genre values", () => {

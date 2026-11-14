@@ -21,7 +21,7 @@ describe("GenreSelect", () => {
       screen.getByRole("option", { name: "Misteri & Thriller · 2" })
     ).toBeInTheDocument()
     expect(
-      screen.getByRole("option", { name: "Troli Buku Baru · 2" })
+      screen.getByRole("option", { name: "Kotak buku baru · 2" })
     ).toBeInTheDocument()
   })
 

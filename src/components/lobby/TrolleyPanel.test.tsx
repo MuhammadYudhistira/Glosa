@@ -42,7 +42,9 @@ describe("TrolleyPanel", () => {
   it("says when the trolley is empty", async () => {
     renderPanel([])
     expect(
-      await screen.findByText("Troli kosong. Semua buku sudah punya rak.")
+      await screen.findByText(
+        "Kotak buku baru kosong. Semua buku sudah punya rak."
+      )
     ).toBeInTheDocument()
   })
 

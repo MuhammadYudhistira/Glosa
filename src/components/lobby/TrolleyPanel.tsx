@@ -39,13 +39,13 @@ export function TrolleyPanel({
         <DialogHeader>
           <DialogTitle className="font-heading text-xl">Susun buku</DialogTitle>
           <DialogDescription>
-            Pilih rak untuk setiap buku di troli.
+            Pilih rak untuk setiap buku di kotak buku baru.
           </DialogDescription>
         </DialogHeader>
         {!online && <p className="text-sm text-stamp">Butuh internet.</p>}
         {books.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Troli kosong. Semua buku sudah punya rak.
+            Kotak buku baru kosong. Semua buku sudah punya rak.
           </p>
         ) : (
           <ul className="divide-y">

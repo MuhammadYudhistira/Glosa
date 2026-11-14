@@ -34,14 +34,14 @@ describe("HotspotLayer", () => {
       screen.getByRole("button", { name: "Fiksi & Sastra · 0 buku" })
     ).toHaveAttribute("data-empty")
     expect(
-      screen.getByRole("button", { name: "Troli Buku Baru · 1 buku" })
+      screen.getByRole("button", { name: "Kotak buku baru · 1 buku" })
     ).toBeInTheDocument()
   })
 
   it("names an empty trolley without a count", () => {
     renderLayer([sherlock])
     expect(
-      screen.getByRole("button", { name: "Troli Buku Baru" })
+      screen.getByRole("button", { name: "Kotak buku baru" })
     ).toBeInTheDocument()
   })
 

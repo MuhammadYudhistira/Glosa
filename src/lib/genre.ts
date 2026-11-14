@@ -1,4 +1,4 @@
-/** Genre values stored in books.genre (spec §5a). null means "Troli Buku Baru". */
+/** Genre values stored in books.genre (spec §5a). null means the new books' box ("Kotak buku baru"). */
 export const GENRE_VALUES = [
   "fiksi_sastra",
   "fantasi_petualangan",
@@ -24,7 +24,8 @@ export const GENRE_LABELS: Record<Genre, string> = {
   lainnya: "Rak Lainnya",
 }
 
-export const TROLLEY_LABEL = "Troli Buku Baru"
+/** Display only: the new books are stored with genre null and filtered as "troli". */
+export const TROLLEY_LABEL = "Kotak buku baru"
 
 export function isGenre(value: unknown): value is Genre {
   return (

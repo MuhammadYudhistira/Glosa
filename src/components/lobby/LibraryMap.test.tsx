@@ -47,14 +47,14 @@ describe("LibraryMap", () => {
     expect(kindOf("Fiksi & Sastra di peta")).toBe("zone")
     expect(kindOf("Kursi baca di peta")).toBe("meja-baca")
     expect(kindOf("Meja tulis di peta")).toBe("meja-admin")
-    expect(kindOf("Troli Buku Baru di peta")).toBe("troli")
+    expect(kindOf("Kotak buku baru di peta")).toBe("troli")
     expect(kindOf("Kosakata di peta")).toBe("katalog")
     expect(kindOf("Sudah dibaca di peta")).toBe("lemari")
     expect(kindOf("Kebiasaan baca di peta")).toBe("tanaman")
     expect(kindOf("Toko dekorasi di peta")).toBe("toko")
     const legend = container.querySelector(".lobby-legend")
     expect(legend).toHaveTextContent(
-      "Rak bukuKursi bacaMeja tulisTroli Buku BaruKosakataSudah dibacaKebiasaan bacaKilas balikSorotanPengaturanToko dekorasiPosisi Anda"
+      "Rak bukuKursi bacaMeja tulisKotak buku baruKosakataSudah dibacaKebiasaan bacaKilas balikSorotanPengaturanToko dekorasiPosisi Anda"
     )
   })
 
