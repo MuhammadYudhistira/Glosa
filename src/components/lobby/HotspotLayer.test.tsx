@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import { sherlock } from "@/components/shelf/fixtures"
 import type { ShelfBook } from "@/lib/book-types"
 import { HotspotLayer } from "./HotspotLayer"
-import { layoutLabels } from "./label-layout"
+import { layoutLabels, placeLabels } from "./label-layout"
 import type * as LabelLayout from "./label-layout"
 import { STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import { lobbyHotspots, summarizeLobby } from "./lobby-data"
@@ -13,7 +13,11 @@ import { project, startView } from "./scene/projection"
 // The real layout, watched: how often the layer lays its labels out.
 vi.mock("./label-layout", async (importOriginal) => {
   const real = await importOriginal<typeof LabelLayout>()
-  return { ...real, layoutLabels: vi.fn(real.layoutLabels) }
+  return {
+    ...real,
+    layoutLabels: vi.fn(real.layoutLabels),
+    placeLabels: vi.fn(real.placeLabels),
+  }
 })
 
 const onTrolley: ShelfBook = { ...sherlock, id: "t", genre: null }
@@ -150,6 +154,44 @@ describe("HotspotLayer", () => {
     expect(options?.previous).toBe(
       vi.mocked(layoutLabels).mock.results[0].value
     )
+  })
+
+  it("measures each label's full pill on the page, and lays out with those sizes", () => {
+    // jsdom has no layout: the hidden copies report a size here, as a browser
+    // would (a long name, or a wider fallback font).
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: Element) {
+        const measured =
+          this.parentElement?.classList.contains("lobby-hotspot-measure") ??
+          false
+        return DOMRect.fromRect(
+          measured ? { width: 250.2, height: 30.5 } : { width: 0, height: 0 }
+        )
+      }
+    )
+    const viewport = { width: 1440, height: 900 }
+    vi.mocked(placeLabels).mockClear()
+    const { container } = render(
+      <HotspotLayer
+        hotspots={lobbyHotspots(summarizeLobby([sherlock]).counts)}
+        view={startView(viewport)}
+        viewport={viewport}
+        frame={viewport}
+        fontPx={14}
+        onActivate={vi.fn()}
+      />
+    )
+    // The copies are for measuring only: no names, no buttons.
+    const copies = container.querySelector(".lobby-hotspot-measure")!
+    expect(copies).toHaveAttribute("aria-hidden", "true")
+    expect(copies.children).toHaveLength(18)
+    expect(screen.getAllByRole("button")).toHaveLength(18)
+    const sizes = vi.mocked(placeLabels).mock.lastCall?.[5]
+    expect(sizes?.get("bisnis_pengembangan_diri")).toEqual({
+      width: 251,
+      height: 31,
+    })
+    vi.mocked(Element.prototype.getBoundingClientRect).mockRestore()
   })
 
   it("shrinks labels with no room to marks, and keeps every one in the tab order", () => {

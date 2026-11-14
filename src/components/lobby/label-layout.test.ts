@@ -150,6 +150,31 @@ describe("layoutLabels", () => {
     expect(moved.get("papan")).toMatchObject({ look: "full", x: 205, y: 115 })
   })
 
+  it("lays out with the pill sizes it is given, and estimates only the others", () => {
+    const hotspots = lobbyHotspots(FULL, 12)
+    const view = startView(PHONE)
+    const wide = { width: 333, height: 41 }
+    const placed = placeLabels(
+      hotspots,
+      view,
+      PHONE,
+      PHONE,
+      12,
+      new Map([["bisnis_pengembangan_diri", wide]])
+    )
+    const bisnis = placed.find(
+      (label) => label.id === "bisnis_pengembangan_diri"
+    )!
+    expect({ width: bisnis.width, height: bisnis.height }).toEqual(wide)
+    const sorotan = placed.find((label) => label.id === "papan")!
+    expect({ width: sorotan.width, height: sorotan.height }).toEqual(
+      labelSize(
+        hotspots.find((hotspot) => hotspot.id === "papan")!,
+        12
+      )
+    )
+  })
+
   it("sizes a pill by its text, its count and its badge", () => {
     const plain = labelSize({ label: "Sorotan", count: null, badge: null }, 14)
     const counted = labelSize({ label: "Sorotan", count: 3, badge: null }, 14)

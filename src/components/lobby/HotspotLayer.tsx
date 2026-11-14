@@ -1,6 +1,14 @@
-import { type ReactNode, useEffect, useMemo, useRef } from "react"
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import {
   type LabelPlacement,
+  type LabelSize,
   layoutLabels,
   onScreen,
   placeLabels,
@@ -16,6 +24,89 @@ function isKeyboardFocus(element: HTMLElement): boolean {
   } catch {
     return false
   }
+}
+
+/** What a label's pill says: its name, its count and its badge. */
+function PillText({ hotspot }: { hotspot: HotspotModel }) {
+  return (
+    <>
+      <span>{hotspot.label}</span>
+      {hotspot.count !== null && (
+        <>
+          {" "}
+          <span className="lobby-hotspot-count">
+            · {hotspot.count} <span className="sr-only">buku</span>
+          </span>
+        </>
+      )}
+      {hotspot.badge !== null && (
+        <>
+          {" "}
+          <span className="lobby-hotspot-badge" aria-hidden="true">
+            {hotspot.badge}
+          </span>
+          <span className="sr-only">· {hotspot.badge} buku</span>
+        </>
+      )}
+    </>
+  )
+}
+
+function sameSizes(
+  a: ReadonlyMap<HotspotId, LabelSize> | null,
+  b: ReadonlyMap<HotspotId, LabelSize>
+): boolean {
+  if (a?.size !== b.size) return false
+  for (const [id, size] of b) {
+    const other = a.get(id)
+    if (other?.width !== size.width || other.height !== size.height) {
+      return false
+    }
+  }
+  return true
+}
+
+/**
+ * Each label's full pill as the page draws it, from a hidden copy of every
+ * pill (`box`'s children): the real font, a long name, a badge. Measured
+ * again when the labels or the font change, and, where ResizeObserver
+ * exists, whenever a copy changes size (a web font arriving). Null until
+ * measured (and always in jsdom): the layout then estimates.
+ */
+function useMeasuredPills(
+  hotspots: ReadonlyArray<HotspotModel>,
+  fontPx: number
+) {
+  const box = useRef<HTMLDivElement>(null)
+  const [sizes, setSizes] = useState<ReadonlyMap<HotspotId, LabelSize> | null>(
+    null
+  )
+  useLayoutEffect(() => {
+    const element = box.current
+    if (!element) return
+    const copies = [...element.children] as Array<HTMLElement>
+    const measure = () => {
+      const next = new Map<HotspotId, LabelSize>()
+      for (const copy of copies) {
+        const { width, height } = copy.getBoundingClientRect()
+        if (width > 0 && height > 0) {
+          next.set(copy.dataset.id as HotspotId, {
+            width: Math.ceil(width),
+            height: Math.ceil(height),
+          })
+        }
+      }
+      // Not drawn (the scene hidden behind a page): keep what was measured.
+      if (next.size === 0) return
+      setSizes((current) => (sameSizes(current, next) ? current : next))
+    }
+    measure()
+    if (typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(measure)
+    for (const copy of copies) observer.observe(copy)
+    return () => observer.disconnect()
+  }, [hotspots, fontPx])
+  return { box, sizes }
 }
 
 /**
@@ -59,6 +150,8 @@ export function HotspotLayer({
   // Laid out again only when what it depends on changes (frames come as new
   // objects of the same size), each time from the last layout, so a label
   // at the edge of fitting holds its look while the camera moves.
+  const pills = useMeasuredPills(hotspots, fontPx)
+  const sizes = pills.sizes
   const last = useRef<ReadonlyMap<HotspotId, LabelPlacement> | null>(null)
   const width = frame?.width
   const height = frame?.height
@@ -68,11 +161,29 @@ export function HotspotLayer({
     if (width === undefined || height === undefined) return null
     const box = { width, height }
     const shown = { width: sceneWidth ?? width, height: sceneHeight ?? height }
-    return layoutLabels(placeLabels(hotspots, view, viewport, box, fontPx), {
+    const placed = placeLabels(
+      hotspots,
+      view,
+      viewport,
+      box,
+      fontPx,
+      sizes ?? undefined
+    )
+    return layoutLabels(placed, {
       bounds: onScreen(box, shown),
       previous: last.current ?? undefined,
     })
-  }, [hotspots, view, viewport, width, height, sceneWidth, sceneHeight, fontPx])
+  }, [
+    hotspots,
+    view,
+    viewport,
+    width,
+    height,
+    sceneWidth,
+    sceneHeight,
+    fontPx,
+    sizes,
+  ])
   useEffect(() => {
     last.current = looks
   }, [looks])
@@ -109,28 +220,24 @@ export function HotspotLayer({
                 }
               }}
             >
-              <span>{hotspot.label}</span>
-              {hotspot.count !== null && (
-                <>
-                  {" "}
-                  <span className="lobby-hotspot-count">
-                    · {hotspot.count} <span className="sr-only">buku</span>
-                  </span>
-                </>
-              )}
-              {hotspot.badge !== null && (
-                <>
-                  {" "}
-                  <span className="lobby-hotspot-badge" aria-hidden="true">
-                    {hotspot.badge}
-                  </span>
-                  <span className="sr-only">· {hotspot.badge} buku</span>
-                </>
-              )}
+              <PillText hotspot={hotspot} />
             </button>
           </div>
         )
       })}
+      {/* Every pill in full, unseen, to measure (useMeasuredPills). */}
+      <div ref={pills.box} className="lobby-hotspot-measure" aria-hidden="true">
+        {hotspots.map((hotspot) => (
+          <span
+            key={hotspot.id}
+            data-id={hotspot.id}
+            className="lobby-hotspot"
+            data-empty={hotspot.dim ? "" : undefined}
+          >
+            <PillText hotspot={hotspot} />
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

@@ -32,16 +32,20 @@ export const MARK_SIZE = 14
 /** The space kept between two labels. */
 export const LABEL_GAP = 4
 
+/** A pill's size on screen, in CSS pixels. */
+export type LabelSize = { width: number; height: number }
+
 /**
  * A pill's size for its text, in pixels, from the label font size (styles.css:
  * .lobby-hotspot, 14 px from the desktop breakpoint, 12 px below). An
  * estimate a little on the generous side (measured: "Sorotan" is 76 × 34 px
- * at 14 px), so pills that fit here fit on screen; the E2E test measures.
+ * at 14 px), used only until the page has measured the real pills
+ * (HotspotLayer), and in tests, which have no layout.
  */
 export function labelSize(
   hotspot: Pick<HotspotModel, "label" | "count" | "badge">,
   fontPx: number
-): { width: number; height: number } {
+): LabelSize {
   const text =
     hotspot.label + (hotspot.count === null ? "" : ` · ${hotspot.count}`)
   const badge = hotspot.badge === null ? 0 : 1.6 * fontPx + 0.35 * fontPx
@@ -238,19 +242,21 @@ export function labelRect(
 /**
  * The labels where they show on screen: `frame` is the size in CSS pixels
  * of the box the view is drawn in (the canvas, or the still image as it
- * covers the scene).
+ * covers the scene). `sizes` holds the pills as measured on the page; a
+ * label without one is estimated from its text (labelSize).
  */
 export function placeLabels(
   hotspots: ReadonlyArray<HotspotModel>,
   view: View,
   viewport: Viewport,
   frame: Viewport,
-  fontPx: number
+  fontPx: number,
+  sizes?: ReadonlyMap<HotspotId, LabelSize>
 ): Array<PlacedLabel> {
   let shelfBelow = -Infinity
   return hotspots.map((hotspot) => {
     const { x, y } = project(spotOf(hotspot.id).label, view, viewport)
-    const size = labelSize(hotspot, fontPx)
+    const size = sizes?.get(hotspot.id) ?? labelSize(hotspot, fontPx)
     let bottom = (y / 100) * frame.height
     if (isGenre(hotspot.id)) {
       // The shelf sections' labels step down the bookcase (layout.ts); on

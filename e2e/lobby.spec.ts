@@ -183,13 +183,15 @@ test("no two room labels overlap, and none covers the greeting", async ({
   await expect(
     scene.getByRole("button", { name: "Kursi baca", exact: true })
   ).toBeVisible()
-  const boxes = await scene.locator(".lobby-hotspot").evaluateAll((buttons) =>
-    buttons.flatMap((button) => {
-      if (getComputedStyle(button).opacity === "0") return []
-      const { left, right, top, bottom } = button.getBoundingClientRect()
-      return [{ name: button.textContent, left, right, top, bottom }]
-    })
-  )
+  const boxes = await scene
+    .locator("button.lobby-hotspot")
+    .evaluateAll((buttons) =>
+      buttons.flatMap((button) => {
+        if (getComputedStyle(button).opacity === "0") return []
+        const { left, right, top, bottom } = button.getBoundingClientRect()
+        return [{ name: button.textContent, left, right, top, bottom }]
+      })
+    )
   expect(boxes.length).toBeGreaterThan(9)
   const meet = (
     a: { left: number; right: number; top: number; bottom: number },

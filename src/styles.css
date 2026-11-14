@@ -1250,6 +1250,18 @@
     opacity: 0;
     pointer-events: none;
   }
+  /* A copy of every pill in full, unseen, so the layout knows their real
+     sizes (HotspotLayer: useMeasuredPills). */
+  .lobby-hotspot-measure {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: grid;
+    justify-items: start;
+    width: max-content;
+    visibility: hidden;
+    pointer-events: none;
+  }
   .lobby-hotspot-anchor:has(> .lobby-hotspot:is(:hover, :focus-visible)) {
     z-index: 1;
   }
