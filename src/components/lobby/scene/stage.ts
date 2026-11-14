@@ -35,7 +35,7 @@ import {
   spotOf,
 } from "./layout"
 import { type ModelSet, loadModels } from "./models"
-import { createMotion } from "./motion"
+import { createMotion, endActivityOnPause } from "./motion"
 import { buildPeople } from "./people"
 import {
   CAMERA_OFFSET,
@@ -608,7 +608,7 @@ function buildStage(
       // (its page must not wait behind the popup); a plain walk goes on
       // after it.
       measureStart = 0
-      if (next && motion.acting()) motion.skip()
+      endActivityOnPause(next, motion)
       requestRender()
     },
     dispose() {

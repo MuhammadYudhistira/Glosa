@@ -214,6 +214,22 @@ describe("LobbyStage", () => {
     expect(router.state.location.pathname).toBe("/settings")
   })
 
+  it("the last tap wins: a tap back on the running hotspot opens its page", async () => {
+    stubWideScreen(true)
+    let finish = () => undefined as void
+    handle.perform.mockImplementation(
+      () => new Promise<void>((resolve) => (finish = resolve))
+    )
+    const { router } = renderStage(false)
+    await vi.waitFor(() => expect(scene.props).not.toBeNull())
+    const activate = scene.props!.onActivate!
+    await act(async () => activate("perapian", { keyboard: false }))
+    await act(async () => activate("pintu", { keyboard: false }))
+    await act(async () => activate("perapian", { keyboard: false }))
+    await act(async () => finish())
+    expect(router.state.location.pathname).toBe("/recap")
+  })
+
   it("opens nothing over the corkboard dialog when the activity ends", async () => {
     stubWideScreen(true)
     let finish = () => undefined as void

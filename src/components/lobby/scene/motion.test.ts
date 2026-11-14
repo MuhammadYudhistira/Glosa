@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import { ACTIVITY_SECONDS, POSES, WALK_MAX_SECONDS } from "./activities"
 import { createKit } from "./kit"
 import { ANDA_START, type Point2 } from "./layout"
-import { createMotion, handAway } from "./motion"
+import { createMotion, endActivityOnPause, handAway } from "./motion"
 import { buildPeople } from "./people"
 
 function setup() {
@@ -103,8 +103,7 @@ describe("motion: the activity after a tap (spec 3F §4A.1)", () => {
     const done = vi.fn()
     void motion.perform("menyiram", NEAR).then(done)
     motion.walkTo(NEAR, false)
-    // The stage's setPaused: only an activity under way is skipped.
-    if (motion.acting()) motion.skip()
+    endActivityOnPause(true, motion)
     await Promise.resolve()
     expect(done).toHaveBeenCalledTimes(1)
     expect(motion.walking()).toBe(false)
@@ -112,7 +111,15 @@ describe("motion: the activity after a tap (spec 3F §4A.1)", () => {
     const other = people()
     other.motion.walkTo(NEAR, false)
     expect(other.motion.acting()).toBe(false)
+    endActivityOnPause(true, other.motion)
     expect(other.motion.walking()).toBe(true)
+
+    // Un-pausing does nothing to an activity under way.
+    const again = people()
+    void again.motion.perform("menyiram", NEAR)
+    again.motion.walkTo(NEAR, false)
+    endActivityOnPause(false, again.motion)
+    expect(again.motion.acting()).toBe(true)
   })
 
   it("skip: in the pose at once, the promise kept", async () => {

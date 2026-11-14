@@ -56,6 +56,18 @@ export function handAway(turn: number): boolean {
   return Math.cos(turn) - Math.sin(turn) < 0
 }
 
+/**
+ * The pause rule (spec 3F §4.5): pausing ends an activity under way in its
+ * pose, so its page does not wait behind the popup. A plain walk is left to
+ * go on after the pause, and un-pausing does nothing.
+ */
+export function endActivityOnPause(
+  paused: boolean,
+  motion: Pick<Motion, "acting" | "skip">
+): void {
+  if (paused && motion.acting()) motion.skip()
+}
+
 export type Motion = {
   /** Poses everything at time t (seconds); dt is the time since the last frame. */
   update: (t: number, dt: number) => void

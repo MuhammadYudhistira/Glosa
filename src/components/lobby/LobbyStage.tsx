@@ -231,7 +231,7 @@ export function LobbyStage({
     // A second tap while Anda is on the way: skip to the page (spec 3F §4A.1).
     if (running.current) {
       // Another hotspot: its page opens instead of the first one's.
-      if (id !== target.current) newer.current = id
+      newer.current = id === target.current ? null : id
       sceneRef.current?.skip()
       return
     }
