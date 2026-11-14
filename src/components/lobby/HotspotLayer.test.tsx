@@ -156,6 +156,49 @@ describe("HotspotLayer", () => {
     )
   })
 
+  it("forgets the last layout when the labels, the frame or the font change (K2)", () => {
+    const viewport = { width: 390, height: 788 }
+    const empty = lobbyHotspots(summarizeLobby([]).counts)
+    const full = lobbyHotspots(summarizeLobby([sherlock]).counts)
+    const view = startView(viewport)
+    const ui = (
+      hotspots: typeof empty,
+      frame = { ...viewport },
+      fontPx = 12
+    ) => (
+      <HotspotLayer
+        hotspots={hotspots}
+        view={view}
+        viewport={viewport}
+        frame={frame}
+        fontPx={fontPx}
+        onActivate={vi.fn()}
+      />
+    )
+    vi.mocked(layoutLabels).mockClear()
+    const { rerender } = render(ui(empty))
+    const previousOfLast = () => vi.mocked(layoutLabels).mock.lastCall?.[1]
+    expect(previousOfLast()?.previous).toBeUndefined()
+    rerender(ui(full))
+    expect(previousOfLast()?.previous).toBeUndefined()
+    rerender(ui(full, { width: 400, height: 788 }))
+    expect(previousOfLast()?.previous).toBeUndefined()
+    rerender(ui(full, { width: 400, height: 788 }, 14))
+    expect(previousOfLast()?.previous).toBeUndefined()
+    // The same geometry, a new view: the last layout is held.
+    rerender(
+      <HotspotLayer
+        hotspots={full}
+        view={{ ...view, zoom: view.zoom * 1.01 }}
+        viewport={viewport}
+        frame={{ width: 400, height: 788 }}
+        fontPx={14}
+        onActivate={vi.fn()}
+      />
+    )
+    expect(previousOfLast()?.previous).toBeDefined()
+  })
+
   it("measures each label's full pill on the page, and lays out with those sizes", () => {
     // jsdom has no layout: the hidden copies report a size here, as a browser
     // would (a long name, or a wider fallback font).

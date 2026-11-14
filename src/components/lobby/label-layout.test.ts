@@ -309,12 +309,9 @@ describe("the room's labels (owner, 2026-11-13)", () => {
             }
           })
         )
-        for (const { label, placement, rect } of shown) {
-          // A pill shows wholly on screen; a mark at least inside the frame.
-          const box =
-            placement.look === "full"
-              ? bounds
-              : { x0: 0, x1: frame.width, y0: 0, y1: frame.height }
+        for (const { label, rect } of shown) {
+          // A pill or a mark shows wholly on the visible screen (owner, K1).
+          const box = bounds
           expect(rect.x0, label.id).toBeGreaterThanOrEqual(box.x0)
           expect(rect.x1, label.id).toBeLessThanOrEqual(box.x1)
           expect(rect.y0, label.id).toBeGreaterThanOrEqual(box.y0)
@@ -323,6 +320,24 @@ describe("the room's labels (owner, 2026-11-13)", () => {
       })
     }
   }
+
+  it("puts the mark of a spot outside the visible screen at the nearest edge inside it (K1)", () => {
+    const frame = { width: 900, height: 500 }
+    const bounds = { x0: 255, x1: 645, y0: 0, y1: 500 }
+    const looks = layoutLabels(
+      [at("pintu", 100, 300), at("lemari", 800, 300, 1)],
+      { bounds, frame }
+    )
+    // Both labels are cropped away: each is a mark on the nearest edge.
+    const left = looks.get("pintu")!
+    const right = looks.get("lemari")!
+    expect(left.look).toBe("mark")
+    expect(right.look).toBe("mark")
+    expect(left.x - MARK_SIZE / 2).toBeCloseTo(bounds.x0, 5)
+    expect(right.x + MARK_SIZE / 2).toBeCloseTo(bounds.x1, 5)
+    expect(left.y).toBe(300)
+    expect(right.y).toBe(300)
+  })
 
   // The owner's screen: every label keeps its full name there.
   for (const { name, view, viewport, frame, font, device } of SCREENS.filter(

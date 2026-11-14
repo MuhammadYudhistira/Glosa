@@ -163,6 +163,13 @@ export function HotspotLayer({
   const pills = useMeasuredPills(hotspots, fontPx)
   const sizes = pills.sizes
   const last = useRef<ReadonlyMap<HotspotId, LabelPlacement> | null>(null)
+  // What `last` was laid out for: kept only across `view` changes.
+  const lastFor = useRef<{
+    hotspots: ReadonlyArray<HotspotModel>
+    width?: number
+    height?: number
+    fontPx: number
+  } | null>(null)
   const width = frame?.width
   const height = frame?.height
   const sceneWidth = scene?.width
@@ -170,6 +177,14 @@ export function HotspotLayer({
   const looks = useMemo(() => {
     if (width === undefined || height === undefined) return null
     const box = { width, height }
+    const was = lastFor.current
+    const sameGeometry =
+      was?.hotspots === hotspots &&
+      was.width === width &&
+      was.height === height &&
+      was.fontPx === fontPx
+    if (!sameGeometry) last.current = null
+    lastFor.current = { hotspots, width, height, fontPx }
     const shown = { width: sceneWidth ?? width, height: sceneHeight ?? height }
     const placed = placeLabels(
       hotspots,

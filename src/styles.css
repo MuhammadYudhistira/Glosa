@@ -1233,7 +1233,7 @@
   .lobby-hotspot[data-look="mark"]:not(:hover, :focus-visible)::before {
     content: "";
     position: absolute;
-    inset: -7px;
+    inset: -3px;
   }
   .lobby-hotspot[data-look="mark"]:not(:hover, :focus-visible) > * {
     position: absolute;

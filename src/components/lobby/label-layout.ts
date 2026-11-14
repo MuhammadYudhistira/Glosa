@@ -198,7 +198,8 @@ const overlapArea = (a: Rect, b: Rect) =>
  * meets nothing already placed, moved a little if that makes room; else a
  * mark at its spot or just beside it. A pill shows only wholly on screen
  * (inside `bounds`): the screen's edge never cuts one, it moves inside or
- * becomes a mark. A mark stays inside the `frame` (when its spot is in it).
+ * becomes a mark. A mark stays inside `bounds` too (a spot cropped away gets its mark at the
+ * nearest point inside), or else inside the `frame` (when its spot is in it).
  * Where even a mark finds no free room, it still shows (never hidden): the
  * nearest place clear of every pill where it covers no other mark (centres
  * at least half a mark apart), with the least overlap. Given the `previous`
@@ -257,14 +258,14 @@ export function layoutLabels(
       return (
         free(option.rect, margin) &&
         (option.look === "mark"
-          ? inFrame(option.rect)
+          ? inside(option.rect, 0) && inFrame(option.rect)
           : inside(option.rect, margin))
       )
     })
     const chosen =
       choice >= 0
         ? { ...options[choice], choice }
-        : { ...crowdedMark(label, keepIn), choice: options.length }
+        : { ...crowdedMark(label, keepIn, bounds), choice: options.length }
     taken.push(chosen)
     placements.set(label.id, {
       look: chosen.look,
@@ -276,14 +277,26 @@ export function layoutLabels(
   return placements
 
   /** A mark with no free room: the best place among CROWDED_STEPS. */
-  function crowdedMark(label: PlacedLabel, keepIn: Viewport | null) {
+  function crowdedMark(
+    label: PlacedLabel,
+    keepIn: Viewport | null,
+    visible: Bounds | undefined
+  ) {
     let best: { score: Array<number>; option: Option } | null = null
     for (const [dx, dy] of CROWDED_STEPS) {
       let x = label.x + dx
       let y = label.y + dy
-      if (keepIn) {
-        x = Math.min(Math.max(x, MARK_SIZE / 2), keepIn.width - MARK_SIZE / 2)
-        y = Math.min(Math.max(y, MARK_SIZE), keepIn.height)
+      // On the visible screen when known (a spot cropped away gets its mark
+      // at the nearest point inside it), else inside the frame.
+      const box =
+        visible ??
+        (keepIn && { x0: 0, x1: keepIn.width, y0: 0, y1: keepIn.height })
+      if (box) {
+        x = Math.min(
+          Math.max(x, box.x0 + MARK_SIZE / 2),
+          box.x1 - MARK_SIZE / 2
+        )
+        y = Math.min(Math.max(y, box.y0 + MARK_SIZE), box.y1)
       }
       const rect = mark({ ...label, x, y })
       let onPills = 0
