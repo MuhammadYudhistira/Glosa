@@ -1243,10 +1243,11 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  /* No room even for a mark: reachable by keyboard (or once the camera
-     comes closer), shown while focused. */
+  /* For a moment before the scene is measured (HotspotLayer): unseen, so
+     no two labels overlap, but in the tab order and shown while focused.
+     Once placed, every label is a pill or a mark: none is hidden. */
   .lobby-hotspot-anchor
-    > .lobby-hotspot[data-look="hidden"]:not(:focus-visible) {
+    > .lobby-hotspot[data-look="unplaced"]:not(:focus-visible) {
     opacity: 0;
     pointer-events: none;
   }

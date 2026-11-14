@@ -69,9 +69,9 @@ function sameSizes(
 /**
  * Each label's full pill as the page draws it, from a hidden copy of every
  * pill (`box`'s children): the real font, a long name, a badge. Measured
- * again when the labels or the font change, and, where ResizeObserver
- * exists, whenever a copy changes size (a web font arriving). Null until
- * measured (and always in jsdom): the layout then estimates.
+ * again when the labels or the font size change, and when a web font
+ * arrives. Null until measured (and always in jsdom): the layout then
+ * estimates.
  */
 function useMeasuredPills(
   hotspots: ReadonlyArray<HotspotModel>,
@@ -101,10 +101,19 @@ function useMeasuredPills(
       setSizes((current) => (sameSizes(current, next) ? current : next))
     }
     measure()
-    if (typeof ResizeObserver === "undefined") return
-    const observer = new ResizeObserver(measure)
-    for (const copy of copies) observer.observe(copy)
-    return () => observer.disconnect()
+    // Not a ResizeObserver on the copies: one measuring while the scene's
+    // own observers run makes the browser report a ResizeObserver loop.
+    const fonts = typeof document === "undefined" ? undefined : document.fonts
+    if (!fonts) return
+    let live = true
+    void fonts.ready.then(() => {
+      if (live) measure()
+    })
+    fonts.addEventListener("loadingdone", measure)
+    return () => {
+      live = false
+      fonts.removeEventListener("loadingdone", measure)
+    }
   }, [hotspots, fontPx])
   return { box, sizes }
 }
@@ -113,9 +122,10 @@ function useMeasuredPills(
  * The lobby's places as HTML buttons over the scene (spec 1D §5.1), placed by
  * projecting their 3D spot with the camera's current view. No two labels
  * overlap (owner, 2026-11-13): where the room is drawn too small for every
- * pill, the less important ones shrink to a mark at their spot, or wait for
- * the keyboard or a closer camera (label-layout.ts). Each keeps its name and
- * its place in the tab order.
+ * pill, the less important ones shrink to a mark at their spot, never hidden
+ * (owner, 2026-11-14; label-layout.ts). A mark is still a button to tap,
+ * showing its name on hover or focus; each keeps its name and its place in
+ * the tab order.
  */
 export function HotspotLayer({
   hotspots,
@@ -171,6 +181,7 @@ export function HotspotLayer({
     )
     return layoutLabels(placed, {
       bounds: onScreen(box, shown),
+      frame: box,
       previous: last.current ?? undefined,
     })
   }, [
@@ -195,9 +206,9 @@ export function HotspotLayer({
           frame && at
             ? { x: (at.x / frame.width) * 100, y: (at.y / frame.height) * 100 }
             : project(spotOf(hotspot.id).label, view, viewport)
-        // Unplaced (no frame yet): invisible, so no two overlap, but still
-        // in the DOM, the tab order and the accessibility tree.
-        const look = at?.look ?? "hidden"
+        // Unplaced (no frame yet, for a moment): invisible, so no two
+        // overlap, but in the DOM, the tab order and the accessibility tree.
+        const look = at?.look ?? "unplaced"
         return (
           <div
             key={hotspot.id}

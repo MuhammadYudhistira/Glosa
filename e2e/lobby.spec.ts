@@ -191,29 +191,46 @@ test("no two room labels overlap, and none covers the greeting", async ({
     .getByText("Rakmu masih kosong. Bawa buku pertamamu ke sini!")
     .filter({ visible: true })
   await expect(welcome).toBeVisible()
-  // The labels spread once the scene's size is measured.
-  await expect(
-    scene.getByRole("button", { name: "Kursi baca", exact: true })
-  ).toBeVisible()
+  // The labels are placed once the scene's size is measured.
+  await expect(scene.locator('button[data-look="unplaced"]')).toHaveCount(0)
   const boxes = await scene
     .locator("button.lobby-hotspot")
     .evaluateAll((buttons) =>
-      buttons.flatMap((button) => {
-        if (getComputedStyle(button).opacity === "0") return []
+      buttons.map((button) => {
         const { left, right, top, bottom } = button.getBoundingClientRect()
-        return [{ name: button.textContent, left, right, top, bottom }]
+        return {
+          name: button.textContent,
+          mark: button.dataset.look === "mark",
+          seen: getComputedStyle(button).opacity !== "0",
+          left,
+          right,
+          top,
+          bottom,
+        }
       })
     )
-  expect(boxes.length).toBeGreaterThan(9)
+  // Every label shows, as a pill or a mark (owner, 2026-11-14: none hides).
+  expect(boxes).toHaveLength(18)
+  expect(boxes.filter((box) => !box.seen).map((box) => box.name)).toEqual([])
   const meet = (
     a: { left: number; right: number; top: number; bottom: number },
     b: { left: number; right: number; top: number; bottom: number }
   ) =>
     a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+  // A pill meets nothing; two marks may touch but never cover each other.
+  const centre = (box: (typeof boxes)[number]) => [
+    (box.left + box.right) / 2,
+    (box.top + box.bottom) / 2,
+  ]
   const overlapping = boxes.flatMap((a, i) =>
-    boxes
-      .slice(i + 1)
-      .flatMap((b) => (meet(a, b) ? [`${a.name} / ${b.name}`] : []))
+    boxes.slice(i + 1).flatMap((b) => {
+      if (a.mark && b.mark) {
+        const [ax, ay] = centre(a)
+        const [bx, by] = centre(b)
+        return Math.hypot(ax - bx, ay - by) < 7 ? [`${a.name} / ${b.name}`] : []
+      }
+      return meet(a, b) ? [`${a.name} / ${b.name}`] : []
+    })
   )
   expect(overlapping).toEqual([])
   if (!isMobile) {

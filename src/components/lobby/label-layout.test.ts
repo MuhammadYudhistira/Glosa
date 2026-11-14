@@ -4,6 +4,7 @@ import type { ShelfFilter } from "@/lib/shelf"
 import { STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import {
   type LabelPlacement,
+  MARK_SIZE,
   type PlacedLabel,
   SETTLE_MARGIN,
   labelRect,
@@ -20,6 +21,7 @@ import { type Viewport, project, startView } from "./scene/projection"
 
 /** A 390 px wide phone screen, in its own pixels. */
 const SCREEN = { x0: 0, x1: 390, y0: 0, y1: 788 }
+const FRAME = { width: 390, height: 788 }
 
 const at = (
   id: PlacedLabel["id"],
@@ -88,24 +90,64 @@ describe("layoutLabels", () => {
     expect(high.get("pintu")).toMatchObject({ look: "full", x: 200, y: 70 })
   })
 
-  it("shrinks a label to a mark when no move makes room, and hides one with no room for a mark", () => {
+  it("shrinks a label to a mark when no move makes room, and never hides one", () => {
     // A pill hemmed in above and below, and wide ones beside.
     const crowd = [
       { ...at("katalog", 100, 100), width: 400 },
       { ...at("papan", 100, 40), width: 400 },
       { ...at("pintu", 100, 160), width: 400 },
     ]
-    const marked = layoutLabels([
-      ...crowd,
-      { ...at("meja-admin", 100, 100, 1), height: 10, width: 400 },
-    ])
-    expect(marked.get("meja-admin")?.look).toBe("hidden")
+    const hemmed = { ...at("meja-admin", 100, 100, 1), height: 10, width: 400 }
+    const marked = layoutLabels([...crowd, hemmed], { frame: FRAME })
+    expect(marked.get("meja-admin")?.look).toBe("mark")
+    // Beside the pills, not over them.
+    const markRect = labelRect(hemmed, marked.get("meja-admin")!)
+    for (const pill of crowd) {
+      expect(overlaps(markRect, labelRect(pill, marked.get(pill.id)!), 0)).toBe(
+        false
+      )
+    }
     // A pill too wide to clear its neighbour, whose spot itself is free.
     const roomy = layoutLabels([
       { ...at("katalog", 500, 100), width: 200 },
       { ...at("papan", 100, 100, 1), width: 2000 },
     ])
     expect(roomy.get("papan")?.look).toBe("mark")
+  })
+
+  it("keeps every crowded label as a mark inside the frame, touching the others at most", () => {
+    // Six labels on one spot of a frame too small for any pill.
+    const ids = [
+      "katalog",
+      "papan",
+      "pintu",
+      "toko",
+      "tanaman",
+      "lemari",
+    ] as const
+    const pile = ids.map((id) => ({ ...at(id, 30, 40, 1), width: 500 }))
+    const small = { width: 120, height: 90 }
+    const looks = layoutLabels(pile, {
+      bounds: onScreen(small, small),
+      frame: small,
+    })
+    const marks = pile.map((label) => {
+      const placement = looks.get(label.id)!
+      expect(placement.look, label.id).toBe("mark")
+      const rect = labelRect(label, placement)
+      expect(rect.x0, label.id).toBeGreaterThanOrEqual(0)
+      expect(rect.x1, label.id).toBeLessThanOrEqual(small.width)
+      expect(rect.y0, label.id).toBeGreaterThanOrEqual(0)
+      expect(rect.y1, label.id).toBeLessThanOrEqual(small.height)
+      return placement
+    })
+    marks.forEach((a, i) =>
+      marks.slice(i + 1).forEach((b) => {
+        expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(
+          MARK_SIZE / 2
+        )
+      })
+    )
   })
 
   it("holds a label's look until a better one clears by a margin, so a moving camera does not flicker", () => {
@@ -240,26 +282,43 @@ const SCREENS = [
 describe("the room's labels (owner, 2026-11-13)", () => {
   for (const { name, view, viewport, frame, font, device } of SCREENS) {
     for (const { state, hotspots } of STATES) {
-      it(`never overlap, and no edge cuts a pill: ${name}, ${state} shelf`, () => {
+      it(`never overlap, no edge cuts a pill, and none hides: ${name}, ${state} shelf`, () => {
         const labels = placeLabels(hotspots, view, viewport, frame, font)
         const bounds = onScreen(frame, device)
-        const looks = layoutLabels(labels, { bounds })
-        const shown = labels.flatMap((label) => {
-          const rect = labelRect(label, looks.get(label.id)!)
-          return rect ? [{ id: label.id, rect }] : []
+        const looks = layoutLabels(labels, { bounds, frame })
+        const shown = labels.map((label) => {
+          const placement = looks.get(label.id)!
+          // Every label is a pill or a mark: none waits unseen (owner, J6).
+          expect(["full", "mark"], label.id).toContain(placement.look)
+          return { label, placement, rect: labelRect(label, placement) }
         })
         shown.forEach((a, i) =>
           shown.slice(i + 1).forEach((b) => {
-            expect(overlaps(a.rect, b.rect, 0), `${a.id} / ${b.id}`).toBe(false)
+            const pair = `${a.label.id} / ${b.label.id}`
+            if (a.placement.look === "mark" && b.placement.look === "mark") {
+              // Marks may touch, but never cover each other.
+              expect(
+                Math.hypot(
+                  a.placement.x - b.placement.x,
+                  a.placement.y - b.placement.y
+                ),
+                pair
+              ).toBeGreaterThanOrEqual(MARK_SIZE / 2)
+            } else {
+              expect(overlaps(a.rect, b.rect, 0), pair).toBe(false)
+            }
           })
         )
-        for (const label of labels) {
-          if (looks.get(label.id)?.look !== "full") continue
-          const rect = labelRect(label, looks.get(label.id)!)!
-          expect(rect.x0, label.id).toBeGreaterThanOrEqual(bounds.x0)
-          expect(rect.x1, label.id).toBeLessThanOrEqual(bounds.x1)
-          expect(rect.y0, label.id).toBeGreaterThanOrEqual(bounds.y0)
-          expect(rect.y1, label.id).toBeLessThanOrEqual(bounds.y1)
+        for (const { label, placement, rect } of shown) {
+          // A pill shows wholly on screen; a mark at least inside the frame.
+          const box =
+            placement.look === "full"
+              ? bounds
+              : { x0: 0, x1: frame.width, y0: 0, y1: frame.height }
+          expect(rect.x0, label.id).toBeGreaterThanOrEqual(box.x0)
+          expect(rect.x1, label.id).toBeLessThanOrEqual(box.x1)
+          expect(rect.y0, label.id).toBeGreaterThanOrEqual(box.y0)
+          expect(rect.y1, label.id).toBeLessThanOrEqual(box.y1)
         }
       })
     }
@@ -273,7 +332,7 @@ describe("the room's labels (owner, 2026-11-13)", () => {
       it(`shows every label in full: ${name}, ${state} shelf`, () => {
         const looks = layoutLabels(
           placeLabels(hotspots, view, viewport, frame, font),
-          { bounds: onScreen(frame, device) }
+          { bounds: onScreen(frame, device), frame }
         )
         const short = [...looks].filter(([, { look }]) => look !== "full")
         expect(short).toEqual([])
@@ -293,11 +352,11 @@ describe("the room's labels (owner, 2026-11-13)", () => {
       it(`keeps every place named: ${size.width}x${size.height}, ${state} shelf`, () => {
         const looks = layoutLabels(
           placeLabels(hotspots, startView(size), size, size, 14),
-          { bounds: onScreen(size, size) }
+          { bounds: onScreen(size, size), frame: size }
         )
         for (const hotspot of hotspots) {
           const { look } = looks.get(hotspot.id)!
-          expect(look, hotspot.id).not.toBe("hidden")
+          expect(["full", "mark"], hotspot.id).toContain(look)
           if (hotspot.count === null) expect(look, hotspot.id).toBe("full")
         }
       })

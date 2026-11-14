@@ -191,7 +191,7 @@ describe("LobbyScene", () => {
       await vi.waitFor(() =>
         expect(scene).toHaveAttribute("data-quality", "diam")
       )
-      expect(new Set(looks())).toEqual(new Set(["hidden"]))
+      expect(new Set(looks())).toEqual(new Set(["unplaced"]))
       act(() => measure?.())
       expect(new Set(looks())).toEqual(new Set([null]))
     })
@@ -209,7 +209,7 @@ describe("LobbyScene", () => {
       act(() => {
         window.dispatchEvent(new Event("resize"))
       })
-      expect(new Set(looks())).toEqual(new Set(["hidden"]))
+      expect(new Set(looks())).toEqual(new Set(["unplaced"]))
       sceneSize(1440, 900)
       act(() => {
         window.dispatchEvent(new Event("resize"))

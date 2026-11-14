@@ -8,11 +8,12 @@ import { type View, type Viewport, project } from "./scene/projection"
  * overlap"). Each label is a pill whose bottom centre sits on its projected
  * point. A pill with no room there moves a little; where the room is drawn
  * too small for every pill (a phone showing the whole room), the less
- * important labels shrink to a small mark at their point, and a mark with no room either stays reachable by keyboard
- * only, until the camera zooms in. Pure: no DOM, so it is the same in the
- * browser, on the server and in tests.
+ * important labels shrink to a small mark at their point. No label is ever
+ * hidden (owner, 2026-11-14): with no free room even for a mark, it still
+ * shows as a mark, beside the others, touching them at most. Pure: no DOM,
+ * so it is the same in the browser, on the server and in tests.
  */
-export type LabelLook = "full" | "mark" | "hidden"
+export type LabelLook = "full" | "mark"
 
 /** A label on screen, in CSS pixels: `x`, `y` is its bottom centre. */
 export type PlacedLabel = {
@@ -91,7 +92,7 @@ export type LabelPlacement = {
   look: LabelLook
   x: number
   y: number
-  /** Which of its ways to show it took, best first (optionsFor); hidden is last. */
+  /** Which of its ways to show it took, best first (optionsFor); a crowded mark is last. */
   choice: number
 }
 
@@ -169,22 +170,52 @@ export function onScreen(frame: Viewport, screen: Viewport): Bounds {
 }
 
 /**
+ * Where a crowded mark may go, nearest first: its spot, then rings of half
+ * a mark around it, up to four marks away.
+ */
+const CROWDED_STEPS: ReadonlyArray<readonly [number, number]> = (() => {
+  const steps: Array<readonly [number, number]> = [[0, 0]]
+  for (let ring = 1; ring <= 8; ring++) {
+    const around = 8 * ring
+    for (let i = 0; i < around; i++) {
+      const angle = (2 * Math.PI * i) / around
+      steps.push([
+        Math.cos(angle) * ring * (MARK_SIZE / 2),
+        Math.sin(angle) * ring * (MARK_SIZE / 2),
+      ])
+    }
+  }
+  return steps
+})()
+
+/** How much two rectangles overlap, in square pixels. */
+const overlapArea = (a: Rect, b: Rect) =>
+  Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) *
+  Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0))
+
+/**
  * How each label shows: in rank order (then list order), a pill where it
  * meets nothing already placed, moved a little if that makes room; else a
- * mark at its spot or just beside it; else hidden. A pill shows only wholly
- * on screen (inside `bounds`): the screen's edge never cuts one, it moves
- * inside or becomes a mark. Given the `previous` layout, a label takes a
- * better way than its last only with SETTLE_MARGIN to spare. What it
- * returns never overlaps.
+ * mark at its spot or just beside it. A pill shows only wholly on screen
+ * (inside `bounds`): the screen's edge never cuts one, it moves inside or
+ * becomes a mark. A mark stays inside the `frame` (when its spot is in it).
+ * Where even a mark finds no free room, it still shows (never hidden): the
+ * nearest place clear of every pill where it covers no other mark (centres
+ * at least half a mark apart), with the least overlap. Given the `previous`
+ * layout, a label takes a better way than its last only with SETTLE_MARGIN
+ * to spare. Pills never overlap anything; marks may touch each other.
  */
 export function layoutLabels(
   labels: ReadonlyArray<PlacedLabel>,
   {
     bounds,
+    frame,
     previous,
   }: {
     /** The part of the frame on screen (onScreen); unbounded when omitted. */
     bounds?: Bounds
+    /** The box the labels are drawn in: marks stay inside it. */
+    frame?: Viewport
     /** The last layout, for a moving camera (SETTLE_MARGIN). */
     previous?: ReadonlyMap<HotspotId, LabelPlacement>
   } = {}
@@ -192,10 +223,10 @@ export function layoutLabels(
   const order = labels
     .map((label, index) => ({ label, index }))
     .sort((a, b) => a.label.rank - b.label.rank || a.index - b.index)
-  const taken: Array<Rect> = []
+  const taken: Array<{ look: LabelLook; x: number; y: number; rect: Rect }> = []
   const placements = new Map<HotspotId, LabelPlacement>()
   const free = (rect: Rect, margin: number) =>
-    !taken.some((other) => overlaps(rect, other, LABEL_GAP + margin))
+    !taken.some((other) => overlaps(rect, other.rect, LABEL_GAP + margin))
   const inside = (rect: Rect, margin: number) =>
     !bounds ||
     (rect.x0 >= bounds.x0 + margin &&
@@ -203,6 +234,21 @@ export function layoutLabels(
       rect.y0 >= bounds.y0 + margin &&
       rect.y1 <= bounds.y1 - margin)
   for (const { label } of order) {
+    // A spot off the frame (the camera turned away) has nothing to keep in.
+    const keepIn =
+      frame &&
+      label.x >= 0 &&
+      label.x <= frame.width &&
+      label.y >= 0 &&
+      label.y <= frame.height
+        ? frame
+        : null
+    const inFrame = (rect: Rect) =>
+      !keepIn ||
+      (rect.x0 >= 0 &&
+        rect.x1 <= keepIn.width &&
+        rect.y0 >= 0 &&
+        rect.y1 <= keepIn.height)
     const options = optionsFor(label)
     const last = previous?.get(label.id)?.choice
     const choice = options.findIndex((option, index) => {
@@ -210,31 +256,75 @@ export function layoutLabels(
       const margin = last !== undefined && index < last ? SETTLE_MARGIN : 0
       return (
         free(option.rect, margin) &&
-        (option.look === "mark" || inside(option.rect, margin))
+        (option.look === "mark"
+          ? inFrame(option.rect)
+          : inside(option.rect, margin))
       )
     })
-    if (choice >= 0) {
-      const { look, x, y, rect } = options[choice]
-      taken.push(rect)
-      placements.set(label.id, { look, x, y, choice })
-    } else {
-      placements.set(label.id, {
-        look: "hidden",
-        x: label.x,
-        y: label.y,
-        choice: options.length,
-      })
-    }
+    const chosen =
+      choice >= 0
+        ? { ...options[choice], choice }
+        : { ...crowdedMark(label, keepIn), choice: options.length }
+    taken.push(chosen)
+    placements.set(label.id, {
+      look: chosen.look,
+      x: chosen.x,
+      y: chosen.y,
+      choice: chosen.choice,
+    })
   }
   return placements
+
+  /** A mark with no free room: the best place among CROWDED_STEPS. */
+  function crowdedMark(label: PlacedLabel, keepIn: Viewport | null) {
+    let best: { score: Array<number>; option: Option } | null = null
+    for (const [dx, dy] of CROWDED_STEPS) {
+      let x = label.x + dx
+      let y = label.y + dy
+      if (keepIn) {
+        x = Math.min(Math.max(x, MARK_SIZE / 2), keepIn.width - MARK_SIZE / 2)
+        y = Math.min(Math.max(y, MARK_SIZE), keepIn.height)
+      }
+      const rect = mark({ ...label, x, y })
+      let onPills = 0
+      let onMarks = 0
+      let covers = 0
+      for (const other of taken) {
+        if (other.look === "full") {
+          onPills += overlapArea(rect, other.rect)
+        } else {
+          onMarks += overlapArea(rect, other.rect)
+          if (Math.hypot(other.x - x, other.y - y) < MARK_SIZE / 2) covers++
+        }
+      }
+      // Clear of pills and covering no mark first; then the least overlap;
+      // the nearest wins a tie (CROWDED_STEPS is nearest first).
+      const score = [
+        onPills > 0 || covers > 0 ? 1 : 0,
+        onPills,
+        covers,
+        onMarks,
+      ]
+      if (!best || isLess(score, best.score)) {
+        best = { score, option: { look: "mark", x, y, rect } }
+      }
+    }
+    return best!.option
+  }
 }
 
-/** The rectangle a label takes as it shows (null when hidden). */
+const isLess = (a: ReadonlyArray<number>, b: ReadonlyArray<number>) => {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return a[i] < b[i]
+  }
+  return false
+}
+
+/** The rectangle a label takes as it shows. */
 export function labelRect(
   label: PlacedLabel,
   { look, x, y }: LabelPlacement
-): Rect | null {
-  if (look === "hidden") return null
+): Rect {
   const at = { ...label, x, y }
   return look === "full" ? pill(at) : mark(at)
 }

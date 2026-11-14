@@ -102,7 +102,7 @@ describe("HotspotLayer", () => {
     const buttons = screen.getAllByRole("button")
     expect(buttons).toHaveLength(18)
     for (const button of buttons) {
-      expect(button).toHaveAttribute("data-look", "hidden")
+      expect(button).toHaveAttribute("data-look", "unplaced")
       expect(button).not.toHaveAttribute("tabindex")
     }
     expect(
@@ -192,6 +192,35 @@ describe("HotspotLayer", () => {
       height: 31,
     })
     vi.mocked(Element.prototype.getBoundingClientRect).mockRestore()
+  })
+
+  it("never hides a label on a phone: the crowded ones are marks that open their place", () => {
+    // 390 × 844 with the tab bar: the whole room, too small for every pill.
+    // Kosakata, Toko dekorasi and Kilas balik used to wait unseen here.
+    const viewport = { width: 390, height: 788 }
+    const onActivate = vi.fn()
+    render(
+      <HotspotLayer
+        hotspots={lobbyHotspots(summarizeLobby([]).counts)}
+        view={startView(viewport)}
+        viewport={viewport}
+        frame={viewport}
+        fontPx={12}
+        onActivate={onActivate}
+      />
+    )
+    for (const button of screen.getAllByRole("button")) {
+      expect(["mark", null]).toContain(button.getAttribute("data-look"))
+    }
+    for (const [name, id] of [
+      ["Kosakata", "katalog"],
+      ["Toko dekorasi", "toko"],
+      ["Kilas balik", "perapian"],
+    ] as const) {
+      const button = screen.getByRole("button", { name })
+      fireEvent.click(button, { detail: 1 })
+      expect(onActivate).toHaveBeenLastCalledWith(id, { keyboard: false })
+    }
   })
 
   it("shrinks labels with no room to marks, and keeps every one in the tab order", () => {
