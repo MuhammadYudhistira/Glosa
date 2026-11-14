@@ -48,4 +48,17 @@ describe("highlightBooks", () => {
       { id: sherlock.id, title: sherlock.title, count: 2 },
     ])
   })
+
+  it("orders the books by title, not by the order of the highlights", () => {
+    const zed = { ...sherlock, id: "zed-id", title: "Zorro" }
+    const alice = { ...sherlock, id: "alice-id", title: "Alice" }
+    const marks = [
+      h("p", zed.id, "yellow", "2026-11-14T10:00:00Z"),
+      h("q", alice.id, "yellow", "2026-11-09T10:00:00Z"),
+    ]
+    expect(highlightBooks(marks, [zed, alice]).map((b) => b.title)).toEqual([
+      "Alice",
+      "Zorro",
+    ])
+  })
 })

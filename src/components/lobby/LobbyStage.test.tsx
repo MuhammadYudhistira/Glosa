@@ -327,6 +327,41 @@ describe("LobbyStage", () => {
     expect(scene.props).toMatchObject({ paused: false })
   })
 
+  it("closes the corkboard dialog when its link opens the highlights page", async () => {
+    highlights.state = {
+      status: "ready",
+      highlights: [
+        {
+          id: "h1",
+          bookId: sherlock.id,
+          cfi: "epubcfi(/6/4)",
+          color: "yellow",
+          note: "",
+          excerpt: "x",
+          createdAt: "2026-10-24T08:00:00.000Z",
+        },
+      ],
+    }
+    stubWideScreen(true)
+    const { router } = renderWithRouter(<RoutedStage />, "/lobby")
+    await vi.waitFor(() => expect(scene.props).not.toBeNull())
+    await act(async () =>
+      scene.props?.onActivate?.("papan", { keyboard: true })
+    )
+    const dialog = await screen.findByRole("dialog", { name: "Sorotan" })
+    fireEvent.click(within(dialog).getByRole("link", { name: "Lihat semua" }))
+    await vi.waitFor(() =>
+      expect(router.state.location.pathname).toBe("/highlights")
+    )
+    await vi.waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Sorotan" })).toBeNull()
+    )
+    // Back on the lobby, the dialog does not come back by itself.
+    await act(() => router.navigate({ to: "/lobby" }))
+    expect(await screen.findByRole("main")).toBeInTheDocument()
+    expect(screen.queryByRole("dialog", { name: "Sorotan" })).toBeNull()
+  })
+
   it("pins the colours of the newest highlights of books still on the shelf", async () => {
     const mark = (bookId: string, color: string) => ({
       id: `${bookId}-${color}`,

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -7,9 +7,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { HIGHLIGHT_EDGE, HighlightsNotice } from "./highlight-ui"
 import type { HighlightsState } from "@/lib/annotations/highlights-client"
 import { pinnedHighlights } from "@/lib/annotations/pinned"
-import type { HighlightColor } from "@/lib/annotations/types"
 import type { ShelfBook } from "@/lib/book-types"
 import { cn } from "@/lib/utils"
 
@@ -17,13 +17,6 @@ import { cn } from "@/lib/utils"
 export const CORKBOARD_NOTES = 3
 /** Highlights asked for, so removed books' ones can be skipped and still fill the board. */
 export const CORKBOARD_FETCH = 20
-
-const EDGE: Record<HighlightColor, string> = {
-  yellow: "border-l-[#e8c547]",
-  green: "border-l-[#6fae8d]",
-  blue: "border-l-[#6f9bd1]",
-  pink: "border-l-[#d98a86]",
-}
 
 /** "Sorotan": the newest highlights pinned on the corkboard, each with a way into its book (spec 3F §3.2). */
 export function CorkboardPanel({
@@ -53,22 +46,7 @@ export function CorkboardPanel({
             Kalimat yang kamu tandai paling baru.
           </DialogDescription>
         </DialogHeader>
-        {state.status === "loading" && (
-          <p className="text-sm text-muted-foreground">Memuat sorotan…</p>
-        )}
-        {state.status === "offline" && (
-          <p className="text-sm text-stamp">
-            Sorotan bisa dilihat saat online.
-          </p>
-        )}
-        {state.status === "failed" && (
-          <div className="grid justify-items-start gap-3">
-            <p className="text-sm text-stamp">Sorotan belum bisa dimuat.</p>
-            <Button variant="outline" size="sm" onClick={onRetry}>
-              Coba lagi
-            </Button>
-          </div>
-        )}
+        <HighlightsNotice state={state} onRetry={onRetry} />
         {state.status === "ready" && shown.length === 0 && (
           <p className="text-sm text-muted-foreground">
             Belum ada sorotan. Tandai kalimat yang kamu suka saat membaca; tiga
@@ -82,7 +60,7 @@ export function CorkboardPanel({
                 key={highlight.id}
                 className={cn(
                   "grid gap-2 border-l-4 bg-muted/40 px-3 py-2",
-                  EDGE[highlight.color]
+                  HIGHLIGHT_EDGE[highlight.color]
                 )}
               >
                 <p className="line-clamp-4 text-sm">{highlight.excerpt}</p>

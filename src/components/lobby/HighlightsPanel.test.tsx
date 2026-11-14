@@ -110,6 +110,29 @@ describe("HighlightsPanel", () => {
     expect(screen.queryByText(first.excerpt)).not.toBeInTheDocument()
   })
 
+  it("treats a book that is not on the shelf in the URL as no filter", async () => {
+    renderPanel(ready(first, second), `/highlights?buku=gone-book`)
+    expect(await screen.findByText(first.excerpt)).toBeInTheDocument()
+    expect(screen.getByText(second.excerpt)).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "Buku" })).toHaveValue("")
+  })
+
+  it("says nothing matches when a filter leaves no highlight", async () => {
+    renderPanel(ready(first), `/highlights?warna=pink`)
+    expect(
+      await screen.findByText("Tidak ada sorotan dengan saringan ini.")
+    ).toBeInTheDocument()
+  })
+
+  it("invites the member to mark a line when every highlight's book is gone", async () => {
+    const orphan: Highlight = { ...first, id: "h9", bookId: "gone-book" }
+    renderPanel(ready(orphan))
+    expect(await screen.findByText(/^Belum ada sorotan/)).toBeInTheDocument()
+    expect(
+      screen.queryByText("Tidak ada sorotan dengan saringan ini.")
+    ).toBeNull()
+  })
+
   it("opens the quote card for the highlight", async () => {
     dialogProps.length = 0
     renderPanel(ready(first))

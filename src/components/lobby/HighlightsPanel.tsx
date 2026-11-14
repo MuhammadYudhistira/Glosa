@@ -1,3 +1,4 @@
+import { HIGHLIGHT_EDGE, HighlightsNotice } from "./highlight-ui"
 import { Link, useNavigate, useSearch } from "@tanstack/react-router"
 import { useMemo, useRef, useState } from "react"
 import { QuoteCardDialog } from "@/components/reader/QuoteCardDialog"
@@ -19,12 +20,6 @@ import { cn } from "@/lib/utils"
 import { savedFormsOf } from "@/lib/words/saved-marks"
 import { useSavedForms } from "@/lib/words/word-sync-client"
 
-const EDGE: Record<HighlightColor, string> = {
-  yellow: "border-l-[#e8c547]",
-  green: "border-l-[#6fae8d]",
-  blue: "border-l-[#6f9bd1]",
-  pink: "border-l-[#d98a86]",
-}
 const COLOR_LABEL: Record<HighlightColor, string> = {
   yellow: "Kuning",
   green: "Hijau",
@@ -54,34 +49,18 @@ export function HighlightsPanel({
   const [sharing, setSharing] = useState<HighlightRow | null>(null)
   const opener = useRef<HTMLElement | null>(null)
 
-  if (state.status === "loading") {
-    return <p className="text-sm text-muted-foreground">Memuat sorotan…</p>
-  }
-  if (state.status === "offline") {
-    return (
-      <p className="text-sm text-stamp">Sorotan bisa dilihat saat online.</p>
-    )
-  }
-  if (state.status === "failed") {
-    return (
-      <div className="grid justify-items-start gap-3">
-        <p className="text-sm text-stamp">Sorotan belum bisa dimuat.</p>
-        <Button variant="outline" size="sm" onClick={onRetry}>
-          Coba lagi
-        </Button>
-      </div>
-    )
+  if (state.status !== "ready") {
+    return <HighlightsNotice state={state} onRetry={onRetry} />
   }
 
   const { highlights } = state
-  if (highlights.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Belum ada sorotan. Tandai kalimat yang kamu suka saat membaca, lalu
-        kembali ke sini.
-      </p>
-    )
-  }
+  const invite = (
+    <p className="text-sm text-muted-foreground">
+      Belum ada sorotan. Tandai kalimat yang kamu suka saat membaca, lalu
+      kembali ke sini.
+    </p>
+  )
+  if (highlights.length === 0) return invite
 
   const bookOptions = highlightBooks(highlights, books)
   // A book that is gone, or has no highlights, is no filter at all.
@@ -92,6 +71,8 @@ export function HighlightsPanel({
       : null
   const color = asColor(search.warna)
   const rows = highlightRows(highlights, books, { bookId, color })
+  // No filter and still nothing: every highlight is of a book that is gone.
+  if (rows.length === 0 && bookId === null && color === null) return invite
   const pick = (next: { buku?: string; warna?: HighlightColor }) =>
     void navigate({
       to: "/highlights",
@@ -142,7 +123,7 @@ export function HighlightsPanel({
               key={row.id}
               className={cn(
                 "grid gap-2 border-l-4 bg-muted/40 px-3 py-2",
-                EDGE[row.color]
+                HIGHLIGHT_EDGE[row.color]
               )}
             >
               <p className="text-sm">{row.excerpt}</p>

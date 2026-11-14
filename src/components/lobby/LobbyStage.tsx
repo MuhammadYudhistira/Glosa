@@ -184,10 +184,15 @@ export function LobbyStage({
   }, [shownBubbleKey])
   // A popup opening closes the book's details, or they would come back after
   // it and take its focus. A book picked over a popup stays: popup was on.
+  // The corkboard's dialog closes too, whichever way the popup opened (its own
+  // "Lihat semua" link, the top bar), or it would stay modal over the page.
   const [wasPopup, setWasPopup] = useState(popup)
   if (wasPopup !== popup) {
     setWasPopup(popup)
-    if (popup) setSelectedId(null)
+    if (popup) {
+      setSelectedId(null)
+      setCorkboard(false)
+    }
   }
   const selected = books.find((book) => book.id === selectedId) ?? null
   const refresh = () => void router.invalidate()
