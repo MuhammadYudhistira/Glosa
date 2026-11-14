@@ -163,6 +163,61 @@ describe("LobbyScene", () => {
     }
   })
 
+  describe("the labels' frame", () => {
+    const looks = () =>
+      screen
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("data-look"))
+    function sceneSize(width: number, height: number) {
+      vi.spyOn(Element.prototype, "clientWidth", "get").mockReturnValue(width)
+      vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(height)
+    }
+    afterEach(() => vi.unstubAllGlobals())
+
+    it("keeps the labels invisible until the scene is measured", async () => {
+      let measure: (() => void) | null = null
+      vi.stubGlobal(
+        "ResizeObserver",
+        class {
+          constructor(callback: () => void) {
+            measure = callback
+          }
+          observe() {}
+          disconnect() {}
+        }
+      )
+      sceneSize(1440, 900)
+      const { scene } = renderScene({ ...desktop, webgl: false })
+      await vi.waitFor(() =>
+        expect(scene).toHaveAttribute("data-quality", "diam")
+      )
+      expect(new Set(looks())).toEqual(new Set(["hidden"]))
+      act(() => measure?.())
+      expect(new Set(looks())).toEqual(new Set([null]))
+    })
+
+    it("measures the scene itself where ResizeObserver is missing, and again on a resize", async () => {
+      vi.stubGlobal("ResizeObserver", undefined)
+      sceneSize(1440, 900)
+      const { scene } = renderScene({ ...desktop, webgl: false })
+      await vi.waitFor(() =>
+        expect(scene).toHaveAttribute("data-quality", "diam")
+      )
+      expect(new Set(looks())).toEqual(new Set([null]))
+      // Hidden behind a page (phones): unmeasured again, so unplaced.
+      sceneSize(0, 0)
+      act(() => {
+        window.dispatchEvent(new Event("resize"))
+      })
+      expect(new Set(looks())).toEqual(new Set(["hidden"]))
+      sceneSize(1440, 900)
+      act(() => {
+        window.dispatchEvent(new Event("resize"))
+      })
+      expect(new Set(looks())).toEqual(new Set([null]))
+    })
+  })
+
   it("stays still in the camera-bounds test mode", async () => {
     Object.assign(window, { __GLOSA_LOBBY_TEST__: true })
     const { scene } = renderScene(desktop)

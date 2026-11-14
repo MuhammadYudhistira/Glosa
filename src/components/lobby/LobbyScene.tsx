@@ -138,16 +138,29 @@ export function LobbyScene({
   const sectionRef = useRef<HTMLElement>(null)
   const wide = useWideScreen()
   // The scene's size, for the still image's frame: the labels keep apart in
-  // screen pixels (label-layout.ts). Unknown without ResizeObserver.
+  // screen pixels (label-layout.ts), and wait unseen until it is known.
   const [size, setSize] = useState<Viewport | null>(null)
   useEffect(() => {
     const section = sectionRef.current
-    if (!section || typeof ResizeObserver === "undefined") return
-    const observer = new ResizeObserver(() => {
+    if (!section) return
+    const measure = () => {
       const { clientWidth: width, clientHeight: height } = section
       // Hidden (behind a page on phones): nothing to keep apart.
-      setSize(width > 0 && height > 0 ? { width, height } : null)
-    })
+      setSize((current) =>
+        width > 0 && height > 0
+          ? current?.width === width && current.height === height
+            ? current
+            : { width, height }
+          : null
+      )
+    }
+    if (typeof ResizeObserver === "undefined") {
+      // Older browsers: once now, and whenever the window changes size.
+      measure()
+      window.addEventListener("resize", measure)
+      return () => window.removeEventListener("resize", measure)
+    }
+    const observer = new ResizeObserver(measure)
     observer.observe(section)
     return () => observer.disconnect()
   }, [])

@@ -83,6 +83,21 @@ describe("HotspotLayer", () => {
     expect(onActivate).toHaveBeenCalledWith("meja-admin", { keyboard: true })
   })
 
+  it("keeps every label invisible until its frame is known, still focusable and named", () => {
+    // Before the first measure the labels' pixels are unknown: drawn in full
+    // at their raw spots they would overlap.
+    renderLayer([sherlock])
+    const buttons = screen.getAllByRole("button")
+    expect(buttons).toHaveLength(18)
+    for (const button of buttons) {
+      expect(button).toHaveAttribute("data-look", "hidden")
+      expect(button).not.toHaveAttribute("tabindex")
+    }
+    expect(
+      screen.getByRole("button", { name: "Misteri & Thriller · 1 buku" })
+    ).toBeInTheDocument()
+  })
+
   it("keeps every label in full where they all fit (a desktop screen)", () => {
     const viewport = { width: 1440, height: 900 }
     render(

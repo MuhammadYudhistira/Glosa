@@ -34,7 +34,7 @@ export function HotspotLayer({
   hotspots: ReadonlyArray<HotspotModel>
   view: View
   viewport: Viewport
-  /** The layer's size in CSS pixels; unknown (before the first measure), every label shows in full. */
+  /** The layer's size in CSS pixels; unknown (before the first measure), every label waits unseen, as with no room. */
   frame?: Viewport | null
   /** The labels' font size (styles.css: 14 px on desktop, 12 px below). */
   fontPx?: number
@@ -56,7 +56,9 @@ export function HotspotLayer({
           frame && at
             ? { x: (at.x / frame.width) * 100, y: (at.y / frame.height) * 100 }
             : project(spotOf(hotspot.id).label, view, viewport)
-        const look = at?.look ?? "full"
+        // Unplaced (no frame yet): invisible, so no two overlap, but still
+        // in the DOM, the tab order and the accessibility tree.
+        const look = at?.look ?? "hidden"
         return (
           <div
             key={hotspot.id}
