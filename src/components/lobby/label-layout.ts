@@ -83,7 +83,21 @@ export const overlaps = (a: Rect, b: Rect, gap = LABEL_GAP) =>
   b.y0 < a.y1 + gap
 
 /** How a label shows, and where: `x`, `y` is its bottom centre, moved a little from its spot when that makes room. */
-export type LabelPlacement = { look: LabelLook; x: number; y: number }
+export type LabelPlacement = {
+  look: LabelLook
+  x: number
+  y: number
+  /** Which of its ways to show it took, best first (optionsFor); hidden is last. */
+  choice: number
+}
+
+/**
+ * How much more room than LABEL_GAP a better way to show must have before
+ * a label leaves the one it showed last (a mark for its pill, a move back
+ * to its spot): while the camera pans or zooms, a label at the edge of
+ * fitting holds its look instead of flipping every frame.
+ */
+export const SETTLE_MARGIN = 8
 
 /**
  * Where a pill may move to make room, in parts of its own height (dy) and
@@ -155,15 +169,20 @@ export function onScreen(frame: Viewport, screen: Viewport): Bounds {
  * meets nothing already placed, moved a little if that makes room; else a
  * mark at its spot or just beside it; else hidden. A pill shows only wholly
  * on screen (inside `bounds`): the screen's edge never cuts one, it moves
- * inside or becomes a mark. What it returns never overlaps.
+ * inside or becomes a mark. Given the `previous` layout, a label takes a
+ * better way than its last only with SETTLE_MARGIN to spare. What it
+ * returns never overlaps.
  */
 export function layoutLabels(
   labels: ReadonlyArray<PlacedLabel>,
   {
     bounds,
+    previous,
   }: {
     /** The part of the frame on screen (onScreen); unbounded when omitted. */
     bounds?: Bounds
+    /** The last layout, for a moving camera (SETTLE_MARGIN). */
+    previous?: ReadonlyMap<HotspotId, LabelPlacement>
   } = {}
 ): Map<HotspotId, LabelPlacement> {
   const order = labels
@@ -171,23 +190,36 @@ export function layoutLabels(
     .sort((a, b) => a.label.rank - b.label.rank || a.index - b.index)
   const taken: Array<Rect> = []
   const placements = new Map<HotspotId, LabelPlacement>()
-  const free = (rect: Rect) => !taken.some((other) => overlaps(rect, other))
-  const inside = (rect: Rect) =>
+  const free = (rect: Rect, margin: number) =>
+    !taken.some((other) => overlaps(rect, other, LABEL_GAP + margin))
+  const inside = (rect: Rect, margin: number) =>
     !bounds ||
-    (rect.x0 >= bounds.x0 &&
-      rect.x1 <= bounds.x1 &&
-      rect.y0 >= bounds.y0 &&
-      rect.y1 <= bounds.y1)
+    (rect.x0 >= bounds.x0 + margin &&
+      rect.x1 <= bounds.x1 - margin &&
+      rect.y0 >= bounds.y0 + margin &&
+      rect.y1 <= bounds.y1 - margin)
   for (const { label } of order) {
-    const chosen = optionsFor(label).find(
-      (option) =>
-        free(option.rect) && (option.look === "mark" || inside(option.rect))
-    )
-    if (chosen) {
-      taken.push(chosen.rect)
-      placements.set(label.id, { look: chosen.look, x: chosen.x, y: chosen.y })
+    const options = optionsFor(label)
+    const last = previous?.get(label.id)?.choice
+    const choice = options.findIndex((option, index) => {
+      // Better than last time: only with room to spare.
+      const margin = last !== undefined && index < last ? SETTLE_MARGIN : 0
+      return (
+        free(option.rect, margin) &&
+        (option.look === "mark" || inside(option.rect, margin))
+      )
+    })
+    if (choice >= 0) {
+      const { look, x, y, rect } = options[choice]
+      taken.push(rect)
+      placements.set(label.id, { look, x, y, choice })
     } else {
-      placements.set(label.id, { look: "hidden", x: label.x, y: label.y })
+      placements.set(label.id, {
+        look: "hidden",
+        x: label.x,
+        y: label.y,
+        choice: options.length,
+      })
     }
   }
   return placements

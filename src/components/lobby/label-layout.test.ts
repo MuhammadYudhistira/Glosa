@@ -3,7 +3,9 @@ import { GENRE_VALUES } from "@/lib/genre"
 import type { ShelfFilter } from "@/lib/shelf"
 import { STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import {
+  type LabelPlacement,
   type PlacedLabel,
+  SETTLE_MARGIN,
   labelRect,
   labelSize,
   layoutLabels,
@@ -104,6 +106,48 @@ describe("layoutLabels", () => {
       { ...at("papan", 100, 100, 1), width: 2000 },
     ])
     expect(roomy.get("papan")?.look).toBe("mark")
+  })
+
+  it("holds a label's look until a better one clears by a margin, so a moving camera does not flicker", () => {
+    // B sits right of A, `gap` px clear of it; C on the right leaves B no
+    // room to step aside. B's pill fits from a 4 px gap (LABEL_GAP).
+    const scene = (gap: number) => [
+      at("katalog", 100, 100),
+      at("pintu", 328, 100),
+      at("papan", 200 + gap, 100, 1),
+    ]
+    const gaps = [6, 3, 6, 5, 14]
+    // Laid out afresh each time, B flips: full, mark, full, full, full.
+    expect(
+      gaps.map((gap) => layoutLabels(scene(gap)).get("papan")?.look)
+    ).toEqual(["full", "mark", "full", "full", "full"])
+    // Each from the one before: once a mark, B waits for a clear margin
+    // (LABEL_GAP + SETTLE_MARGIN) before its pill comes back.
+    let previous: Map<PlacedLabel["id"], LabelPlacement> | undefined
+    const held = gaps.map((gap) => {
+      previous = layoutLabels(scene(gap), { previous })
+      return previous.get("papan")?.look
+    })
+    expect(held).toEqual(["full", "mark", "mark", "mark", "full"])
+    expect(SETTLE_MARGIN).toBeGreaterThan(0)
+  })
+
+  it("keeps a moved pill where it was while that still fits, rather than flip back by a pixel", () => {
+    // B was moved down half a pill; its spot is now free, but only just.
+    const first = layoutLabels([
+      at("katalog", 100, 100),
+      at("papan", 100, 120, 1),
+    ])
+    expect(first.get("papan")).toMatchObject({ y: 135 })
+    const crowded = [
+      { ...at("katalog", 100, 100), width: 100 },
+      // A's pill ends at 150; B's would start at 155: clear by 5 px.
+      at("papan", 205, 100, 1),
+    ]
+    expect(layoutLabels(crowded).get("papan")).toMatchObject({ x: 205 })
+    const moved = layoutLabels(crowded, { previous: first })
+    // Down half a pill, as before: the spot is not clear by the margin.
+    expect(moved.get("papan")).toMatchObject({ look: "full", x: 205, y: 115 })
   })
 
   it("sizes a pill by its text, its count and its badge", () => {

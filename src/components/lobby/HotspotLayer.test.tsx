@@ -3,10 +3,18 @@ import { describe, expect, it, vi } from "vitest"
 import { sherlock } from "@/components/shelf/fixtures"
 import type { ShelfBook } from "@/lib/book-types"
 import { HotspotLayer } from "./HotspotLayer"
+import { layoutLabels } from "./label-layout"
+import type * as LabelLayout from "./label-layout"
 import { STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import { lobbyHotspots, summarizeLobby } from "./lobby-data"
 import { spotOf } from "./scene/layout"
 import { project, startView } from "./scene/projection"
+
+// The real layout, watched: how often the layer lays its labels out.
+vi.mock("./label-layout", async (importOriginal) => {
+  const real = await importOriginal<typeof LabelLayout>()
+  return { ...real, layoutLabels: vi.fn(real.layoutLabels) }
+})
 
 const onTrolley: ShelfBook = { ...sherlock, id: "t", genre: null }
 
@@ -113,6 +121,35 @@ describe("HotspotLayer", () => {
     for (const button of screen.getAllByRole("button")) {
       expect(button).not.toHaveAttribute("data-look")
     }
+  })
+
+  it("lays its labels out again only when the view, the frame or the labels change, from the last layout", () => {
+    const viewport = { width: 390, height: 788 }
+    const hotspots = lobbyHotspots(summarizeLobby([sherlock]).counts)
+    const view = startView(viewport)
+    const ui = (props: { view?: typeof view; onActivate?: () => void }) => (
+      <HotspotLayer
+        hotspots={hotspots}
+        view={props.view ?? view}
+        viewport={viewport}
+        frame={{ ...viewport }}
+        fontPx={12}
+        onActivate={props.onActivate ?? vi.fn()}
+      />
+    )
+    vi.mocked(layoutLabels).mockClear()
+    const { rerender } = render(ui({}))
+    expect(layoutLabels).toHaveBeenCalledTimes(1)
+    // A new handler and an equal frame: nothing to lay out again.
+    rerender(ui({ onActivate: vi.fn() }))
+    expect(layoutLabels).toHaveBeenCalledTimes(1)
+    // The camera moves: laid out again, holding the looks it had.
+    rerender(ui({ view: { ...view, zoom: view.zoom * 1.01 } }))
+    expect(layoutLabels).toHaveBeenCalledTimes(2)
+    const [, options] = vi.mocked(layoutLabels).mock.calls[1]
+    expect(options?.previous).toBe(
+      vi.mocked(layoutLabels).mock.results[0].value
+    )
   })
 
   it("shrinks labels with no room to marks, and keeps every one in the tab order", () => {

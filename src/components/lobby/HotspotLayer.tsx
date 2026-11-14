@@ -1,5 +1,10 @@
-import type { ReactNode } from "react"
-import { layoutLabels, onScreen, placeLabels } from "./label-layout"
+import { type ReactNode, useEffect, useMemo, useRef } from "react"
+import {
+  type LabelPlacement,
+  layoutLabels,
+  onScreen,
+  placeLabels,
+} from "./label-layout"
 import type { HotspotModel } from "./lobby-data"
 import { type HotspotId, spotOf } from "./scene/layout"
 import { type View, type Viewport, project } from "./scene/projection"
@@ -51,13 +56,26 @@ export function HotspotLayer({
   onActivate: (id: HotspotId, how: { keyboard: boolean }) => void
   onFocusSpot?: (id: HotspotId) => void
 }) {
-  const placed = frame
-    ? placeLabels(hotspots, view, viewport, frame, fontPx)
-    : null
-  const looks =
-    placed && frame
-      ? layoutLabels(placed, { bounds: onScreen(frame, scene ?? frame) })
-      : null
+  // Laid out again only when what it depends on changes (frames come as new
+  // objects of the same size), each time from the last layout, so a label
+  // at the edge of fitting holds its look while the camera moves.
+  const last = useRef<ReadonlyMap<HotspotId, LabelPlacement> | null>(null)
+  const width = frame?.width
+  const height = frame?.height
+  const sceneWidth = scene?.width
+  const sceneHeight = scene?.height
+  const looks = useMemo(() => {
+    if (width === undefined || height === undefined) return null
+    const box = { width, height }
+    const shown = { width: sceneWidth ?? width, height: sceneHeight ?? height }
+    return layoutLabels(placeLabels(hotspots, view, viewport, box, fontPx), {
+      bounds: onScreen(box, shown),
+      previous: last.current ?? undefined,
+    })
+  }, [hotspots, view, viewport, width, height, sceneWidth, sceneHeight, fontPx])
+  useEffect(() => {
+    last.current = looks
+  }, [looks])
   return (
     <div className="lobby-hotspots lobby-overlay">
       {hotspots.map((hotspot) => {
