@@ -7,6 +7,7 @@ import {
   labelRect,
   labelSize,
   layoutLabels,
+  onScreen,
   overlaps,
   placeLabels,
   stillFrame,
@@ -14,6 +15,9 @@ import {
 import { lobbyHotspots } from "./lobby-data"
 import { spotOf } from "./scene/layout"
 import { type Viewport, project, startView } from "./scene/projection"
+
+/** A 390 px wide phone screen, in its own pixels. */
+const SCREEN = { x0: 0, x1: 390, y0: 0, y1: 788 }
 
 const at = (
   id: PlacedLabel["id"],
@@ -23,13 +27,29 @@ const at = (
 ): PlacedLabel => ({ id, x, y, width: 100, height: 30, rank })
 
 describe("layoutLabels", () => {
+  it("finds the part of a frame on screen: all of it, or the middle of a cropped still", () => {
+    expect(
+      onScreen({ width: 390, height: 788 }, { width: 390, height: 788 })
+    ).toEqual({ x0: 0, x1: 390, y0: 0, y1: 788 })
+    expect(onScreen(stillFrame(PHONE), PHONE)).toEqual({
+      x0: (stillFrame(PHONE).width - 390) / 2,
+      x1: (stillFrame(PHONE).width + 390) / 2,
+      y0: 0,
+      y1: 788,
+    })
+  })
+
   it("keeps labels that meet nothing as pills, where they are", () => {
     const placed = layoutLabels([
       at("katalog", 100, 100),
       at("papan", 300, 100),
     ])
-    expect(placed.get("katalog")).toEqual({ look: "full", x: 100, y: 100 })
-    expect(placed.get("papan")).toEqual({ look: "full", x: 300, y: 100 })
+    expect(placed.get("katalog")).toMatchObject({
+      look: "full",
+      x: 100,
+      y: 100,
+    })
+    expect(placed.get("papan")).toMatchObject({ look: "full", x: 300, y: 100 })
   })
 
   it("moves a colliding pill a little when that makes room", () => {
@@ -37,14 +57,33 @@ describe("layoutLabels", () => {
       at("katalog", 100, 100),
       at("papan", 100, 120, 1),
     ])
-    expect(placed.get("katalog")).toEqual({ look: "full", x: 100, y: 100 })
+    expect(placed.get("katalog")).toMatchObject({
+      look: "full",
+      x: 100,
+      y: 100,
+    })
     // Down half a pill: 135, clear of the first (70..100) by the gap.
-    expect(placed.get("papan")).toEqual({ look: "full", x: 100, y: 135 })
+    expect(placed.get("papan")).toMatchObject({ look: "full", x: 100, y: 135 })
   })
 
   it("moves a pill back inside the screen's width when it can", () => {
-    const placed = layoutLabels([at("pintu", 40, 100)], 390)
-    expect(placed.get("pintu")).toEqual({ look: "full", x: 65, y: 100 })
+    const placed = layoutLabels([at("pintu", 40, 100)], { bounds: SCREEN })
+    expect(placed.get("pintu")).toMatchObject({ look: "full", x: 65, y: 100 })
+  })
+
+  it("never lets the screen's edge cut a pill: with no move inside, it becomes a mark", () => {
+    // 380 + 50 runs past 390; a quarter aside (25 px) is not enough.
+    const placed = layoutLabels([at("lemari", 380, 100)], { bounds: SCREEN })
+    expect(placed.get("lemari")).toMatchObject({
+      look: "mark",
+      x: 380,
+      y: 100,
+    })
+    // The same at the top: a pill whose top would be cut.
+    const high = layoutLabels([{ ...at("pintu", 200, 10), height: 60 }], {
+      bounds: SCREEN,
+    })
+    expect(high.get("pintu")).toMatchObject({ look: "full", x: 200, y: 70 })
   })
 
   it("shrinks a label to a mark when no move makes room, and hides one with no room for a mark", () => {
@@ -100,6 +139,7 @@ const SCREENS = [
     viewport: DESKTOP,
     frame: DESKTOP,
     font: 14,
+    device: DESKTOP,
   },
   {
     name: "390 3D",
@@ -107,6 +147,7 @@ const SCREENS = [
     viewport: PHONE,
     frame: PHONE,
     font: 12,
+    device: PHONE,
   },
   // The still image (no WebGL, and while the room loads), cropped to cover.
   {
@@ -115,6 +156,7 @@ const SCREENS = [
     viewport: STILL_SIZE,
     frame: stillFrame(DESKTOP),
     font: 14,
+    device: DESKTOP,
   },
   {
     name: "390 still",
@@ -122,15 +164,17 @@ const SCREENS = [
     viewport: STILL_SIZE,
     frame: stillFrame(PHONE),
     font: 12,
+    device: PHONE,
   },
 ]
 
 describe("the room's labels (owner, 2026-11-13)", () => {
-  for (const { name, view, viewport, frame, font } of SCREENS) {
+  for (const { name, view, viewport, frame, font, device } of SCREENS) {
     for (const { state, hotspots } of STATES) {
-      it(`never overlap: ${name}, ${state} shelf`, () => {
+      it(`never overlap, and no edge cuts a pill: ${name}, ${state} shelf`, () => {
         const labels = placeLabels(hotspots, view, viewport, frame, font)
-        const looks = layoutLabels(labels)
+        const bounds = onScreen(frame, device)
+        const looks = layoutLabels(labels, { bounds })
         const shown = labels.flatMap((label) => {
           const rect = labelRect(label, looks.get(label.id)!)
           return rect ? [{ id: label.id, rect }] : []
@@ -140,18 +184,27 @@ describe("the room's labels (owner, 2026-11-13)", () => {
             expect(overlaps(a.rect, b.rect, 0), `${a.id} / ${b.id}`).toBe(false)
           })
         )
+        for (const label of labels) {
+          if (looks.get(label.id)?.look !== "full") continue
+          const rect = labelRect(label, looks.get(label.id)!)!
+          expect(rect.x0, label.id).toBeGreaterThanOrEqual(bounds.x0)
+          expect(rect.x1, label.id).toBeLessThanOrEqual(bounds.x1)
+          expect(rect.y0, label.id).toBeGreaterThanOrEqual(bounds.y0)
+          expect(rect.y1, label.id).toBeLessThanOrEqual(bounds.y1)
+        }
       })
     }
   }
 
   // The owner's screen: every label keeps its full name there.
-  for (const { name, view, viewport, frame, font } of SCREENS.filter((screen) =>
-    screen.name.startsWith("1440")
+  for (const { name, view, viewport, frame, font, device } of SCREENS.filter(
+    (screen) => screen.name.startsWith("1440")
   )) {
     for (const { state, hotspots } of STATES) {
       it(`shows every label in full: ${name}, ${state} shelf`, () => {
         const looks = layoutLabels(
-          placeLabels(hotspots, view, viewport, frame, font)
+          placeLabels(hotspots, view, viewport, frame, font),
+          { bounds: onScreen(frame, device) }
         )
         const short = [...looks].filter(([, { look }]) => look !== "full")
         expect(short).toEqual([])
@@ -170,7 +223,8 @@ describe("the room's labels (owner, 2026-11-13)", () => {
     for (const { state, hotspots } of STATES) {
       it(`keeps every place named: ${size.width}x${size.height}, ${state} shelf`, () => {
         const looks = layoutLabels(
-          placeLabels(hotspots, startView(size), size, size, 14)
+          placeLabels(hotspots, startView(size), size, size, 14),
+          { bounds: onScreen(size, size) }
         )
         for (const hotspot of hotspots) {
           const { look } = looks.get(hotspot.id)!

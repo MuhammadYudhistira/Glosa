@@ -106,17 +106,65 @@ const NUDGES: ReadonlyArray<readonly [number, number]> = [
   [0.25, -1],
 ]
 
+/** A way for a label to show: a pill or a mark, at its spot or moved a little. */
+type Option = { look: "full" | "mark"; x: number; y: number; rect: Rect }
+
+/** A label's ways to show, best first: its pill at each move, then its mark at each. */
+function optionsFor(label: PlacedLabel): Array<Option> {
+  const pills = NUDGES.map(([dx, dy]): Option => {
+    const at = {
+      ...label,
+      x: label.x + dx * label.width,
+      y: label.y + dy * label.height,
+    }
+    return { look: "full", x: at.x, y: at.y, rect: pill(at) }
+  })
+  // A mark keeps to its spot, or steps just beside it.
+  const marks = NUDGES.map(([dx, dy]): Option => {
+    const at = {
+      ...label,
+      x: label.x + dx * 4 * MARK_SIZE,
+      y: label.y + dy * 2 * MARK_SIZE,
+    }
+    return { look: "mark", x: at.x, y: at.y, rect: mark(at) }
+  })
+  return [...pills, ...marks]
+}
+
+/** The part of the frame that is on screen, in the frame's pixels. */
+export type Bounds = Rect
+
+/**
+ * The part of a frame on a screen of this size: all of it for the live
+ * canvas; the middle for the still image, which is centred and cropped to
+ * cover the scene (styles.css: .lobby-still-frame).
+ */
+export function onScreen(frame: Viewport, screen: Viewport): Bounds {
+  const x0 = Math.max(0, (frame.width - screen.width) / 2)
+  const y0 = Math.max(0, (frame.height - screen.height) / 2)
+  return {
+    x0,
+    x1: frame.width - x0,
+    y0,
+    y1: frame.height - y0,
+  }
+}
+
 /**
  * How each label shows: in rank order (then list order), a pill where it
- * meets nothing already placed, moved a little if that makes room (inside
- * the screen's width where it can); else a
- * mark at its spot or just beside it; else hidden. What it returns
- * never overlaps.
+ * meets nothing already placed, moved a little if that makes room; else a
+ * mark at its spot or just beside it; else hidden. A pill shows only wholly
+ * on screen (inside `bounds`): the screen's edge never cuts one, it moves
+ * inside or becomes a mark. What it returns never overlaps.
  */
 export function layoutLabels(
   labels: ReadonlyArray<PlacedLabel>,
-  /** The screen's width: a pill moves to stay inside it when it can. */
-  width = Infinity
+  {
+    bounds,
+  }: {
+    /** The part of the frame on screen (onScreen); unbounded when omitted. */
+    bounds?: Bounds
+  } = {}
 ): Map<HotspotId, LabelPlacement> {
   const order = labels
     .map((label, index) => ({ label, index }))
@@ -124,28 +172,20 @@ export function layoutLabels(
   const taken: Array<Rect> = []
   const placements = new Map<HotspotId, LabelPlacement>()
   const free = (rect: Rect) => !taken.some((other) => overlaps(rect, other))
-  const inside = (rect: Rect) => rect.x0 >= 0 && rect.x1 <= width
+  const inside = (rect: Rect) =>
+    !bounds ||
+    (rect.x0 >= bounds.x0 &&
+      rect.x1 <= bounds.x1 &&
+      rect.y0 >= bounds.y0 &&
+      rect.y1 <= bounds.y1)
   for (const { label } of order) {
-    const fits = NUDGES.map(([dx, dy]) => ({
-      ...label,
-      x: label.x + dx * label.width,
-      y: label.y + dy * label.height,
-    })).filter((at) => free(pill(at)))
-    const moved = fits.find((at) => inside(pill(at))) ?? fits.at(0)
-    if (moved) {
-      taken.push(pill(moved))
-      placements.set(label.id, { look: "full", x: moved.x, y: moved.y })
-      continue
-    }
-    // A mark keeps to its spot, or steps just beside it.
-    const marked = NUDGES.map(([dx, dy]) => ({
-      ...label,
-      x: label.x + dx * 4 * MARK_SIZE,
-      y: label.y + dy * 2 * MARK_SIZE,
-    })).find((at) => free(mark(at)))
-    if (marked) {
-      taken.push(mark(marked))
-      placements.set(label.id, { look: "mark", x: marked.x, y: marked.y })
+    const chosen = optionsFor(label).find(
+      (option) =>
+        free(option.rect) && (option.look === "mark" || inside(option.rect))
+    )
+    if (chosen) {
+      taken.push(chosen.rect)
+      placements.set(label.id, { look: chosen.look, x: chosen.x, y: chosen.y })
     } else {
       placements.set(label.id, { look: "hidden", x: label.x, y: label.y })
     }

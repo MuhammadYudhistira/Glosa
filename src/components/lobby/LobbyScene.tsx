@@ -326,6 +326,7 @@ export function LobbyScene({
           view={live ? camera.view : STILL_VIEW}
           viewport={live ? camera.viewport : STILL_SIZE}
           frame={live ? camera.viewport : size && stillFrame(size)}
+          scene={live ? null : size}
           fontPx={wide ? 14 : 12}
           bubbles={bubbles}
           onActivate={onActivate}

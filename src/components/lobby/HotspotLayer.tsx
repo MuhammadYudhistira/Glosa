@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { layoutLabels, placeLabels } from "./label-layout"
+import { layoutLabels, onScreen, placeLabels } from "./label-layout"
 import type { HotspotModel } from "./lobby-data"
 import { type HotspotId, spotOf } from "./scene/layout"
 import { type View, type Viewport, project } from "./scene/projection"
@@ -26,6 +26,7 @@ export function HotspotLayer({
   view,
   viewport,
   frame,
+  scene,
   fontPx = 14,
   bubbles,
   onActivate,
@@ -36,6 +37,12 @@ export function HotspotLayer({
   viewport: Viewport
   /** The layer's size in CSS pixels; unknown (before the first measure), every label waits unseen, as with no room. */
   frame?: Viewport | null
+  /**
+   * The scene's size, where the frame is bigger and centred on it (the still
+   * image, cropped to cover): only that part is on screen. The whole frame
+   * when omitted.
+   */
+  scene?: Viewport | null
   /** The labels' font size (styles.css: 14 px on desktop, 12 px below). */
   fontPx?: number
   /** Speech bubbles shown above a hotspot. */
@@ -47,7 +54,10 @@ export function HotspotLayer({
   const placed = frame
     ? placeLabels(hotspots, view, viewport, frame, fontPx)
     : null
-  const looks = placed && frame ? layoutLabels(placed, frame.width) : null
+  const looks =
+    placed && frame
+      ? layoutLabels(placed, { bounds: onScreen(frame, scene ?? frame) })
+      : null
   return (
     <div className="lobby-hotspots lobby-overlay">
       {hotspots.map((hotspot) => {
