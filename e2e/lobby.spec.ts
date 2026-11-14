@@ -247,3 +247,46 @@ test("no two room labels overlap, and none covers the greeting", async ({
     )
   }
 })
+
+// Without WebGL the scene is at "diam" quality: Anda does not walk or perform
+// there (spec 3F §4A.1), so a tap opens the page at once. The walk itself is
+// covered by the unit tests; the SwiftShader project also runs at "diam".
+test.describe("a tapped hotspot opens its page", () => {
+  const fireplace = (scene: ReturnType<Page["getByRole"]>) =>
+    scene.getByRole("button", { name: "Kilas balik", exact: true })
+
+  test("a tap, and a double tap, reach the page within 2 s", async ({
+    page,
+  }) => {
+    await signInAndOnboard(page, await createConfirmedMember())
+    const scene = await openLobby(page)
+    await expect(scene).toHaveAttribute("data-quality", "diam")
+    await fireplace(scene).click()
+    await expect(page).toHaveURL(/\/recap$/, { timeout: 2000 })
+
+    const again = await openLobby(page)
+    await fireplace(again).dblclick()
+    await expect(page).toHaveURL(/\/recap$/, { timeout: 2000 })
+  })
+
+  test("with reduced motion the page opens at once", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" })
+    await signInAndOnboard(page, await createConfirmedMember())
+    const scene = await openLobby(page)
+    await fireplace(scene).click()
+    await expect(page).toHaveURL(/\/recap$/, { timeout: 300 })
+  })
+
+  test("Enter on a focused hotspot opens its popup at once", async ({
+    page,
+  }) => {
+    await signInAndOnboard(page, await createConfirmedMember())
+    const scene = await openLobby(page)
+    await scene
+      .getByRole("button", { name: "Sorotan", exact: true })
+      .press("Enter")
+    await expect(page.getByRole("dialog", { name: "Sorotan" })).toBeVisible({
+      timeout: 300,
+    })
+  })
+})
