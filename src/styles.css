@@ -1218,6 +1218,41 @@
     font-weight: 400;
     color: var(--muted-foreground);
   }
+  /* No room for its pill on this screen (label-layout.ts): a mark at its
+     spot, 14 px (MARK_SIZE) with a 24 px tap target; hovered or focused it
+     shows its name above the others. */
+  .lobby-hotspot[data-look="mark"]:not(:hover, :focus-visible) {
+    position: relative;
+    width: 14px;
+    height: 14px;
+    gap: 0;
+    padding: 0;
+    border: 2px solid var(--color-mint);
+    border-radius: 9999px;
+  }
+  .lobby-hotspot[data-look="mark"]:not(:hover, :focus-visible)::before {
+    content: "";
+    position: absolute;
+    inset: -7px;
+  }
+  .lobby-hotspot[data-look="mark"]:not(:hover, :focus-visible) > * {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* No room even for a mark: reachable by keyboard (or once the camera
+     comes closer), shown while focused. */
+  .lobby-hotspot-anchor
+    > .lobby-hotspot[data-look="hidden"]:not(:focus-visible) {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .lobby-hotspot-anchor:has(> .lobby-hotspot:is(:hover, :focus-visible)) {
+    z-index: 1;
+  }
   .lobby-hotspot-badge {
     display: grid;
     place-items: center;
@@ -1379,6 +1414,18 @@
     right: 0.75rem;
     bottom: 0.75rem;
     width: var(--admin-card-w);
+  }
+  /* The empty shelf's greeting, beside the desk card: its tail points at it. */
+  .lobby-welcome {
+    width: min(18rem, 70vw);
+  }
+  .lobby-welcome .note-bubble::after {
+    left: auto;
+    right: -0.5rem;
+    bottom: 1rem;
+    border: 0.5rem solid transparent;
+    border-left-color: #fffaf0;
+    border-right: 0;
   }
   /* Small covers in the lobby panels: the titled spine shrinks with them. */
   .lobby-panel .book-cover-blank {

@@ -167,3 +167,52 @@ test("the fireplace, the door and the corkboard lead somewhere", async ({
     page.getByRole("main").getByRole("link", { name: "Keluar" })
   ).toBeVisible()
 })
+
+test("no two room labels overlap, and none covers the greeting", async ({
+  page,
+  isMobile,
+}) => {
+  // Owner, 2026-11-13: an empty shelf at 1440 × 900 stacked its labels.
+  await signInAndOnboard(page, await createConfirmedMember())
+  const scene = await openLobby(page)
+  const welcome = page
+    .getByText("Rakmu masih kosong. Bawa buku pertamamu ke sini!")
+    .filter({ visible: true })
+  await expect(welcome).toBeVisible()
+  // The labels spread once the scene's size is measured.
+  await expect(
+    scene.getByRole("button", { name: "Kursi baca", exact: true })
+  ).toBeVisible()
+  const boxes = await scene.locator(".lobby-hotspot").evaluateAll((buttons) =>
+    buttons.flatMap((button) => {
+      if (getComputedStyle(button).opacity === "0") return []
+      const { left, right, top, bottom } = button.getBoundingClientRect()
+      return [{ name: button.textContent, left, right, top, bottom }]
+    })
+  )
+  expect(boxes.length).toBeGreaterThan(9)
+  const meet = (
+    a: { left: number; right: number; top: number; bottom: number },
+    b: { left: number; right: number; top: number; bottom: number }
+  ) =>
+    a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+  const overlapping = boxes.flatMap((a, i) =>
+    boxes
+      .slice(i + 1)
+      .flatMap((b) => (meet(a, b) ? [`${a.name} / ${b.name}`] : []))
+  )
+  expect(overlapping).toEqual([])
+  if (!isMobile) {
+    // The greeting and its EPUB note sit beside the desk card, clear of every label.
+    const stack = (await welcome.locator("..").boundingBox())!
+    const area = {
+      left: stack.x,
+      right: stack.x + stack.width,
+      top: stack.y,
+      bottom: stack.y + stack.height,
+    }
+    expect(boxes.filter((box) => meet(box, area)).map((b) => b.name)).toEqual(
+      []
+    )
+  }
+})

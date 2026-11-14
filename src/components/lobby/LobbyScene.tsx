@@ -12,9 +12,11 @@ import type { HighlightColor } from "@/lib/annotations/types"
 import type { PlantStage } from "@/lib/reading-habit"
 import type { SlotId } from "@/lib/shop/catalog"
 import type { Placements } from "@/lib/shop/types"
+import { useWideScreen } from "@/lib/use-wide-screen"
 import { HotspotLayer } from "./HotspotLayer"
 import { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyStill, STILL_SIZE, STILL_VIEW } from "./LobbyStill"
+import { stillFrame } from "./label-layout"
 import type { HotspotModel } from "./lobby-data"
 import type { RoomChange, RoomSnapshot } from "./room-memory"
 import { NEUTRAL_SIGNALS, NO_NOTES, type RoomSignals } from "./room-signals"
@@ -133,6 +135,22 @@ export function LobbyScene({
   const [camera, setCamera] = useState<Camera | null>(null)
   const stageRef = useRef<Stage | null>(null)
   const cameraRef = useRef<Camera | null>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+  const wide = useWideScreen()
+  // The scene's size, for the still image's frame: the labels keep apart in
+  // screen pixels (label-layout.ts). Unknown without ResizeObserver.
+  const [size, setSize] = useState<Viewport | null>(null)
+  useEffect(() => {
+    const section = sectionRef.current
+    if (!section || typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(() => {
+      const { clientWidth: width, clientHeight: height } = section
+      // Hidden (behind a page on phones): nothing to keep apart.
+      setSize(width > 0 && height > 0 ? { width, height } : null)
+    })
+    observer.observe(section)
+    return () => observer.disconnect()
+  }, [])
 
   // Holding WebGL back unmounts the canvas, which disposes its stage: the
   // scene is no longer live, and the poster shows until a new stage is ready.
@@ -244,6 +262,7 @@ export function LobbyScene({
 
   return (
     <section
+      ref={sectionRef}
       aria-label="Adegan ruang baca"
       tabIndex={0}
       data-quality={quality ?? undefined}
@@ -293,6 +312,8 @@ export function LobbyScene({
           hotspots={hotspots}
           view={live ? camera.view : STILL_VIEW}
           viewport={live ? camera.viewport : STILL_SIZE}
+          frame={live ? camera.viewport : size && stillFrame(size)}
+          fontPx={wide ? 14 : 12}
           bubbles={bubbles}
           onActivate={onActivate}
           onFocusSpot={live ? reveal : undefined}

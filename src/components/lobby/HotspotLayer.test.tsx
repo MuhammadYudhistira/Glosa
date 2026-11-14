@@ -6,7 +6,7 @@ import { HotspotLayer } from "./HotspotLayer"
 import { STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import { lobbyHotspots, summarizeLobby } from "./lobby-data"
 import { spotOf } from "./scene/layout"
-import { project } from "./scene/projection"
+import { project, startView } from "./scene/projection"
 
 const onTrolley: ShelfBook = { ...sherlock, id: "t", genre: null }
 
@@ -81,5 +81,52 @@ describe("HotspotLayer", () => {
       detail: 0,
     })
     expect(onActivate).toHaveBeenCalledWith("meja-admin", { keyboard: true })
+  })
+
+  it("keeps every label in full where they all fit (a desktop screen)", () => {
+    const viewport = { width: 1440, height: 900 }
+    render(
+      <HotspotLayer
+        hotspots={lobbyHotspots(summarizeLobby([sherlock]).counts)}
+        view={startView(viewport)}
+        viewport={viewport}
+        frame={viewport}
+        fontPx={14}
+        onActivate={vi.fn()}
+      />
+    )
+    for (const button of screen.getAllByRole("button")) {
+      expect(button).not.toHaveAttribute("data-look")
+    }
+  })
+
+  it("shrinks labels with no room to marks, and keeps every one in the tab order", () => {
+    // A phone drawing the whole room: too small for every pill.
+    const viewport = { width: 390, height: 788 }
+    const onActivate = vi.fn()
+    render(
+      <HotspotLayer
+        hotspots={lobbyHotspots(summarizeLobby([sherlock]).counts)}
+        view={startView(viewport)}
+        viewport={viewport}
+        frame={viewport}
+        fontPx={12}
+        onActivate={onActivate}
+      />
+    )
+    const buttons = screen.getAllByRole("button")
+    expect(buttons).toHaveLength(18)
+    const looks = buttons.map((button) => button.getAttribute("data-look"))
+    expect(looks).toContain("mark")
+    // The reading chair keeps its name; a mark keeps its accessible name.
+    expect(
+      screen.getByRole("button", { name: "Kursi baca" })
+    ).not.toHaveAttribute("data-look")
+    for (const button of buttons) {
+      expect(button).not.toHaveAttribute("tabindex")
+    }
+    const mark = buttons.find((b) => b.getAttribute("data-look") === "mark")!
+    fireEvent.click(mark, { detail: 1 })
+    expect(onActivate).toHaveBeenCalled()
   })
 })

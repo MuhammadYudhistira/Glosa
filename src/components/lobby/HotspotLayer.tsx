@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { layoutLabels, placeLabels } from "./label-layout"
 import type { HotspotModel } from "./lobby-data"
 import { type HotspotId, spotOf } from "./scene/layout"
 import { type View, type Viewport, project } from "./scene/projection"
@@ -14,12 +15,18 @@ function isKeyboardFocus(element: HTMLElement): boolean {
 
 /**
  * The lobby's places as HTML buttons over the scene (spec 1D §5.1), placed by
- * projecting their 3D spot with the camera's current view.
+ * projecting their 3D spot with the camera's current view. No two labels
+ * overlap (owner, 2026-11-13): where the room is drawn too small for every
+ * pill, the less important ones shrink to a mark at their spot, or wait for
+ * the keyboard or a closer camera (label-layout.ts). Each keeps its name and
+ * its place in the tab order.
  */
 export function HotspotLayer({
   hotspots,
   view,
   viewport,
+  frame,
+  fontPx = 14,
   bubbles,
   onActivate,
   onFocusSpot,
@@ -27,16 +34,29 @@ export function HotspotLayer({
   hotspots: ReadonlyArray<HotspotModel>
   view: View
   viewport: Viewport
+  /** The layer's size in CSS pixels; unknown (before the first measure), every label shows in full. */
+  frame?: Viewport | null
+  /** The labels' font size (styles.css: 14 px on desktop, 12 px below). */
+  fontPx?: number
   /** Speech bubbles shown above a hotspot. */
   bubbles?: Partial<Record<HotspotId, ReactNode>>
   /** `keyboard`: Enter or Space, a click without a pointer (no walk, no activity). */
   onActivate: (id: HotspotId, how: { keyboard: boolean }) => void
   onFocusSpot?: (id: HotspotId) => void
 }) {
+  const placed = frame
+    ? placeLabels(hotspots, view, viewport, frame, fontPx)
+    : null
+  const looks = placed && frame ? layoutLabels(placed, frame.width) : null
   return (
     <div className="lobby-hotspots lobby-overlay">
       {hotspots.map((hotspot) => {
-        const { x, y } = project(spotOf(hotspot.id).label, view, viewport)
+        const at = looks?.get(hotspot.id)
+        const { x, y } =
+          frame && at
+            ? { x: (at.x / frame.width) * 100, y: (at.y / frame.height) * 100 }
+            : project(spotOf(hotspot.id).label, view, viewport)
+        const look = at?.look ?? "full"
         return (
           <div
             key={hotspot.id}
@@ -48,6 +68,7 @@ export function HotspotLayer({
               type="button"
               className="lobby-hotspot"
               data-empty={hotspot.dim ? "" : undefined}
+              data-look={look === "full" ? undefined : look}
               onClick={(event) =>
                 onActivate(hotspot.id, { keyboard: event.detail === 0 })
               }

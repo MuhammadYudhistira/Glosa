@@ -529,7 +529,14 @@ const FIRE_STAND: Point2 = [
     2,
 ]
 
-/** `label`: where the hotspot's label floats. `stand`: where "Anda" walks to. */
+/**
+ * How far each shelf section's label sits below the one before: its label
+ * steps down the bookcase, so the labels stack without overlapping on screen
+ * (owner, 2026-11-13; label-layout.test.ts pins it).
+ */
+const SECTION_LABEL_STEP = 0.33
+
+/** `label`: where the hotspot's label floats (the bottom centre of its pill). `stand`: where "Anda" walks to. */
 export type HotspotSpot = { id: HotspotId; label: Point3; stand: Point2 }
 
 /** In tab order (spec 1D §6): reading chair, shelf sections, parcel box, laptop, notebook, cabinet, plant, catalogue, fireplace, corkboard, door. */
@@ -541,17 +548,18 @@ export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
   },
   ...WALL_SECTIONS.map(({ genre, z }, i): HotspotSpot => ({
     id: genre,
-    label: [0.4, 3.9 - 0.08 * i, z],
+    label: [0.4, 3.9 - SECTION_LABEL_STEP * i, z],
     stand: shelfStand(z),
   })),
   {
     id: "troli",
-    label: [PARCEL_AT[0], 1.0, PARCEL_AT[1]],
+    // On the floor before the box, below and right of the shelf labels.
+    label: [PARCEL_AT[0] + 0.9, 0.5, PARCEL_AT[1] + 0.3],
     stand: [PARCEL_AT[0] + 1.1, PARCEL_AT[1]],
   },
   {
     id: "meja-admin",
-    label: [LAPTOP_AT[0], 1.4, LAPTOP_AT[1]],
+    label: [LAPTOP_AT[0], 1.1, LAPTOP_AT[1]],
     stand: [LAPTOP_AT[0] + 0.4, 2.0],
   },
   {
@@ -559,26 +567,34 @@ export const HOTSPOT_SPOTS: ReadonlyArray<HotspotSpot> = [
     label: [DESK_AT[0] - 0.54, 1.6, DESK_AT[1]],
     stand: [DESK_AT[0] - 0.4, 2.0],
   },
-  { id: "lemari", label: [8.8, 2.5, 0.3], stand: [8.8, 1.9] },
+  {
+    id: "lemari",
+    // Left of the cabinet's middle, clear of the room map's panel.
+    label: [SHOWCASE[0] - 0.5, 1.9, SHOWCASE[1]],
+    stand: [SHOWCASE[0], 1.9],
+  },
   { id: "tanaman", label: [6.2, 1.9, 0.8], stand: [6.2, 2.0] },
   {
     id: "toko",
-    label: [SIDE_TABLE_AT[0], 1.2, SIDE_TABLE_AT[1]],
+    label: [SIDE_TABLE_AT[0], 0.9, SIDE_TABLE_AT[1]],
     stand: [SIDE_TABLE_AT[0], 3.0],
   },
   {
     id: "perapian",
-    label: [FIRE_AT[0], 2.7, FIRE_AT[1] + 0.05],
+    // Right of the chimney breast's middle, clear of the desk's labels.
+    label: [FIRE_AT[0] + 0.35, 2.8, FIRE_AT[1] + 0.05],
     stand: FIRE_STAND,
   },
   {
     id: "papan",
-    label: [ROOM_PARTS.corkboard.x, ROOM_PARTS.corkboard.y + 0.7, 0.1],
+    // Right of the board's middle, clear of the top shelf section's label.
+    label: [ROOM_PARTS.corkboard.x + 0.3, ROOM_PARTS.corkboard.y + 0.7, 0.1],
     stand: [ROOM_PARTS.corkboard.x, 2.3],
   },
   {
     id: "pintu",
-    label: [0.1, 2.4, ROOM_PARTS.door.z],
+    // On the door's far side, left of the parcel box's label.
+    label: [0.1, 1.2, ROOM_PARTS.door.z + 0.4],
     stand: [1.4, ROOM_PARTS.door.z],
   },
 ]

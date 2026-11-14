@@ -344,10 +344,6 @@ export function LobbyStage({
   if (!popup && recapBubble) {
     bubbles.tanaman = <RecapBubbleNote bubble={recapBubble} />
   }
-  // Phones greet in the sheet instead: their first view leaves the desk out.
-  if (!popup && books.length === 0) {
-    bubbles["meja-admin"] = <ShelfWelcome className="hidden lg:grid" />
-  }
 
   // One element for every mode, so switching never remounts the WebGL scene.
   return (
@@ -428,6 +424,12 @@ export function LobbyStage({
                 onDeleted={onDeleted}
                 className="lobby-at-detail"
               />
+            )}
+            {/* An empty shelf's greeting points at the desk card's "Bawa
+                buku", where no hotspot label can cover it (owner,
+                2026-11-13); phones greet in the sheet. */}
+            {books.length === 0 && (
+              <ShelfWelcome className="lobby-at-recent lobby-welcome" />
             )}
             <RecentBooks
               books={summary.recent}

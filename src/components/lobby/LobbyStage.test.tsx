@@ -26,6 +26,7 @@ const scene = vi.hoisted(() => ({
     onLiveChange?: (live: boolean) => void
     notes?: Array<string>
     shelves?: Record<string, ReadonlyArray<number>>
+    bubbles?: Record<string, unknown>
   } | null,
 }))
 const handle = vi.hoisted(() => ({
@@ -416,6 +417,32 @@ describe("LobbyStage", () => {
       coverHue(sherlock.title),
     ])
     expect(scene.props?.shelves?.fiksi_sastra).toEqual([])
+  })
+
+  it("greets an empty shelf beside the desk card, not over the room's labels", async () => {
+    stubWideScreen(true)
+    renderWithRouter(
+      <LobbyStage
+        collections={[]}
+        user={member}
+        books={[]}
+        usage={usage}
+        offline={false}
+        popup={false}
+      />,
+      "/lobby"
+    )
+    const side = await screen.findByRole("complementary", {
+      name: "Panel ruang baca",
+    })
+    expect(
+      within(side).getByText("Rakmu masih kosong. Bawa buku pertamamu ke sini!")
+    ).toBeInTheDocument()
+    expect(
+      within(side).getByRole("link", { name: "Standard Ebooks" })
+    ).toBeInTheDocument()
+    // No hotspot carries it: the labels can never cover it.
+    expect(scene.props?.bubbles?.["meja-admin"]).toBeUndefined()
   })
 
   it("closes the popup when a search result is picked, and shows the book", async () => {
