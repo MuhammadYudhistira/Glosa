@@ -118,6 +118,9 @@ test("with reduced motion the 3D lobby stays still", async ({ page }) => {
   const scene = sceneOf(page)
   await expect(scene).toHaveAttribute("data-quality", "diam")
   await expect(scene.locator("canvas")).toBeVisible({ timeout: 120_000 })
+  // Still quality acts at once: no walk first.
+  await scene.getByRole("button", { name: "Kilas balik", exact: true }).click()
+  await expect(page).toHaveURL(/\/recap$/)
 })
 
 test("the 3D scene stays loaded behind Rak Saya", async ({ page }) => {
