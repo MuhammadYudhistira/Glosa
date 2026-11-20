@@ -17,3 +17,7 @@ supabase/.temp/
 
 # Downloaded dictionary extracts (docs/ops/deploy.md §6.5); they live in the database, not in git.
 dict/
+
+# Screenshots and one-off harness output
+scratch/
+.worktrees/
