@@ -26,24 +26,32 @@ export const FIRE_STRENGTH: Record<FireLevel, number> = {
   besar: 1,
 }
 
+/** Reading days from `from` to `to`, both included: days whose goal was met (spec 3B §3.2). */
+export function readingDaysBetween(
+  days: ReadonlyArray<HabitDay>,
+  from: string,
+  to: string
+): number {
+  return new Set(
+    days
+      .filter(
+        (d) =>
+          d.day >= from &&
+          d.day <= to &&
+          d.seconds >= goalSeconds(d.goalMinutes)
+      )
+      .map((d) => d.day)
+  ).size
+}
+
 /** A reading day is a day whose goal was met (spec 3B §3.2), as for the streak. */
 export function fireLevel(
   days: ReadonlyArray<HabitDay>,
   today: string
 ): FireLevel {
-  const from = addDays(today, -6)
-  const read = new Set(
-    days
-      .filter(
-        (d) =>
-          d.day >= from &&
-          d.day <= today &&
-          d.seconds >= goalSeconds(d.goalMinutes)
-      )
-      .map((d) => d.day)
-  )
-  if (read.size === 0) return "bara"
-  return read.size <= 2 ? "kecil" : "besar"
+  const read = readingDaysBetween(days, addDays(today, -6), today)
+  if (read === 0) return "bara"
+  return read <= 2 ? "kecil" : "besar"
 }
 
 export function roomSignals(input: {

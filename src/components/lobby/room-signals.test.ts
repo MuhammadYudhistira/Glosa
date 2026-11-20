@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 import type { HabitDay } from "@/lib/habit/types"
-import { NEUTRAL_SIGNALS, fireLevel, roomSignals } from "./room-signals"
+import {
+  NEUTRAL_SIGNALS,
+  fireLevel,
+  readingDaysBetween,
+  roomSignals,
+} from "./room-signals"
 
 const TODAY = "2026-11-13"
 const read = (day: string): HabitDay => ({ day, seconds: 600, goalMinutes: 5 })
@@ -49,5 +54,20 @@ describe("roomSignals", () => {
       deskLamp: false,
       parcelOpen: false,
     })
+  })
+})
+
+describe("readingDaysBetween", () => {
+  it("counts the days whose goal was met, both ends included, once each", () => {
+    const days = [
+      read("2026-11-09"),
+      read("2026-11-09"),
+      short("2026-11-10"),
+      read("2026-11-13"),
+      read("2026-11-14"),
+    ]
+    expect(readingDaysBetween(days, "2026-11-09", "2026-11-13")).toBe(2)
+    expect(readingDaysBetween(days, "2026-11-10", "2026-11-12")).toBe(0)
+    expect(readingDaysBetween([], "2026-11-09", "2026-11-13")).toBe(0)
   })
 })

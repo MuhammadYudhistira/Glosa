@@ -1297,6 +1297,41 @@
     }
   }
 
+  /* The name card of a picked place (spec 3G §3.5): above the phone's sheet,
+     at the foot of the scene on desktop. --lobby-sheet-h is set by
+     use-sheet-height.ts. */
+  .lobby-card {
+    position: absolute;
+    inset-inline: 0.5rem;
+    bottom: calc(var(--lobby-sheet-h, 0px) + 0.5rem);
+    z-index: 12;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.9rem;
+    background: var(--color-panel);
+    padding: 0.65rem 0.8rem;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+  }
+  .lobby-card-name {
+    font-weight: 700;
+  }
+  .lobby-card-status {
+    font-size: 0.85rem;
+    color: var(--muted-foreground);
+  }
+  @media (min-width: 1024px) {
+    .lobby-card {
+      inset-inline: auto;
+      left: 50%;
+      bottom: 1.5rem;
+      width: min(24rem, 40%);
+      translate: -50% 0;
+    }
+  }
+
   /* Lobby: phone sheet and speech bubbles (plan 1D, Task 10). */
   .lobby-sheet {
     position: absolute;
