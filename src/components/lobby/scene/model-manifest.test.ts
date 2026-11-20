@@ -3,7 +3,7 @@ import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 import { MODEL_KEYS, MODELS } from "./model-manifest"
 
-const dir = resolve(__dirname, "../../../../public/lobby/models")
+const dir = resolve(__dirname, "../../../../src/assets/lobby/models")
 const entries = MODEL_KEYS.map((key) => [key, MODELS[key]] as const)
 
 describe("model manifest", () => {

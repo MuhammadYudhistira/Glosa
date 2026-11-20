@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { shopThumbUrl } from "@/components/lobby/lobby-assets"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -100,7 +101,7 @@ export function ShopPanel({
               return (
                 <li key={item.id} aria-label={item.name} className="shop-item">
                   <img
-                    src={`/lobby/shop/${item.id}.webp`}
+                    src={shopThumbUrl(item.id)}
                     alt=""
                     width={480}
                     height={360}

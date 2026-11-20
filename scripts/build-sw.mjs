@@ -1,6 +1,7 @@
 // Writes dist/client/sw.js from pwa/sw.template.js after `vite build`, with the
 // files to precache: the app shell, every built asset (scripts, styles, woff2
-// fonts) and the public icons and lobby images.
+// fonts; the lobby images and models are among them, hashed) and the public
+// icons.
 import { createHash } from "node:crypto"
 import { readFile, readdir, stat, writeFile } from "node:fs/promises"
 import { join, relative, sep } from "node:path"

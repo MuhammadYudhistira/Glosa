@@ -7,8 +7,10 @@ vi.mock("three/addons/loaders/GLTFLoader.js", () => ({
     loadAsync = loadAsync
   },
 }))
+vi.mock("@/components/lobby/lobby-assets", () => ({
+  modelUrl: (file: string) => `/m/${file}`,
+}))
 vi.mock("./model-manifest", () => ({
-  MODEL_DIR: "/m/",
   MODEL_KEYS: ["a", "b", "c"],
   MODELS: {
     a: { file: "a.glb", source: "kaykit", credit: "" },

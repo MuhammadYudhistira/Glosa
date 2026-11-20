@@ -5,8 +5,8 @@
 //                                 `mode=normal` in it draws the moving room
 //   node scripts/lobby-harness.mjs moods [dir]   day, dusk and night, desktop and phone (PNG)
 //   node scripts/lobby-harness.mjs acts [dir]    Anda in each hotspot's activity pose (PNG)
-//   node scripts/lobby-harness.mjs still         public/lobby/lobby-still*.{avif,webp}
-//   node scripts/lobby-harness.mjs thumbs        public/lobby/shop/<id>.webp
+//   node scripts/lobby-harness.mjs still         src/assets/lobby/still/lobby-still*.{avif,webp}
+//   node scripts/lobby-harness.mjs thumbs        src/assets/lobby/shop/<id>.webp
 import { mkdirSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { chromium } from "@playwright/test"
@@ -53,11 +53,11 @@ const THUMB_MAX_BYTES = 60 * 1024
 
 async function thumbs(only) {
   const { SHOP_ITEMS } = await server.ssrLoadModule("/src/lib/shop/catalog.ts")
-  mkdirSync("public/lobby/shop", { recursive: true })
+  mkdirSync("src/assets/lobby/shop", { recursive: true })
   for (const { id } of SHOP_ITEMS) {
     if (only && id !== only) continue
     const png = await render(THUMB, `mode=still&mood=night&decor=${id}`)
-    const file = `public/lobby/shop/${id}.webp`
+    const file = `src/assets/lobby/shop/${id}.webp`
     const out = await sharp(png).webp({ quality: 75 }).toFile(file)
     console.log(`${file}: ${Math.round(out.size / 1024)} kB`)
     if (out.size > THUMB_MAX_BYTES) throw new Error(`${file} is over 60 kB`)
@@ -122,6 +122,7 @@ async function acts(dir) {
 
 async function still() {
   // Night, neutral signals and an empty corkboard (spec 3F §3.5).
+  mkdirSync("src/assets/lobby/still", { recursive: true })
   const png = await render(STILL, "mode=still&mood=night")
   for (const width of [STILL.width, STILL.width / 2]) {
     const name = `lobby-still${width === STILL.width ? "" : `-${width}`}`
@@ -129,11 +130,11 @@ async function still() {
     const avif = await image
       .clone()
       .avif({ quality: 50, effort: 6 })
-      .toFile(`public/lobby/${name}.avif`)
+      .toFile(`src/assets/lobby/still/${name}.avif`)
     const webp = await image
       .clone()
       .webp({ quality: 75 })
-      .toFile(`public/lobby/${name}.webp`)
+      .toFile(`src/assets/lobby/still/${name}.webp`)
     console.log(
       `${name}: avif ${Math.round(avif.size / 1024)} kB, webp ${Math.round(webp.size / 1024)} kB`
     )

@@ -133,9 +133,8 @@ describe("LobbyScene", () => {
       expect(scene).toHaveAttribute("data-quality", "diam")
     )
     expect(screen.queryByTestId("lobby-canvas")).not.toBeInTheDocument()
-    expect(scene.querySelector("img")).toHaveAttribute(
-      "src",
-      "/lobby/lobby-still.webp"
+    expect(scene.querySelector("img")?.getAttribute("src")).toMatch(
+      /lobby-still\.webp/
     )
     fireEvent.click(screen.getByRole("button", { name: "Meja tulis" }), {
       detail: 1,

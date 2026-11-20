@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
-import { MODEL_DIR, MODELS, MODEL_KEYS, type ModelKey } from "./model-manifest"
+import { modelUrl } from "@/components/lobby/lobby-assets"
+import { MODELS, MODEL_KEYS, type ModelKey } from "./model-manifest"
 
 export type ModelSet = {
   get: (key: ModelKey) => THREE.Group | null
@@ -14,7 +15,7 @@ function fetchFile(file: string): Promise<THREE.Group> {
   let pending = cache.get(file)
   if (!pending) {
     pending = new GLTFLoader()
-      .loadAsync(MODEL_DIR + file)
+      .loadAsync(modelUrl(file))
       .then((gltf) => gltf.scene)
     pending.catch(() => cache.delete(file))
     cache.set(file, pending)

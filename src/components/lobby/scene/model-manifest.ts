@@ -6,8 +6,6 @@ export type ModelEntry = {
   credit: string
 }
 
-export const MODEL_DIR = "/lobby/models/"
-
 export const MODEL_KEYS = [
   "armchair",
   "readingLamp",

@@ -1,3 +1,4 @@
+import { stillUrl } from "@/components/lobby/lobby-assets"
 import { type View, type Viewport, startView } from "./scene/projection"
 
 /** The still image's size; scripts/lobby-harness.mjs renders it at this size. */
@@ -24,16 +25,16 @@ export function LobbyStill({
     <picture>
       <source
         type="image/avif"
-        srcSet="/lobby/lobby-still-1280.avif 1280w, /lobby/lobby-still.avif 2560w"
+        srcSet={`${stillUrl("lobby-still-1280.avif")} 1280w, ${stillUrl("lobby-still.avif")} 2560w`}
         sizes={sizes}
       />
       <source
         type="image/webp"
-        srcSet="/lobby/lobby-still-1280.webp 1280w, /lobby/lobby-still.webp 2560w"
+        srcSet={`${stillUrl("lobby-still-1280.webp")} 1280w, ${stillUrl("lobby-still.webp")} 2560w`}
         sizes={sizes}
       />
       <img
-        src="/lobby/lobby-still.webp"
+        src={stillUrl("lobby-still.webp")}
         alt=""
         width={STILL_SIZE.width}
         height={STILL_SIZE.height}

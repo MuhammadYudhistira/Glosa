@@ -13,7 +13,15 @@ const PRECACHED = new Set(PRECACHE)
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(APP_CACHE).then((cache) => cache.addAll(PRECACHE))
+    // "reload" skips the browser's HTTP cache, so a new worker never saves an
+    // older copy of a file than the one this build ships.
+    caches
+      .open(APP_CACHE)
+      .then((cache) =>
+        cache.addAll(
+          PRECACHE.map((url) => new Request(url, { cache: "reload" }))
+        )
+      )
   )
 })
 
