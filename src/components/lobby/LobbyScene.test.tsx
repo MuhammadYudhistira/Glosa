@@ -394,6 +394,49 @@ describe("LobbyScene", () => {
       })
     })
 
+    describe("on a phone held upright", () => {
+      const phone = { width: 390, height: 700 }
+      async function goPhone() {
+        const rendered = renderScene(desktop)
+        await vi.waitFor(() => expect(canvas.props).not.toBeNull())
+        const stage = {
+          books: 0,
+          setView: vi.fn(),
+          walkTo: vi.fn(),
+          setPaused: vi.fn(),
+          setShowcase: vi.fn(),
+          setPlant: vi.fn(),
+          setSignals: vi.fn(),
+          setNotes: vi.fn(),
+          setShelves: vi.fn(),
+          setDecor: vi.fn(),
+          setMood: vi.fn(),
+          perform: vi.fn(() => Promise.resolve()),
+          skip: vi.fn(),
+          playMoments: vi.fn(),
+          dispose: vi.fn(),
+          pick: vi.fn(() => null),
+          setHighlight: vi.fn(),
+        }
+        act(() => {
+          canvas.props?.onView(startView(phone), phone)
+          canvas.props?.onReady(stage)
+        })
+        return { ...rendered, stage }
+      }
+
+      it("shows Pusatkan only after the camera left its first view", async () => {
+        await goPhone()
+        expect(screen.queryByRole("button", { name: "Pusatkan" })).toBeNull()
+        act(() => {
+          canvas.props?.onView(panBy(startView(phone), 0.2, 0, phone), phone)
+        })
+        expect(screen.getByRole("button", { name: "Pusatkan" })).toBeVisible()
+        act(() => canvas.props?.onView(startView(phone), phone))
+        expect(screen.queryByRole("button", { name: "Pusatkan" })).toBeNull()
+      })
+    })
+
     describe("the mouse over the scene", () => {
       beforeEach(() => {
         vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
@@ -440,6 +483,17 @@ describe("LobbyScene", () => {
         move(screen.getByTestId("lobby-canvas"), 200, 120)
         fireEvent.pointerLeave(scene)
         expect(document.querySelector(".lobby-hover-name")).toBeNull()
+      })
+
+      it("drops the name when the wheel moves the camera under a still cursor", async () => {
+        const onHover = vi.fn()
+        const { scene, stage } = await goLiveWith({ onHover })
+        stage.pick.mockReturnValue("troli")
+        move(screen.getByTestId("lobby-canvas"), 200, 120)
+        expect(onHover).toHaveBeenLastCalledWith("troli")
+        fireEvent.wheel(scene, { deltaY: -100 })
+        expect(document.querySelector(".lobby-hover-name")).toBeNull()
+        expect(onHover).toHaveBeenLastCalledWith(null)
       })
 
       it("drops the name over a button on the scene", async () => {

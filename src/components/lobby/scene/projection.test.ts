@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { ROOM, type Point3 } from "./layout"
+import { ANDA_START, ROOM, type Point3, spotOf } from "./layout"
 import {
   MAX_ZOOM,
   MIN_ZOOM,
@@ -86,7 +86,7 @@ describe("project", () => {
 })
 
 describe("diorama camera", () => {
-  it.each([PHONE, DESKTOP])(
+  it.each([DESKTOP])(
     "shows the whole room at the start view (%o)",
     (viewport) => {
       const view = startView(viewport)
@@ -144,7 +144,7 @@ describe("diorama camera", () => {
 
   it("centres an axis the room does not fill, and never changes the zoom within limits", () => {
     const view = clampView({ target: [3, 1, 9], zoom: 1 }, PHONE)
-    expect(view).toEqual(startView(PHONE))
+    expect(view).toEqual(clampView({ target: [5, 2.3, 5], zoom: 1 }, PHONE))
     expect(clampView({ target: [6, 2, 6], zoom: 9 }, DESKTOP).zoom).toBe(
       MAX_ZOOM
     )
@@ -166,6 +166,61 @@ describe("diorama camera", () => {
       for (let k = 0; k < 3; k++) {
         expect(twice.target[k], `view ${i}`).toBeCloseTo(once.target[k], 9)
       }
+    }
+  })
+})
+
+describe("the phone held upright (spec 3G §3.7)", () => {
+  const aspects: Array<Viewport> = [
+    { width: 360, height: 800 },
+    { width: 390, height: 844 },
+    { width: 412, height: 915 },
+    { width: 600, height: 700 },
+  ]
+
+  it.each(aspects)(
+    "fills the screen's height with the room (%o)",
+    (viewport) => {
+      const view = startView(viewport)
+      expect(view.zoom).toBeGreaterThan(1)
+      expect(view.zoom).toBeLessThanOrEqual(MAX_ZOOM)
+      const ys = corners.map((corner) => project(corner, view, viewport).y)
+      // The room's top and bottom corners reach to within a tenth of the height of each edge.
+      expect(Math.min(...ys)).toBeLessThan(10)
+      expect(Math.max(...ys)).toBeGreaterThan(90)
+    }
+  )
+
+  it.each(aspects)(
+    "is centred on Anda and the reading chair (%o)",
+    (viewport) => {
+      const view = startView(viewport)
+      for (const point of [ANDA_START, spotOf("meja-baca").stand]) {
+        const { x } = project([point[0], 0, point[1]], view, viewport)
+        expect(x, `${point}`).toBeGreaterThan(0)
+        expect(x, `${point}`).toBeLessThan(100)
+      }
+    }
+  )
+
+  it.each(aspects)(
+    "never zooms out to a room narrower than the screen (%o)",
+    (viewport) => {
+      const out = clampView({ target: [5, 2, 5], zoom: 0.05 }, viewport)
+      expect(out.zoom).toBe(MIN_ZOOM)
+      const { halfWidth } = halfExtents(out.zoom, viewport)
+      const room = (ROOM.width + ROOM.depth) / Math.SQRT2 + 2 * ROOM.pad
+      expect(2 * halfWidth).toBeLessThanOrEqual(room + 1e-9)
+    }
+  )
+
+  it("leaves landscape and square screens as they were: the whole room", () => {
+    for (const viewport of [
+      DESKTOP,
+      { width: 800, height: 800 },
+      { width: 844, height: 390 },
+    ]) {
+      expect(startView(viewport).zoom).toBe(1)
     }
   })
 })

@@ -12,3 +12,5 @@ export const COVER_CACHE = "glosa-covers"
 export const VOCAB_SEEN_KEY = "glosa:vocab-seen"
 /** What the room showed when the member last saw it on this device (spec 3F §4A.2). */
 export const ROOM_SEEN_KEY = "glosa:room-seen"
+/** Set once the lobby's "tap a thing to see its name" line has been shown on this device (spec 3G §3.4). */
+export const PLACE_HINT_KEY = "glosa:place-hint-seen"

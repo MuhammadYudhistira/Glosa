@@ -675,6 +675,7 @@ describe("LobbyStage", () => {
 
     it("lets the lit place go and opens nothing when Anda's activity fails", async () => {
       stubWideScreen(false)
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
       handle.perform.mockImplementation(() =>
         Promise.reject(new Error("the scene went"))
       )
@@ -685,6 +686,10 @@ describe("LobbyStage", () => {
       )
       expect(scene.props!.highlight).toBeNull()
       expect(router.state.location.pathname).toBe("/lobby")
+      // A real scene failure is visible in the console, naming the place.
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(String(warn.mock.calls[0][0])).toContain("perapian")
+      warn.mockRestore()
       // Nothing is left running: the next tap starts afresh.
       handle.perform.mockImplementation(() => Promise.resolve())
       await act(async () =>
@@ -704,6 +709,29 @@ describe("LobbyStage", () => {
         scene.props!.onActivate!("pintu", { keyboard: true })
       )
       expect(router.state.location.pathname).toBe("/settings")
+    })
+
+    it("shows the hint once, until a first tap, and remembers it", async () => {
+      stubWideScreen(false)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      expect(screen.queryByText(/untuk melihat namanya/)).toBeNull()
+      await act(async () => scene.props!.onLiveChange!(true))
+      expect(
+        screen.getByText("Ketuk benda untuk melihat namanya")
+      ).toBeVisible()
+      await act(async () => scene.props!.onTap!("pintu"))
+      expect(screen.queryByText(/untuk melihat namanya/)).toBeNull()
+      expect(localStorage.getItem("glosa:place-hint-seen")).toBe("1")
+    })
+
+    it("does not show the hint again on a device that has seen it", async () => {
+      localStorage.setItem("glosa:place-hint-seen", "1")
+      stubWideScreen(false)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onLiveChange!(true))
+      expect(screen.queryByText(/untuk melihat namanya/)).toBeNull()
     })
 
     it("takes the keyboard straight to the page and clears the card", async () => {

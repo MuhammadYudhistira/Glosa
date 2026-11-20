@@ -85,7 +85,12 @@ describe("room layout", () => {
   it.each(VIEWPORTS)(
     "has every hotspot inside the room and on screen (%o)",
     (viewport) => {
-      const view = startView(viewport)
+      // A phone held upright starts closer and pans to the sides (spec 3G
+      // §3.7): every place shows once it is zoomed out to the whole room.
+      const view = clampView(
+        { target: startView(viewport).target, zoom: 1 },
+        viewport
+      )
       for (const { id, label, stand } of HOTSPOT_SPOTS) {
         expect(label[0], id).toBeGreaterThanOrEqual(0)
         expect(label[0], id).toBeLessThanOrEqual(ROOM.width)

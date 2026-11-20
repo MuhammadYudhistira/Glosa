@@ -1247,13 +1247,21 @@
     position: absolute;
     left: 1rem;
     top: 1rem;
-    z-index: 5;
+    /* above the greeting and the notices: never covered (spec 3G §3.7) */
+    z-index: 12;
   }
   @media (min-width: 1024px) {
     /* Beside the floating menu, below the top band. */
     .lobby-center {
       top: calc(var(--lobby-bar-h) + 0.75rem);
       left: calc(var(--float-menu-w) + 1.5rem);
+    }
+  }
+  /* On a phone the scene ends above the "Lanjutkan membaca" sheet, so the
+     room the camera fits is the room the member sees (spec 3G §3.7). */
+  @media (max-width: 1023px) {
+    .lobby-scene {
+      bottom: min(var(--lobby-sheet-h, 0px), 9rem);
     }
   }
 
@@ -1274,6 +1282,25 @@
     background: var(--color-panel);
     padding: 0.65rem 0.8rem;
     box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+  }
+  /* The one-time line about names (spec 3G §3.4), where the card will be. */
+  .lobby-hint {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--lobby-sheet-h, 0px) + 0.5rem);
+    z-index: 12;
+    translate: -50% 0;
+    border-radius: 9999px;
+    background: var(--color-panel);
+    padding: 0.4rem 0.9rem;
+    font-size: 0.85rem;
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+    pointer-events: none;
+  }
+  @media (min-width: 1024px) {
+    .lobby-hint {
+      bottom: 1.5rem;
+    }
   }
   .lobby-card-name {
     font-weight: 700;

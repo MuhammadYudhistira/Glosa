@@ -1,4 +1,4 @@
-import { ROOM, type Point3 } from "./layout"
+import { ANDA_START, ROOM, type Point3, spotOf } from "./layout"
 
 /** What the camera looks at (any point on its axis) and how far it zooms in. */
 export type View = { target: Point3; zoom: number }
@@ -122,13 +122,34 @@ export function project(
   }
 }
 
-/** The first view: the whole room, on every screen shape. */
+/** Where a phone held upright looks: between Anda's start and the reading chair (spec 3G §3.7). */
+const PORTRAIT_FOCUS: Point3 = [
+  (ANDA_START[0] + spotOf("meja-baca").stand[0]) / 2,
+  ROOM.height / 2,
+  (ANDA_START[1] + spotOf("meja-baca").stand[1]) / 2,
+]
+
+/**
+ * The first view. Wide and square screens: the whole room. A phone held
+ * upright: the room fills the screen's height and the sides are cropped (the
+ * camera pans to them); it never zooms out to less than the screen's width
+ * (MIN_ZOOM), which is the old whole-room view.
+ */
 export function startView(viewport: Viewport): View {
+  const portrait = viewport.height > viewport.width
+  if (!portrait) {
+    return clampView(
+      {
+        target: [ROOM.width / 2, ROOM.height / 2, ROOM.depth / 2],
+        zoom: 1,
+      },
+      viewport
+    )
+  }
+  const aspect = viewport.width / viewport.height
+  const fill = baseHalfHeight(aspect) / ((EXTENT.v1 - EXTENT.v0) / 2)
   return clampView(
-    {
-      target: [ROOM.width / 2, ROOM.height / 2, ROOM.depth / 2],
-      zoom: 1,
-    },
+    { target: PORTRAIT_FOCUS, zoom: Math.min(MAX_ZOOM, fill) },
     viewport
   )
 }

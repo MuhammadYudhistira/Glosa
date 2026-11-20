@@ -16,6 +16,7 @@ import {
 import { AdminDeskCard } from "@/components/lobby/AdminDeskCard"
 import { BookDetailPanel } from "@/components/lobby/BookDetailPanel"
 import { ContinueSheet } from "@/components/lobby/ContinueSheet"
+import { Greeting } from "@/components/lobby/Greeting"
 import { LibraryMap } from "@/components/lobby/LibraryMap"
 import {
   ShelfWelcome,
@@ -28,9 +29,11 @@ import {
 } from "@/components/lobby/LobbyScene"
 import { LobbyTopBar } from "@/components/lobby/LobbyTopBar"
 import { PlaceCard } from "@/components/lobby/PlaceCard"
+import { PlaceHint } from "@/components/lobby/PlaceHint"
 import { RecentBooks } from "@/components/lobby/RecentBooks"
 import { TrolleyPanel } from "@/components/lobby/TrolleyPanel"
 import { lobbyHotspots, summarizeLobby } from "@/components/lobby/lobby-data"
+import { usePlaceHint } from "@/components/lobby/place-hint"
 import { type PlaceFacts, placeStatus } from "@/components/lobby/place-status"
 import {
   type RoomSnapshot,
@@ -316,6 +319,11 @@ export function LobbyStage({
   )
   // Behind a popup or the corkboard's dialog nothing is picked or lit.
   const cardId = paused ? null : chosen
+  const hint = usePlaceHint({
+    live: sceneLive,
+    popup,
+    picked: chosen !== null || hovered !== null,
+  })
   const highlight = paused ? null : (lit ?? hovered ?? cardId)
   useSheetHeight(
     pageRef,
@@ -388,8 +396,9 @@ export function LobbyStage({
       newer.current = null
       try {
         await sceneRef.current.perform(id)
-      } catch {
+      } catch (error) {
         // The scene failed under Anda (it is gone, or going): no page.
+        console.warn(`Anda's activity at "${id}" failed`, error)
         return
       } finally {
         running.current = false
@@ -516,11 +525,7 @@ export function LobbyStage({
       {!popup && (
         <>
           <div className="lobby-notices lobby-overlay">
-            {kembali === 1 && (
-              <output className="lobby-notice">
-                Selamat datang kembali, {user.displayName}!
-              </output>
-            )}
+            {kembali === 1 && <Greeting name={user.displayName} />}
             {offline && (
               <output className="lobby-notice">
                 Kamu sedang offline. Rak ditampilkan dari salinan terakhir di
@@ -591,6 +596,7 @@ export function LobbyStage({
           >
             <PlusIcon />
           </Button>
+          {hint.shown && !cardId && <PlaceHint fine={fine} onDone={hint.end} />}
           {cardId && (
             <PlaceCard
               name={hotspots.find((spot) => spot.id === cardId)?.label ?? ""}

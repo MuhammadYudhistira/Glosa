@@ -20,6 +20,7 @@ import { LobbyStill, STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import type { HotspotModel } from "./lobby-data"
 import type { RoomChange, RoomSnapshot } from "./room-memory"
 import { NEUTRAL_SIGNALS, NO_NOTES, type RoomSignals } from "./room-signals"
+import { viewMoved } from "./scene/frame-loop"
 import {
   DECOR_SLOTS,
   type HotspotId,
@@ -351,6 +352,13 @@ export function LobbyScene({
     onTap?.(live ? (stageRef.current?.pick(hit.x, hit.y) ?? null) : null)
   }
 
+  // On a phone held upright "Pusatkan" waits for the camera to leave its
+  // first view (spec 3G §3.7); elsewhere it is always there, as before.
+  const upright =
+    camera !== null && camera.viewport.height > camera.viewport.width
+  const away =
+    camera !== null && viewMoved(camera.view, startView(camera.viewport))
+
   return (
     <section
       ref={sectionRef}
@@ -371,7 +379,10 @@ export function LobbyScene({
         dropHover()
       }}
       onWheel={() => {
-        if (live) onCameraGesture?.()
+        if (!live) return
+        onCameraGesture?.()
+        // The camera moves under a still cursor: its name would be stale.
+        dropHover()
       }}
     >
       {mode !== "still" && quality !== null && allow3d && (
@@ -436,7 +447,7 @@ export function LobbyScene({
           y={shownHover.y}
         />
       )}
-      {live && (
+      {live && (!upright || away) && (
         <Button
           variant="secondary"
           size="sm"
