@@ -24,10 +24,10 @@
 - **R1 (render sesuai kebutuhan):** ruangan diam merender 0 frame; mengganti sorotan meminta tepat satu frame, dan `setHighlight` dengan id yang sama tidak meminta frame. Cincin tidak beranimasi dan tidak butuh pass tambahan (murah di HP).
 - **R3:** `LobbyStage.activate(id, how)` tetap: ketuk kedua saat Anda berjalan = lewati; ketukan terakhir menentukan halaman; `covered = popup || corkboard`; keyboard = `perform(id, { instant: true })` tanpa `await`.
 - **Mode gambar diam** (tanpa WebGL atau adegan gagal): titik kecil tanpa tulisan per tempat, ketuk titik → kartu yang sama. Kualitas "diam" dengan WebGL tetap 3D, cincin cahaya dan sorotannya tetap ada.
-- **Jangan bergantung pada jalur aset lobi** (`public/lobby/`): cabang lain memindahkan gambar diam, thumbnail toko dan model glb ke impor Vite ber-hash (`LobbyStill.tsx`, `model-manifest.ts`, `ShopPanel.tsx`). Rencana ini tidak menyentuh ketiganya. `LobbyScene.tsx` merender `<LobbyStill>` dan `LobbyScene.test.tsx` memeriksa `src="/lobby/lobby-still.webp"`: jangan ubah baris-baris itu; bila cabang lain sudah mendarat, biarkan konfliknya diselesaikan di sana.
+- **Aset lobi ber-hash (sudah di `main`, 2114c38):** gambar diam, thumbnail toko dan model glb ada di `src/assets/lobby/` dan diambil lewat `src/components/lobby/lobby-assets.ts` (`stillUrl`, `shopThumbUrl`, `modelUrl`). Jangan menulis alamat `/lobby/...` tetap (`src/lib/lobby-asset-urls.test.ts` menjaganya). Rencana ini tidak perlu menyentuh `LobbyStill.tsx`, `ShopPanel.tsx`, `models.ts`.
 - **Tes unit:** dari PowerShell, `npx vitest run --maxWorkers=2 <path>` (di Git Bash setiap berkas gagal). **Lint/tipe/format/build:** `npm run lint`, `npx tsc --noEmit`, `npm run check` (prettier; jalankan `npx prettier --write <file>` pada berkas yang disentuh sebelum commit), `npm run build`.
 - **E2E:** `--workers=2` paling banyak. Port 3000 bisa dipegang proyek lain: cek `curl -sL localhost:3000/login | grep -o "<title>[^<]*"`; bila bukan Glosa, pakai config sementara di port 3100 dan hapus setelahnya. E2E biasa berjalan di kualitas "diam" tanpa WebGL; hanya proyek `lobby-3d` memakai SwiftShader.
-- **Line ending/encoding:** LF, UTF-8. **Tidak ada push.** Pesan commit `feat(3g): ...` / `fix(3g): ...` / `test(3g): ...`, diakhiri `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
+- **Line ending/encoding:** LF, UTF-8. **Tidak ada push.** Pesan commit `feat(3g): ...` / `fix(3g): ...` / `test(3g): ...`, diakhiri `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 ## Keputusan dan penyimpangan dari spec
 
@@ -482,7 +482,7 @@ Run: `npx prettier --write src/components/lobby/scene/pick-volumes.ts src/compon
 git add src/components/lobby/scene/pick-volumes.ts src/components/lobby/scene/pick-volumes.test.ts src/components/lobby/scene/picker.ts src/components/lobby/scene/picker.test.ts src/components/lobby/scene/projection.ts
 git commit -m "feat(3g): tap volumes and a pure picker for the lobby
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -997,7 +997,7 @@ Run: prettier pada berkas yang disentuh, `npm run lint`, `npx tsc --noEmit`.
 git add src/components/lobby/scene/ring-spots.ts src/components/lobby/scene/ring-spots.test.ts src/components/lobby/scene/highlight.ts src/components/lobby/scene/highlight.test.ts src/components/lobby/scene/stage.ts src/components/lobby/LobbyCanvas.tsx src/components/lobby/LobbyCanvas.test.tsx src/components/lobby/LobbyScene.tsx
 git commit -m "feat(3g): floor glow rings for every place and a bright ring for the picked one
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1407,7 +1407,7 @@ Run: prettier pada berkas yang disentuh, `npm run lint`, `npx tsc --noEmit`, `np
 git add src/components/lobby/place-status.ts src/components/lobby/place-status.test.ts src/components/lobby/PlaceCard.tsx src/components/lobby/PlaceCard.test.tsx src/components/lobby/room-signals.ts src/components/lobby/room-signals.test.ts src/styles.css
 git commit -m "feat(3g): place status lines and the name card
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2371,7 +2371,7 @@ Expected: semua hijau (E2E diperbarui di Task 7; jangan jalankan sekarang).
 git add -A src/components/lobby src/lib/use-fine-pointer.ts src/styles.css
 git commit -m "feat(3g): tap a place for its name card, a second tap opens it; labels removed
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2668,7 +2668,7 @@ Run: prettier; `npm run lint`; `npx tsc --noEmit`; `npx vitest run --maxWorkers=
 git add -A src/components/lobby src/styles.css
 git commit -m "feat(3g): hover name on desktop and the name card on keyboard focus
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -3086,7 +3086,7 @@ Expected: hijau.
 git add -A src/components/lobby src/lib/local/keys.ts src/styles.css
 git commit -m "feat(3g): upright phone camera, self-closing greeting, one-time place hint
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -3315,7 +3315,7 @@ Run: `rg "label-layout|data-look|lobby-hotspot-measure|lobby-hotspot-count|lobby
 git add e2e
 git commit -m "test(3g): E2E for name cards, hover names, still dots and the upright phone
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 6: Daftar cek manual pemilik di HP (catat di ledger, jangan dikerjakan agen)**
