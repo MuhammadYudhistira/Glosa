@@ -22,6 +22,8 @@ const stage = vi.hoisted(() => ({
   setMood: vi.fn(),
   perform: vi.fn(() => Promise.resolve()),
   skip: vi.fn(),
+  setHighlight: vi.fn(),
+  pick: vi.fn(() => null),
   playMoments: vi.fn(),
   dispose: vi.fn(),
 }))
@@ -235,6 +237,32 @@ describe("LobbyCanvas", () => {
     const filled: GenreHues = { ...EMPTY_HUES, fiksi_sastra: [12, 200] }
     rerender(canvas(filled))
     expect(stage.setShelves).toHaveBeenLastCalledWith(filled)
+  })
+
+  it("passes the lit place to the stage, now and when it changes", async () => {
+    const canvas = (highlight: "troli" | null) => (
+      <LobbyCanvas
+        quality="tinggi"
+        test={false}
+        anda={ANDA_START}
+        paused={false}
+        showcase={[]}
+        plant="tunas"
+        signals={NEUTRAL_SIGNALS}
+        decor={{}}
+        highlight={highlight}
+        onReady={vi.fn()}
+        onView={vi.fn()}
+        onQuality={vi.fn()}
+        onFail={vi.fn()}
+      />
+    )
+    const { rerender } = render(canvas("troli"))
+    await vi.waitFor(() =>
+      expect(stage.setHighlight).toHaveBeenCalledWith("troli")
+    )
+    rerender(canvas(null))
+    expect(stage.setHighlight).toHaveBeenLastCalledWith(null)
   })
 
   it("frees a stage that finishes loading after the canvas is gone", async () => {

@@ -102,6 +102,7 @@ export function LobbyScene({
   notes = NO_NOTES,
   shelves = EMPTY_HUES,
   decor = {},
+  highlight = null,
   allow3d = true,
   ref,
 }: {
@@ -125,6 +126,8 @@ export function LobbyScene({
   shelves?: GenreHues
   /** The shop's items, placed or tried on. */
   decor?: Placements | null
+  /** The place whose floor ring is bright (spec 3G §3.4). */
+  highlight?: HotspotId | null
   /** False keeps WebGL off, e.g. while the lobby is hidden behind a page on phones (spec 1F §5). */
   allow3d?: boolean
   ref?: Ref<LobbySceneHandle>
@@ -296,6 +299,7 @@ export function LobbyScene({
           notes={notes}
           shelves={shelves}
           decor={decor}
+          highlight={highlight}
           onReady={(stage) => {
             stageRef.current = stage
             setMode("3d")

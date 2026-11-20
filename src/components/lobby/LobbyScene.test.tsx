@@ -243,6 +243,8 @@ describe("LobbyScene", () => {
         setMood: vi.fn(),
         perform: vi.fn((_id: string) => Promise.resolve()),
         skip: vi.fn(),
+        pick: vi.fn(() => null),
+        setHighlight: vi.fn(),
         playMoments: vi.fn(),
         dispose: vi.fn(),
       }
@@ -349,6 +351,8 @@ describe("LobbyScene", () => {
           setMood: vi.fn(),
           perform: vi.fn(() => Promise.resolve()),
           skip: vi.fn(),
+          pick: vi.fn(() => null),
+          setHighlight: vi.fn(),
           playMoments: vi.fn(),
           dispose: vi.fn(),
         })
@@ -456,6 +460,8 @@ describe("LobbyScene", () => {
             setMood: vi.fn(),
             perform: vi.fn(() => Promise.resolve()),
             skip: vi.fn(),
+            pick: vi.fn(() => null),
+            setHighlight: vi.fn(),
             playMoments: vi.fn(),
             dispose: vi.fn(),
           })

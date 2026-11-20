@@ -26,6 +26,7 @@ import { ACTIVITY_OF, facingOf, seatOf } from "./activities"
 import { DECOR_BUILDERS, buildDecor } from "./decor"
 import { createFrameLoop, moving, viewMoved } from "./frame-loop"
 import { type Glow, buildFurniture } from "./furniture"
+import { buildHighlight } from "./highlight"
 import { createKit } from "./kit"
 import {
   type HotspotId,
@@ -39,6 +40,8 @@ import { type ModelSet, loadModels } from "./models"
 import { MOMENT_SECONDS, easeOut } from "./moment"
 import { createMotion, endActivityOnPause } from "./motion"
 import { buildPeople } from "./people"
+import { PICK_VOLUMES } from "./pick-volumes"
+import { pickAt } from "./picker"
 import {
   CAMERA_OFFSET,
   MAX_ZOOM,
@@ -92,6 +95,10 @@ export type Stage = {
   perform: (id: HotspotId, how?: { instant?: boolean }) => Promise<void>
   /** Ends the walk and the activity at once (a second tap); perform's promise resolves. */
   skip: () => void
+  /** The place under a point of the scene, in CSS pixels from its top left (spec 3G §4); null where there is none. */
+  pick: (x: number, y: number) => HotspotId | null
+  /** Brightens one place's floor ring (null: none); the dim rings of every place are always drawn. A change asks for one frame (R1). */
+  setHighlight: (id: HotspotId | null) => void
   /** Stops the animation behind a popup; it goes on from the same moment (spec 1F §4.5). */
   setPaused: (paused: boolean) => void
   /** The finished books in the display cabinet (spec Tahap 3 §4.5). */
@@ -291,6 +298,8 @@ function buildStage(
     built
   const motion = createMotion(people)
   motion.update(0, 0)
+  // The still image (mode "still") and the camera-bounds test have no rings.
+  const highlight = mode === "normal" ? buildHighlight(scene) : null
 
   let signals: RoomSignals = NEUTRAL_SIGNALS
   /** The moment of change under way: the room it starts from, and how far it is (0..1). */
@@ -623,6 +632,13 @@ function buildStage(
       motion.skip()
       requestRender()
     },
+    pick(x, y) {
+      return pickAt({ x, y }, view, viewport, PICK_VOLUMES)
+    },
+    setHighlight(id) {
+      // Only a real change draws a frame: an idle room stays at 0 (R1).
+      if (highlight?.set(id)) requestRender()
+    },
     playMoments(start, changes) {
       if (!animates() || paused || changes.length === 0) return
       moment = { from: start, changes: [...changes], t: 0 }
@@ -675,6 +691,7 @@ function buildStage(
       showcase.dispose()
       plant.dispose()
       decor.dispose()
+      highlight?.dispose()
       releaseScene()
       models.dispose()
       renderer.dispose()

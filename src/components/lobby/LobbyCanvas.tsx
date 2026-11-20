@@ -3,7 +3,7 @@ import type { HighlightColor } from "@/lib/annotations/types"
 import type { PlantStage } from "@/lib/reading-habit"
 import type { Placements } from "@/lib/shop/types"
 import { NO_NOTES, type RoomSignals } from "./room-signals"
-import type { Point2, ShowcaseBook } from "./scene/layout"
+import type { HotspotId, Point2, ShowcaseBook } from "./scene/layout"
 import { type View, type Viewport, startView } from "./scene/projection"
 import type { Quality } from "./scene/quality"
 import { EMPTY_HUES, type GenreHues } from "./scene/shelf-books"
@@ -25,6 +25,7 @@ export function LobbyCanvas({
   notes = NO_NOTES,
   shelves = EMPTY_HUES,
   decor,
+  highlight = null,
   onReady,
   onView,
   onQuality,
@@ -49,6 +50,8 @@ export function LobbyCanvas({
   /** The shop's items, placed or tried on. */
   /** `null` while the shop state is not known yet: the stage is left as is. */
   decor: Placements | null
+  /** The place whose floor ring is bright (spec 3G §3.4). */
+  highlight?: HotspotId | null
   onReady: (stage: Stage) => void
   onView: (view: View, viewport: Viewport) => void
   onQuality: (quality: Quality) => void
@@ -64,6 +67,7 @@ export function LobbyCanvas({
   const notesRef = useRef(notes)
   const shelvesRef = useRef(shelves)
   const decorRef = useRef(decor)
+  const highlightRef = useRef(highlight)
   const callbacks = useRef({ onReady, onView, onQuality, onFail })
   const initial = useRef({ quality, test })
 
@@ -103,6 +107,7 @@ export function LobbyCanvas({
         stage.setSignals(signalsRef.current)
         stage.setNotes(notesRef.current)
         stage.setShelves(shelvesRef.current)
+        stage.setHighlight(highlightRef.current)
         if (decorRef.current) stage.setDecor(decorRef.current)
         stageRef.current = stage
         callbacks.current.onReady(stage)
@@ -158,6 +163,11 @@ export function LobbyCanvas({
     decorRef.current = decor
     if (decor) stageRef.current?.setDecor(decor)
   }, [decor])
+
+  useEffect(() => {
+    highlightRef.current = highlight
+    stageRef.current?.setHighlight(highlight)
+  }, [highlight])
 
   return <div ref={hostRef} className="lobby-canvas-host" />
 }
