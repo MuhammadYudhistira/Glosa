@@ -49,7 +49,7 @@ ID hotspot internal yang ada tetap, label berubah (§4.2). Tiga hotspot baru (`p
 | Benda | Hotspot (ID) | Isi |
 |---|---|---|
 | Rak dinding kiri, 8 bagian | zona genre (`fiksi_sastra` … `lainnya`) | Rak Saya per genre. Punggung buku sebanyak jumlah buku (dibatasi), warna dari `coverHue`. Bagian tanpa buku redup. |
-| Kotak paket dekat pintu | `troli` | Troli Buku Baru, jumlah buku tanpa genre |
+| Kotak paket dekat pintu | `troli` | Kotak buku baru, jumlah buku tanpa genre |
 | Kursi berlengan + lampu baca | `meja-baca` | Lanjutkan buku terakhir |
 | Meja tulis + buku catatan + lampu meja | `katalog` | Kosakata |
 | Laptop di meja tulis | `meja-admin` | Hanya admin |

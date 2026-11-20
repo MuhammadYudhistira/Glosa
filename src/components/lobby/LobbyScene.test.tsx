@@ -277,7 +277,9 @@ describe("LobbyScene", () => {
     it("hands Anda's activity and its skip to the live stage", async () => {
       const { stage, ref } = await goLive()
       await ref.current?.perform("tanaman")
-      expect(stage.perform).toHaveBeenCalledWith("tanaman")
+      expect(stage.perform).toHaveBeenCalledWith("tanaman", undefined)
+      await ref.current?.perform("tanaman", { instant: true })
+      expect(stage.perform).toHaveBeenCalledWith("tanaman", { instant: true })
       ref.current?.skip()
       expect(stage.skip).toHaveBeenCalledTimes(1)
     })

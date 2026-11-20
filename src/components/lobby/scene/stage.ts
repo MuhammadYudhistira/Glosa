@@ -86,9 +86,10 @@ export type Stage = {
   /**
    * Anda does the hotspot's activity once the walk under way ends (spec 3F
    * §4A.1); resolves when it is done. Where the room does not move ("diam",
-   * a still image, behind a popup): in the pose at once, resolved.
+   * a still image, behind a popup): in the pose at once, resolved. With
+   * `instant` (the keyboard) it is so everywhere: no walk, no activity.
    */
-  perform: (id: HotspotId) => Promise<void>
+  perform: (id: HotspotId, how?: { instant?: boolean }) => Promise<void>
   /** Ends the walk and the activity at once (a second tap); perform's promise resolves. */
   skip: () => void
   /** Stops the animation behind a popup; it goes on from the same moment (spec 1F §4.5). */
@@ -606,10 +607,11 @@ function buildStage(
       motion.walkTo(spot, !animates())
       requestRender()
     },
-    perform(id) {
-      // Where nothing moves, Anda is at the hotspot in the pose at once; the
-      // walk there that the page asks for next then finds them in place.
-      const instant = !animates() || paused
+    perform(id, how) {
+      // Where nothing moves (or when asked, from the keyboard), Anda is at the
+      // hotspot in the pose at once; the walk there that the page asks for
+      // next then finds them in place.
+      const instant = how?.instant === true || !animates() || paused
       if (instant) motion.walkTo(spotOf(id).stand, true)
       const done = motion.perform(ACTIVITY_OF[id], facingOf(id), seatOf(id))
       if (instant) motion.skip()

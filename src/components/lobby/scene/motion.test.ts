@@ -183,6 +183,7 @@ describe("motion: an activity done at once", () => {
     void motion.perform("hangatkan", [NEAR[0], NEAR[1] - 2])
     motion.skip()
     motion.walkTo(NEAR, true)
+    expect(motion.walking()).toBe(false)
     expect(built.anda.body.position.y).toBeCloseTo(-POSES.hangatkan.drop)
     // Somewhere else: up and away.
     motion.walkTo(ANDA_START, true)

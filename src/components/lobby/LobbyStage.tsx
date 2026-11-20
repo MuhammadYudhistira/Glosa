@@ -284,8 +284,11 @@ export function LobbyStage({
     }
     moveAnda(spotOf(id).stand)
     setReadingHint(false)
-    // From the keyboard the page opens at once, without the activity.
-    if (!how.keyboard && sceneRef.current) {
+    // From the keyboard the page opens at once and Anda is in the activity's
+    // pose at once (spec 3F §4A.1): no walk, no activity, nothing awaited.
+    if (how.keyboard) {
+      void sceneRef.current?.perform(id, { instant: true })
+    } else if (sceneRef.current) {
       running.current = true
       target.current = id
       newer.current = null

@@ -87,7 +87,10 @@ export const overlaps = (a: Rect, b: Rect, gap = LABEL_GAP) =>
   a.y0 < b.y1 + gap &&
   b.y0 < a.y1 + gap
 
-/** How a label shows, and where: `x`, `y` is its bottom centre, moved a little from its spot when that makes room. */
+/**
+ * How a label shows, and where: `x`, `y` is its bottom centre, moved a little
+ * from its spot when that makes room.
+ */
 export type LabelPlacement = {
   look: LabelLook
   x: number
@@ -381,7 +384,10 @@ export function placeLabels(
   })
 }
 
-/** The still image's box as it covers a scene of this size (styles.css: .lobby-still-frame, 16:9). */
+/**
+ * The still image's box as it covers a scene of this size (styles.css:
+ * .lobby-still-frame, 16:9).
+ */
 export function stillFrame(scene: Viewport): Viewport {
   return {
     width: Math.max(scene.width, (scene.height * 16) / 9),

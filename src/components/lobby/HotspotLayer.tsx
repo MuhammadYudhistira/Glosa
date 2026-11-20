@@ -153,7 +153,7 @@ export function HotspotLayer({
   fontPx?: number
   /** Speech bubbles shown above a hotspot. */
   bubbles?: Partial<Record<HotspotId, ReactNode>>
-  /** `keyboard`: Enter or Space, a click without a pointer (no walk, no activity). */
+  /** `keyboard`: Enter or Space, a click without a pointer (no walk animation; Anda is in the activity pose at once). */
   onActivate: (id: HotspotId, how: { keyboard: boolean }) => void
   onFocusSpot?: (id: HotspotId) => void
 }) {

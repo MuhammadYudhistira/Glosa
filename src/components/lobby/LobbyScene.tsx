@@ -53,7 +53,7 @@ export type LobbySceneHandle = {
    * Anda walks to the hotspot and does its activity (spec 3F §4A.1);
    * resolves when it is done, at once without a live 3D scene.
    */
-  perform: (id: HotspotId) => Promise<void>
+  perform: (id: HotspotId, how?: { instant?: boolean }) => Promise<void>
   /** Ends the walk and the activity at once (a second tap). */
   skip: () => void
   /**
@@ -238,8 +238,9 @@ export function LobbyScene({
           current.viewport
         )
       ),
-    perform: (id) =>
-      (live ? stageRef.current?.perform(id) : undefined) ?? Promise.resolve(),
+    perform: (id, how) =>
+      (live ? stageRef.current?.perform(id, how) : undefined) ??
+      Promise.resolve(),
     skip: () => stageRef.current?.skip(),
     playMoments: (from, changes) => {
       if (!live) return

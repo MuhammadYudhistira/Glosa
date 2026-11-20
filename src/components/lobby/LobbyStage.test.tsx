@@ -30,7 +30,9 @@ const scene = vi.hoisted(() => ({
   } | null,
 }))
 const handle = vi.hoisted(() => ({
-  perform: vi.fn((_id: string) => Promise.resolve()),
+  perform: vi.fn((_id: string, _how?: { instant?: boolean }) =>
+    Promise.resolve()
+  ),
   skip: vi.fn(),
   showSpot: vi.fn(),
   showDecor: vi.fn(),
@@ -219,8 +221,10 @@ describe("LobbyStage", () => {
 
     await act(async () => void router.navigate({ to: "/lobby" }))
     handle.perform.mockClear()
+    // Never resolves: the page must not wait for it.
+    handle.perform.mockImplementation(() => new Promise<void>(() => undefined))
     await act(async () => activate("pintu", { keyboard: true }))
-    expect(handle.perform).not.toHaveBeenCalled()
+    expect(handle.perform).toHaveBeenCalledWith("pintu", { instant: true })
     expect(router.state.location.pathname).toBe("/settings")
   })
 
