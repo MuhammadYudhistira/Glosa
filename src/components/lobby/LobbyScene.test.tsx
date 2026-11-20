@@ -6,7 +6,7 @@ import type { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyScene, type LobbySceneHandle } from "./LobbyScene"
 import { lobbyHotspots, summarizeLobby } from "./lobby-data"
 import type { RoomSnapshot } from "./room-memory"
-import { ANDA_START, DECOR_SLOTS, spotOf } from "./scene/layout"
+import { ANDA_START, DECOR_SLOTS, type HotspotId, spotOf } from "./scene/layout"
 import {
   MAX_ZOOM,
   centerOn,
@@ -56,6 +56,7 @@ type SceneProps = Partial<ComponentProps<typeof LobbyScene>>
 function renderScene(environment: Environment, extra: SceneProps = {}) {
   vi.mocked(detectEnvironment).mockReturnValue(environment)
   const onActivate = vi.fn()
+  const onTap = vi.fn()
   const onLiveChange = vi.fn()
   const ref = createRef<LobbySceneHandle>()
   const ui = (more: SceneProps) => (
@@ -64,6 +65,7 @@ function renderScene(environment: Environment, extra: SceneProps = {}) {
       hotspots={hotspots}
       anda={ANDA_START}
       onActivate={onActivate}
+      onTap={onTap}
       onLiveChange={onLiveChange}
       {...extra}
       {...more}
@@ -74,6 +76,7 @@ function renderScene(environment: Environment, extra: SceneProps = {}) {
   return {
     scene,
     onActivate,
+    onTap,
     onLiveChange,
     ref,
     update: (more: SceneProps) => rerender(ui(more)),
@@ -128,7 +131,10 @@ describe("LobbyScene", () => {
   })
 
   it("shows the still image without WebGL, and its hotspots still work", async () => {
-    const { scene, onActivate } = renderScene({ ...desktop, webgl: false })
+    const { scene, onActivate, onTap } = renderScene({
+      ...desktop,
+      webgl: false,
+    })
     await vi.waitFor(() =>
       expect(scene).toHaveAttribute("data-quality", "diam")
     )
@@ -139,7 +145,11 @@ describe("LobbyScene", () => {
     fireEvent.click(screen.getByRole("button", { name: "Meja tulis" }), {
       detail: 1,
     })
-    expect(onActivate).toHaveBeenCalledWith("meja-admin", { keyboard: false })
+    expect(onTap).toHaveBeenCalledWith("meja-admin")
+    fireEvent.click(screen.getByRole("button", { name: "Meja tulis" }), {
+      detail: 0,
+    })
+    expect(onActivate).toHaveBeenCalledWith("meja-admin", { keyboard: true })
   })
 
   it("has Anda's activity over at once without a live 3D scene", async () => {
@@ -162,61 +172,6 @@ describe("LobbyScene", () => {
     }
   })
 
-  describe("the labels' frame", () => {
-    const looks = () =>
-      screen
-        .getAllByRole("button")
-        .map((button) => button.getAttribute("data-look"))
-    function sceneSize(width: number, height: number) {
-      vi.spyOn(Element.prototype, "clientWidth", "get").mockReturnValue(width)
-      vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(height)
-    }
-    afterEach(() => vi.unstubAllGlobals())
-
-    it("keeps the labels invisible until the scene is measured", async () => {
-      let measure: (() => void) | null = null
-      vi.stubGlobal(
-        "ResizeObserver",
-        class {
-          constructor(callback: () => void) {
-            measure = callback
-          }
-          observe() {}
-          disconnect() {}
-        }
-      )
-      sceneSize(1440, 900)
-      const { scene } = renderScene({ ...desktop, webgl: false })
-      await vi.waitFor(() =>
-        expect(scene).toHaveAttribute("data-quality", "diam")
-      )
-      expect(new Set(looks())).toEqual(new Set(["unplaced"]))
-      act(() => measure?.())
-      expect(new Set(looks())).toEqual(new Set([null]))
-    })
-
-    it("measures the scene itself where ResizeObserver is missing, and again on a resize", async () => {
-      vi.stubGlobal("ResizeObserver", undefined)
-      sceneSize(1440, 900)
-      const { scene } = renderScene({ ...desktop, webgl: false })
-      await vi.waitFor(() =>
-        expect(scene).toHaveAttribute("data-quality", "diam")
-      )
-      expect(new Set(looks())).toEqual(new Set([null]))
-      // Hidden behind a page (phones): unmeasured again, so unplaced.
-      sceneSize(0, 0)
-      act(() => {
-        window.dispatchEvent(new Event("resize"))
-      })
-      expect(new Set(looks())).toEqual(new Set(["unplaced"]))
-      sceneSize(1440, 900)
-      act(() => {
-        window.dispatchEvent(new Event("resize"))
-      })
-      expect(new Set(looks())).toEqual(new Set([null]))
-    })
-  })
-
   it("stays still in the camera-bounds test mode", async () => {
     Object.assign(window, { __GLOSA_LOBBY_TEST__: true })
     const { scene } = renderScene(desktop)
@@ -226,8 +181,8 @@ describe("LobbyScene", () => {
   })
 
   describe("with the 3D scene running", () => {
-    async function goLive(view = startView(viewport)) {
-      const rendered = renderScene(desktop)
+    async function goLive(view = startView(viewport), extra: SceneProps = {}) {
+      const rendered = renderScene(desktop, extra)
       await vi.waitFor(() => expect(canvas.props).not.toBeNull())
       const stage = {
         books: 0,
@@ -243,7 +198,7 @@ describe("LobbyScene", () => {
         setMood: vi.fn(),
         perform: vi.fn((_id: string) => Promise.resolve()),
         skip: vi.fn(),
-        pick: vi.fn(() => null),
+        pick: vi.fn(() => null as HotspotId | null),
         setHighlight: vi.fn(),
         playMoments: vi.fn(),
         dispose: vi.fn(),
@@ -254,6 +209,7 @@ describe("LobbyScene", () => {
       })
       return { ...rendered, stage, view }
     }
+    const goLiveWith = (extra: SceneProps) => goLive(startView(viewport), extra)
 
     it("pans with the arrow keys while the scene has focus", async () => {
       const { scene, stage, view } = await goLive()
@@ -303,7 +259,7 @@ describe("LobbyScene", () => {
       )
     })
 
-    it("brings an off-screen hotspot into view on keyboard focus only", async () => {
+    it("brings an off-screen hotspot into view on focus, but not on a press", async () => {
       const zoomed = { ...startView(viewport), zoom: MAX_ZOOM }
       const hidden = hotspots.find(
         ({ id }) => !isInView(spotOf(id).label, zoomed, viewport)
@@ -314,20 +270,96 @@ describe("LobbyScene", () => {
         name: new RegExp(`^${hidden?.label}`),
       })
 
-      // jsdom's own :focus-visible depends on earlier events, so say it outright.
-      const focusVisible = vi.spyOn(HTMLElement.prototype, "matches")
-      focusVisible.mockImplementation(() => false)
+      // A press focuses the button before its click: the camera stays.
+      fireEvent.pointerDown(button)
       act(() => button.focus())
       expect(stage.setView).not.toHaveBeenCalled()
 
       act(() => button.blur())
-      focusVisible.mockImplementation(
-        (selector) => selector === ":focus-visible"
-      )
       act(() => button.focus())
       expect(stage.setView).toHaveBeenCalledWith(
         centerOn(zoomed, spotOf(hidden?.id ?? "meja-baca").label)
       )
+    })
+
+    describe("taps on the scene", () => {
+      const down = (el: Element, x: number, y: number, id = 1) =>
+        fireEvent.pointerDown(el, {
+          pointerId: id,
+          pointerType: "touch",
+          clientX: x,
+          clientY: y,
+        })
+      const up = (el: Element, x: number, y: number, id = 1) =>
+        fireEvent.pointerUp(el, {
+          pointerId: id,
+          pointerType: "touch",
+          clientX: x,
+          clientY: y,
+        })
+
+      it("hands a quick tap to the picker and reports the place it found", async () => {
+        const onTap = vi.fn()
+        const { stage } = await goLiveWith({ onTap })
+        stage.pick.mockReturnValue("troli")
+        const canvasEl = screen.getByTestId("lobby-canvas")
+        down(canvasEl, 120, 80)
+        up(canvasEl, 122, 81)
+        expect(stage.pick).toHaveBeenCalledWith(120, 80)
+        expect(onTap).toHaveBeenCalledWith("troli")
+      })
+
+      it("reports null for a tap on empty space", async () => {
+        const onTap = vi.fn()
+        const { stage } = await goLiveWith({ onTap })
+        stage.pick.mockReturnValue(null)
+        const canvasEl = screen.getByTestId("lobby-canvas")
+        down(canvasEl, 10, 10)
+        up(canvasEl, 10, 10)
+        expect(onTap).toHaveBeenCalledWith(null)
+      })
+
+      it("takes a drag of 10 px or more as the camera, not a tap", async () => {
+        const onTap = vi.fn()
+        const onCameraGesture = vi.fn()
+        await goLiveWith({ onTap, onCameraGesture })
+        const canvasEl = screen.getByTestId("lobby-canvas")
+        down(canvasEl, 100, 100)
+        fireEvent.pointerMove(canvasEl, {
+          pointerId: 1,
+          pointerType: "touch",
+          clientX: 130,
+          clientY: 100,
+        })
+        up(canvasEl, 130, 100)
+        expect(onCameraGesture).toHaveBeenCalledTimes(1)
+        expect(onTap).not.toHaveBeenCalled()
+      })
+
+      it("takes a second finger and the wheel as the camera too", async () => {
+        const onTap = vi.fn()
+        const onCameraGesture = vi.fn()
+        const { scene } = await goLiveWith({ onTap, onCameraGesture })
+        const canvasEl = screen.getByTestId("lobby-canvas")
+        down(canvasEl, 100, 100, 1)
+        down(canvasEl, 150, 150, 2)
+        expect(onCameraGesture).toHaveBeenCalledTimes(1)
+        up(canvasEl, 150, 150, 2)
+        up(canvasEl, 100, 100, 1)
+        expect(onTap).not.toHaveBeenCalled()
+        fireEvent.wheel(scene, { deltaY: -100 })
+        expect(onCameraGesture).toHaveBeenCalledTimes(2)
+      })
+
+      it("leaves a press on a button to the button", async () => {
+        const onTap = vi.fn()
+        const { stage } = await goLiveWith({ onTap })
+        const button = screen.getByRole("button", { name: "Pusatkan" })
+        down(button, 5, 5)
+        up(button, 5, 5)
+        expect(stage.pick).not.toHaveBeenCalled()
+        expect(onTap).not.toHaveBeenCalled()
+      })
     })
 
     it("keeps the same focused hotspot when the scene goes live", async () => {

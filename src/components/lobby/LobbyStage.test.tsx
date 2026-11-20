@@ -23,6 +23,9 @@ const scene = vi.hoisted(() => ({
     paused?: boolean
     allow3d?: boolean
     onActivate?: Activate
+    onTap?: (id: string | null) => void
+    onCameraGesture?: () => void
+    highlight?: string | null
     onLiveChange?: (live: boolean) => void
     notes?: Array<string>
     shelves?: Record<string, ReadonlyArray<number>>
@@ -45,6 +48,9 @@ vi.mock("./LobbyScene", async () => {
       paused?: boolean
       allow3d?: boolean
       onActivate?: Activate
+      onTap?: (id: string | null) => void
+      onCameraGesture?: () => void
+      highlight?: string | null
       ref?: Ref<typeof handle>
     }) => {
       scene.props = props
@@ -63,6 +69,11 @@ const highlights = vi.hoisted(() => {
 })
 vi.mock("@/lib/annotations/highlights-client", () => ({
   useHighlights: () => ({ state: highlights.state, retry: vi.fn() }),
+}))
+
+const pointer = vi.hoisted(() => ({ fine: false }))
+vi.mock("@/lib/use-fine-pointer", () => ({
+  useFinePointer: () => pointer.fine,
 }))
 
 const bubbles = vi.hoisted(() => ({ remember: vi.fn() }))
@@ -175,6 +186,7 @@ describe("LobbyStage", () => {
     habit.days = []
     habit.stage = "tunas"
     vocab.total = 0
+    pointer.fine = false
     localStorage.clear()
   })
 
@@ -504,6 +516,113 @@ describe("LobbyStage", () => {
     await vi.waitFor(() =>
       expect(bubbles.remember).toHaveBeenCalledWith("2026-10")
     )
+  })
+
+  describe("tap-first names (spec 3G)", () => {
+    const card = () => screen.queryByRole("group", { name: "Tempat dipilih" })
+
+    it("shows a card on the first tap and opens the page on the second", async () => {
+      stubWideScreen(false)
+      const { router } = renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      const tap = scene.props!.onTap!
+      await act(async () => tap("perapian"))
+      expect(card()).toHaveTextContent("Kilas balik")
+      expect(card()).toHaveTextContent("Rangkuman bacaanmu")
+      expect(scene.props!.highlight).toBe("perapian")
+      expect(handle.perform).not.toHaveBeenCalled()
+      expect(router.state.location.pathname).toBe("/lobby")
+
+      await act(async () => tap("perapian"))
+      expect(handle.perform).toHaveBeenCalledWith("perapian")
+      expect(card()).toBeNull()
+      expect(router.state.location.pathname).toBe("/recap")
+    })
+
+    it("moves the card to another place without opening anything", async () => {
+      stubWideScreen(false)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      const tap = scene.props!.onTap!
+      await act(async () => tap("perapian"))
+      await act(async () => tap("pintu"))
+      expect(card()).toHaveTextContent("Pengaturan")
+      expect(card()).toHaveTextContent("Akun, tampilan, dan keluar")
+      expect(scene.props!.highlight).toBe("pintu")
+      expect(handle.perform).not.toHaveBeenCalled()
+    })
+
+    it("closes the card on empty space and when the camera is moved", async () => {
+      stubWideScreen(false)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onTap!("pintu"))
+      expect(card()).not.toBeNull()
+      await act(async () => scene.props!.onTap!(null))
+      expect(card()).toBeNull()
+      expect(scene.props!.highlight).toBeNull()
+
+      await act(async () => scene.props!.onTap!("pintu"))
+      await act(async () => scene.props!.onCameraGesture!())
+      expect(card()).toBeNull()
+    })
+
+    it("opens the page from Buka", async () => {
+      stubWideScreen(false)
+      const { router } = renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onTap!("pintu"))
+      await act(async () =>
+        fireEvent.click(screen.getByRole("button", { name: "Buka" }), {
+          detail: 1,
+        })
+      )
+      expect(handle.perform).toHaveBeenCalledWith("pintu")
+      expect(router.state.location.pathname).toBe("/settings")
+    })
+
+    it("opens at once on a fine pointer, with no card", async () => {
+      pointer.fine = true
+      stubWideScreen(true)
+      const { router } = renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onTap!("pintu"))
+      expect(card()).toBeNull()
+      expect(router.state.location.pathname).toBe("/settings")
+    })
+
+    it("skips instead of showing a card while Anda is on the way, and keeps the lit place", async () => {
+      stubWideScreen(false)
+      let finish = () => undefined as void
+      handle.perform.mockImplementation(
+        () => new Promise<void>((resolve) => (finish = resolve))
+      )
+      const { router } = renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () =>
+        scene.props!.onActivate!("perapian", { keyboard: false })
+      )
+      expect(scene.props!.highlight).toBe("perapian")
+      await act(async () => scene.props!.onTap!("pintu"))
+      expect(handle.skip).toHaveBeenCalledTimes(1)
+      expect(card()).toBeNull()
+      expect(scene.props!.highlight).toBe("pintu")
+      await act(async () => finish())
+      expect(router.state.location.pathname).toBe("/settings")
+      expect(scene.props!.highlight).toBeNull()
+    })
+
+    it("takes the keyboard straight to the page and clears the card", async () => {
+      stubWideScreen(false)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onTap!("pintu"))
+      await act(async () =>
+        scene.props!.onActivate!("pintu", { keyboard: true })
+      )
+      expect(handle.perform).toHaveBeenCalledWith("pintu", { instant: true })
+      expect(card()).toBeNull()
+    })
   })
 
   describe("what changed since the last visit (spec 3F §4A.2)", () => {

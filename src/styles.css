@@ -1176,118 +1176,61 @@
     inset: 0;
     pointer-events: none;
   }
+  /* A place is an unseen 44 px button at its anchor (spec 3G §3.3): bubbles
+     sit above it, the focus ring shows on it. */
   .lobby-hotspot-anchor {
     position: absolute;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
-    translate: -50% -100%;
+    width: 44px;
+    height: 44px;
+    translate: -50% -50%;
   }
   .lobby-hotspot-anchor > * {
     pointer-events: auto;
   }
-  .lobby-hotspot {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    white-space: nowrap;
-    border: 1px solid var(--border);
-    border-radius: 0.6rem;
-    background: var(--color-panel);
-    padding: 0.4rem 0.75rem;
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: var(--foreground);
-    box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  .lobby-hotspot-bubble {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    translate: -50% 0;
   }
-  .lobby-hotspot:hover,
-  .lobby-hotspot:focus-visible {
-    border-color: var(--color-mint);
+  /* After the rule above, same specificity: the button lets pointers through
+     to the 3D scene, which decides what a tap meets. */
+  .lobby-hotspot {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 9999px;
+    background: transparent;
+    pointer-events: none;
   }
   .lobby-hotspot:focus-visible {
     outline: 2px solid var(--color-mint);
     outline-offset: 2px;
   }
-  /* Dimmed by colour, not opacity, so the label keeps AA contrast. */
-  .lobby-hotspot[data-empty] {
-    border-style: dashed;
-    color: var(--muted-foreground);
-  }
-  .lobby-hotspot-count {
-    font-weight: 400;
-    color: var(--muted-foreground);
-  }
-  /* No room for its pill on this screen (label-layout.ts): a mark at its
-     spot, 14 px (MARK_SIZE) with a 20 px tap target; hovered or focused it
-     shows its name above the others. */
-  .lobby-hotspot[data-look="mark"]:not(:hover, :focus-visible) {
+  /* The still image has no edges to draw: a small dot, tapped itself (spec 3G §3.8). */
+  .lobby-hotspot[data-dot] {
     position: relative;
-    width: 14px;
-    height: 14px;
-    gap: 0;
-    padding: 0;
-    border: 2px solid var(--color-mint);
-    border-radius: 9999px;
+    pointer-events: auto;
   }
-  .lobby-hotspot[data-look="mark"]:not(:hover, :focus-visible)::before {
+  .lobby-hotspot[data-dot]::after {
     content: "";
     position: absolute;
-    inset: -5px;
-  }
-  .lobby-hotspot[data-look="mark"]:not(:hover, :focus-visible) > * {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  /* For a moment before the scene is measured (HotspotLayer): unseen, so
-     no two labels overlap, but in the tab order and shown while focused.
-     Once placed, every label is a pill or a mark: none is hidden. */
-  .lobby-hotspot-anchor
-    > .lobby-hotspot[data-look="unplaced"]:not(:focus-visible) {
-    opacity: 0;
-    pointer-events: none;
-  }
-  /* A copy of every pill in full, unseen, so the layout knows their real
-     sizes (HotspotLayer: useMeasuredPills). */
-  .lobby-hotspot-measure {
-    position: absolute;
-    left: 0;
-    top: 0;
-    display: grid;
-    justify-items: start;
-    width: max-content;
-    visibility: hidden;
-    pointer-events: none;
-  }
-  .lobby-hotspot-anchor:has(> .lobby-hotspot:is(:hover, :focus-visible)) {
-    z-index: 1;
-  }
-  .lobby-hotspot-badge {
-    display: grid;
-    place-items: center;
-    min-width: 1.25rem;
-    height: 1.25rem;
+    left: 50%;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    translate: -50% -50%;
     border-radius: 9999px;
-    background: #e8a33b;
-    padding: 0 0.3rem;
-    font-size: 0.75rem;
-    color: #1b1206;
+    background: var(--color-mint);
+    box-shadow:
+      0 0 0 2px #1b120c,
+      0 0 0 3px var(--color-mint);
   }
   .lobby-center {
     position: absolute;
     left: 1rem;
     top: 1rem;
     z-index: 5;
-  }
-  @media (max-width: 1023px) {
-    .lobby-hotspot {
-      padding: 0.3rem 0.55rem;
-      font-size: 0.75rem;
-    }
   }
   @media (min-width: 1024px) {
     /* Beside the floating menu, below the top band. */

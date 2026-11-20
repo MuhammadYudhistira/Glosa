@@ -531,8 +531,8 @@ const FIRE_STAND: Point2 = [
 
 /**
  * How far each shelf section's label sits below the one before: its label
- * steps down the bookcase, so the labels stack without overlapping on screen
- * (owner, 2026-11-13; label-layout.test.ts pins it).
+ * steps down the bookcase, so the labels stack without overlapping (the room
+ * map and the camera use them).
  */
 const SECTION_LABEL_STEP = 0.33
 

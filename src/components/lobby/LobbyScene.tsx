@@ -1,5 +1,6 @@
 import {
   type KeyboardEvent,
+  type PointerEvent,
   type ReactNode,
   type Ref,
   useEffect,
@@ -12,11 +13,9 @@ import type { HighlightColor } from "@/lib/annotations/types"
 import type { PlantStage } from "@/lib/reading-habit"
 import type { SlotId } from "@/lib/shop/catalog"
 import type { Placements } from "@/lib/shop/types"
-import { useWideScreen } from "@/lib/use-wide-screen"
 import { HotspotLayer } from "./HotspotLayer"
 import { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyStill, STILL_SIZE, STILL_VIEW } from "./LobbyStill"
-import { stillFrame } from "./label-layout"
 import type { HotspotModel } from "./lobby-data"
 import type { RoomChange, RoomSnapshot } from "./room-memory"
 import { NEUTRAL_SIGNALS, NO_NOTES, type RoomSignals } from "./room-signals"
@@ -43,6 +42,7 @@ import {
 } from "./scene/quality"
 import { EMPTY_HUES, type GenreHues } from "./scene/shelf-books"
 import type { Stage } from "./scene/stage"
+import { createTapTracker } from "./tap"
 
 export type LobbySceneHandle = {
   /** Moves the camera to a hotspot (the map's spots). */
@@ -86,14 +86,19 @@ export function lobbyTestMode(): boolean {
 
 /**
  * The lobby scene (spec 1D §3, §6): the 3D canvas, or the still image as the
- * poster while it loads and as the fallback without WebGL, with the hotspots
- * on top. Focus it to move the camera with the arrow keys.
+ * poster while it loads and as the fallback without WebGL, with the places'
+ * buttons on top. A tap on the 3D room goes to the picker (spec 3G §3.1); a
+ * drag, a pinch or the wheel moves the camera. Focus it to move the camera
+ * with the arrow keys.
  */
 export function LobbyScene({
   hotspots,
   anda,
   bubbles,
   onActivate,
+  onTap,
+  onCameraGesture,
+  onFocusPlace,
   onLiveChange,
   paused = false,
   showcase = [],
@@ -109,7 +114,14 @@ export function LobbyScene({
   hotspots: ReadonlyArray<HotspotModel>
   anda: Point2
   bubbles?: Partial<Record<HotspotId, ReactNode>>
+  /** Enter or Space on a place's button: `{ keyboard: true }`. */
   onActivate: (id: HotspotId, how: { keyboard: boolean }) => void
+  /** A tap on the scene: the place under it, or null on empty space (spec 3G §3.1). */
+  onTap?: (id: HotspotId | null) => void
+  /** The camera starts to be dragged, pinched or zoomed. */
+  onCameraGesture?: () => void
+  /** A place's button took focus that is not a press. */
+  onFocusPlace?: (id: HotspotId) => void
   /** Whether a live 3D camera is on screen, so showSpot can move it. */
   onLiveChange?: (live: boolean) => void
   /** Behind a popup: the 3D scene keeps its last frame (spec 1F §4.5). */
@@ -139,34 +151,6 @@ export function LobbyScene({
   const stageRef = useRef<Stage | null>(null)
   const cameraRef = useRef<Camera | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
-  const wide = useWideScreen()
-  // The scene's size, for the still image's frame: the labels keep apart in
-  // screen pixels (label-layout.ts), and wait unseen until it is known.
-  const [size, setSize] = useState<Viewport | null>(null)
-  useEffect(() => {
-    const section = sectionRef.current
-    if (!section) return
-    const measure = () => {
-      const { clientWidth: width, clientHeight: height } = section
-      // Hidden (behind a page on phones): nothing to keep apart.
-      setSize((current) =>
-        width > 0 && height > 0
-          ? current?.width === width && current.height === height
-            ? current
-            : { width, height }
-          : null
-      )
-    }
-    if (typeof ResizeObserver === "undefined") {
-      // Older browsers: once now, and whenever the window changes size.
-      measure()
-      window.addEventListener("resize", measure)
-      return () => window.removeEventListener("resize", measure)
-    }
-    const observer = new ResizeObserver(measure)
-    observer.observe(section)
-    return () => observer.disconnect()
-  }, [])
 
   // Holding WebGL back unmounts the canvas, which disposes its stage: the
   // scene is no longer live, and the poster shows until a new stage is ready.
@@ -277,6 +261,39 @@ export function LobbyScene({
     onLiveChange?.(live)
   }, [live, onLiveChange])
 
+  const tracker = useRef(createTapTracker())
+  /** The scene's own pointer events; buttons and links on top of it keep theirs. */
+  const overOverlay = (event: { target: EventTarget }) =>
+    event.target instanceof Element &&
+    event.target.closest("button, a, output") !== null
+  const sample = (event: PointerEvent<HTMLElement>) => {
+    const box = event.currentTarget.getBoundingClientRect()
+    return {
+      id: event.pointerId,
+      type: event.pointerType,
+      time: event.timeStamp,
+      x: event.clientX - box.left,
+      y: event.clientY - box.top,
+    }
+  }
+  function onPointerDown(event: PointerEvent<HTMLElement>) {
+    if (overOverlay(event)) return
+    if (tracker.current.down(sample(event))) onCameraGesture?.()
+  }
+  function onPointerMove(event: PointerEvent<HTMLElement>) {
+    if (tracker.current.move(sample(event))) onCameraGesture?.()
+  }
+  function onPointerUp(event: PointerEvent<HTMLElement>) {
+    if (overOverlay(event)) {
+      tracker.current.cancel()
+      return
+    }
+    const hit = tracker.current.up(sample(event))
+    if (!hit) return
+    // Without a live camera (the still image) a tap on empty space is just "nowhere".
+    onTap?.(live ? (stageRef.current?.pick(hit.x, hit.y) ?? null) : null)
+  }
+
   return (
     <section
       ref={sectionRef}
@@ -286,6 +303,13 @@ export function LobbyScene({
       data-live={live ? "true" : undefined}
       className="lobby-scene"
       onKeyDown={onKeyDown}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={() => tracker.current.cancel()}
+      onWheel={() => {
+        if (live) onCameraGesture?.()
+      }}
     >
       {mode !== "still" && quality !== null && allow3d && (
         <LobbyCanvas
@@ -330,12 +354,15 @@ export function LobbyScene({
           hotspots={hotspots}
           view={live ? camera.view : STILL_VIEW}
           viewport={live ? camera.viewport : STILL_SIZE}
-          frame={live ? camera.viewport : size && stillFrame(size)}
-          scene={live ? null : size}
-          fontPx={wide ? 14 : 12}
+          dots={!live}
           bubbles={bubbles}
-          onActivate={onActivate}
-          onFocusSpot={live ? reveal : undefined}
+          onKey={(id) => onActivate(id, { keyboard: true })}
+          onTap={(id) => onTap?.(id)}
+          onFocusSpot={(id) => {
+            // A focused hotspot off screen brings the camera to it (spec 1D §6).
+            if (live) reveal(id)
+            onFocusPlace?.(id)
+          }}
         />
       </div>
       {live && (

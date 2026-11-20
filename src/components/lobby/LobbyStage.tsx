@@ -1,6 +1,13 @@
 import { useNavigate, useRouter, useSearch } from "@tanstack/react-router"
 import { PlusIcon } from "lucide-react"
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
+import {
+  type ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import {
   CORKBOARD_FETCH,
   CORKBOARD_NOTES,
@@ -20,26 +27,36 @@ import {
   type LobbySceneHandle,
 } from "@/components/lobby/LobbyScene"
 import { LobbyTopBar } from "@/components/lobby/LobbyTopBar"
+import { PlaceCard } from "@/components/lobby/PlaceCard"
 import { RecentBooks } from "@/components/lobby/RecentBooks"
 import { TrolleyPanel } from "@/components/lobby/TrolleyPanel"
 import { lobbyHotspots, summarizeLobby } from "@/components/lobby/lobby-data"
+import { type PlaceFacts, placeStatus } from "@/components/lobby/place-status"
 import {
   type RoomSnapshot,
   changesSince,
   readRoomSnapshot,
   rememberRoomSnapshot,
 } from "@/components/lobby/room-memory"
-import { roomSignals } from "@/components/lobby/room-signals"
+import {
+  readingDaysBetween,
+  roomSignals,
+} from "@/components/lobby/room-signals"
 import { type HotspotId, spotOf } from "@/components/lobby/scene/layout"
 import { genreHues } from "@/components/lobby/scene/shelf-books"
 import { useAndaSpot } from "@/components/lobby/useAndaSpot"
+import { useSheetHeight } from "@/components/lobby/use-sheet-height"
 import { coverHue } from "@/components/shelf/BookCover"
 import { UploadPanel } from "@/components/shelf/UploadPanel"
-import { useLocalShelf } from "@/components/shelf/useLocalShelf"
+import {
+  shelfPercentage,
+  useLocalShelf,
+} from "@/components/shelf/useLocalShelf"
 import { Button } from "@/components/ui/button"
 import type { Collection, ShelfBook, StorageUsage } from "@/lib/book-types"
 import { pinnedHighlights } from "@/lib/annotations/pinned"
 import { useHighlights } from "@/lib/annotations/highlights-client"
+import { addDays, mondayOf } from "@/lib/dates"
 import { useReadingHabit } from "@/lib/habit/habit-client"
 import {
   type RecapBubble,
@@ -50,9 +67,10 @@ import {
 import { itemOf } from "@/lib/shop/catalog"
 import { useLobbyDecor, useShop } from "@/lib/shop/shop-client"
 import type { SessionUser } from "@/lib/session-types"
+import { useFinePointer } from "@/lib/use-fine-pointer"
 import { useOnline } from "@/lib/use-online"
 import { useWideScreen } from "@/lib/use-wide-screen"
-import { useMeetingsTotal } from "@/lib/vocab/vocab-client"
+import { useMeetingsTotal, useWordMeetings } from "@/lib/vocab/vocab-client"
 import { rememberVocabSeen, useVocabSeen } from "@/lib/vocab/vocab-seen"
 
 /**
@@ -87,6 +105,10 @@ export function LobbyStage({
   const decor = useLobbyDecor()
   const shop = useShop()
   const online = useOnline()
+  const fine = useFinePointer()
+  const words = useWordMeetings()
+  const pageRef = useRef<HTMLDivElement>(null)
+  const statusId = useId()
   const highlights = useHighlights(CORKBOARD_FETCH, online && !offline)
   // The papers on the board: the newest highlights of books still on the shelf.
   const notes = useMemo(
@@ -164,6 +186,15 @@ export function LobbyStage({
   const [readingHint, setReadingHint] = useState(false)
   const [sceneLive, setSceneLive] = useState(false)
   const [recapBubble, setRecapBubble] = useState<RecapBubble | null>(null)
+  /** The place whose name card is open (spec 3G §3.1, §3.3). */
+  const [chosen, setChosen] = useState<HotspotId | null>(null)
+  /** The place Anda is on the way to: it stays lit until its page opens (spec 3G §4). */
+  const [lit, setLit] = useState<HotspotId | null>(null)
+  // A tap handed down earlier still sees the card open now (like `running`).
+  const chosenNow = useRef<HotspotId | null>(null)
+  useEffect(() => {
+    chosenNow.current = chosen
+  }, [chosen])
 
   // "Kilas balik ... sudah siap" once per period, from the habit cache (spec 3E §5.4).
   useEffect(() => {
@@ -192,6 +223,7 @@ export function LobbyStage({
     if (popup) {
       setSelectedId(null)
       setCorkboard(false)
+      setChosen(null)
     }
   }
   const selected = books.find((book) => book.id === selectedId) ?? null
@@ -232,6 +264,52 @@ export function LobbyStage({
       covered.current = true
     }
   }, [paused])
+  const habitKnown = habit.status === "ready" || habit.status === "stale"
+  const facts = useMemo<PlaceFacts>(
+    () => ({
+      lastRead: summary.lastRead
+        ? {
+            title: summary.lastRead.title,
+            percent: shelfPercentage(summary.lastRead, local),
+          }
+        : null,
+      counts: summary.counts,
+      trolley: summary.trolley.length,
+      finished: summary.finishedCount,
+      savedWords: Object.keys(words).length,
+      weekDays: habitKnown
+        ? readingDaysBetween(habit.days, mondayOf(habit.today), habit.today)
+        : null,
+      recentDays: habitKnown
+        ? readingDaysBetween(habit.days, addDays(habit.today, -6), habit.today)
+        : null,
+      coins: shop.state?.balance ?? null,
+      highlights:
+        highlights.state.status === "ready"
+          ? {
+              count: highlights.state.highlights.length,
+              more: highlights.state.highlights.length >= CORKBOARD_FETCH,
+            }
+          : null,
+    }),
+    [
+      summary,
+      local,
+      words,
+      habitKnown,
+      habit.days,
+      habit.today,
+      shop.state,
+      highlights.state,
+    ]
+  )
+  // Behind a popup or the corkboard's dialog nothing is picked or lit.
+  const cardId = paused ? null : chosen
+  const highlight = paused ? null : (lit ?? cardId)
+  useSheetHeight(
+    pageRef,
+    `${popup}:${summary.lastRead?.id ?? ""}:${books.length === 0}`
+  )
   // What changed since the last visit on this device plays once, when the
   // member first sees the live room (spec 3F §4A.2). Every input of the
   // snapshot must be known first: the habit (or this device's copy of it)
@@ -280,10 +358,12 @@ export function LobbyStage({
       // Another hotspot: its page opens instead of the first one's.
       newer.current = id === target.current ? null : id
       sceneRef.current?.skip()
+      setLit(id)
       return
     }
     moveAnda(spotOf(id).stand)
     setReadingHint(false)
+    setChosen(null)
     // From the keyboard the page opens at once and Anda is in the activity's
     // pose at once (spec 3F §4A.1): no walk, no activity, nothing awaited.
     if (how.keyboard) {
@@ -291,6 +371,7 @@ export function LobbyStage({
     } else if (sceneRef.current) {
       running.current = true
       target.current = id
+      setLit(id)
       newer.current = null
       try {
         await sceneRef.current.perform(id)
@@ -300,11 +381,31 @@ export function LobbyStage({
       // Set by a tap during the await, which the compiler cannot see.
       const next = (newer.current as HotspotId | null) ?? id
       newer.current = null
+      setLit(null)
       if (covered.current) return
       open(next)
       return
     }
     open(id)
+  }
+
+  /** A tap on the scene (spec 3G §3.1, §3.2): a card on a phone, the page at once with a mouse. */
+  function tapPlace(id: HotspotId | null) {
+    if (paused) return
+    // While Anda is on the way every tap on a place skips; the last decides (spec 3F §4A.1).
+    if (running.current) {
+      if (id) void activate(id, { keyboard: false })
+      return
+    }
+    if (id === null) {
+      setChosen(null)
+      return
+    }
+    if (fine || chosenNow.current === id) {
+      void activate(id, { keyboard: false })
+      return
+    }
+    setChosen(id)
   }
 
   /** What each hotspot opens. */
@@ -352,6 +453,7 @@ export function LobbyStage({
   return (
     <div
       className="lobby-page"
+      ref={pageRef}
       role={popup ? undefined : "main"}
       data-popup={popup ? "" : undefined}
     >
@@ -372,7 +474,10 @@ export function LobbyStage({
           decor={decor}
           anda={anda}
           bubbles={bubbles}
+          highlight={highlight}
           onActivate={(id, how) => void activate(id, how)}
+          onTap={tapPlace}
+          onCameraGesture={() => setChosen(null)}
           onLiveChange={setSceneLive}
           // The corkboard's dialog covers the scene like a route popup.
           paused={paused}
@@ -464,6 +569,14 @@ export function LobbyStage({
           >
             <PlusIcon />
           </Button>
+          {cardId && (
+            <PlaceCard
+              name={hotspots.find((spot) => spot.id === cardId)?.label ?? ""}
+              status={placeStatus(cardId, facts)}
+              statusId={statusId}
+              onOpen={(how) => void activate(cardId, how)}
+            />
+          )}
         </>
       )}
       <UploadPanel open={uploading} onOpenChange={setUploading} usage={usage} />
