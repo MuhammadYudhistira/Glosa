@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ruang baca tidak lagi memakai label pil dan lingkaran tanda. Benda yang bisa dipakai diberi garis tepi tipis; ketuk pertama (HP) menampilkan kartu nama dengan satu baris keadaan, ketuk kedua membuka tempat itu; di desktop kursor di atas benda menampilkan sorotan dan nama kecil, klik langsung membuka.
+**Goal:** Ruang baca tidak lagi memakai label pil dan lingkaran tanda. Tiap tempat diberi cincin cahaya tipis di lantai di depannya (cincin tempat yang dipilih lebih terang); ketuk pertama (HP) menampilkan kartu nama dengan satu baris keadaan, ketuk kedua membuka tempat itu; di desktop kursor di atas benda menampilkan sorotan dan nama kecil, klik langsung membuka.
 
 **Architecture:**
 - **Kotak ketuk murni** (`scene/pick-volumes.ts`, `scene/picker.ts`): satu kotak per benda dari `layout.ts`, dan raycast ortografis ke kotak tanpa three.js, sehingga diuji di jsdom. `stage.pick(x, y)` memakai `view` dan `viewport` stage yang sama dengan kamera.
-- **Sorotan digambar di 3D** (`scene/highlight.ts`): garis tepi kotak ketuk. Semua benda memegang satu `LineSegments` redup yang diam; satu benda terpilih mendapat garis penuh dan isian tipis. Ganti sorotan = satu `requestRender()`, ruangan diam tetap 0 frame (R1).
+- **Sorotan digambar di 3D** (`scene/ring-spots.ts`, `scene/highlight.ts`): cincin cahaya tipis di lantai di depan tiap tempat. Satu `InstancedMesh` memuat cincin redup semua tempat (diam, selalu ada); satu `Mesh` memuat cincin terang, sedikit lebih lebar, di tempat yang dipilih/disorot. Satu geometri bersama dengan alfa lembut per titik sudut (tanpa tekstur), dua draw call, tanpa pass pascapemrosesan, tanpa animasi. Ganti sorotan = satu `requestRender()`, ruangan diam tetap 0 frame (R1).
 - **Alur di React**: `LobbyScene` menangkap ketuk/geser/kursor di atas kanvas dan melaporkan `onTap(id | null)`, `onHover(id | null)`, `onCameraGesture()`. `LobbyStage` memegang `chosen` (kartu), `hovered`, `lit` (tujuan alur R3) dan menurunkan `highlight`. `activate(id, how)` (alur R3) tidak berubah bentuknya.
 
 **Tech Stack:** TanStack Start + Router, React 19, TypeScript, Tailwind CSS 4, three.js 0.160, Vitest + Testing Library (jsdom 29, `PointerEvent` tersedia), Playwright.
@@ -21,9 +21,9 @@
 - **Ketuk vs geser (spec §3.1):** ketuk bila jari bergerak kurang dari **10 px** dan dilepas sebelum **300 ms**; selain itu geser kamera. (Mouse: hanya aturan jarak, lihat keputusan 2.)
 - **Desktop** = `(hover: hover) and (pointer: fine)`; perangkat lain memakai perilaku HP (spec §3.2).
 - **Keyboard:** tiap tempat tetap `<button>` bernama (nama = label tempat) dalam urutan Tab sekarang; fokus menampilkan kartu; Enter/Spasi = `perform(id, { instant: true })` tanpa menunggu, halaman langsung terbuka (commit 12a73a2). Isi kartu dibacakan lewat `aria-describedby`.
-- **R1 (render sesuai kebutuhan):** ruangan diam merender 0 frame; mengganti sorotan meminta tepat satu frame, dan `setHighlight` dengan id yang sama tidak meminta frame.
+- **R1 (render sesuai kebutuhan):** ruangan diam merender 0 frame; mengganti sorotan meminta tepat satu frame, dan `setHighlight` dengan id yang sama tidak meminta frame. Cincin tidak beranimasi dan tidak butuh pass tambahan (murah di HP).
 - **R3:** `LobbyStage.activate(id, how)` tetap: ketuk kedua saat Anda berjalan = lewati; ketukan terakhir menentukan halaman; `covered = popup || corkboard`; keyboard = `perform(id, { instant: true })` tanpa `await`.
-- **Mode gambar diam** (tanpa WebGL atau adegan gagal): titik kecil tanpa tulisan per tempat, ketuk titik → kartu yang sama. Kualitas "diam" dengan WebGL tetap 3D, garis tepi dan sorotan tetap ada.
+- **Mode gambar diam** (tanpa WebGL atau adegan gagal): titik kecil tanpa tulisan per tempat, ketuk titik → kartu yang sama. Kualitas "diam" dengan WebGL tetap 3D, cincin cahaya dan sorotannya tetap ada.
 - **Jangan bergantung pada jalur aset lobi** (`public/lobby/`): cabang lain memindahkan gambar diam, thumbnail toko dan model glb ke impor Vite ber-hash (`LobbyStill.tsx`, `model-manifest.ts`, `ShopPanel.tsx`). Rencana ini tidak menyentuh ketiganya. `LobbyScene.tsx` merender `<LobbyStill>` dan `LobbyScene.test.tsx` memeriksa `src="/lobby/lobby-still.webp"`: jangan ubah baris-baris itu; bila cabang lain sudah mendarat, biarkan konfliknya diselesaikan di sana.
 - **Tes unit:** dari PowerShell, `npx vitest run --maxWorkers=2 <path>` (di Git Bash setiap berkas gagal). **Lint/tipe/format/build:** `npm run lint`, `npx tsc --noEmit`, `npm run check` (prettier; jalankan `npx prettier --write <file>` pada berkas yang disentuh sebelum commit), `npm run build`.
 - **E2E:** `--workers=2` paling banyak. Port 3000 bisa dipegang proyek lain: cek `curl -sL localhost:3000/login | grep -o "<title>[^<]*"`; bila bukan Glosa, pakai config sementara di port 3100 dan hapus setelahnya. E2E biasa berjalan di kualitas "diam" tanpa WebGL; hanya proyek `lobby-3d` memakai SwiftShader.
@@ -31,7 +31,9 @@
 
 ## Keputusan dan penyimpangan dari spec
 
-1. **Garis tepi = tepi kotak ketuk, bukan siluet benda.** Perabot digabung (`mergeStatic`), rak/pintu/papan/tanaman tidak punya objek per tempat, jadi `OutlinePass` tidak bisa dipakai merata. Garis tepi kotak juga jujur: yang bersinar adalah yang menjawab ketukan. Kalau di HP terlihat terlalu "kotak", ganti di Task 2 saja (antarmuka `Highlight` tidak berubah).
+*Poin 2 sampai 11 disetujui pemilik 2026-11-20 sebagaimana tertulis. (Daftar ini berisi 11 poin; pemilik menyebut 10.)*
+
+1. **Petunjuk = cincin cahaya di lantai, bukan tepi kotak (keputusan pemilik 2026-11-20).** Tiap tempat punya cincin tipis, diam, lembut di lantai di depan bendanya (rak: satu per bagian genre); cincin tempat yang dipilih/disorot lebih terang dan sedikit lebih lebar. Titik cincin = titik berdiri Anda (`stand`) tempat itu, karena sudah terbukti lantai kosong dan memang tujuan jalan; kecuali `katalog`, `meja-admin`, `papan`, yang `stand`-nya bertumpuk dengan bagian rak pertama (0,17 m) dan diberi titik sendiri di depan meja tulis (`RING_AT`, Task 2). Tanpa `OutlinePass` (perabot digabung lewat `mergeStatic`, dan satu pass tambahan mahal di HP): satu `InstancedMesh` + satu `Mesh`, satu geometri bersama. Mode gambar diam tetap memakai titik.
 2. **Mouse: hanya jarak (10 px), tanpa batas 300 ms.** Klik lambat di desktop tetap membuka. Sentuh/pena: kedua aturan spec.
 3. **Kartu memakai satu `LobbyStage.chosen`** untuk ketuk (HP) dan fokus keyboard (semua perangkat). Di desktop, mouse tidak membuat kartu.
 4. **`HoverName` dirender oleh `LobbyScene`**, bukan `LobbyStage`, supaya posisi kursor (berubah tiap frame) tidak merender ulang `LobbyStage`. `LobbyStage` hanya diberi tahu id yang berubah (`onHover`).
@@ -65,7 +67,7 @@
 |---|---|
 | `scene/pick-volumes.ts` (+ tes) | Baru, murni: `PickVolume`, `PICK_VOLUMES`, `volumesOf`, `anchorOf` (Task 1) |
 | `scene/picker.ts` (+ tes), `scene/projection.ts` (ekspor `SCREEN_OUT`) | Baru, murni: `pickAt` (Task 1) |
-| `scene/highlight.ts` (+ tes), `scene/stage.ts`, `LobbyCanvas.tsx`, `LobbyScene.tsx` (+ tes) | Garis tepi dan sorotan, `stage.pick`/`setHighlight`, prop `highlight` (Task 2) |
+| `scene/ring-spots.ts` (+ tes), `scene/highlight.ts` (+ tes), `scene/stage.ts`, `LobbyCanvas.tsx`, `LobbyScene.tsx` (+ tes) | Titik dan cincin cahaya di lantai, `stage.pick`/`setHighlight`, prop `highlight` (Task 2) |
 | `place-status.ts` (+ tes), `PlaceCard.tsx` (+ tes), `room-signals.ts` (+ tes), `styles.css` | Teks keadaan dan kartu (Task 3) |
 | `tap.ts` (+ tes), `use-fine-pointer.ts`, `use-sheet-height.ts`, `HotspotLayer.tsx`, `LobbyScene.tsx`, `LobbyStage.tsx` (+ tes), `styles.css`; hapus `label-layout.ts` | Alur ketuk di HP, titik mode diam, hapus label (Task 4) |
 | `HoverName.tsx` (+ tes), `HotspotLayer.tsx`, `LobbyScene.tsx`, `LobbyStage.tsx` (+ tes), `styles.css` | Hover desktop, fokus → kartu, `aria-describedby` (Task 5) |
@@ -85,10 +87,10 @@
 **Interfaces:**
 - Consumes: `FURNITURE`, `Furnishing`, `footprint`, `WALL_SECTIONS`, `SHELF`, `ROOM_PARTS`, `PLANT`, `PLANT_POT`, `HOTSPOT_SPOTS`, `HotspotId`, `Point3` dari `layout.ts`; `View`, `Viewport`, `halfExtents`, `SCREEN_RIGHT`, `SCREEN_UP`, `project`, `startView`, `clampView` dari `projection.ts`.
 - Produces:
-  - `type PickVolume = { id: HotspotId; min: Point3; max: Point3; outline: boolean }`
+  - `type PickVolume = { id: HotspotId; min: Point3; max: Point3; main: boolean }`
   - `PICK_VOLUMES: ReadonlyArray<PickVolume>`
   - `volumesOf(id: HotspotId): Array<PickVolume>`
-  - `anchorOf(id: HotspotId): Point3` (pusat kotak `outline` terbesar tempat itu; tempat tombol tak terlihat dan titik mode diam)
+  - `anchorOf(id: HotspotId): Point3` (pusat kotak `main` terbesar tempat itu; tempat tombol tak terlihat dan titik mode diam)
   - `pickAt(point: { x: number; y: number }, view: View, viewport: Viewport, volumes?: ReadonlyArray<PickVolume>): HotspotId | null` (`x`, `y` dalam px CSS dari kiri atas adegan; `null` di luar layar atau di ruang kosong)
 
 - [ ] **Step 1: Ekspor `SCREEN_OUT`**
@@ -121,11 +123,11 @@ const contains = (a: PickVolume, b: PickVolume) =>
   [0, 1, 2].every((k) => a.min[k] <= b.min[k] && a.max[k] >= b.max[k])
 
 describe("pick volumes", () => {
-  it("give every place a box, and one drawn box at least", () => {
+  it("give every place a box, and one main box at least", () => {
     for (const { id } of HOTSPOT_SPOTS) {
       expect(volumesOf(id).length, id).toBeGreaterThan(0)
       expect(
-        volumesOf(id).filter((v) => v.outline).length,
+        volumesOf(id).filter((v) => v.main).length,
         id
       ).toBeGreaterThan(0)
     }
@@ -194,21 +196,21 @@ import {
 
 /**
  * One box that answers a tap (spec 3G §4): the place it belongs to, and
- * whether its edges are drawn (a small piece is only part of a place's hit
- * area, never a glowing line of its own).
+ * whether it is a main box (a small piece is only part of a place's hit
+ * area, and never where the button or the dot sits).
  */
 export type PickVolume = {
   id: HotspotId
   min: Point3
   max: Point3
-  outline: boolean
+  main: boolean
 }
 
 /** A piece whose largest side is below this gets TAP_PAD all round: a finger is wider than a mug. */
 const SMALL_PIECE = 0.6
 const TAP_PAD = 0.15
-/** A piece smaller than this in every side is not drawn. */
-const OUTLINE_MIN = 0.35
+/** A piece smaller than this in every side is not a main box. */
+const MAIN_MIN = 0.35
 /** How thick the door and the corkboard are as boxes in their wall. */
 const WALL_DEPTH = 0.15
 const PLANT_HEIGHT = 1.6
@@ -222,7 +224,7 @@ function furnishingVolume(piece: Furnishing): PickVolume {
     id: piece.serves,
     min: [x0 - pad, Math.max(0, base - pad), z0 - pad],
     max: [x1 + pad, base + piece.size[1] + pad, z1 + pad],
-    outline: largest >= OUTLINE_MIN,
+    main: largest >= MAIN_MIN,
   }
 }
 
@@ -239,7 +241,7 @@ export const PICK_VOLUMES: ReadonlyArray<PickVolume> = [
       id: genre,
       min: [0, SHELF.bottom, z - width / 2],
       max: [SHELF.depth, SHELF.top, z + width / 2],
-      outline: true,
+      main: true,
     })
   ),
   // The door in the shelf wall (X = 0).
@@ -247,7 +249,7 @@ export const PICK_VOLUMES: ReadonlyArray<PickVolume> = [
     id: "pintu",
     min: [0, 0, door.z - door.width / 2],
     max: [WALL_DEPTH, door.height, door.z + door.width / 2],
-    outline: true,
+    main: true,
   },
   // The corkboard on the window wall (Z = 0).
   {
@@ -258,14 +260,14 @@ export const PICK_VOLUMES: ReadonlyArray<PickVolume> = [
       corkboard.y + corkboard.size / 2,
       WALL_DEPTH,
     ],
-    outline: true,
+    main: true,
   },
   // The habit plant and its pot.
   {
     id: "tanaman",
     min: [plantX - plantHalf, 0, plantZ - plantHalf],
     max: [plantX + plantHalf, PLANT_HEIGHT, plantZ + plantHalf],
-    outline: true,
+    main: true,
   },
 ]
 
@@ -278,10 +280,10 @@ const sizeOf = (v: PickVolume) =>
 
 /**
  * Where a place's invisible button and its still-image dot sit: the middle of
- * its biggest drawn box, which always lies inside the place's hit area.
+ * its biggest main box, which always lies inside the place's hit area.
  */
 export function anchorOf(id: HotspotId): Point3 {
-  const boxes = volumesOf(id).filter((volume) => volume.outline)
+  const boxes = volumesOf(id).filter((volume) => volume.main)
   const biggest = boxes.reduce((a, b) => (sizeOf(b) > sizeOf(a) ? b : a))
   return [0, 1, 2].map(
     (k) => (biggest.min[k] + biggest.max[k]) / 2
@@ -363,7 +365,7 @@ describe("pickAt", () => {
       id: "meja-baca",
       min: [4.5, 1.5, 4.5],
       max: [5.5, 2.5, 5.5],
-      outline: true,
+      main: true,
     }
     // The same box 2 m further from the camera: the two overlap on screen.
     const shift = 2 * SCREEN_OUT[0]
@@ -371,7 +373,7 @@ describe("pickAt", () => {
       id: "pintu",
       min: near.min.map((v) => v - shift) as unknown as Point3,
       max: near.max.map((v) => v - shift) as unknown as Point3,
-      outline: true,
+      main: true,
     }
     const centre = { x: 50, y: 50 }
     expect(pickAt(centre, view, viewport, [near, far])).toBe("meja-baca")
@@ -485,86 +487,273 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 2: Sorotan 3D (garis tepi dan sorotan kuat), `stage.pick`/`setHighlight`
+### Task 2: Cincin cahaya di lantai, `stage.pick`/`setHighlight`
+
+Petunjuk bukan tepi kotak, melainkan **cincin cahaya di lantai** di depan tiap tempat (keputusan pemilik 2026-11-20). Satu `InstancedMesh` (satu draw call) memuat cincin redup semua tempat, satu `Mesh` memuat cincin terang untuk tempat yang dipilih/disorot. Satu geometri bersama, dua material, tanpa pass pascapemrosesan, tanpa animasi.
+
+**Titik cincin = `stand` tempat itu** (titik tempat Anda berdiri; sudah terbukti bisa dilalui dan jadi tujuan jalan), kecuali tiga tempat di sudut meja tulis (`katalog`, `meja-admin`, `papan`) yang `stand`-nya bertumpuk dengan bagian rak pertama (jarak 0,17 m): tiga itu diberi titik sendiri di depan meja. Titik cincin diuji: ada tepat satu per tempat, di lantai yang bisa dilalui (jauh dari perabot dengan lebar cincin terang), tidak di dalam kotak tempat lain, dan saling berjarak cukup.
 
 **Files:**
-- Create: `src/components/lobby/scene/highlight.ts`, `highlight.test.ts`
+- Create: `src/components/lobby/scene/ring-spots.ts`, `ring-spots.test.ts`, `highlight.ts`, `highlight.test.ts`
 - Modify: `src/components/lobby/scene/stage.ts`, `src/components/lobby/LobbyCanvas.tsx`, `src/components/lobby/LobbyCanvas.test.tsx`, `src/components/lobby/LobbyScene.tsx`
 
 **Interfaces:**
-- Consumes: `PICK_VOLUMES`, `PickVolume` (Task 1), `pickAt` (Task 1), `createFrameLoop`'s `requestRender` di `stage.ts`.
+- Consumes: `HOTSPOT_SPOTS`, `spotOf`, `HotspotId`, `Point2`, `WALK_BOUNDS`, `walkBlockers` dari `layout.ts`; `walkable` dari `walk.ts`; `PICK_VOLUMES` (Task 1) hanya di tes; `pickAt` (Task 1); `requestRender` di `stage.ts`.
 - Produces:
-  - `boxEdgePositions(min: Point3, max: Point3): Array<number>` (24 titik × 3 = 72 angka)
+  - `RING_INNER`, `RING_OUTER`, `RING_STRONG_SCALE`, `ringOf(id: HotspotId): Point2`, `RING_SPOTS: ReadonlyArray<{ id: HotspotId; at: Point2 }>` (urutan sama dengan `HOTSPOT_SPOTS`) di `ring-spots.ts`
+  - `ringGeometry(): THREE.BufferGeometry` (cincin datar menghadap atas, alfa lembut: 0 di kedua tepi, 1 di tengah)
   - `type Highlight = { set(id: HotspotId | null): boolean; current(): HotspotId | null; dispose(): void }` (`set` mengembalikan `true` hanya bila berubah)
-  - `buildHighlight(scene: THREE.Scene, volumes?: ReadonlyArray<PickVolume>): Highlight`
+  - `buildHighlight(scene: THREE.Scene): Highlight` (menambah tepat dua objek ke adegan: `place-rings` dan `place-ring-strong`)
   - `Stage.pick(x: number, y: number): HotspotId | null`, `Stage.setHighlight(id: HotspotId | null): void`
   - `LobbyCanvas` prop `highlight?: HotspotId | null`; `LobbyScene` prop `highlight?: HotspotId | null`
 
-- [ ] **Step 1: Tulis tes `highlight` (gagal)**
+- [ ] **Step 1: Tulis tes `ring-spots` (gagal)**
+
+`src/components/lobby/scene/ring-spots.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest"
+import { HOTSPOT_SPOTS, WALK_BOUNDS, walkBlockers } from "./layout"
+import { PICK_VOLUMES } from "./pick-volumes"
+import {
+  RING_OUTER,
+  RING_SPOTS,
+  RING_STRONG_SCALE,
+  ringOf,
+} from "./ring-spots"
+import { walkable } from "./walk"
+
+/** How far the brightest ring reaches from its centre. */
+const REACH = RING_OUTER * RING_STRONG_SCALE
+
+describe("ring spots", () => {
+  it("give every place exactly one, in the hotspots' order", () => {
+    expect(RING_SPOTS.map((spot) => spot.id)).toEqual(
+      HOTSPOT_SPOTS.map((spot) => spot.id)
+    )
+  })
+
+  it("lie on walkable floor, clear of the furniture, even as the bright ring", () => {
+    const blocked = walkBlockers()
+    for (const { id } of HOTSPOT_SPOTS) {
+      expect(walkable(ringOf(id), WALK_BOUNDS, blocked, REACH), id).toBe(true)
+    }
+  })
+
+  it("never lie inside the box of another place", () => {
+    for (const { id } of HOTSPOT_SPOTS) {
+      const [x, z] = ringOf(id)
+      const hit = PICK_VOLUMES.filter(
+        (v) =>
+          v.id !== id &&
+          // Only what stands on the floor can hide a ring there.
+          v.min[1] <= 0.3 &&
+          x >= v.min[0] &&
+          x <= v.max[0] &&
+          z >= v.min[2] &&
+          z <= v.max[2]
+      ).map((v) => v.id)
+      expect(hit, id).toEqual([])
+    }
+  })
+
+  it("keep the rings apart, so a bright ring never swallows its neighbour", () => {
+    for (const a of RING_SPOTS) {
+      for (const b of RING_SPOTS) {
+        if (a.id >= b.id) continue
+        const apart = Math.hypot(a.at[0] - b.at[0], a.at[1] - b.at[1])
+        expect(apart, `${a.id} / ${b.id}`).toBeGreaterThanOrEqual(2 * REACH)
+      }
+    }
+  })
+
+  it("stay near their own object, so the ring reads as that object's", () => {
+    for (const { id, at } of RING_SPOTS) {
+      const near = Math.min(
+        ...PICK_VOLUMES.filter((v) => v.id === id).map((v) =>
+          Math.hypot(
+            Math.max(v.min[0] - at[0], 0, at[0] - v.max[0]),
+            Math.max(v.min[2] - at[1], 0, at[1] - v.max[2])
+          )
+        )
+      )
+      expect(near, id).toBeLessThanOrEqual(2.2)
+    }
+  })
+})
+```
+
+- [ ] **Step 2: Jalankan, pastikan gagal**
+
+Run (PowerShell): `npx vitest run --maxWorkers=2 src/components/lobby/scene/ring-spots.test.ts`
+Expected: FAIL, "Failed to resolve import ./ring-spots".
+
+- [ ] **Step 3: Tulis `ring-spots.ts`**
+
+```ts
+import {
+  HOTSPOT_SPOTS,
+  type HotspotId,
+  type Point2,
+  spotOf,
+} from "./layout"
+
+/** The glow ring on the floor (spec 3G §3.4): thin, so its band is this wide. */
+export const RING_INNER = 0.13
+export const RING_OUTER = 0.22
+/** The picked or hovered place's ring is this much wider than the others. */
+export const RING_STRONG_SCALE = 1.2
+
+/**
+ * A ring's centre is where Anda stands for that place (`stand`: clear floor,
+ * and where the walk ends), except for the three places at the writing desk,
+ * whose stands crowd the first shelf section's (0.17 m apart): their rings
+ * lie on the floor in front of the desk instead, chair and fireplace clear.
+ */
+const RING_AT: Partial<Record<HotspotId, Point2>> = {
+  katalog: [0.8, 1.2],
+  "meja-admin": [2.05, 1.2],
+  papan: [1.55, 2.15],
+}
+
+export function ringOf(id: HotspotId): Point2 {
+  return RING_AT[id] ?? spotOf(id).stand
+}
+
+/** One ring per place, in the hotspots' order. */
+export const RING_SPOTS: ReadonlyArray<{ id: HotspotId; at: Point2 }> =
+  HOTSPOT_SPOTS.map(({ id }) => ({ id, at: ringOf(id) }))
+```
+
+- [ ] **Step 4: Jalankan tes `ring-spots`**
+
+Run: `npx vitest run --maxWorkers=2 src/components/lobby/scene/ring-spots.test.ts`
+Expected: PASS. Bila "lie on walkable floor", "never lie inside" atau "keep the rings apart" gagal untuk satu tempat, geser titik tempat itu di `RING_AT` (jangan melonggarkan tes atau mengubah `stand`, yang dipakai jalan Anda).
+
+- [ ] **Step 5: Tulis tes `highlight` (gagal)**
 
 `src/components/lobby/scene/highlight.test.ts`:
 
 ```ts
 import * as THREE from "three"
 import { describe, expect, it } from "vitest"
-import { HOTSPOT_SPOTS, type Point3 } from "./layout"
-import { boxEdgePositions, buildHighlight } from "./highlight"
-import { PICK_VOLUMES } from "./pick-volumes"
+import { buildHighlight, ringGeometry } from "./highlight"
+import { HOTSPOT_SPOTS } from "./layout"
+import {
+  RING_INNER,
+  RING_OUTER,
+  RING_SPOTS,
+  RING_STRONG_SCALE,
+  ringOf,
+} from "./ring-spots"
 
-describe("boxEdgePositions", () => {
-  it("is the 12 edges of a box, each along one axis", () => {
-    const min: Point3 = [1, 2, 3]
-    const max: Point3 = [2, 4, 7]
-    const p = boxEdgePositions(min, max)
-    expect(p).toHaveLength(12 * 2 * 3)
-    for (let i = 0; i < p.length; i += 6) {
-      const a = p.slice(i, i + 3)
-      const b = p.slice(i + 3, i + 6)
-      const differing = [0, 1, 2].filter((k) => a[k] !== b[k])
-      expect(differing).toHaveLength(1)
-      for (let k = 0; k < 3; k++) {
-        expect([min[k], max[k]]).toContain(a[k])
-        expect([min[k], max[k]]).toContain(b[k])
+const FLOOR = 0.05
+
+function rings(scene: THREE.Scene) {
+  return {
+    dim: scene.getObjectByName("place-rings") as THREE.InstancedMesh,
+    strong: scene.getObjectByName("place-ring-strong") as THREE.Mesh,
+  }
+}
+
+describe("ringGeometry", () => {
+  const geometry = ringGeometry()
+  const position = geometry.getAttribute("position")
+  const colour = geometry.getAttribute("color")
+
+  it("lies flat on the floor, facing up", () => {
+    for (let i = 0; i < position.count; i++) {
+      expect(position.getY(i)).toBeCloseTo(0)
+    }
+    const normal = geometry.getAttribute("normal")
+    expect(normal.getY(0)).toBeCloseTo(1)
+  })
+
+  it("spans the ring's band, no further", () => {
+    const radii = Array.from({ length: position.count }, (_, i) =>
+      Math.hypot(position.getX(i), position.getZ(i))
+    )
+    expect(Math.min(...radii)).toBeCloseTo(RING_INNER)
+    expect(Math.max(...radii)).toBeCloseTo(RING_OUTER)
+  })
+
+  it("is soft: clear at both edges, full in the middle (alpha per vertex)", () => {
+    expect(colour.itemSize).toBe(4)
+    const middle = (RING_INNER + RING_OUTER) / 2
+    let faded = 0
+    let full = 0
+    for (let i = 0; i < position.count; i++) {
+      const radius = Math.hypot(position.getX(i), position.getZ(i))
+      const alpha = colour.getW(i)
+      if (Math.abs(radius - middle) < 1e-6) {
+        expect(alpha).toBeCloseTo(1)
+        full++
+      } else {
+        expect(alpha).toBeCloseTo(0)
+        faded++
       }
     }
+    expect(full).toBeGreaterThan(0)
+    expect(faded).toBeGreaterThan(0)
   })
 })
 
 describe("buildHighlight", () => {
-  const drawn = PICK_VOLUMES.filter((volume) => volume.outline)
-
-  it("draws every drawn box's edges once, faintly, from the start", () => {
+  it("adds two objects only: all dim rings in one instanced mesh, and one bright ring", () => {
     const scene = new THREE.Scene()
     buildHighlight(scene)
-    const faint = scene.getObjectByName("place-edges") as THREE.LineSegments
-    expect(faint).toBeInstanceOf(THREE.LineSegments)
-    expect(faint.geometry.getAttribute("position").count).toBe(
-      drawn.length * 24
-    )
+    const { dim, strong } = rings(scene)
+    expect(scene.children).toHaveLength(2)
+    expect(dim).toBeInstanceOf(THREE.InstancedMesh)
+    expect(strong).toBeInstanceOf(THREE.Mesh)
+    // One shared geometry, so one set of vertices for every ring.
+    expect(strong.geometry).toBe(dim.geometry)
   })
 
-  it("lights one place strongly at a time, and none by default", () => {
+  it("puts a dim ring on the floor at each place's ring spot, from the start", () => {
+    const scene = new THREE.Scene()
+    buildHighlight(scene)
+    const { dim } = rings(scene)
+    expect(dim.count).toBe(HOTSPOT_SPOTS.length)
+    const matrix = new THREE.Matrix4()
+    const at = new THREE.Vector3()
+    RING_SPOTS.forEach((spot, i) => {
+      dim.getMatrixAt(i, matrix)
+      at.setFromMatrixPosition(matrix)
+      expect(at.x, spot.id).toBeCloseTo(spot.at[0])
+      expect(at.z, spot.id).toBeCloseTo(spot.at[1])
+      expect(at.y, spot.id).toBeGreaterThan(0)
+      expect(at.y, spot.id).toBeLessThan(FLOOR)
+    })
+  })
+
+  it("keeps the dim rings dimmer than the bright one, and neither writes depth", () => {
+    const scene = new THREE.Scene()
+    buildHighlight(scene)
+    const { dim, strong } = rings(scene)
+    const dimMaterial = dim.material as THREE.MeshBasicMaterial
+    const strongMaterial = strong.material as THREE.MeshBasicMaterial
+    expect(dimMaterial.opacity).toBeLessThan(strongMaterial.opacity)
+    expect(dimMaterial.transparent && strongMaterial.transparent).toBe(true)
+    expect(dimMaterial.depthWrite || strongMaterial.depthWrite).toBe(false)
+    expect(dimMaterial.vertexColors && strongMaterial.vertexColors).toBe(true)
+  })
+
+  it("shows the bright ring at one place at a time, and nowhere by default", () => {
     const scene = new THREE.Scene()
     const highlight = buildHighlight(scene)
-    const strong = () =>
-      scene.children.filter(
-        (child) => child.name.startsWith("place-strong:") && child.visible
-      )
-    expect(strong()).toHaveLength(0)
-    highlight.set("troli")
-    expect(strong().map((child) => child.name)).toEqual(["place-strong:troli"])
-    highlight.set("pintu")
-    expect(strong().map((child) => child.name)).toEqual(["place-strong:pintu"])
-    highlight.set(null)
-    expect(strong()).toHaveLength(0)
-  })
-
-  it("has a strong group for every place", () => {
-    const scene = new THREE.Scene()
-    buildHighlight(scene)
-    for (const { id } of HOTSPOT_SPOTS) {
-      expect(scene.getObjectByName(`place-strong:${id}`), id).toBeDefined()
+    const { strong } = rings(scene)
+    expect(strong.visible).toBe(false)
+    for (const id of ["troli", "pintu", "fiksi_sastra"] as const) {
+      highlight.set(id)
+      expect(strong.visible, id).toBe(true)
+      expect(strong.position.x, id).toBeCloseTo(ringOf(id)[0])
+      expect(strong.position.z, id).toBeCloseTo(ringOf(id)[1])
+      expect(strong.position.y, id).toBeLessThan(FLOOR)
+      expect(strong.scale.x).toBeCloseTo(RING_STRONG_SCALE)
     }
+    highlight.set(null)
+    expect(strong.visible).toBe(false)
   })
 
   it("reports a change only when the place changes (so one frame, no more)", () => {
@@ -573,7 +762,9 @@ describe("buildHighlight", () => {
     expect(highlight.set("katalog")).toBe(true)
     expect(highlight.set("katalog")).toBe(false)
     expect(highlight.current()).toBe("katalog")
+    expect(highlight.set("pintu")).toBe(true)
     expect(highlight.set(null)).toBe(true)
+    expect(highlight.current()).toBeNull()
   })
 
   it("leaves nothing in the scene once disposed", () => {
@@ -584,172 +775,140 @@ describe("buildHighlight", () => {
 })
 ```
 
-- [ ] **Step 2: Jalankan, pastikan gagal**
+- [ ] **Step 6: Jalankan, pastikan gagal**
 
 Run: `npx vitest run --maxWorkers=2 src/components/lobby/scene/highlight.test.ts`
 Expected: FAIL, "Failed to resolve import ./highlight".
 
-- [ ] **Step 3: Tulis `highlight.ts`**
+- [ ] **Step 7: Tulis `highlight.ts`**
 
 ```ts
 import * as THREE from "three"
-import type { HotspotId, Point3 } from "./layout"
-import { PICK_VOLUMES, type PickVolume } from "./pick-volumes"
+import type { HotspotId } from "./layout"
+import {
+  RING_INNER,
+  RING_OUTER,
+  RING_SPOTS,
+  RING_STRONG_SCALE,
+} from "./ring-spots"
 
 /** The accent colour (styles.css: --color-mint). */
-const EDGE_COLOR = "#2fe0b8"
-/** The still edge of every usable place: thin, dim, never animated (spec 3G §3.4). */
-const FAINT_OPACITY = 0.3
-const STRONG_FILL_OPACITY = 0.16
+const RING_COLOR = new THREE.Color("#2fe0b8")
+/** Just above the floor, so the ring never fights the floor's own surface. */
+const RING_Y = 0.03
+/** Every usable place's ring: thin, still, quiet (spec 3G §3.4). */
+const DIM_OPACITY = 0.4
+const STRONG_OPACITY = 1
 
-/** Pairs of corner indices (bit 0 = x, bit 1 = y, bit 2 = z) that share an edge. */
-const EDGES: ReadonlyArray<readonly [number, number]> = [
-  [0, 1],
-  [2, 3],
-  [4, 5],
-  [6, 7],
-  [0, 2],
-  [1, 3],
-  [4, 6],
-  [5, 7],
-  [0, 4],
-  [1, 5],
-  [2, 6],
-  [3, 7],
-]
+/** Rings of the band in the scene's horizontal plane; radial loops: inner edge, middle, outer edge. */
+const SEGMENTS = 48
 
-/** The 12 edges of a box as line-segment positions: x, y, z of each end. */
-export function boxEdgePositions(min: Point3, max: Point3): Array<number> {
-  const corner = (index: number) => [
-    index & 1 ? max[0] : min[0],
-    index & 2 ? max[1] : min[1],
-    index & 4 ? max[2] : min[2],
-  ]
-  return EDGES.flatMap(([a, b]) => [...corner(a), ...corner(b)])
+/**
+ * A flat ring facing up, soft at both edges: the vertex alpha is 0 on the
+ * inner and the outer loop and 1 on the middle one, so the band fades out
+ * without a texture (no canvas needed, cheap on phones).
+ */
+export function ringGeometry(): THREE.BufferGeometry {
+  const geometry = new THREE.RingGeometry(RING_INNER, RING_OUTER, SEGMENTS, 2)
+  // RingGeometry stands in the XY plane facing +Z: lay it on the floor.
+  geometry.rotateX(-Math.PI / 2)
+  const position = geometry.getAttribute("position")
+  const middle = (RING_INNER + RING_OUTER) / 2
+  const half = (RING_OUTER - RING_INNER) / 2
+  const colours = new Float32Array(position.count * 4)
+  for (let i = 0; i < position.count; i++) {
+    const radius = Math.hypot(position.getX(i), position.getZ(i))
+    const alpha = Math.max(0, 1 - Math.abs(radius - middle) / half)
+    colours.set([RING_COLOR.r, RING_COLOR.g, RING_COLOR.b, alpha], i * 4)
+  }
+  // Four components: three.js reads the fourth as per-vertex alpha.
+  geometry.setAttribute("color", new THREE.BufferAttribute(colours, 4))
+  return geometry
 }
 
+const ringMaterial = (opacity: number) =>
+  new THREE.MeshBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity,
+    depthWrite: false,
+    toneMapped: false,
+    // Draw over the floor's own surface, under nothing that stands on it.
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  })
+
 export type Highlight = {
-  /** Lights one place strongly (null: none); true when that changed anything. */
+  /** Brightens one place's ring (null: none); true when that changed anything. */
   set: (id: HotspotId | null) => boolean
   current: () => HotspotId | null
   dispose: () => void
 }
 
-function edgesOf(volumes: ReadonlyArray<PickVolume>): THREE.BufferGeometry {
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(
-      volumes.flatMap((v) => boxEdgePositions(v.min, v.max)),
-      3
-    )
-  )
-  return geometry
-}
-
-const lineMaterial = (opacity: number) =>
-  new THREE.LineBasicMaterial({
-    color: EDGE_COLOR,
-    transparent: true,
-    opacity,
-    // The edges follow the hit boxes, not the surfaces: drawn over everything.
-    depthTest: false,
-  })
-
 /**
- * The edges of the places a member can use (spec 3G §3.4): one thin line set
- * for all of them, always on, and a stronger one (full edges plus a faint
- * fill) for the one place that is picked or hovered. The edges are those of
- * the tap boxes: what glows is what answers a tap. Built in the "normal"
- * mode only; the still image has none.
+ * The glow rings on the floor (spec 3G §3.4): a dim ring in front of every
+ * usable place, always there and never animated, and a brighter, slightly
+ * wider one for the place that is picked or hovered. Two draw calls in all:
+ * one instanced mesh for the dim rings and one mesh for the bright ring, both
+ * sharing one geometry; no post-processing pass. Built in the "normal" mode
+ * only; the still image has dots instead.
  */
-export function buildHighlight(
-  scene: THREE.Scene,
-  volumes: ReadonlyArray<PickVolume> = PICK_VOLUMES
-): Highlight {
-  const drawn = volumes.filter((volume) => volume.outline)
-  const faintMaterial = lineMaterial(FAINT_OPACITY)
-  const strongMaterial = lineMaterial(1)
-  const fillMaterial = new THREE.MeshBasicMaterial({
-    color: EDGE_COLOR,
-    transparent: true,
-    opacity: STRONG_FILL_OPACITY,
-    depthTest: false,
-    depthWrite: false,
+export function buildHighlight(scene: THREE.Scene): Highlight {
+  const geometry = ringGeometry()
+  const dimMaterial = ringMaterial(DIM_OPACITY)
+  const strongMaterial = ringMaterial(STRONG_OPACITY)
+
+  const dim = new THREE.InstancedMesh(geometry, dimMaterial, RING_SPOTS.length)
+  dim.name = "place-rings"
+  dim.renderOrder = 10
+  dim.frustumCulled = false
+  const matrix = new THREE.Matrix4()
+  RING_SPOTS.forEach(({ at }, i) => {
+    dim.setMatrixAt(i, matrix.makeTranslation(at[0], RING_Y, at[1]))
   })
-  const disposables: Array<{ dispose: () => void }> = [
-    faintMaterial,
-    strongMaterial,
-    fillMaterial,
-  ]
+  dim.instanceMatrix.needsUpdate = true
 
-  const faint = new THREE.LineSegments(edgesOf(drawn), faintMaterial)
-  faint.name = "place-edges"
-  faint.renderOrder = 10
-  faint.frustumCulled = false
-  disposables.push(faint.geometry)
-  scene.add(faint)
+  const strong = new THREE.Mesh(geometry, strongMaterial)
+  strong.name = "place-ring-strong"
+  strong.renderOrder = 11
+  strong.frustumCulled = false
+  strong.visible = false
+  strong.scale.setScalar(RING_STRONG_SCALE)
 
-  const strong = new Map<HotspotId, THREE.Group>()
-  for (const id of new Set(drawn.map((volume) => volume.id))) {
-    const group = new THREE.Group()
-    group.name = `place-strong:${id}`
-    group.visible = false
-    const own = drawn.filter((volume) => volume.id === id)
-    const lines = new THREE.LineSegments(edgesOf(own), strongMaterial)
-    lines.renderOrder = 12
-    lines.frustumCulled = false
-    disposables.push(lines.geometry)
-    group.add(lines)
-    for (const v of own) {
-      const size = [0, 1, 2].map((k) => v.max[k] - v.min[k])
-      const fill = new THREE.Mesh(
-        new THREE.BoxGeometry(size[0], size[1], size[2]),
-        fillMaterial
-      )
-      fill.position.set(
-        (v.min[0] + v.max[0]) / 2,
-        (v.min[1] + v.max[1]) / 2,
-        (v.min[2] + v.max[2]) / 2
-      )
-      fill.renderOrder = 11
-      disposables.push(fill.geometry)
-      group.add(fill)
-    }
-    scene.add(group)
-    strong.set(id, group)
-  }
+  scene.add(dim, strong)
 
+  const spots = new Map(RING_SPOTS.map(({ id, at }) => [id, at] as const))
   let lit: HotspotId | null = null
   return {
     set(id) {
       if (id === lit) return false
-      if (lit) {
-        const old = strong.get(lit)
-        if (old) old.visible = false
-      }
       lit = id
-      if (id) {
-        const next = strong.get(id)
-        if (next) next.visible = true
-      }
+      const at = id ? spots.get(id) : undefined
+      if (at) strong.position.set(at[0], RING_Y + 0.005, at[1])
+      strong.visible = at !== undefined
       return true
     },
     current: () => lit,
     dispose() {
-      scene.remove(faint, ...strong.values())
-      for (const item of disposables) item.dispose()
+      scene.remove(dim, strong)
+      dim.dispose()
+      geometry.dispose()
+      dimMaterial.dispose()
+      strongMaterial.dispose()
     },
   }
 }
 ```
 
-- [ ] **Step 4: Jalankan tes `highlight`**
+Catatan: `scale.setScalar` menskalakan juga sumbu Y; geometri datar, jadi tidak berpengaruh.
 
-Run: `npx vitest run --maxWorkers=2 src/components/lobby/scene/highlight.test.ts`
+- [ ] **Step 8: Jalankan tes `highlight`**
+
+Run: `npx vitest run --maxWorkers=2 src/components/lobby/scene/highlight.test.ts src/components/lobby/scene/ring-spots.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Hubungkan ke `stage.ts`**
+- [ ] **Step 9: Hubungkan ke `stage.ts`**
 
 Perubahan di `src/components/lobby/scene/stage.ts`:
 1. Impor: `import { buildHighlight } from "./highlight"`, `import { PICK_VOLUMES } from "./pick-volumes"`, `import { pickAt } from "./picker"`.
@@ -757,12 +916,12 @@ Perubahan di `src/components/lobby/scene/stage.ts`:
    ```ts
    /** The place under a point of the scene, in CSS pixels from its top left (spec 3G §4); null where there is none. */
    pick: (x: number, y: number) => HotspotId | null
-   /** Lights one place strongly (null: none); the faint edges of every place are always drawn. A change asks for one frame (R1). */
+   /** Brightens one place's floor ring (null: none); the dim rings of every place are always drawn. A change asks for one frame (R1). */
    setHighlight: (id: HotspotId | null) => void
    ```
 3. Di `buildStage`, tepat setelah `motion.update(0, 0)`:
    ```ts
-   // The still image (mode "still") and the camera-bounds test have no edges.
+   // The still image (mode "still") and the camera-bounds test have no rings.
    const highlight = mode === "normal" ? buildHighlight(scene) : null
    ```
 4. Di objek yang dikembalikan, setelah `skip() { ... }`:
@@ -777,7 +936,7 @@ Perubahan di `src/components/lobby/scene/stage.ts`:
    ```
 5. Di `dispose()`, tepat sebelum `releaseScene()`: `highlight?.dispose()`.
 
-- [ ] **Step 6: Tulis tes `LobbyCanvas` (gagal)**
+- [ ] **Step 10: Tulis tes `LobbyCanvas` (gagal)**
 
 Di `LobbyCanvas.test.tsx`: tambahkan `setHighlight: vi.fn(),` dan `pick: vi.fn(() => null),` ke objek `stage` yang di-`vi.hoisted`, lalu tambah tes di dalam `describe("LobbyCanvas", ...)`:
 
@@ -812,9 +971,9 @@ Di `LobbyCanvas.test.tsx`: tambahkan `setHighlight: vi.fn(),` dan `pick: vi.fn((
 Run: `npx vitest run --maxWorkers=2 src/components/lobby/LobbyCanvas.test.tsx`
 Expected: FAIL (`highlight` bukan prop / `setHighlight` tidak dipanggil).
 
-- [ ] **Step 7: Prop `highlight` di `LobbyCanvas` dan `LobbyScene`**
+- [ ] **Step 11: Prop `highlight` di `LobbyCanvas` dan `LobbyScene`**
 
-`LobbyCanvas.tsx`: impor `type HotspotId` dari `./scene/layout` (gabung dengan impor `Point2, ShowcaseBook` yang ada); tambah prop `highlight?: HotspotId | null` (default `null`, dokumentasi: "The place lit strongly (spec 3G §3.4)"); tambah `const highlightRef = useRef(highlight)`; di `.then((stage) => {...})` setelah `stage.setShelves(...)` tambah `stage.setHighlight(highlightRef.current)`; tambah efek:
+`LobbyCanvas.tsx`: impor `type HotspotId` dari `./scene/layout` (gabung dengan impor `Point2, ShowcaseBook` yang ada); tambah prop `highlight?: HotspotId | null` (default `null`, dokumentasi: "The place whose floor ring is bright (spec 3G §3.4)"); tambah `const highlightRef = useRef(highlight)`; di `.then((stage) => {...})` setelah `stage.setShelves(...)` tambah `stage.setHighlight(highlightRef.current)`; tambah efek:
 
 ```tsx
   useEffect(() => {
@@ -825,18 +984,18 @@ Expected: FAIL (`highlight` bukan prop / `setHighlight` tidak dipanggil).
 
 `LobbyScene.tsx`: tambah prop `highlight?: HotspotId | null` (default `null`) dan teruskan `highlight={highlight}` ke `<LobbyCanvas>`.
 
-- [ ] **Step 8: Jalankan tes terkait**
+- [ ] **Step 12: Jalankan tes terkait**
 
 Run: `npx vitest run --maxWorkers=2 src/components/lobby/LobbyCanvas.test.tsx src/components/lobby/LobbyScene.test.tsx src/components/lobby/scene`
 Expected: PASS.
 
-- [ ] **Step 9: Lint, tipe, commit**
+- [ ] **Step 13: Lint, tipe, commit**
 
 Run: prettier pada berkas yang disentuh, `npm run lint`, `npx tsc --noEmit`.
 
 ```bash
-git add src/components/lobby/scene/highlight.ts src/components/lobby/scene/highlight.test.ts src/components/lobby/scene/stage.ts src/components/lobby/LobbyCanvas.tsx src/components/lobby/LobbyCanvas.test.tsx src/components/lobby/LobbyScene.tsx
-git commit -m "feat(3g): faint edges on every place and a strong highlight in the 3D room
+git add src/components/lobby/scene/ring-spots.ts src/components/lobby/scene/ring-spots.test.ts src/components/lobby/scene/highlight.ts src/components/lobby/scene/highlight.test.ts src/components/lobby/scene/stage.ts src/components/lobby/LobbyCanvas.tsx src/components/lobby/LobbyCanvas.test.tsx src/components/lobby/LobbyScene.tsx
+git commit -m "feat(3g): floor glow rings for every place and a bright ring for the picked one
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -3161,7 +3320,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 - [ ] **Step 6: Daftar cek manual pemilik di HP (catat di ledger, jangan dikerjakan agen)**
 
-- garis tepi terlihat tapi tidak ramai (bila terlalu "kotak": ganti `highlight.ts`, Task 2);
+- cincin cahaya di lantai terlihat tapi tidak ramai, dan tiap cincin terbaca sebagai milik bendanya (bila tidak: geser titiknya di `RING_AT`, atau ubah lebar/terang di `highlight.ts`, Task 2);
 - ketukan pada benda yang bertumpuk (meja tulis dan kursi, kotak paket dan rak);
 - kamera tegak: ruangan mengisi area di atas kartu "Lanjutkan membaca", geser ke kiri/kanan, "Pusatkan" muncul setelah digeser dan tidak tertutup sapaan;
 - kartu tidak menutupi benda yang disorot (kartu ada di dasar adegan; bila benda terpilih ada di bawah, pertimbangkan memindahkan kartu ke atas);
@@ -3175,23 +3334,23 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 | Bagian spec | Task |
 |---|---|
-| §2 keputusan 1–5 (ketuk dulu, kartu, garis tepi diam, tanpa angka di ruangan, desktop hover/klik) | 2, 4, 5 |
+| §2 keputusan 1–5 (ketuk dulu, kartu, cincin cahaya diam di lantai, tanpa angka di ruangan, desktop hover/klik) | 2, 4, 5 |
 | §2 keputusan 6 (kamera HP tegak) | 6 |
 | §2 keputusan 7 (kotak tak terlihat di 3D, tombol tak terlihat) | 1, 2, 4 |
 | §3.1 HP: ketuk, ketuk sama/Buka, benda lain, ruang kosong/geser, 10 px/300 ms | 4 (`tap.ts`, `tapPlace`, `onCameraGesture`) |
 | §3.2 desktop: hover, klik, `(hover: hover) and (pointer: fine)` | 4 (`useFinePointer`), 5 |
 | §3.3 keyboard: tombol, fokus → kartu, Enter, `aria-describedby` | 4 (tombol), 5 (fokus, describedby), tes E2E Task 7 |
-| §3.4 petunjuk: garis tipis diam, sorotan kuat, kalimat sekali, `glosa:place-hint-seen` + try/catch | 2, 6 |
+| §3.4 petunjuk: cincin tipis diam di lantai, cincin terang untuk yang dipilih, kalimat sekali, `glosa:place-hint-seen` + try/catch | 2, 6 |
 | §3.5 kartu + tabel keadaan + sumber data | 3 dan tabel "Sumber data" di atas |
 | §3.6 yang dihapus (pil, tanda, histeresis, angka/garis putus) | 4 (hapus `label-layout.ts`, CSS); gelembung ditambatkan di `HotspotLayer` |
 | §3.7 kamera HP tegak, batas zoom-out, "Pusatkan", sapaan | 6 (+ keputusan 10–11) |
-| §3.8 mode gambar diam: titik, kartu sama, WebGL gagal → `selected` dilepas | 4 (dots; `LobbyScene` mengirim `onTap(null)` di mode diam). **Celah kecil:** "WebGL gagal di tengah jalan, `selected` dilepas" ditangani karena `highlight` hanya efek visual dan kartu tetap berlaku di mode titik; tidak ada kode tambahan diperlukan, tapi tes E2E mobile (Task 7) memverifikasi alur titik |
-| §4 arsitektur (`pick-volumes`, `picker`, `highlight`, `stage`, `place-status`, `PlaceCard`, `HoverName`, `HotspotLayer`, hapus `label-layout`, `LobbyStage`, kamera) | 1–6 |
+| §3.8 mode gambar diam: titik, kartu sama, WebGL gagal → `selected` dilepas | 4 (dots; `LobbyScene` mengirim `onTap(null)` di mode diam). **Celah kecil:** "WebGL gagal di tengah jalan, `selected` dilepas" ditangani karena cincin hanya efek visual dan kartu tetap berlaku di mode titik; tidak ada kode tambahan diperlukan, tapi tes E2E mobile (Task 7) memverifikasi alur titik |
+| §4 arsitektur (`pick-volumes`, `picker`, `ring-spots`, `highlight`, `stage`, `place-status`, `PlaceCard`, `HoverName`, `HotspotLayer`, hapus `label-layout`, `LobbyStage`, kamera) | 1–6 |
 | §4 kasus khusus: `covered` → batalkan; alur R3 menutup kartu dan sorotan tetap di tujuan; data berubah → baris ikut; ukuran berubah → tetap | 4 (`cardId`/`highlight` memakai `paused`; `lit`; `facts` di `useMemo`) |
 | §5 pengujian unit/E2E/3D/pemindai/manual | tiap task + Task 7 |
 
-**2. Pemindaian placeholder:** tidak ada "TBD"/"nanti". Dua catatan kondisional di Task 1 Step 5 dan Task 6 Step 2/Task 7 Step 3 menyuruh memperbaiki *data* kotak bila tes geometri gagal; itu instruksi konkret, bukan placeholder.
+**2. Pemindaian placeholder:** tidak ada "TBD"/"nanti". Catatan kondisional di Task 1 Step 5, Task 2 Step 4, Task 6 Step 2 dan Task 7 Step 3 menyuruh memperbaiki *data* (kotak, atau titik cincin `RING_AT`) bila tes geometri gagal; itu instruksi konkret, bukan placeholder.
 
-**3. Konsistensi tipe/nama:** `PickVolume`/`PICK_VOLUMES`/`volumesOf`/`anchorOf` (Task 1) dipakai di Task 2 (`highlight.ts`) dan Task 4 (`HotspotLayer`). `pickAt` (Task 1) dipakai `stage.pick` (Task 2). `Stage.setHighlight` → `LobbyCanvas.highlight` → `LobbyScene.highlight` (Task 2) → `LobbyStage` (Task 4–5). `placeStatus`/`PlaceFacts` (Task 3) dipakai `LobbyStage` (Task 4); `readingDaysBetween` (Task 3). `createTapTracker` (Task 4). Props `LobbyScene`: `onTap`, `onCameraGesture`, `onFocusPlace` (Task 4), `onHover`, `describing` (Task 5), `highlight` (Task 2). `HotspotLayer`: `onKey`/`onTap`/`onFocusSpot`/`dots` (Task 4), `describing` (Task 5). `useFinePointer`, `useSheetHeight` (Task 4); `startView` (Task 6) dipakai ulang tanpa perubahan tanda tangan.
+**3. Konsistensi tipe/nama:** `PickVolume`/`PICK_VOLUMES`/`volumesOf`/`anchorOf` (Task 1; bidang `outline` diganti `main`) dipakai di Task 4 (`HotspotLayer`) dan tes Task 2. `RING_SPOTS`/`ringOf`/`RING_*` (Task 2, `ring-spots.ts`) dipakai `highlight.ts`; `buildHighlight(scene)` tidak lagi menerima daftar kotak. `pickAt` (Task 1) dipakai `stage.pick` (Task 2). `Stage.setHighlight` → `LobbyCanvas.highlight` → `LobbyScene.highlight` (Task 2) → `LobbyStage` (Task 4–5). `placeStatus`/`PlaceFacts` (Task 3) dipakai `LobbyStage` (Task 4); `readingDaysBetween` (Task 3). `createTapTracker` (Task 4). Props `LobbyScene`: `onTap`, `onCameraGesture`, `onFocusPlace` (Task 4), `onHover`, `describing` (Task 5), `highlight` (Task 2). `HotspotLayer`: `onKey`/`onTap`/`onFocusSpot`/`dots` (Task 4), `describing` (Task 5). `useFinePointer`, `useSheetHeight` (Task 4); `startView` (Task 6) dipakai ulang tanpa perubahan tanda tangan.
 
-**4. Ambiguitas/konflik spec yang perlu keputusan pemilik** (juga dilaporkan di pesan akhir): lihat daftar "Keputusan dan penyimpangan" nomor 1, 2, 8, 9, 10, 11.
+**4. Ambiguitas/konflik spec yang perlu keputusan pemilik** (juga dilaporkan di pesan akhir): semua 11 poin "Keputusan dan penyimpangan" sudah disetujui pemilik 2026-11-20 (poin 1 = cincin cahaya di lantai). Satu hal baru, lihat pesan akhir: titik cincin tiga tempat di meja tulis ditaruh sendiri di `RING_AT`, bukan `stand`.
