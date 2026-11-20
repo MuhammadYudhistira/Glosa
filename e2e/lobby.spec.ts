@@ -34,7 +34,7 @@ test("zones count the books and open the shelf; the reading table opens the last
   const scene = await openLobby(page)
   await expect(scene).toHaveAttribute("data-quality", "diam")
   await expect(
-    scene.getByRole("button", { name: "Fiksi & Sastra · 0 buku" })
+    scene.getByRole("button", { name: "Fiksi & Sastra", exact: true })
   ).toBeAttached()
   await scene
     .getByRole("button", { name: "Kursi baca", exact: true })
@@ -43,7 +43,7 @@ test("zones count the books and open the shelf; the reading table opens the last
 
   const again = await openLobby(page)
   await again
-    .getByRole("button", { name: "Misteri & Thriller · 1 buku" })
+    .getByRole("button", { name: "Misteri & Thriller", exact: true })
     .press("Enter")
   await expect(page).toHaveURL(/\/shelf\?genre=misteri_thriller$/)
   await expect(
@@ -55,7 +55,7 @@ test("trolley books get their shelf from the lobby", async ({ page }) => {
   await memberWithBook(page)
   const scene = await openLobby(page)
   await scene
-    .getByRole("button", { name: "Kotak buku baru · 1 buku" })
+    .getByRole("button", { name: "Kotak buku baru", exact: true })
     .press("Enter")
 
   const dialog = page.getByRole("dialog", { name: "Susun buku" })
@@ -68,7 +68,7 @@ test("trolley books get their shelf from the lobby", async ({ page }) => {
   ).toBeVisible()
   await page.keyboard.press("Escape")
   await expect(
-    scene.getByRole("button", { name: "Fiksi & Sastra · 1 buku" })
+    scene.getByRole("button", { name: "Fiksi & Sastra", exact: true })
   ).toBeAttached()
   await expect(
     scene.getByRole("button", { name: "Kotak buku baru", exact: true })
@@ -180,72 +180,64 @@ test("the fireplace, the door and the corkboard lead somewhere", async ({
   ).toBeVisible()
 })
 
-test("no two room labels overlap, and none covers the greeting", async ({
+test("the room has no fixed labels: every place is an unseen button, and the greeting covers none", async ({
   page,
   isMobile,
 }) => {
-  // Owner, 2026-11-13: an empty shelf at 1440 × 900 stacked its labels.
   await signInAndOnboard(page, await createConfirmedMember())
   const scene = await openLobby(page)
-  const welcome = page
-    .getByText("Rakmu masih kosong. Bawa buku pertamamu ke sini!")
-    .filter({ visible: true })
-  await expect(welcome).toBeVisible()
-  // The labels are placed once the scene's size is measured.
-  await expect(scene.locator('button[data-look="unplaced"]')).toHaveCount(0)
-  const boxes = await scene
-    .locator("button.lobby-hotspot")
-    .evaluateAll((buttons) =>
-      buttons.map((button) => {
-        const { left, right, top, bottom } = button.getBoundingClientRect()
-        return {
-          name: button.textContent,
-          mark: button.dataset.look === "mark",
-          seen: getComputedStyle(button).opacity !== "0",
-          left,
-          right,
-          top,
-          bottom,
-        }
-      })
-    )
-  // Every label shows, as a pill or a mark (owner, 2026-11-14: none hides).
-  expect(boxes).toHaveLength(18)
-  expect(boxes.filter((box) => !box.seen).map((box) => box.name)).toEqual([])
-  const meet = (
-    a: { left: number; right: number; top: number; bottom: number },
-    b: { left: number; right: number; top: number; bottom: number }
-  ) =>
-    a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
-  // A pill meets nothing; two marks may touch but never cover each other.
-  const centre = (box: (typeof boxes)[number]) => [
-    (box.left + box.right) / 2,
-    (box.top + box.bottom) / 2,
-  ]
-  const overlapping = boxes.flatMap((a, i) =>
-    boxes.slice(i + 1).flatMap((b) => {
-      if (a.mark && b.mark) {
-        const [ax, ay] = centre(a)
-        const [bx, by] = centre(b)
-        return Math.hypot(ax - bx, ay - by) < 7 ? [`${a.name} / ${b.name}`] : []
-      }
-      return meet(a, b) ? [`${a.name} / ${b.name}`] : []
-    })
+  const buttons = scene.locator("button.lobby-hotspot")
+  await expect(buttons).toHaveCount(18)
+  // No label is drawn: a button shows nothing but a dot (still image) or its focus ring.
+  const labelled = await buttons.evaluateAll(
+    (list) =>
+      list.filter((button) => {
+        const style = getComputedStyle(button)
+        return (
+          style.backgroundColor !== "rgba(0, 0, 0, 0)" ||
+          style.borderTopWidth !== "0px"
+        )
+      }).length
   )
-  expect(overlapping).toEqual([])
+  expect(labelled).toBe(0)
+  await expect(page.locator(".lobby-hotspot-measure")).toHaveCount(0)
   if (!isMobile) {
-    // The greeting and its EPUB note sit beside the desk card, clear of every label.
-    const stack = (await welcome.locator("..").boundingBox())!
-    const area = {
-      left: stack.x,
-      right: stack.x + stack.width,
-      top: stack.y,
-      bottom: stack.y + stack.height,
-    }
-    expect(boxes.filter((box) => meet(box, area)).map((b) => b.name)).toEqual(
-      []
-    )
+    const welcome = page
+      .getByText("Rakmu masih kosong. Bawa buku pertamamu ke sini!")
+      .filter({ visible: true })
+    await expect(welcome).toBeVisible()
   }
+})
+
+test("focusing a place shows its name card with its state; Buka opens its page", async ({
+  page,
+}) => {
+  await memberWithBook(page)
+  const scene = await openLobby(page)
+  const card = page.getByRole("group", { name: "Tempat dipilih" })
+  await expect(card).toHaveCount(0)
+  const trolley = scene.getByRole("button", {
+    name: "Kotak buku baru",
+    exact: true,
+  })
+  await trolley.focus()
+  await expect(card).toContainText("Kotak buku baru")
+  await expect(card).toContainText("1 buku belum diberi genre")
+  await expect(trolley).toHaveAccessibleDescription("1 buku belum diberi genre")
+  await card.getByRole("button", { name: "Buka" }).click()
+  await expect(page.getByRole("dialog", { name: "Susun buku" })).toBeVisible()
+  await expect(card).toHaveCount(0)
+})
+
+test("Enter on a focused place opens its page at once, with no second step", async ({
+  page,
+}) => {
+  await signInAndOnboard(page, await createConfirmedMember())
+  const scene = await openLobby(page)
+  await scene
+    .getByRole("button", { name: "Pengaturan", exact: true })
+    .press("Enter")
+  await expect(page).toHaveURL(/\/settings$/)
 })
 
 // Without WebGL the scene is at "diam" quality: Anda does not walk or perform
@@ -258,7 +250,9 @@ test.describe("a hotspot at still quality", () => {
 
   test("at still quality a click and a double click on Kilas balik each open /recap", async ({
     page,
+    isMobile,
   }) => {
+    test.skip(isMobile, "a phone taps once for the name card first")
     await signInAndOnboard(page, await createConfirmedMember())
     const scene = await openLobby(page)
     await expect(scene).toHaveAttribute("data-quality", "diam")
@@ -278,5 +272,36 @@ test.describe("a hotspot at still quality", () => {
       .getByRole("button", { name: "Sorotan", exact: true })
       .press("Enter")
     await expect(page.getByRole("dialog", { name: "Sorotan" })).toBeVisible()
+  })
+
+  test("on a phone a tap on a place shows its card, and a second tap opens it", async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, "a mouse opens at once")
+    await signInAndOnboard(page, await createConfirmedMember())
+    const scene = await openLobby(page)
+    const card = page.getByRole("group", { name: "Tempat dipilih" })
+    await fireplace(scene).click()
+    await expect(card).toContainText("Kilas balik")
+    await expect(card).toContainText("Rangkuman bacaanmu")
+    await expect(page).toHaveURL(/\/lobby$/)
+    await fireplace(scene).click()
+    await expect(page).toHaveURL(/\/recap$/)
+  })
+
+  test("on a phone a tap on empty space closes the card", async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, "a mouse has no card")
+    await signInAndOnboard(page, await createConfirmedMember())
+    const scene = await openLobby(page)
+    const card = page.getByRole("group", { name: "Tempat dipilih" })
+    await fireplace(scene).click()
+    await expect(card).toBeVisible()
+    const box = (await scene.boundingBox())!
+    await page.mouse.click(box.x + 4, box.y + 4)
+    await expect(card).toHaveCount(0)
   })
 })

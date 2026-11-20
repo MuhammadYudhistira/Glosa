@@ -158,7 +158,7 @@ test("the display cabinet opens Sudah dibaca", async ({ page }) => {
   await hydrated(page)
   const scene = page.getByRole("region", { name: "Adegan ruang baca" })
   await scene
-    .getByRole("button", { name: "Sudah dibaca · 1 buku" })
+    .getByRole("button", { name: "Sudah dibaca", exact: true })
     .press("Enter")
   await expect(page).toHaveURL(/\/shelf\?koleksi=selesai$/)
   await expect(

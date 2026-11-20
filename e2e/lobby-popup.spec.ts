@@ -121,7 +121,7 @@ test.describe("desktop", () => {
     await memberInLobby(page)
     const hotspot = page
       .getByRole("region", { name: "Adegan ruang baca" })
-      .getByRole("button", { name: "Fiksi & Sastra · 0 buku" })
+      .getByRole("button", { name: "Fiksi & Sastra", exact: true })
     await hotspot.focus()
     await hotspot.press("Enter")
     await expect(page).toHaveURL(/\/shelf\?genre=fiksi_sastra$/)
@@ -133,7 +133,7 @@ test.describe("desktop", () => {
     await expect(
       page
         .getByRole("region", { name: "Adegan ruang baca" })
-        .getByRole("button", { name: "Fiksi & Sastra · 0 buku" })
+        .getByRole("button", { name: "Fiksi & Sastra", exact: true })
     ).toBeFocused()
   })
 

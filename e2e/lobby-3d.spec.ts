@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test"
+import { devices, expect, test, type Page } from "@playwright/test"
 import sharp from "sharp"
 import {
   createConfirmedMember,
@@ -12,6 +12,15 @@ test.describe.configure({ mode: "serial" })
 
 const sceneOf = (page: Page) =>
   page.getByRole("region", { name: "Adegan ruang baca" })
+
+/** The middle of a place's (unseen) button: where its anchor shows on the canvas. */
+async function centreOf(page: Page, name: string) {
+  const box = await sceneOf(page)
+    .getByRole("button", { name, exact: true })
+    .boundingBox()
+  if (!box) throw new Error(`no button ${name}`)
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+}
 
 /** Share of the screenshot painted with the magenta void of the test mode. */
 async function voidShare(png: Buffer): Promise<number> {
@@ -105,7 +114,9 @@ test("a hotspot on the 3D scene opens the upload", async ({ page }) => {
   await signInAndOnboard(page, await createConfirmedMember())
   const scene = sceneOf(page)
   await expect(scene.locator("canvas")).toBeVisible({ timeout: 120_000 })
-  await scene.getByRole("button", { name: "Meja tulis", exact: true }).click()
+  const desk = await centreOf(page, "Meja tulis")
+  // The mouse is a fine pointer: one click opens (no name card).
+  await page.mouse.click(desk.x, desk.y)
   await expect(
     page.getByRole("dialog", { name: "Bawa buku ke rak" })
   ).toBeVisible()
@@ -119,7 +130,8 @@ test("with reduced motion the 3D lobby stays still", async ({ page }) => {
   await expect(scene).toHaveAttribute("data-quality", "diam")
   await expect(scene.locator("canvas")).toBeVisible({ timeout: 120_000 })
   // Still quality acts at once: no walk first.
-  await scene.getByRole("button", { name: "Kilas balik", exact: true }).click()
+  const at = await centreOf(page, "Kilas balik")
+  await page.mouse.click(at.x, at.y)
   await expect(page).toHaveURL(/\/recap$/)
 })
 
@@ -164,13 +176,77 @@ test("at the start view every hotspot sits inside the scene", async ({
     const box = await button.boundingBox()
     if (!box) continue
     const name = (await button.getAttribute("aria-label")) ?? `#${i}`
-    expect(box.x, name).toBeGreaterThanOrEqual(sceneBox.x - 1)
-    expect(box.y, name).toBeGreaterThanOrEqual(sceneBox.y - 1)
-    expect(box.x + box.width, name).toBeLessThanOrEqual(
-      sceneBox.x + sceneBox.width + 1
-    )
-    expect(box.y + box.height, name).toBeLessThanOrEqual(
-      sceneBox.y + sceneBox.height + 1
-    )
+    const cx = box.x + box.width / 2
+    const cy = box.y + box.height / 2
+    expect(cx, name).toBeGreaterThanOrEqual(sceneBox.x)
+    expect(cx, name).toBeLessThanOrEqual(sceneBox.x + sceneBox.width)
+    expect(cy, name).toBeGreaterThanOrEqual(sceneBox.y)
+    expect(cy, name).toBeLessThanOrEqual(sceneBox.y + sceneBox.height)
   }
+})
+
+test("the mouse over a place names it in the room, and a click opens it", async ({
+  page,
+}) => {
+  test.setTimeout(300_000)
+  await signInAndOnboard(page, await createConfirmedMember())
+  const scene = sceneOf(page)
+  await expect(scene.locator("canvas")).toBeVisible({ timeout: 120_000 })
+  const desk = await centreOf(page, "Meja tulis")
+  await page.mouse.move(desk.x, desk.y)
+  await expect(scene.locator(".lobby-hover-name")).toHaveText("Meja tulis")
+  await page.mouse.move(2, 2)
+  await expect(scene.locator(".lobby-hover-name")).toHaveCount(0)
+})
+
+test.describe("on a phone held upright", () => {
+  // The device's browser type is fixed by the project; the rest is a Pixel 5.
+  const { defaultBrowserType: _browser, ...pixel } = devices["Pixel 5"]
+  test.use(pixel)
+
+  test("a tap names a place, a second tap opens it, a tap on empty space closes the card", async ({
+    page,
+  }) => {
+    test.setTimeout(300_000)
+    await signInAndOnboard(page, await createConfirmedMember())
+    const scene = sceneOf(page)
+    await expect(scene.locator("canvas")).toBeVisible({ timeout: 120_000 })
+    const card = page.getByRole("group", { name: "Tempat dipilih" })
+    const sceneBox = (await scene.boundingBox())!
+    // The room fills the scene's height: Kilas balik's anchor is on screen.
+    const at = await centreOf(page, "Kilas balik")
+    expect(at.x).toBeGreaterThan(sceneBox.x)
+    expect(at.x).toBeLessThan(sceneBox.x + sceneBox.width)
+
+    await page.touchscreen.tap(at.x, at.y)
+    await expect(card).toContainText("Kilas balik")
+    await expect(page).toHaveURL(/\/lobby$/)
+
+    await page.touchscreen.tap(sceneBox.x + 6, sceneBox.y + 6)
+    await expect(card).toHaveCount(0)
+
+    await page.touchscreen.tap(at.x, at.y)
+    await expect(card).toContainText("Kilas balik")
+    await page.touchscreen.tap(at.x, at.y)
+    await expect(page).toHaveURL(/\/recap$/)
+  })
+
+  test("Pusatkan shows only after the camera has moved", async ({ page }) => {
+    test.setTimeout(300_000)
+    await signInAndOnboard(page, await createConfirmedMember())
+    const scene = sceneOf(page)
+    await expect(scene.locator("canvas")).toBeVisible({ timeout: 120_000 })
+    const center = scene.getByRole("button", { name: "Pusatkan" })
+    await expect(center).toHaveCount(0)
+    const box = (await scene.boundingBox())!
+    const x = box.x + box.width / 2
+    const y = box.y + box.height / 2
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(x - 120, y, { steps: 4 })
+    await page.mouse.up()
+    await expect(center).toBeVisible()
+    await center.click()
+    await expect(center).toHaveCount(0)
+  })
 })
