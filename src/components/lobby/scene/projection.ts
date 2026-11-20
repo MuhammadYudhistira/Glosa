@@ -17,7 +17,7 @@ const R6 = Math.sqrt(6)
 export const SCREEN_RIGHT: Point3 = [1 / R2, 0, -1 / R2]
 export const SCREEN_UP: Point3 = [-1 / R6, 2 / R6, -1 / R6]
 /** Toward the camera; with the two above, an orthonormal frame. */
-const SCREEN_OUT: Point3 = [1 / R3, 1 / R3, 1 / R3]
+export const SCREEN_OUT: Point3 = [1 / R3, 1 / R3, 1 / R3]
 
 const dot = (a: Point3, b: Point3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 const clamp = (value: number, min: number, max: number) =>
