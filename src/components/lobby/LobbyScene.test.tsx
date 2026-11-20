@@ -425,6 +425,17 @@ describe("LobbyScene", () => {
         return { ...rendered, stage }
       }
 
+      it("hands focus to the scene when Pusatkan, which then goes, is pressed", async () => {
+        await goPhone()
+        act(() => {
+          canvas.props?.onView(panBy(startView(phone), 0.2, 0, phone), phone)
+        })
+        const button = screen.getByRole("button", { name: "Pusatkan" })
+        button.focus()
+        fireEvent.click(button)
+        expect(screen.getByLabelText("Adegan ruang baca")).toHaveFocus()
+      })
+
       it("shows Pusatkan only after the camera left its first view", async () => {
         await goPhone()
         expect(screen.queryByRole("button", { name: "Pusatkan" })).toBeNull()

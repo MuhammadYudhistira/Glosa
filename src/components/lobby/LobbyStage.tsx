@@ -16,7 +16,7 @@ import {
 import { AdminDeskCard } from "@/components/lobby/AdminDeskCard"
 import { BookDetailPanel } from "@/components/lobby/BookDetailPanel"
 import { ContinueSheet } from "@/components/lobby/ContinueSheet"
-import { Greeting } from "@/components/lobby/Greeting"
+import { Greeting, useGreetingShown } from "@/components/lobby/Greeting"
 import { LibraryMap } from "@/components/lobby/LibraryMap"
 import {
   ShelfWelcome,
@@ -100,6 +100,8 @@ export function LobbyStage({
   popup: boolean
 }) {
   const { kembali } = useSearch({ strict: false })
+  // Above the popup condition: one greeting per visit, whatever opens over it.
+  const greeting = useGreetingShown(kembali === 1)
   const navigate = useNavigate()
   const router = useRouter()
   const wide = useWideScreen()
@@ -525,7 +527,7 @@ export function LobbyStage({
       {!popup && (
         <>
           <div className="lobby-notices lobby-overlay">
-            {kembali === 1 && <Greeting name={user.displayName} />}
+            {greeting && <Greeting name={user.displayName} />}
             {offline && (
               <output className="lobby-notice">
                 Kamu sedang offline. Rak ditampilkan dari salinan terakhir di

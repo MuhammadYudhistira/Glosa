@@ -1247,8 +1247,6 @@
     position: absolute;
     left: 1rem;
     top: 1rem;
-    /* above the greeting and the notices: never covered (spec 3G §3.7) */
-    z-index: 12;
   }
   @media (min-width: 1024px) {
     /* Beside the floating menu, below the top band. */
@@ -1259,7 +1257,7 @@
   }
   /* On a phone the scene ends above the "Lanjutkan membaca" sheet, so the
      room the camera fits is the room the member sees (spec 3G §3.7). */
-  @media (max-width: 1023px) {
+  @media (max-width: 1023px) and (max-aspect-ratio: 1/1) {
     .lobby-scene {
       bottom: min(var(--lobby-sheet-h, 0px), 9rem);
     }
@@ -1588,6 +1586,13 @@
       z-index: 1;
       float: right;
       margin: -1.25rem -1.25rem 0 0;
+    }
+  }
+  /* The notices sit below the "Pusatkan" row (top 1rem + a small button), so
+     they never cover it (spec 3G §3.7). */
+  @media (max-width: 1023px) {
+    .lobby-notices {
+      top: 3.75rem;
     }
   }
   @media (min-width: 1024px) {

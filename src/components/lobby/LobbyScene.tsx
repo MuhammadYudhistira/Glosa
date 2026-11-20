@@ -354,10 +354,12 @@ export function LobbyScene({
 
   // On a phone held upright "Pusatkan" waits for the camera to leave its
   // first view (spec 3G §3.7); elsewhere it is always there, as before.
+  // Not before the first view is known: until then there is nothing to centre.
   const upright =
     camera !== null && camera.viewport.height > camera.viewport.width
   const away =
     camera !== null && viewMoved(camera.view, startView(camera.viewport))
+  const showCenter = camera !== null && live && (!upright || away)
 
   return (
     <section
@@ -447,12 +449,16 @@ export function LobbyScene({
           y={shownHover.y}
         />
       )}
-      {live && (!upright || away) && (
+      {showCenter && (
         <Button
           variant="secondary"
           size="sm"
           className="lobby-center lobby-overlay"
-          onClick={() => moveCamera((current) => startView(current.viewport))}
+          onClick={() => {
+            moveCamera((current) => startView(current.viewport))
+            // On an upright phone the button goes now: keep the keyboard here.
+            sectionRef.current?.focus()
+          }}
         >
           Pusatkan
         </Button>

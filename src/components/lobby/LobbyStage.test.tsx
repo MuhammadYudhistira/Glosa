@@ -177,6 +177,7 @@ async function pickFromSearch() {
 
 describe("LobbyStage", () => {
   afterEach(() => {
+    vi.useRealTimers()
     unstubWideScreen()
     scene.props = null
     handle.perform.mockReset()
@@ -496,6 +497,35 @@ describe("LobbyStage", () => {
     await act(() => router.navigate({ to: "/lobby" }))
     expect(await screen.findByRole("main")).toHaveClass("lobby-page")
     expect(screen.queryByRole("region", { name: sherlock.title })).toBeNull()
+  })
+
+  it("greets once per visit: a popup closing does not bring the greeting back", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    stubWideScreen(true)
+    const { router } = renderWithRouter(<RoutedStage />, "/lobby?kembali=1")
+    expect(
+      await screen.findByText(/Selamat datang kembali, Ani Baca/)
+    ).toBeVisible()
+    act(() => void vi.advanceTimersByTime(6000))
+    expect(screen.queryByText(/Selamat datang kembali/)).toBeNull()
+    await act(() => router.navigate({ to: "/shelf" }))
+    await act(() => router.navigate({ to: "/lobby", search: { kembali: 1 } }))
+    expect(await screen.findByRole("main")).toBeInTheDocument()
+    expect(screen.queryByText(/Selamat datang kembali/)).toBeNull()
+  })
+
+  it("keeps the greeting's time running behind a popup, without restarting it", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    stubWideScreen(true)
+    const { router } = renderWithRouter(<RoutedStage />, "/lobby?kembali=1")
+    await screen.findByText(/Selamat datang kembali/)
+    act(() => void vi.advanceTimersByTime(4000))
+    await act(() => router.navigate({ to: "/shelf" }))
+    await act(() => router.navigate({ to: "/lobby", search: { kembali: 1 } }))
+    expect(await screen.findByRole("main")).toBeInTheDocument()
+    expect(screen.getByText(/Selamat datang kembali/)).toBeVisible()
+    act(() => void vi.advanceTimersByTime(2100))
+    expect(screen.queryByText(/Selamat datang kembali/)).toBeNull()
   })
 
   it("still shows a book picked from the search over a popup", async () => {
