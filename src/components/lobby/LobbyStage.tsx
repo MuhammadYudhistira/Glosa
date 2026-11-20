@@ -190,6 +190,8 @@ export function LobbyStage({
   const [chosen, setChosen] = useState<HotspotId | null>(null)
   /** The place Anda is on the way to: it stays lit until its page opens (spec 3G §4). */
   const [lit, setLit] = useState<HotspotId | null>(null)
+  /** The place under the mouse cursor (spec 3G §3.2). */
+  const [hovered, setHovered] = useState<HotspotId | null>(null)
   // A tap handed down earlier still sees the card open now (like `running`).
   const chosenNow = useRef<HotspotId | null>(null)
   useEffect(() => {
@@ -223,7 +225,6 @@ export function LobbyStage({
     if (popup) {
       setSelectedId(null)
       setCorkboard(false)
-      setChosen(null)
     }
   }
   const selected = books.find((book) => book.id === selectedId) ?? null
@@ -257,6 +258,16 @@ export function LobbyStage({
   // the tapped hotspot's page must not open over it.
   // The scene pauses for a popup or the corkboard's dialog alike.
   const paused = popup || corkboard
+  // Whatever covers the scene closes the card and puts the light out, or
+  // they would come back after it (a popup, or the corkboard however opened).
+  const [wasPaused, setWasPaused] = useState(paused)
+  if (wasPaused !== paused) {
+    setWasPaused(paused)
+    if (paused) {
+      setChosen(null)
+      setHovered(null)
+    }
+  }
   const covered = useRef(paused)
   useEffect(() => {
     covered.current = paused
@@ -305,7 +316,7 @@ export function LobbyStage({
   )
   // Behind a popup or the corkboard's dialog nothing is picked or lit.
   const cardId = paused ? null : chosen
-  const highlight = paused ? null : (lit ?? cardId)
+  const highlight = paused ? null : (lit ?? hovered ?? cardId)
   useSheetHeight(
     pageRef,
     `${popup}:${summary.lastRead?.id ?? ""}:${books.length === 0}`
@@ -367,7 +378,9 @@ export function LobbyStage({
     // From the keyboard the page opens at once and Anda is in the activity's
     // pose at once (spec 3F §4A.1): no walk, no activity, nothing awaited.
     if (how.keyboard) {
-      void sceneRef.current?.perform(id, { instant: true })
+      void sceneRef.current
+        ?.perform(id, { instant: true })
+        .catch(() => undefined)
     } else if (sceneRef.current) {
       running.current = true
       target.current = id
@@ -375,13 +388,16 @@ export function LobbyStage({
       newer.current = null
       try {
         await sceneRef.current.perform(id)
+      } catch {
+        // The scene failed under Anda (it is gone, or going): no page.
+        return
       } finally {
         running.current = false
+        setLit(null)
       }
       // Set by a tap during the await, which the compiler cannot see.
       const next = (newer.current as HotspotId | null) ?? id
       newer.current = null
-      setLit(null)
       if (covered.current) return
       open(next)
       return
@@ -478,6 +494,12 @@ export function LobbyStage({
           onActivate={(id, how) => void activate(id, how)}
           onTap={tapPlace}
           onCameraGesture={() => setChosen(null)}
+          onHover={setHovered}
+          onFocusPlace={(id) => {
+            // While Anda is on the way the walk decides, not the focus.
+            if (!paused && !running.current) setChosen(id)
+          }}
+          describing={cardId ? { id: cardId, domId: statusId } : null}
           onLiveChange={setSceneLive}
           // The corkboard's dialog covers the scene like a route popup.
           paused={paused}

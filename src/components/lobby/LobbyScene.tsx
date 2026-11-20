@@ -14,6 +14,7 @@ import type { PlantStage } from "@/lib/reading-habit"
 import type { SlotId } from "@/lib/shop/catalog"
 import type { Placements } from "@/lib/shop/types"
 import { HotspotLayer } from "./HotspotLayer"
+import { HoverName } from "./HoverName"
 import { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyStill, STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import type { HotspotModel } from "./lobby-data"
@@ -99,6 +100,7 @@ export function LobbyScene({
   onTap,
   onCameraGesture,
   onFocusPlace,
+  onHover,
   onLiveChange,
   paused = false,
   showcase = [],
@@ -108,6 +110,7 @@ export function LobbyScene({
   shelves = EMPTY_HUES,
   decor = {},
   highlight = null,
+  describing = null,
   allow3d = true,
   ref,
 }: {
@@ -122,6 +125,8 @@ export function LobbyScene({
   onCameraGesture?: () => void
   /** A place's button took focus that is not a press. */
   onFocusPlace?: (id: HotspotId) => void
+  /** The place under the mouse cursor changed (spec 3G §3.2). */
+  onHover?: (id: HotspotId | null) => void
   /** Whether a live 3D camera is on screen, so showSpot can move it. */
   onLiveChange?: (live: boolean) => void
   /** Behind a popup: the 3D scene keeps its last frame (spec 1F §4.5). */
@@ -140,6 +145,8 @@ export function LobbyScene({
   decor?: Placements | null
   /** The place whose floor ring is bright (spec 3G §3.4). */
   highlight?: HotspotId | null
+  /** The place whose name card is open: its button is described by the card's line (spec 3G §3.3). */
+  describing?: { id: HotspotId; domId: string } | null
   /** False keeps WebGL off, e.g. while the lobby is hidden behind a page on phones (spec 1F §5). */
   allow3d?: boolean
   ref?: Ref<LobbySceneHandle>
@@ -261,6 +268,38 @@ export function LobbyScene({
     onLiveChange?.(live)
   }, [live, onLiveChange])
 
+  const [hover, setHover] = useState<{
+    id: HotspotId
+    x: number
+    y: number
+  } | null>(null)
+  // Nothing is hovered behind a popup, or without a live camera; nor is the
+  // name from before a pause brought back after it.
+  if (hover && (paused || !live)) setHover(null)
+  const shownHover = live && !paused ? hover : null
+  const hoverId = shownHover?.id ?? null
+  // Only a change is reported: at first nothing is under the cursor.
+  const reportedHover = useRef<HotspotId | null>(null)
+  useEffect(() => {
+    if (reportedHover.current === hoverId) return
+    reportedHover.current = hoverId
+    onHover?.(hoverId)
+  }, [hoverId, onHover])
+  /** The pick waiting for the next frame, if any. */
+  const hoverFrame = useRef<{ id: number } | null>(null)
+  const hoverAt = useRef<{ x: number; y: number } | null>(null)
+  useEffect(
+    () => () => {
+      if (hoverFrame.current) cancelAnimationFrame(hoverFrame.current.id)
+    },
+    []
+  )
+  /** The name goes, and a pick still waiting for its frame finds nothing. */
+  const dropHover = () => {
+    hoverAt.current = null
+    setHover(null)
+  }
+
   const tracker = useRef(createTapTracker())
   /** The scene's own pointer events; buttons and links on top of it keep theirs. */
   const overOverlay = (event: { target: EventTarget }) =>
@@ -271,6 +310,7 @@ export function LobbyScene({
     return {
       id: event.pointerId,
       type: event.pointerType,
+      button: event.button,
       time: event.timeStamp,
       x: event.clientX - box.left,
       y: event.clientY - box.top,
@@ -282,6 +322,23 @@ export function LobbyScene({
   }
   function onPointerMove(event: PointerEvent<HTMLElement>) {
     if (tracker.current.move(sample(event))) onCameraGesture?.()
+    if (!live || paused || event.pointerType !== "mouse") return
+    // No name over a button, nor while a button is held: a drag pans the camera.
+    if (event.buttons !== 0 || overOverlay(event)) {
+      dropHover()
+      return
+    }
+    hoverAt.current = sample(event)
+    // At most one pick a frame, however fast the mouse moves.
+    if (hoverFrame.current) return
+    const frame = { id: 0 }
+    hoverFrame.current = frame
+    frame.id = requestAnimationFrame(() => {
+      if (hoverFrame.current === frame) hoverFrame.current = null
+      const at = hoverAt.current
+      const id = at ? (stageRef.current?.pick(at.x, at.y) ?? null) : null
+      setHover(at && id ? { id, x: at.x, y: at.y } : null)
+    })
   }
   function onPointerUp(event: PointerEvent<HTMLElement>) {
     if (overOverlay(event)) {
@@ -301,12 +358,18 @@ export function LobbyScene({
       tabIndex={0}
       data-quality={quality ?? undefined}
       data-live={live ? "true" : undefined}
+      data-hover={shownHover ? "" : undefined}
       className="lobby-scene"
       onKeyDown={onKeyDown}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={() => tracker.current.cancel()}
+      // A press released outside the scene never sends its pointerup here.
+      onPointerLeave={() => {
+        tracker.current.cancel()
+        dropHover()
+      }}
       onWheel={() => {
         if (live) onCameraGesture?.()
       }}
@@ -363,8 +426,16 @@ export function LobbyScene({
             if (live) reveal(id)
             onFocusPlace?.(id)
           }}
+          describing={describing}
         />
       </div>
+      {shownHover && (
+        <HoverName
+          name={hotspots.find((spot) => spot.id === shownHover.id)?.label ?? ""}
+          x={shownHover.x}
+          y={shownHover.y}
+        />
+      )}
       {live && (
         <Button
           variant="secondary"

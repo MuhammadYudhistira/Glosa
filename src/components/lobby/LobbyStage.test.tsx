@@ -25,6 +25,9 @@ const scene = vi.hoisted(() => ({
     onActivate?: Activate
     onTap?: (id: string | null) => void
     onCameraGesture?: () => void
+    onHover?: (id: string | null) => void
+    onFocusPlace?: (id: string) => void
+    describing?: { id: string; domId: string } | null
     highlight?: string | null
     onLiveChange?: (live: boolean) => void
     notes?: Array<string>
@@ -610,6 +613,97 @@ describe("LobbyStage", () => {
       await act(async () => finish())
       expect(router.state.location.pathname).toBe("/settings")
       expect(scene.props!.highlight).toBeNull()
+    })
+
+    it("lights the place under a mouse cursor, and nothing else", async () => {
+      pointer.fine = true
+      stubWideScreen(true)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onHover!("toko"))
+      expect(scene.props!.highlight).toBe("toko")
+      expect(card()).toBeNull()
+      await act(async () => scene.props!.onHover!(null))
+      expect(scene.props!.highlight).toBeNull()
+    })
+
+    it("shows the card on keyboard focus, on any device, and describes the button by it", async () => {
+      pointer.fine = true
+      stubWideScreen(true)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onFocusPlace!("perapian"))
+      expect(card()).toHaveTextContent("Kilas balik")
+      expect(scene.props!.highlight).toBe("perapian")
+      const status = screen.getByText("Rangkuman bacaanmu")
+      expect(scene.props!.describing).toEqual({
+        id: "perapian",
+        domId: status.id,
+      })
+    })
+
+    it("keeps the card closed for a focus while Anda is on the way", async () => {
+      stubWideScreen(false)
+      handle.perform.mockImplementation(
+        () => new Promise<void>(() => undefined)
+      )
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () =>
+        scene.props!.onActivate!("perapian", { keyboard: false })
+      )
+      await act(async () => scene.props!.onFocusPlace!("pintu"))
+      expect(card()).toBeNull()
+    })
+
+    it("forgets the lit place when the corkboard opens, so it is dark once it closes", async () => {
+      pointer.fine = true
+      stubWideScreen(true)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onHover!("toko"))
+      await act(async () =>
+        scene.props!.onActivate!("papan", { keyboard: true })
+      )
+      const dialog = await screen.findByRole("dialog", { name: "Sorotan" })
+      fireEvent.click(within(dialog).getByRole("button", { name: "Tutup" }))
+      await vi.waitFor(() =>
+        expect(screen.queryByRole("dialog", { name: "Sorotan" })).toBeNull()
+      )
+      expect(scene.props!.highlight).toBeNull()
+    })
+
+    it("lets the lit place go and opens nothing when Anda's activity fails", async () => {
+      stubWideScreen(false)
+      handle.perform.mockImplementation(() =>
+        Promise.reject(new Error("the scene went"))
+      )
+      const { router } = renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () =>
+        scene.props!.onActivate!("perapian", { keyboard: false })
+      )
+      expect(scene.props!.highlight).toBeNull()
+      expect(router.state.location.pathname).toBe("/lobby")
+      // Nothing is left running: the next tap starts afresh.
+      handle.perform.mockImplementation(() => Promise.resolve())
+      await act(async () =>
+        scene.props!.onActivate!("pintu", { keyboard: false })
+      )
+      expect(router.state.location.pathname).toBe("/settings")
+    })
+
+    it("still opens the page from the keyboard when Anda's pose fails", async () => {
+      stubWideScreen(false)
+      handle.perform.mockImplementation(() =>
+        Promise.reject(new Error("the scene went"))
+      )
+      const { router } = renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () =>
+        scene.props!.onActivate!("pintu", { keyboard: true })
+      )
+      expect(router.state.location.pathname).toBe("/settings")
     })
 
     it("takes the keyboard straight to the page and clears the card", async () => {

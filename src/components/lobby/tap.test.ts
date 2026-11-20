@@ -7,6 +7,7 @@ const touch = (x: number, y: number, time: number, id = 1) => ({
   y,
   time,
   type: "touch",
+  button: 0,
 })
 
 describe("createTapTracker", () => {
@@ -40,13 +41,25 @@ describe("createTapTracker", () => {
 
   it("lets a mouse click take as long as it likes", () => {
     const tracker = createTapTracker()
-    tracker.down({ id: 1, x: 5, y: 6, time: 0, type: "mouse" })
+    tracker.down({ id: 1, x: 5, y: 6, time: 0, type: "mouse", button: 0 })
     expect(
-      tracker.up({ id: 1, x: 5, y: 6, time: 5000, type: "mouse" })
+      tracker.up({ id: 1, x: 5, y: 6, time: 5000, type: "mouse", button: 0 })
     ).toEqual({
       x: 5,
       y: 6,
     })
+  })
+
+  it("takes only the main mouse button's click as a tap, but any button's drag as the camera", () => {
+    const tracker = createTapTracker()
+    for (const button of [1, 2]) {
+      const mouse = { id: 1, x: 5, y: 6, type: "mouse", button }
+      tracker.down({ ...mouse, time: 0 })
+      expect(tracker.up({ ...mouse, time: 50 })).toBeNull()
+    }
+    const right = { id: 1, type: "mouse", button: 2 }
+    tracker.down({ ...right, x: 0, y: 0, time: 0 })
+    expect(tracker.move({ ...right, x: 30, y: 0, time: 20 })).toBe("gesture")
   })
 
   it("takes a second finger as a camera gesture and no tap comes of it", () => {

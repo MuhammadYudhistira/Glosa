@@ -20,6 +20,7 @@ export function HotspotLayer({
   onKey,
   onTap,
   onFocusSpot,
+  describing = null,
 }: {
   hotspots: ReadonlyArray<HotspotModel>
   view: View
@@ -34,6 +35,8 @@ export function HotspotLayer({
   onTap: (id: HotspotId) => void
   /** Focus that is not a press: the place is picked, and the camera may follow. */
   onFocusSpot?: (id: HotspotId) => void
+  /** The place the open name card describes: its button is described by the card's line (spec 3G §3.3). */
+  describing?: { id: HotspotId; domId: string } | null
 }) {
   // A press on a button focuses it before the click lands: that focus must
   // not pick the place a second time (the tap would then open it). Kept per
@@ -56,6 +59,9 @@ export function HotspotLayer({
               type="button"
               className="lobby-hotspot"
               data-dot={dots ? "" : undefined}
+              aria-describedby={
+                describing?.id === hotspot.id ? describing.domId : undefined
+              }
               onPointerDown={() => {
                 pressed.current = hotspot.id
               }}

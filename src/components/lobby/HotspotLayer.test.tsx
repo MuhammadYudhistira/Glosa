@@ -112,6 +112,17 @@ describe("HotspotLayer", () => {
     expect(onFocusSpot).not.toHaveBeenCalled()
   })
 
+  it("describes only the place whose card is open", () => {
+    renderLayer([sherlock], { describing: { id: "pintu", domId: "kartu-1" } })
+    expect(screen.getByRole("button", { name: "Pengaturan" })).toHaveAttribute(
+      "aria-describedby",
+      "kartu-1"
+    )
+    expect(
+      screen.getByRole("button", { name: "Kilas balik" })
+    ).not.toHaveAttribute("aria-describedby")
+  })
+
   it("does not pick a pressed dot when the press takes focus from another place", () => {
     const { onFocusSpot } = renderLayer([sherlock], { dots: true })
     const before = screen.getByRole("button", { name: "Kursi baca" })

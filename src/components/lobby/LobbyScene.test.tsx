@@ -351,6 +351,38 @@ describe("LobbyScene", () => {
         expect(onCameraGesture).toHaveBeenCalledTimes(2)
       })
 
+      it("takes only a click of the main mouse button as a tap", async () => {
+        const onTap = vi.fn()
+        const { stage } = await goLiveWith({ onTap })
+        stage.pick.mockReturnValue("troli")
+        const canvasEl = screen.getByTestId("lobby-canvas")
+        const click = (button: number) => {
+          const at = { pointerId: 1, pointerType: "mouse", button }
+          fireEvent.pointerDown(canvasEl, { ...at, clientX: 50, clientY: 50 })
+          fireEvent.pointerUp(canvasEl, { ...at, clientX: 50, clientY: 50 })
+        }
+        click(1)
+        click(2)
+        expect(onTap).not.toHaveBeenCalled()
+        click(0)
+        expect(onTap).toHaveBeenCalledWith("troli")
+      })
+
+      it("forgets a press released outside the scene", async () => {
+        const onTap = vi.fn()
+        const onCameraGesture = vi.fn()
+        const { scene, stage } = await goLiveWith({ onTap, onCameraGesture })
+        stage.pick.mockReturnValue("troli")
+        const canvasEl = screen.getByTestId("lobby-canvas")
+        down(canvasEl, 10, 10)
+        // Its pointerup lands outside the scene: only the leave is seen.
+        fireEvent.pointerLeave(scene, { pointerId: 1, pointerType: "touch" })
+        down(canvasEl, 60, 60)
+        up(canvasEl, 60, 60)
+        expect(onCameraGesture).not.toHaveBeenCalled()
+        expect(onTap).toHaveBeenCalledWith("troli")
+      })
+
       it("leaves a press on a button to the button", async () => {
         const onTap = vi.fn()
         const { stage } = await goLiveWith({ onTap })
@@ -359,6 +391,91 @@ describe("LobbyScene", () => {
         up(button, 5, 5)
         expect(stage.pick).not.toHaveBeenCalled()
         expect(onTap).not.toHaveBeenCalled()
+      })
+    })
+
+    describe("the mouse over the scene", () => {
+      beforeEach(() => {
+        vi.stubGlobal("requestAnimationFrame", (run: FrameRequestCallback) => {
+          run(0)
+          return 1
+        })
+        vi.stubGlobal("cancelAnimationFrame", () => undefined)
+      })
+      afterEach(() => vi.unstubAllGlobals())
+      const move = (el: Element, x: number, y: number, buttons = 0) =>
+        fireEvent.pointerMove(el, {
+          pointerId: 1,
+          pointerType: "mouse",
+          clientX: x,
+          clientY: y,
+          buttons,
+        })
+
+      it("names the place under the cursor and reports it once", async () => {
+        const onHover = vi.fn()
+        const { scene, stage } = await goLiveWith({ onHover })
+        stage.pick.mockReturnValue("troli")
+        move(screen.getByTestId("lobby-canvas"), 200, 120)
+        expect(stage.pick).toHaveBeenCalledWith(200, 120)
+        expect(
+          screen.getByText("Kotak buku baru", { selector: ".lobby-hover-name" })
+        ).toBeVisible()
+        expect(scene).toHaveAttribute("data-hover")
+        move(screen.getByTestId("lobby-canvas"), 205, 124)
+        expect(onHover).toHaveBeenCalledTimes(1)
+        expect(onHover).toHaveBeenLastCalledWith("troli")
+      })
+
+      it("drops the name when the cursor leaves the place, or the scene", async () => {
+        const onHover = vi.fn()
+        const { scene, stage } = await goLiveWith({ onHover })
+        stage.pick.mockReturnValue("troli")
+        move(screen.getByTestId("lobby-canvas"), 200, 120)
+        stage.pick.mockReturnValue(null)
+        move(screen.getByTestId("lobby-canvas"), 10, 10)
+        expect(document.querySelector(".lobby-hover-name")).toBeNull()
+        expect(onHover).toHaveBeenLastCalledWith(null)
+        stage.pick.mockReturnValue("troli")
+        move(screen.getByTestId("lobby-canvas"), 200, 120)
+        fireEvent.pointerLeave(scene)
+        expect(document.querySelector(".lobby-hover-name")).toBeNull()
+      })
+
+      it("drops the name over a button on the scene", async () => {
+        const { stage } = await goLiveWith({})
+        stage.pick.mockReturnValue("troli")
+        move(screen.getByTestId("lobby-canvas"), 200, 120)
+        move(screen.getByRole("button", { name: "Pusatkan" }), 20, 20)
+        expect(document.querySelector(".lobby-hover-name")).toBeNull()
+      })
+
+      it("ignores touch, a dragged camera and a paused scene", async () => {
+        const { stage, update } = await goLiveWith({})
+        stage.pick.mockReturnValue("troli")
+        fireEvent.pointerMove(screen.getByTestId("lobby-canvas"), {
+          pointerId: 2,
+          pointerType: "touch",
+          clientX: 50,
+          clientY: 50,
+        })
+        move(screen.getByTestId("lobby-canvas"), 60, 60, 1)
+        expect(stage.pick).not.toHaveBeenCalled()
+        update({ paused: true })
+        move(screen.getByTestId("lobby-canvas"), 60, 60)
+        expect(document.querySelector(".lobby-hover-name")).toBeNull()
+      })
+
+      it("does not bring a name back after a pause from before it", async () => {
+        const onHover = vi.fn()
+        const { stage, update } = await goLiveWith({ onHover })
+        stage.pick.mockReturnValue("troli")
+        move(screen.getByTestId("lobby-canvas"), 200, 120)
+        update({ paused: true })
+        expect(onHover).toHaveBeenLastCalledWith(null)
+        update({ paused: false })
+        expect(document.querySelector(".lobby-hover-name")).toBeNull()
+        expect(onHover).toHaveBeenLastCalledWith(null)
       })
     })
 

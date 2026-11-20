@@ -11,12 +11,15 @@ export type PointerSample = {
   time: number
   /** `event.pointerType`. */
   type: string
+  /** `event.button`: 0 is the main one (a mouse's left button, a finger). */
+  button: number
 }
 
 /**
  * Tells a tap from a drag or a pinch of the camera (spec 3G §3.1). Pure: the
  * scene feeds it its pointer events. A mouse click is held to the distance
- * only, so a slow click on desktop still opens.
+ * only, so a slow click on desktop still opens; only the main button taps,
+ * though any button drags the camera.
  */
 export function createTapTracker() {
   let start: PointerSample | null = null
@@ -47,6 +50,7 @@ export function createTapTracker() {
       const began = start
       start = null
       if (spoiled) return null
+      if (began.type === "mouse" && began.button !== 0) return null
       const quick =
         began.type === "mouse" || sample.time - began.time < TAP_MAX_MS
       return quick ? { x: began.x, y: began.y } : null
