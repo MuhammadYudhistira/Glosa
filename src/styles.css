@@ -2388,6 +2388,19 @@
   :active-view-transition-type(antar-halaman)::view-transition-new(root) {
     animation: vt-rise-in 260ms cubic-bezier(0.22, 0.8, 0.24, 1) both;
   }
+  :active-view-transition-type(
+    ke-halaman,
+    ke-ruang,
+    antar-halaman
+  )::view-transition-old(root),
+  :active-view-transition-type(
+    ke-halaman,
+    ke-ruang,
+    antar-halaman
+  )::view-transition-new(root) {
+    /* The UA adds light (plus-lighter) for a cross-fade; here a card must cover. */
+    mix-blend-mode: normal;
+  }
 }
 @keyframes vt-card-up {
   from {
