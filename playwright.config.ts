@@ -27,7 +27,11 @@ export default defineConfig({
   testDir: "e2e",
   fullyParallel: true,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
+  // In CI the github reporter turns each failure into an annotation on the
+  // run, readable without the job's log.
+  reporter: process.env.CI
+    ? [["list"], ["github"], ["html", { open: "never" }]]
+    : "list",
   // Dev-mode SSR + cloud round-trips are slow when 4 workers hit a cold dev server.
   expect: { timeout: 15_000 },
   // Some steps wait up to 30 s (uploads, opening a book), so a whole test needs more than the 30 s default.

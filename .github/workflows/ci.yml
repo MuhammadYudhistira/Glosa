@@ -77,7 +77,12 @@ jobs:
   # The E2E without the 3D lobby, split three ways. Each shard is its own
   # Playwright run with its own run id, so its members and their teardown are
   # its own (e2e/global-teardown.ts): shards and other runs may overlap.
+  # They start after the database tests: both at once overload the Supabase
+  # dev project (the heaviest database tests timed out, the shards took twice
+  # as long). They still run when the database tests fail.
   e2e:
+    needs: test-db
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     environment: dev
     timeout-minutes: 30
