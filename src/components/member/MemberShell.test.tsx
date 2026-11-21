@@ -8,7 +8,7 @@ import {
   createRouter,
 } from "@tanstack/react-router"
 import { useEffect } from "react"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { MemberShell } from "./MemberShell"
 
 function renderAt(url: string) {
@@ -43,6 +43,8 @@ function renderAt(url: string) {
 }
 
 describe("MemberShell", () => {
+  afterEach(() => vi.unstubAllGlobals())
+
   it("floats the phone's dock, naming every tab and labelling only the current one", async () => {
     const { container } = renderAt("/shelf")
     await screen.findAllByRole("navigation", { name: "Navigasi utama" })
@@ -75,7 +77,52 @@ describe("MemberShell", () => {
     field.remove()
   })
 
-  it("offers the sidebar and the tab bar, with the current page marked", async () => {
+  it("re-places the dock's pill when the dock is resized, and ignores a 0-wide box", async () => {
+    let notify: () => void = () => {}
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: () => void) {
+          notify = callback
+        }
+        observe() {}
+        disconnect() {}
+      }
+    )
+    let box = { left: 0, width: 0 }
+    const left = vi
+      .spyOn(HTMLElement.prototype, "offsetLeft", "get")
+      .mockImplementation(() => box.left)
+    const width = vi
+      .spyOn(HTMLElement.prototype, "offsetWidth", "get")
+      .mockImplementation(() => box.width)
+    try {
+      const { container } = renderAt("/shelf")
+      await screen.findAllByRole("navigation", { name: "Navigasi utama" })
+      const pill = container.querySelector<HTMLElement>(".member-dock-pill")!
+      // Hidden on a wide screen: nothing to place.
+      expect(pill.style.width).toBe("")
+      box = { left: 90, width: 100 }
+      act(() => notify())
+      expect(pill.style.left).toBe("90px")
+      expect(pill.style.width).toBe("100px")
+      // Rotated: the tabs moved.
+      box = { left: 140, width: 160 }
+      act(() => notify())
+      expect(pill.style.left).toBe("140px")
+      expect(pill.style.width).toBe("160px")
+      // Hidden again (0 wide): the pill keeps its last place.
+      box = { left: 0, width: 0 }
+      act(() => notify())
+      expect(pill.style.width).toBe("160px")
+    } finally {
+      left.mockRestore()
+      width.mockRestore()
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it("offers the sidebar and the dock, with the current page marked", async () => {
     renderAt("/shelf?genre=lainnya")
     const navs = await screen.findAllByRole("navigation", {
       name: "Navigasi utama",
