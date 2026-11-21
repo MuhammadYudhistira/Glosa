@@ -7,6 +7,20 @@ const ROOM = "/lobby"
 const DOCK_PAGES = new Set([ROOM, ...POPUP_PATHS])
 
 /**
+ * Whether the browser can scope a view transition by type. router-core only
+ * passes the types when it can; without it a plain startViewTransition would
+ * cross-fade the whole page on every navigation, so we ask for none then.
+ */
+export function supportsTransitionTypes(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof CSS !== "undefined" &&
+    typeof CSS.supports === "function" &&
+    CSS.supports("selector(:active-view-transition-type(a))")
+  )
+}
+
+/**
  * The view transition for a navigation on a phone (spec poles mobile §5), or
  * false for none: wide screens, reduced motion, a change of query only, and
  * pages without the dock (the reader, sign-in, the card page).

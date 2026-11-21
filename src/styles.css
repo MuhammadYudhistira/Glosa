@@ -591,7 +591,7 @@
   }
   @media (min-width: 1024px) {
     .shelf-grid {
-      grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
     }
   }
   .shelf-icon-button {
@@ -658,6 +658,10 @@
   }
   .settings-row:hover {
     background: var(--muted);
+  }
+  .settings-row:focus-visible {
+    outline: 2px solid var(--color-mint);
+    outline-offset: -2px;
   }
   .settings-row[data-danger] {
     color: var(--destructive);
@@ -2435,6 +2439,15 @@
     antar-halaman
   )::view-transition-new(root) {
     /* The UA adds light (plus-lighter) for a cross-fade; here a card must cover. */
+    mix-blend-mode: normal;
+  }
+  /* The dock stays put: only its live pill moves (spec §5.2). Hiding the old
+     snapshot and not fading the new one leaves no ghost pill on the old tab. */
+  ::view-transition-old(dock) {
+    display: none;
+  }
+  ::view-transition-new(dock) {
+    animation: none;
     mix-blend-mode: normal;
   }
 }

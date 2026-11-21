@@ -61,8 +61,10 @@ export function MemberDock({ pathname }: { pathname: string }) {
     )
   }, [current, place])
 
-  // The tabs move with the viewport (rotation, resize, font load) and the dock
-  // is 0 wide while hidden on a wide screen: re-place the pill, no animation.
+  // The tabs move with the viewport (rotation, resize) and the dock is 0 wide
+  // while hidden on a wide screen: re-place the pill, no animation. The nav
+  // itself keeps its size when the web font swaps in but the tabs inside
+  // shift, so re-place once the fonts are ready too.
   useLayoutEffect(() => {
     const nav = navRef.current
     if (!nav || typeof ResizeObserver === "undefined") return
@@ -71,7 +73,18 @@ export function MemberDock({ pathname }: { pathname: string }) {
       if (box) last.current = box
     })
     observer.observe(nav)
-    return () => observer.disconnect()
+    let alive = true
+    // jsdom has no document.fonts.
+    const fonts = (document as { fonts?: FontFaceSet }).fonts
+    void fonts?.ready.then(() => {
+      if (!alive) return
+      const box = place()
+      if (box) last.current = box
+    })
+    return () => {
+      alive = false
+      observer.disconnect()
+    }
   }, [place])
 
   return (

@@ -45,8 +45,16 @@ export function DeleteAccountDialog({
     }
   }
 
+  function handleOpenChange(next: boolean) {
+    if (!next) {
+      setError(null)
+      setDeleting(false)
+    }
+    onOpenChange(next)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="shelf-sheet max-lg:top-auto max-lg:bottom-0 max-lg:max-w-full max-lg:translate-y-0 max-lg:rounded-b-none max-lg:pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
         <DialogHeader>
           <DialogTitle>Hapus akun</DialogTitle>

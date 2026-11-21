@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { transitionTypes } from "./page-transition"
+import { supportsTransitionTypes, transitionTypes } from "./page-transition"
 
 const phone = { wide: false, reducedMotion: false }
 
@@ -34,5 +34,12 @@ describe("transitionTypes", () => {
     expect(transitionTypes("/read/abc", "/lobby", phone)).toBe(false)
     expect(transitionTypes("/login", "/lobby", phone)).toBe(false)
     expect(transitionTypes("/welcome", "/lobby", phone)).toBe(false)
+  })
+})
+
+describe("supportsTransitionTypes", () => {
+  it("is false when the browser cannot scope a transition by type", () => {
+    // jsdom has no CSS.supports.
+    expect(supportsTransitionTypes()).toBe(false)
   })
 })
