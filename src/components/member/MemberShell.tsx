@@ -7,8 +7,9 @@ import {
 } from "lucide-react"
 import type { ReactNode } from "react"
 import { Logo } from "@/components/ui/logo"
+import { MemberDock } from "./MemberDock"
 
-const LINKS = [
+export const LINKS = [
   { to: "/lobby", label: "Ruang baca", short: "Ruang", Icon: LibraryIcon },
   { to: "/shelf", label: "Rak Saya", short: "Rak", Icon: BookOpenIcon },
   {
@@ -33,7 +34,7 @@ export function hasShell(pathname: string): boolean {
   return !pathname.startsWith("/read/") && pathname !== "/welcome"
 }
 
-const isCurrent = (pathname: string, to: string) =>
+export const isCurrent = (pathname: string, to: string) =>
   pathname === to || pathname.startsWith(`${to}/`)
 
 /** Pages with the lobby behind them on desktop (spec 1F §3, spec 2 §6.4). */
@@ -92,22 +93,7 @@ export function MemberShell({ children }: { children: ReactNode }) {
       >
         {children}
       </div>
-      {shown && (
-        <nav aria-label="Navigasi utama" className="member-tabbar">
-          {LINKS.map(({ to, label, short, Icon }) => (
-            <Link
-              key={to}
-              to={to}
-              className="member-tab"
-              aria-label={short === label ? undefined : label}
-              aria-current={isCurrent(pathname, to) ? "page" : undefined}
-            >
-              <Icon aria-hidden="true" className="size-5" />
-              <span>{short}</span>
-            </Link>
-          ))}
-        </nav>
-      )}
+      {shown && <MemberDock pathname={pathname} />}
     </>
   )
 }

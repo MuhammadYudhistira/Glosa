@@ -109,7 +109,8 @@
   --sidebar-border: rgb(120 210 195 / 0.2);
   --sidebar-ring: #2fe0b8;
   /* Member navigation (plan 1D, Task 7). */
-  --tabbar-h: calc(3.5rem + env(safe-area-inset-bottom));
+  /* The floating dock and its gap above the phone's gesture area (spec poles mobile §4). */
+  --dock-space: calc(3.5rem + 1.5rem + env(safe-area-inset-bottom));
   --sidebar-w: 13rem;
   /* Lobby on desktop: the top band and the floating menu (after the 1D review). */
   --lobby-bar-h: 4.25rem;
@@ -1124,29 +1125,74 @@
   }
   /* Only beside the navigation: the reader and the card page are full screen. */
   .member-main[data-shell] {
-    padding-bottom: var(--tabbar-h);
+    padding-bottom: var(--dock-space);
   }
-  .member-tabbar {
+  .member-dock {
     position: fixed;
-    inset-inline: 0;
-    bottom: 0;
+    left: 50%;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
     z-index: 30;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    height: var(--tabbar-h);
-    padding-bottom: env(safe-area-inset-bottom);
-    border-top: 1px solid var(--border);
-    background: var(--color-panel);
-    backdrop-filter: blur(8px);
-  }
-  .member-tab {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 0.15rem;
-    font-size: 0.7rem;
+    justify-content: space-around;
+    width: min(100% - 2rem, 22.5rem);
+    height: 3.5rem;
+    padding: 0 0.5rem;
+    translate: -50% 0;
+    border: 1px solid rgb(120 200 180 / 0.16);
+    border-radius: 9999px;
+    background: rgb(16 31 34 / 0.78);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 12px 28px rgb(0 0 0 / 0.5);
+    view-transition-name: dock;
+    transition:
+      opacity 0.2s,
+      translate 0.2s;
+  }
+  .member-dock[data-typing] {
+    opacity: 0;
+    translate: -50% 1rem;
+    pointer-events: none;
+  }
+  .member-dock-pill {
+    position: absolute;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    left: 0;
+    border-radius: 9999px;
+    background: var(--color-mint);
+    transform-origin: left center;
+  }
+  .member-dock-tab {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 2.5rem;
+    padding: 0 0.8rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
     color: var(--muted-foreground);
+  }
+  .member-dock-tab[aria-current="page"] {
+    color: #04110e;
+  }
+  .member-dock-tab:focus-visible {
+    outline: 2px solid var(--color-mint);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .member-dock {
+      transition: none;
+    }
+  }
+  /* The room's own colour under the dock, while the room is shown on a phone. */
+  @media (max-width: 1023px) {
+    body:has(.lobby-page:not([data-popup])) {
+      background: #1b120c;
+    }
   }
   .member-nav-link {
     display: flex;
@@ -1159,7 +1205,6 @@
   .member-nav-link:hover {
     background: var(--muted);
   }
-  .member-tab[aria-current="page"],
   .member-nav-link[aria-current="page"] {
     color: var(--color-mint);
   }
@@ -1196,7 +1241,7 @@
     .member-main[data-shell][data-floating] {
       padding-left: 0;
     }
-    .member-tabbar {
+    .member-dock {
       display: none;
     }
   }
@@ -1475,7 +1520,7 @@
      panels float over it. */
   .lobby-page {
     position: relative;
-    height: calc(100dvh - var(--tabbar-h));
+    height: calc(100dvh - var(--dock-space));
     overflow: hidden;
   }
   .lobby-topbar {
@@ -1627,7 +1672,7 @@
   .update-notice {
     position: fixed;
     inset-inline: 1rem;
-    bottom: calc(var(--tabbar-h) + 0.75rem);
+    bottom: calc(var(--dock-space) + 0.75rem);
     z-index: 40;
     display: flex;
     flex-wrap: wrap;
@@ -2296,7 +2341,7 @@
  * wins over the min-h-dvh utility.
  */
 .member-main[data-shell] > main {
-  min-height: calc(100dvh - var(--tabbar-h));
+  min-height: calc(100dvh - var(--dock-space));
 }
 @media (min-width: 1024px) {
   .member-main[data-shell] > main {

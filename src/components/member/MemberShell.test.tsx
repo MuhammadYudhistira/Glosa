@@ -43,6 +43,38 @@ function renderAt(url: string) {
 }
 
 describe("MemberShell", () => {
+  it("floats the phone's dock, naming every tab and labelling only the current one", async () => {
+    const { container } = renderAt("/shelf")
+    await screen.findAllByRole("navigation", { name: "Navigasi utama" })
+    const dock = container.querySelector(".member-dock")
+    expect(dock).not.toBeNull()
+    const tabs = within(dock as HTMLElement).getAllByRole("link")
+    expect(tabs.map((tab) => tab.getAttribute("aria-label"))).toEqual([
+      "Ruang baca",
+      "Rak Saya",
+      "Kosakata",
+      "Pengaturan",
+    ])
+    const labels = dock!.querySelectorAll(".member-dock-label")
+    expect([...labels].map((label) => label.textContent)).toEqual(["Rak"])
+  })
+
+  it("hides the dock while a text field has the focus", async () => {
+    const { container } = renderAt("/settings")
+    await screen.findAllByRole("navigation", { name: "Navigasi utama" })
+    const field = document.createElement("input")
+    document.body.append(field)
+    act(() => field.focus())
+    expect(container.querySelector(".member-dock")).toHaveAttribute(
+      "data-typing"
+    )
+    act(() => field.blur())
+    expect(container.querySelector(".member-dock")).not.toHaveAttribute(
+      "data-typing"
+    )
+    field.remove()
+  })
+
   it("offers the sidebar and the tab bar, with the current page marked", async () => {
     renderAt("/shelf?genre=lainnya")
     const navs = await screen.findAllByRole("navigation", {
