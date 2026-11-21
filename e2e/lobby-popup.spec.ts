@@ -185,3 +185,33 @@ test("on phones Rak Saya and Pengaturan stay pages", async ({
   ).toBeVisible()
   await expect(sceneOf(page)).toBeHidden()
 })
+
+test("the phone's dock moves between the room and its pages, and hides while typing", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile, "the dock is the phone's navigation")
+  await memberInLobby(page)
+  const dock = page.locator("nav.member-dock")
+  await expect(dock.getByRole("link", { name: "Ruang baca" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  )
+  await dock.getByRole("link", { name: "Rak Saya" }).click()
+  await expect(page).toHaveURL(/\/shelf$/)
+  await expect(dock.getByRole("link", { name: "Rak Saya" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  )
+  await expect(dock.locator(".member-dock-label")).toHaveText("Rak")
+  await page.getByRole("button", { name: "Cari" }).click()
+  await expect(page.getByLabel("Cari judul atau penulis")).toBeFocused()
+  await expect(dock).toHaveAttribute("data-typing", "")
+  await page.getByLabel("Cari judul atau penulis").blur()
+  await expect(dock).not.toHaveAttribute("data-typing")
+  // Pressed, not clicked: the dev-only devtools button sits over the last tab.
+  await dock.getByRole("link", { name: "Pengaturan" }).press("Enter")
+  await expect(page).toHaveURL(/\/settings$/)
+  await dock.getByRole("link", { name: "Ruang baca" }).click()
+  await expect(page).toHaveURL(/\/lobby$/)
+})
