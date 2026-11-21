@@ -211,7 +211,7 @@ test.describe("on a phone held upright", () => {
     await signInAndOnboard(page, await createConfirmedMember())
     const scene = sceneOf(page)
     await expect(scene.locator("canvas")).toBeVisible({ timeout: 120_000 })
-    const card = page.getByRole("group", { name: "Tempat dipilih" })
+    const card = page.locator(".lobby-card")
     const sceneBox = (await scene.boundingBox())!
     // The room fills the scene's height: Kilas balik's anchor is on screen.
     const at = await centreOf(page, "Kilas balik")

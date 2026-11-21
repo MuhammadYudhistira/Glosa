@@ -16,6 +16,13 @@ import { type Box2, walkable } from "./walk"
 export type Point2 = readonly [number, number]
 export type Point3 = readonly [number, number, number]
 
+/** A point from one value per axis (0: x, 1: y, 2: z). */
+export const pointOf = (at: (axis: 0 | 1 | 2) => number): Point3 => [
+  at(0),
+  at(1),
+  at(2),
+]
+
 /** The floor is width × depth; `pad` is the margin the camera keeps around the room. */
 export const ROOM = { width: 10, depth: 10, height: 4.6, pad: 0.9 } as const
 

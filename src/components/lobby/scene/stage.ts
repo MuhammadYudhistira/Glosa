@@ -50,6 +50,8 @@ import {
   type Viewport,
   baseHalfHeight,
   clampView,
+  resizeView,
+  startView,
 } from "./projection"
 import { MEASURE_MS, type Quality, nextQuality } from "./quality"
 import { buildRoom } from "./room"
@@ -70,7 +72,12 @@ export type StageOptions = {
   host: HTMLElement
   quality: Quality
   mode: StageMode
-  view: View
+  /**
+   * The first view; without one, the first view for the host's size as the
+   * stage measures it once built (spec 3G §3.7), which it then follows when
+   * the host is resized until the camera moves.
+   */
+  view?: View
   anda: Point2
   onView: (view: View, viewport: Viewport) => void
   onQuality: (quality: Quality) => void
@@ -378,7 +385,9 @@ function buildStage(
     width: Math.max(1, host.clientWidth),
     height: Math.max(1, host.clientHeight),
   }
-  let view = clampView(options.view, viewport)
+  let view = options.view
+    ? clampView(options.view, viewport)
+    : startView(viewport)
 
   function placeCamera() {
     camera.position.set(
@@ -554,11 +563,13 @@ function buildStage(
     const width = host.clientWidth
     const height = host.clientHeight
     if (width === 0 || height === 0) return
+    const before = viewport
     viewport = { width, height }
     renderer.setSize(width, height)
     composer.setPixelRatio(renderer.getPixelRatio())
     composer.setSize(width, height)
-    view = clampView(view, viewport)
+    // A camera still at its first view keeps the new size's first view.
+    view = resizeView(view, before, viewport)
     frameCamera()
     options.onView(view, viewport)
     requestRender()

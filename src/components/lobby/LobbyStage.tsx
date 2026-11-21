@@ -435,6 +435,34 @@ export function LobbyStage({
     setChosen(id)
   }
 
+  /** A focus that hands the keyboard back to a place: its card stays closed. */
+  const quietFocus = useRef(false)
+  /**
+   * Focus left a place or its card (spec 3G §3.3): the card goes with it,
+   * unless the focus went to a place or the card. Nowhere (another window,
+   * or a press on what takes no focus, like a button in Safari) is no leave:
+   * the press may be on the card's Buka.
+   */
+  function focusLeft(next: EventTarget | null) {
+    if (!(next instanceof Element)) return
+    if (next.closest(".lobby-hotspot, .lobby-card")) return
+    setChosen(null)
+  }
+  /** Escape in the card: it closes, and the keyboard goes back to its place. */
+  function closeCard() {
+    const place = [
+      ...(pageRef.current?.querySelectorAll<HTMLElement>(".lobby-hotspot") ??
+        []),
+    ].find((button) => button.getAttribute("aria-describedby") === statusId)
+    quietFocus.current = true
+    try {
+      place?.focus()
+    } finally {
+      quietFocus.current = false
+    }
+    setChosen(null)
+  }
+
   /** What each hotspot opens. */
   function open(id: HotspotId) {
     if (id === "meja-baca") {
@@ -508,8 +536,12 @@ export function LobbyStage({
           onHover={setHovered}
           onFocusPlace={(id) => {
             // While Anda is on the way the walk decides, not the focus.
-            if (!paused && !running.current) setChosen(id)
+            if (!paused && !running.current && !quietFocus.current) {
+              setChosen(id)
+            }
           }}
+          onLeavePlace={focusLeft}
+          onEscapePlace={() => setChosen(null)}
           describing={cardId ? { id: cardId, domId: statusId } : null}
           onLiveChange={setSceneLive}
           // The corkboard's dialog covers the scene like a route popup.
@@ -605,6 +637,8 @@ export function LobbyStage({
               status={placeStatus(cardId, facts)}
               statusId={statusId}
               onOpen={(how) => void activate(cardId, how)}
+              onClose={closeCard}
+              onLeave={focusLeft}
             />
           )}
         </>

@@ -20,6 +20,8 @@ export function HotspotLayer({
   onKey,
   onTap,
   onFocusSpot,
+  onBlurSpot,
+  onEscape,
   describing = null,
 }: {
   hotspots: ReadonlyArray<HotspotModel>
@@ -35,6 +37,10 @@ export function HotspotLayer({
   onTap: (id: HotspotId) => void
   /** Focus that is not a press: the place is picked, and the camera may follow. */
   onFocusSpot?: (id: HotspotId) => void
+  /** A place lost focus to `next` (null: nothing, or another window). */
+  onBlurSpot?: (next: EventTarget | null) => void
+  /** Escape on a place. */
+  onEscape?: () => void
   /** The place the open name card describes: its button is described by the card's line (spec 3G §3.3). */
   describing?: { id: HotspotId; domId: string } | null
 }) {
@@ -68,8 +74,12 @@ export function HotspotLayer({
               onPointerCancel={() => {
                 pressed.current = null
               }}
-              onBlur={() => {
+              onBlur={(event) => {
                 if (pressed.current === hotspot.id) pressed.current = null
+                onBlurSpot?.(event.relatedTarget)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") onEscape?.()
               }}
               onClick={(event) => {
                 pressed.current = null

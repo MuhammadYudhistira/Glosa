@@ -6,6 +6,7 @@ import {
   SCREEN_OUT,
   type View,
   type Viewport,
+  centerOn,
   clampView,
   project,
   startView,
@@ -39,6 +40,20 @@ describe("pickAt", () => {
       }
     }
   )
+
+  it("picks every place at its anchor on an upright phone at its start zoom, the camera brought to it as far as it goes", () => {
+    const start = startView(PHONE)
+    for (const { id } of HOTSPOT_SPOTS) {
+      const view = clampView(centerOn(start, anchorOf(id)), PHONE)
+      expect(view.zoom).toBe(start.zoom)
+      const at = toPixels(anchorOf(id), view, PHONE)
+      expect(at.x, `${id} x`).toBeGreaterThanOrEqual(0)
+      expect(at.x, `${id} x`).toBeLessThanOrEqual(PHONE.width)
+      expect(at.y, `${id} y`).toBeGreaterThanOrEqual(0)
+      expect(at.y, `${id} y`).toBeLessThanOrEqual(PHONE.height)
+      expect(pickAt(at, view, PHONE), id).toBe(id)
+    }
+  })
 
   it("picks nothing in the empty corners of the screen", () => {
     const view = startView(DESKTOP)

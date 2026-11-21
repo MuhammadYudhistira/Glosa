@@ -10,6 +10,7 @@ import { ROOM_SEEN_KEY } from "@/lib/local/keys"
 import type { SessionUser } from "@/lib/session-types"
 import { stubWideScreen, unstubWideScreen } from "@/test/media"
 import { renderWithRouter } from "@/test/router"
+import { CORKBOARD_FETCH } from "./CorkboardPanel"
 import { isPopupPath } from "./LobbyPopup"
 import { LobbyStage } from "./LobbyStage"
 import { type RoomSnapshot, readRoomSnapshot } from "./room-memory"
@@ -27,6 +28,8 @@ const scene = vi.hoisted(() => ({
     onCameraGesture?: () => void
     onHover?: (id: string | null) => void
     onFocusPlace?: (id: string) => void
+    onLeavePlace?: (next: EventTarget | null) => void
+    onEscapePlace?: () => void
     describing?: { id: string; domId: string } | null
     highlight?: string | null
     onLiveChange?: (live: boolean) => void
@@ -54,11 +57,29 @@ vi.mock("./LobbyScene", async () => {
       onTap?: (id: string | null) => void
       onCameraGesture?: () => void
       highlight?: string | null
+      onFocusPlace?: (id: string) => void
+      describing?: { id: string; domId: string } | null
       ref?: Ref<typeof handle>
     }) => {
       scene.props = props
       useImperativeHandle(props.ref, () => handle)
-      return <section aria-label="Adegan ruang baca" className="lobby-scene" />
+      // One place's button, like the real layer's: described by an open card.
+      return (
+        <section aria-label="Adegan ruang baca" className="lobby-scene">
+          <button
+            type="button"
+            className="lobby-hotspot"
+            aria-describedby={
+              props.describing?.id === "perapian"
+                ? props.describing.domId
+                : undefined
+            }
+            onFocus={() => props.onFocusPlace?.("perapian")}
+          >
+            Tempat perapian
+          </button>
+        </section>
+      )
     },
   }
 })
@@ -552,7 +573,7 @@ describe("LobbyStage", () => {
   })
 
   describe("tap-first names (spec 3G)", () => {
-    const card = () => screen.queryByRole("group", { name: "Tempat dipilih" })
+    const card = () => document.querySelector<HTMLElement>(".lobby-card")
 
     it("shows a card on the first tap and opens the page on the second", async () => {
       stubWideScreen(false)
@@ -762,6 +783,94 @@ describe("LobbyStage", () => {
       await vi.waitFor(() => expect(scene.props).not.toBeNull())
       await act(async () => scene.props!.onLiveChange!(true))
       expect(screen.queryByText(/untuk melihat namanya/)).toBeNull()
+    })
+
+    it("closes the keyboard's card when focus leaves the places, but not for the card", async () => {
+      pointer.fine = true
+      stubWideScreen(true)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onFocusPlace!("perapian"))
+      expect(card()).not.toBeNull()
+      // To the card's Buka, or nowhere (another window, a press on plain text): it stays.
+      const open = screen.getByRole("button", { name: "Buka" })
+      await act(async () => scene.props!.onLeavePlace!(open))
+      await act(async () => scene.props!.onLeavePlace!(null))
+      expect(card()).not.toBeNull()
+      // Anywhere else: it goes, and the place's light with it.
+      const [other] = screen.getAllByRole("button", { name: "Bawa buku" })
+      await act(async () => scene.props!.onLeavePlace!(other))
+      expect(card()).toBeNull()
+      expect(scene.props!.highlight).toBeNull()
+    })
+
+    it("closes the card when focus leaves it for something other than a place", async () => {
+      stubWideScreen(false)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onFocusPlace!("perapian"))
+      const open = screen.getByRole("button", { name: "Buka" })
+      act(() => open.focus())
+      act(() => screen.getAllByRole("button", { name: "Bawa buku" })[0].focus())
+      expect(card()).toBeNull()
+    })
+
+    it("closes the card on Escape, and from the card gives the focus back to its place", async () => {
+      stubWideScreen(false)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onFocusPlace!("perapian"))
+      await act(async () => scene.props!.onEscapePlace!())
+      expect(card()).toBeNull()
+
+      const place = screen.getByRole("button", { name: "Tempat perapian" })
+      act(() => place.focus())
+      expect(card()).not.toBeNull()
+      const open = screen.getByRole("button", { name: "Buka" })
+      act(() => open.focus())
+      act(() => {
+        fireEvent.keyDown(open, { key: "Escape" })
+      })
+      expect(card()).toBeNull()
+      // Back on its place, which does not open the card again.
+      expect(place).toHaveFocus()
+    })
+
+    it("says on the plant's and the fireplace's cards how many days were read", async () => {
+      // 2026-11-03 is a Tuesday: this week is Monday 2 and Tuesday 3.
+      habit.days = ["2026-10-31", "2026-11-01", "2026-11-02", "2026-11-03"].map(
+        (day) => ({ day, seconds: 900, goalMinutes: null })
+      )
+      habit.days.push({ day: "2026-10-30", seconds: 60, goalMinutes: null })
+      stubWideScreen(false)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onFocusPlace!("tanaman"))
+      expect(card()).toHaveTextContent("Kebiasaan baca")
+      expect(card()).toHaveTextContent("2 hari baca minggu ini")
+      await act(async () => scene.props!.onFocusPlace!("perapian"))
+      expect(card()).toHaveTextContent("4 dari 7 hari terakhir kamu membaca")
+    })
+
+    it("says a full page of highlights as more on the corkboard's card", async () => {
+      highlights.state = {
+        status: "ready",
+        highlights: Array.from({ length: CORKBOARD_FETCH }, (_, i) => ({
+          id: `h${i}`,
+          bookId: sherlock.id,
+          cfi: "epubcfi(/6/4)",
+          color: "yellow",
+          note: "",
+          excerpt: "x",
+          createdAt: "2026-10-24T08:00:00.000Z",
+        })),
+      }
+      stubWideScreen(false)
+      renderStage(false)
+      await vi.waitFor(() => expect(scene.props).not.toBeNull())
+      await act(async () => scene.props!.onFocusPlace!("papan"))
+      expect(card()).toHaveTextContent("Sorotan")
+      expect(card()).toHaveTextContent(`${CORKBOARD_FETCH}+ sorotan`)
     })
 
     it("takes the keyboard straight to the page and clears the card", async () => {

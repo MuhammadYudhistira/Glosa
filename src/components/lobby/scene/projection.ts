@@ -1,4 +1,5 @@
-import { ANDA_START, ROOM, type Point3, spotOf } from "./layout"
+import { TAP_SLOP_PX } from "../tap"
+import { ANDA_START, ROOM, type Point3, pointOf, spotOf } from "./layout"
 
 /** What the camera looks at (any point on its axis) and how far it zooms in. */
 export type View = { target: Point3; zoom: number }
@@ -103,9 +104,10 @@ export function clampView(view: View, viewport: Viewport): View {
   const v = fitAxis(v0, EXTENT.v0, EXTENT.v1, halfHeight)
   // The target moves along the camera's axis to the room's depth, which the
   // orthographic view does not show: one screen position, one target.
-  const at = (k: 0 | 1 | 2) =>
-    SCREEN_RIGHT[k] * u + SCREEN_UP[k] * v + SCREEN_OUT[k] * DEPTH
-  return { target: [at(0), at(1), at(2)], zoom }
+  const target = pointOf(
+    (k) => SCREEN_RIGHT[k] * u + SCREEN_UP[k] * v + SCREEN_OUT[k] * DEPTH
+  )
+  return { target, zoom }
 }
 
 /** Where a world point appears, in percent of the viewport from its top left. */
@@ -130,14 +132,28 @@ const PORTRAIT_FOCUS: Point3 = [
 ]
 
 /**
- * The first view. Wide and square screens: the whole room. A phone held
- * upright: the room fills the screen's height and the sides are cropped (the
- * camera pans to them); it never zooms out to less than the screen's width
- * (MIN_ZOOM), which is the old whole-room view.
+ * The widest phone, in CSS pixels. Keep in sync with the phone's CSS in
+ * styles.css (`@media (max-width: 1023px) and (max-aspect-ratio: 1/1)`, the
+ * scene ending above the sheet), which names this function.
+ */
+export const PHONE_MAX_WIDTH = 1023
+
+/**
+ * A phone held upright (spec 3G §3.7): taller than wide, and no wider than
+ * a phone. A narrow desktop window wider than that keeps the desktop's view.
+ */
+export function uprightPhone(viewport: Viewport): boolean {
+  return viewport.height > viewport.width && viewport.width <= PHONE_MAX_WIDTH
+}
+
+/**
+ * The first view. Wide and square screens, and desktops: the whole room. A
+ * phone held upright: the room fills the screen's height and the sides are
+ * cropped (the camera pans to them); it never zooms out to less than the
+ * screen's width (MIN_ZOOM), which is the old whole-room view.
  */
 export function startView(viewport: Viewport): View {
-  const portrait = viewport.height > viewport.width
-  if (!portrait) {
+  if (!uprightPhone(viewport)) {
     return clampView(
       {
         target: [ROOM.width / 2, ROOM.height / 2, ROOM.depth / 2],
@@ -152,6 +168,37 @@ export function startView(viewport: Viewport): View {
     { target: PORTRAIT_FOCUS, zoom: Math.min(MAX_ZOOM, fill) },
     viewport
   )
+}
+
+/** A zoom that changed by more than this share shows on screen as a move. */
+const ZOOM_SLOP = 0.01
+
+/**
+ * Whether the camera visibly moved from `b` to `a` (spec 3G §3.7): a pan of
+ * the tap slop or more on screen, or a zoom of more than 1%. A finger's
+ * jitter during a tap pans the camera by a few pixels; that is no move.
+ */
+export function movedOnScreen(a: View, b: View, viewport: Viewport): boolean {
+  if (Math.abs(a.zoom / b.zoom - 1) > ZOOM_SLOP) return true
+  const { halfWidth, halfHeight } = halfExtents(b.zoom, viewport)
+  const relative = minus(a.target, b.target)
+  const x = (dot(SCREEN_RIGHT, relative) / halfWidth) * (viewport.width / 2)
+  const y = (dot(SCREEN_UP, relative) / halfHeight) * (viewport.height / 2)
+  return Math.hypot(x, y) >= TAP_SLOP_PX
+}
+
+/**
+ * The view after the screen changed size (a phone turned, its address bar
+ * or the sheet resized): a camera still at its first view gets the new
+ * screen's first view, so the room keeps filling it; a moved one stays,
+ * kept inside the room.
+ */
+export function resizeView(view: View, from: Viewport, to: Viewport): View {
+  const same = from.width === to.width && from.height === to.height
+  if (!same && !movedOnScreen(view, startView(from), from)) {
+    return startView(to)
+  }
+  return clampView(view, to)
 }
 
 /** The view moved by a share of the screen (arrow keys). Not clamped yet. */

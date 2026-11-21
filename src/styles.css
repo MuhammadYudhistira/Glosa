@@ -1256,7 +1256,9 @@
     }
   }
   /* On a phone the scene ends above the "Lanjutkan membaca" sheet, so the
-     room the camera fits is the room the member sees (spec 3G §3.7). */
+     room the camera fits is the room the member sees (spec 3G §3.7). Keep
+     in sync with uprightPhone() and PHONE_MAX_WIDTH in
+     src/components/lobby/scene/projection.ts. */
   @media (max-width: 1023px) and (max-aspect-ratio: 1/1) {
     .lobby-scene {
       bottom: min(var(--lobby-sheet-h, 0px), 9rem);

@@ -9,6 +9,7 @@ import {
   SHELF,
   WALL_SECTIONS,
   footprint,
+  pointOf,
 } from "./layout"
 
 /**
@@ -104,7 +105,5 @@ const sizeOf = (v: PickVolume) =>
 export function anchorOf(id: HotspotId): Point3 {
   const boxes = volumesOf(id).filter((volume) => volume.main)
   const biggest = boxes.reduce((a, b) => (sizeOf(b) > sizeOf(a) ? b : a))
-  return [0, 1, 2].map(
-    (k) => (biggest.min[k] + biggest.max[k]) / 2
-  ) as unknown as Point3
+  return pointOf((k) => (biggest.min[k] + biggest.max[k]) / 2)
 }

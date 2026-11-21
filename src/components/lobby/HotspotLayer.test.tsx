@@ -123,6 +123,21 @@ describe("HotspotLayer", () => {
     ).not.toHaveAttribute("aria-describedby")
   })
 
+  it("says where the focus went when a place loses it, and passes Escape on", () => {
+    const onBlurSpot = vi.fn()
+    const onEscape = vi.fn()
+    renderLayer([sherlock], { onBlurSpot, onEscape })
+    const button = screen.getByRole("button", { name: "Kilas balik" })
+    const next = screen.getByRole("button", { name: "Pengaturan" })
+    button.focus()
+    fireEvent.keyDown(button, { key: "Escape" })
+    expect(onEscape).toHaveBeenCalledTimes(1)
+    fireEvent.keyDown(button, { key: "Enter" })
+    expect(onEscape).toHaveBeenCalledTimes(1)
+    next.focus()
+    expect(onBlurSpot).toHaveBeenCalledWith(next)
+  })
+
   it("does not pick a pressed dot when the press takes focus from another place", () => {
     const { onFocusSpot } = renderLayer([sherlock], { dots: true })
     const before = screen.getByRole("button", { name: "Kursi baca" })

@@ -280,6 +280,16 @@ describe("LobbyCanvas", () => {
     expect(onReady).not.toHaveBeenCalled()
   })
 
+  it("lets the stage start at the first view for its own size, measured when it is built", async () => {
+    vi.mocked(createStage).mockClear()
+    const onReady = vi.fn()
+    const { unmount } = render(canvasWith(false, onReady))
+    await vi.waitFor(() => expect(onReady).toHaveBeenCalled())
+    const [options] = vi.mocked(createStage).mock.calls[0]
+    expect(options.view).toBeUndefined()
+    unmount()
+  })
+
   it("falls back to the still image when the models do not load", async () => {
     vi.mocked(createStage).mockImplementationOnce(() =>
       Promise.reject(new Error("model fetch failed"))

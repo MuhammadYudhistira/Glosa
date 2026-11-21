@@ -9,8 +9,12 @@ import {
   type Viewport,
   centerOn,
   clampView,
+  SCREEN_OUT,
   halfExtents,
+  movedOnScreen,
+  panBy,
   project,
+  resizeView,
   startView,
 } from "./projection"
 
@@ -219,6 +223,8 @@ describe("the phone held upright (spec 3G §3.7)", () => {
       DESKTOP,
       { width: 800, height: 800 },
       { width: 844, height: 390 },
+      // A narrow desktop window, wider than the phone's CSS (max-width: 1023px).
+      { width: 1100, height: 1300 },
     ]) {
       expect(startView(viewport).zoom).toBe(1)
     }
@@ -233,5 +239,75 @@ describe("centerOn", () => {
     const at = project(point, centred, viewport)
     expect(at.x).toBeCloseTo(50)
     expect(at.y).toBeCloseTo(50)
+  })
+})
+
+describe("movedOnScreen (spec 3G §3.7)", () => {
+  const start = startView(PHONE)
+  /** The start view panned by a number of CSS pixels to the right. */
+  const panned = (px: number) => panBy(start, px / PHONE.width, 0, PHONE)
+
+  it("takes a finger's jitter, under the tap slop, as no move", () => {
+    expect(movedOnScreen(panned(3), start, PHONE)).toBe(false)
+    expect(
+      movedOnScreen(panBy(start, 0, 9 / PHONE.height, PHONE), start, PHONE)
+    ).toBe(false)
+  })
+
+  it("takes a pan of the tap slop or more as a move", () => {
+    expect(movedOnScreen(panned(12), start, PHONE)).toBe(true)
+    expect(
+      movedOnScreen(panBy(start, 0, 12 / PHONE.height, PHONE), start, PHONE)
+    ).toBe(true)
+  })
+
+  it("takes a zoom of more than 1% as a move, and less as none", () => {
+    expect(
+      movedOnScreen({ ...start, zoom: start.zoom * 1.005 }, start, PHONE)
+    ).toBe(false)
+    expect(
+      movedOnScreen({ ...start, zoom: start.zoom * 1.02 }, start, PHONE)
+    ).toBe(true)
+  })
+
+  it("ignores a move along the camera's axis, which the screen does not show", () => {
+    const deeper = { ...start, target: along(start.target, SCREEN_OUT, 3) }
+    expect(movedOnScreen(deeper, start, PHONE)).toBe(false)
+  })
+})
+
+describe("resizeView", () => {
+  const short = { width: 390, height: 700 }
+
+  it("follows the start view when the camera had not left it", () => {
+    expect(resizeView(startView(short), short, PHONE)).toEqual(startView(PHONE))
+    // Turned on its side: the landscape start view, the whole room.
+    const side = { width: 844, height: 390 }
+    expect(resizeView(startView(PHONE), PHONE, side)).toEqual(startView(side))
+  })
+
+  it("still follows it after a tap's jitter", () => {
+    const jittered = panBy(startView(short), 3 / short.width, 0, short)
+    expect(resizeView(jittered, short, PHONE)).toEqual(startView(PHONE))
+  })
+
+  it("keeps a view the member moved, only clamped", () => {
+    const moved = panBy(startView(short), 0.2, 0, short)
+    expect(resizeView(moved, short, PHONE)).toEqual(clampView(moved, PHONE))
+  })
+
+  it("leaves the view as it was when the size did not change", () => {
+    const jittered = panBy(startView(PHONE), 3 / PHONE.width, 0, PHONE)
+    expect(resizeView(jittered, PHONE, PHONE)).toEqual(
+      clampView(jittered, PHONE)
+    )
+  })
+
+  it("keeps the desktop's start view as it was", () => {
+    const wide = { width: 1280, height: 720 }
+    expect(resizeView(startView(DESKTOP), DESKTOP, wide)).toEqual(
+      startView(wide)
+    )
+    expect(startView(wide)).toEqual(clampView(startView(DESKTOP), wide))
   })
 })

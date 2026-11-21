@@ -9,6 +9,7 @@ import {
   useState,
 } from "react"
 import { Button } from "@/components/ui/button"
+import { useFinePointer } from "@/lib/use-fine-pointer"
 import type { HighlightColor } from "@/lib/annotations/types"
 import type { PlantStage } from "@/lib/reading-habit"
 import type { SlotId } from "@/lib/shop/catalog"
@@ -20,7 +21,6 @@ import { LobbyStill, STILL_SIZE, STILL_VIEW } from "./LobbyStill"
 import type { HotspotModel } from "./lobby-data"
 import type { RoomChange, RoomSnapshot } from "./room-memory"
 import { NEUTRAL_SIGNALS, NO_NOTES, type RoomSignals } from "./room-signals"
-import { viewMoved } from "./scene/frame-loop"
 import {
   DECOR_SLOTS,
   type HotspotId,
@@ -29,13 +29,16 @@ import {
   type ShowcaseBook,
   spotOf,
 } from "./scene/layout"
+import { anchorOf } from "./scene/pick-volumes"
 import {
   type View,
   type Viewport,
   centerOn,
   isInView,
+  movedOnScreen,
   panBy,
   startView,
+  uprightPhone,
 } from "./scene/projection"
 import {
   type Quality,
@@ -101,6 +104,8 @@ export function LobbyScene({
   onTap,
   onCameraGesture,
   onFocusPlace,
+  onLeavePlace,
+  onEscapePlace,
   onHover,
   onLiveChange,
   paused = false,
@@ -126,6 +131,10 @@ export function LobbyScene({
   onCameraGesture?: () => void
   /** A place's button took focus that is not a press. */
   onFocusPlace?: (id: HotspotId) => void
+  /** A place's button lost focus to `next` (null: nothing, or another window). */
+  onLeavePlace?: (next: EventTarget | null) => void
+  /** Escape on a place's button. */
+  onEscapePlace?: () => void
   /** The place under the mouse cursor changed (spec 3G §3.2). */
   onHover?: (id: HotspotId | null) => void
   /** Whether a live 3D camera is on screen, so showSpot can move it. */
@@ -255,9 +264,12 @@ export function LobbyScene({
     )
   }
 
-  /** A focused hotspot off screen brings the camera to it (spec 1D §6). */
+  /**
+   * A focused hotspot off screen brings the camera to it (spec 1D §6): to its
+   * button and focus ring, at the place's anchor.
+   */
   function reveal(id: HotspotId) {
-    const point = spotOf(id).label
+    const point = anchorOf(id)
     moveCamera((current) =>
       isInView(point, current.view, current.viewport)
         ? current.view
@@ -301,6 +313,9 @@ export function LobbyScene({
     setHover(null)
   }
 
+  // Names under the cursor are the desktop's (spec 3G §3.2): a trackpad on a
+  // touch device gets the tap-first card instead, not both.
+  const fine = useFinePointer()
   const tracker = useRef(createTapTracker())
   /** The scene's own pointer events; buttons and links on top of it keep theirs. */
   const overOverlay = (event: { target: EventTarget }) =>
@@ -323,7 +338,7 @@ export function LobbyScene({
   }
   function onPointerMove(event: PointerEvent<HTMLElement>) {
     if (tracker.current.move(sample(event))) onCameraGesture?.()
-    if (!live || paused || event.pointerType !== "mouse") return
+    if (!live || paused || !fine || event.pointerType !== "mouse") return
     // No name over a button, nor while a button is held: a drag pans the camera.
     if (event.buttons !== 0 || overOverlay(event)) {
       dropHover()
@@ -355,10 +370,11 @@ export function LobbyScene({
   // On a phone held upright "Pusatkan" waits for the camera to leave its
   // first view (spec 3G §3.7); elsewhere it is always there, as before.
   // Not before the first view is known: until then there is nothing to centre.
-  const upright =
-    camera !== null && camera.viewport.height > camera.viewport.width
+  // A tap's finger jitter pans by a few pixels: that is not leaving it.
+  const upright = camera !== null && uprightPhone(camera.viewport)
   const away =
-    camera !== null && viewMoved(camera.view, startView(camera.viewport))
+    camera !== null &&
+    movedOnScreen(camera.view, startView(camera.viewport), camera.viewport)
   const showCenter = camera !== null && live && (!upright || away)
 
   return (
@@ -439,6 +455,8 @@ export function LobbyScene({
             if (live) reveal(id)
             onFocusPlace?.(id)
           }}
+          onBlurSpot={onLeavePlace}
+          onEscape={onEscapePlace}
           describing={describing}
         />
       </div>

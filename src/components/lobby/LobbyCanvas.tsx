@@ -4,7 +4,7 @@ import type { PlantStage } from "@/lib/reading-habit"
 import type { Placements } from "@/lib/shop/types"
 import { NO_NOTES, type RoomSignals } from "./room-signals"
 import type { HotspotId, Point2, ShowcaseBook } from "./scene/layout"
-import { type View, type Viewport, startView } from "./scene/projection"
+import type { View, Viewport } from "./scene/projection"
 import type { Quality } from "./scene/quality"
 import { EMPTY_HUES, type GenreHues } from "./scene/shelf-books"
 import type { Stage } from "./scene/stage"
@@ -82,12 +82,12 @@ export function LobbyCanvas({
     import("./scene/stage")
       .then(({ createStage }) => {
         if (cancelled) return null
-        const viewport = { width: host.clientWidth, height: host.clientHeight }
+        // No view: the stage starts at the first view for its host's size as
+        // it measures it once built, which may differ from the size now.
         return createStage({
           host,
           mode: initial.current.test ? "test" : "normal",
           quality: initial.current.quality,
-          view: startView(viewport),
           anda: andaRef.current,
           onView: (view, size) => callbacks.current.onView(view, size),
           onQuality: (next) => callbacks.current.onQuality(next),

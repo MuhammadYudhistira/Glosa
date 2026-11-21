@@ -46,41 +46,34 @@ describe("summarizeLobby", () => {
 })
 
 describe("lobbyHotspots", () => {
-  it("gives the zones their counts, dims empty ones and badges the trolley", () => {
+  it("gives the zones their counts and names every place", () => {
     const { counts } = summarizeLobby([
       book("a"),
       book("b", { genre: null }),
       book("c", { genre: null }),
     ])
     const hotspots = lobbyHotspots(counts)
-    expect(hotspots[0]).toMatchObject({ id: "meja-baca", label: "Kursi baca" })
+    expect(hotspots[0]).toEqual({
+      id: "meja-baca",
+      label: "Kursi baca",
+      count: null,
+    })
     expect(hotspots.find(({ id }) => id === "misteri_thriller")).toMatchObject({
       label: "Misteri & Thriller",
       count: 1,
-      dim: false,
     })
     expect(hotspots.find(({ id }) => id === "fiksi_sastra")).toMatchObject({
       count: 0,
-      dim: true,
     })
     expect(hotspots.find(({ id }) => id === "troli")).toMatchObject({
       label: "Kotak buku baru",
       count: null,
-      badge: 2,
     })
     expect(hotspots.find(({ id }) => id === "meja-admin")).toMatchObject({
       id: "meja-admin",
       label: "Meja tulis",
       count: null,
-      badge: null,
     })
-  })
-
-  it("hides the trolley's badge when it is empty", () => {
-    const { counts } = summarizeLobby([book("a")])
-    expect(
-      lobbyHotspots(counts).find(({ id }) => id === "troli")?.badge
-    ).toBeNull()
   })
 
   it("names the corkboard", () => {
@@ -88,8 +81,6 @@ describe("lobbyHotspots", () => {
     expect(hotspots.find(({ id }) => id === "papan")).toMatchObject({
       label: "Sorotan",
       count: null,
-      badge: null,
-      dim: false,
     })
   })
 
@@ -98,14 +89,10 @@ describe("lobbyHotspots", () => {
     expect(hotspots.find(({ id }) => id === "perapian")).toMatchObject({
       label: "Kilas balik",
       count: null,
-      badge: null,
-      dim: false,
     })
     expect(hotspots.find(({ id }) => id === "pintu")).toMatchObject({
       label: "Pengaturan",
       count: null,
-      badge: null,
-      dim: false,
     })
   })
 
@@ -115,8 +102,6 @@ describe("lobbyHotspots", () => {
       id: "katalog",
       label: "Kosakata",
       count: null,
-      badge: null,
-      dim: false,
     })
   })
 })
@@ -143,8 +128,6 @@ describe("finished books", () => {
       id: "tanaman",
       label: "Kebiasaan baca",
       count: null,
-      badge: null,
-      dim: false,
     })
   })
 
@@ -156,18 +139,16 @@ describe("finished books", () => {
       id: "toko",
       label: "Toko dekorasi",
       count: null,
-      badge: null,
-      dim: false,
     })
   })
 
-  it("names the cabinet Sudah dibaca with its count, dim when empty", () => {
+  it("names the cabinet Sudah dibaca with its count", () => {
     const { counts } = summarizeLobby([book("a")])
     expect(
       lobbyHotspots(counts, 3).find(({ id }) => id === "lemari")
-    ).toMatchObject({ label: "Sudah dibaca", count: 3, dim: false })
+    ).toMatchObject({ label: "Sudah dibaca", count: 3 })
     expect(
       lobbyHotspots(counts).find(({ id }) => id === "lemari")
-    ).toMatchObject({ count: 0, dim: true })
+    ).toMatchObject({ count: 0 })
   })
 })

@@ -214,7 +214,7 @@ test("focusing a place shows its name card with its state; Buka opens its page",
 }) => {
   await memberWithBook(page)
   const scene = await openLobby(page)
-  const card = page.getByRole("group", { name: "Tempat dipilih" })
+  const card = page.locator(".lobby-card")
   await expect(card).toHaveCount(0)
   const trolley = scene.getByRole("button", {
     name: "Kotak buku baru",
@@ -222,6 +222,10 @@ test("focusing a place shows its name card with its state; Buka opens its page",
   })
   await trolley.focus()
   await expect(card).toContainText("Kotak buku baru")
+  // The card is named by its place.
+  await expect(
+    page.getByRole("group", { name: "Kotak buku baru" })
+  ).toBeVisible()
   await expect(card).toContainText("1 buku belum diberi genre")
   await expect(trolley).toHaveAccessibleDescription("1 buku belum diberi genre")
   await card.getByRole("button", { name: "Buka" }).click()
@@ -281,7 +285,7 @@ test.describe("a hotspot at still quality", () => {
     test.skip(!isMobile, "a mouse opens at once")
     await signInAndOnboard(page, await createConfirmedMember())
     const scene = await openLobby(page)
-    const card = page.getByRole("group", { name: "Tempat dipilih" })
+    const card = page.locator(".lobby-card")
     await fireplace(scene).click()
     await expect(card).toContainText("Kilas balik")
     await expect(card).toContainText("Rangkuman bacaanmu")
@@ -297,7 +301,7 @@ test.describe("a hotspot at still quality", () => {
     test.skip(!isMobile, "a mouse has no card")
     await signInAndOnboard(page, await createConfirmedMember())
     const scene = await openLobby(page)
-    const card = page.getByRole("group", { name: "Tempat dipilih" })
+    const card = page.locator(".lobby-card")
     await fireplace(scene).click()
     await expect(card).toBeVisible()
     const box = (await scene.boundingBox())!

@@ -6,7 +6,9 @@ import type { LobbyCanvas } from "./LobbyCanvas"
 import { LobbyScene, type LobbySceneHandle } from "./LobbyScene"
 import { lobbyHotspots, summarizeLobby } from "./lobby-data"
 import type { RoomSnapshot } from "./room-memory"
+import { stubWideScreen, unstubWideScreen } from "@/test/media"
 import { ANDA_START, DECOR_SLOTS, type HotspotId, spotOf } from "./scene/layout"
+import { anchorOf } from "./scene/pick-volumes"
 import {
   MAX_ZOOM,
   centerOn,
@@ -262,7 +264,7 @@ describe("LobbyScene", () => {
     it("brings an off-screen hotspot into view on focus, but not on a press", async () => {
       const zoomed = { ...startView(viewport), zoom: MAX_ZOOM }
       const hidden = hotspots.find(
-        ({ id }) => !isInView(spotOf(id).label, zoomed, viewport)
+        ({ id }) => !isInView(anchorOf(id), zoomed, viewport)
       )
       expect(hidden).toBeDefined()
       const { stage } = await goLive(zoomed)
@@ -278,8 +280,21 @@ describe("LobbyScene", () => {
       act(() => button.blur())
       act(() => button.focus())
       expect(stage.setView).toHaveBeenCalledWith(
-        centerOn(zoomed, spotOf(hidden?.id ?? "meja-baca").label)
+        centerOn(zoomed, anchorOf(hidden?.id ?? "meja-baca"))
       )
+    })
+
+    it("tells the page when focus leaves a place, and when Escape is pressed on it", async () => {
+      const onLeavePlace = vi.fn()
+      const onEscapePlace = vi.fn()
+      await goLiveWith({ onLeavePlace, onEscapePlace })
+      const button = screen.getByRole("button", { name: "Kilas balik" })
+      act(() => button.focus())
+      fireEvent.keyDown(button, { key: "Escape" })
+      expect(onEscapePlace).toHaveBeenCalledTimes(1)
+      const other = screen.getByRole("button", { name: "Pusatkan" })
+      act(() => other.focus())
+      expect(onLeavePlace).toHaveBeenCalledWith(other)
     })
 
     describe("taps on the scene", () => {
@@ -436,6 +451,33 @@ describe("LobbyScene", () => {
         expect(screen.getByLabelText("Adegan ruang baca")).toHaveFocus()
       })
 
+      it("keeps Pusatkan away after a tap's few pixels of finger jitter", async () => {
+        await goPhone()
+        act(() => {
+          canvas.props?.onView(
+            panBy(startView(phone), 3 / phone.width, 2 / phone.height, phone),
+            phone
+          )
+        })
+        expect(screen.queryByRole("button", { name: "Pusatkan" })).toBeNull()
+      })
+
+      it("brings a focused place's button, at its anchor, into the cropped view", async () => {
+        const { stage } = await goPhone()
+        const start = startView(phone)
+        const hidden = hotspots.find(
+          ({ id }) => !isInView(anchorOf(id), start, phone)
+        )
+        expect(hidden).toBeDefined()
+        const button = screen.getByRole("button", {
+          name: new RegExp(`^${hidden?.label}`),
+        })
+        act(() => button.focus())
+        expect(stage.setView).toHaveBeenCalledWith(
+          centerOn(start, anchorOf(hidden?.id ?? "meja-baca"))
+        )
+      })
+
       it("shows Pusatkan only after the camera left its first view", async () => {
         await goPhone()
         expect(screen.queryByRole("button", { name: "Pusatkan" })).toBeNull()
@@ -455,8 +497,13 @@ describe("LobbyScene", () => {
           return 1
         })
         vi.stubGlobal("cancelAnimationFrame", () => undefined)
+        // A desktop: (hover: hover) and (pointer: fine).
+        stubWideScreen(true)
       })
-      afterEach(() => vi.unstubAllGlobals())
+      afterEach(() => {
+        vi.unstubAllGlobals()
+        unstubWideScreen()
+      })
       const move = (el: Element, x: number, y: number, buttons = 0) =>
         fireEvent.pointerMove(el, {
           pointerId: 1,
@@ -529,6 +576,17 @@ describe("LobbyScene", () => {
         update({ paused: true })
         move(screen.getByTestId("lobby-canvas"), 60, 60)
         expect(document.querySelector(".lobby-hover-name")).toBeNull()
+      })
+
+      it("names nothing for a mouse on a touch device (a tablet's trackpad)", async () => {
+        stubWideScreen(false)
+        const onHover = vi.fn()
+        const { stage } = await goLiveWith({ onHover })
+        stage.pick.mockReturnValue("troli")
+        move(screen.getByTestId("lobby-canvas"), 200, 120)
+        expect(stage.pick).not.toHaveBeenCalled()
+        expect(document.querySelector(".lobby-hover-name")).toBeNull()
+        expect(onHover).not.toHaveBeenCalled()
       })
 
       it("does not bring a name back after a pause from before it", async () => {

@@ -1,4 +1,4 @@
-import type { HotspotId, Point3 } from "./layout"
+import { type HotspotId, type Point3, pointOf } from "./layout"
 import { PICK_VOLUMES, type PickVolume } from "./pick-volumes"
 import {
   SCREEN_OUT,
@@ -51,12 +51,12 @@ export function pickAt(
   const { halfWidth, halfHeight } = halfExtents(view.zoom, viewport)
   const right = (2 * point.x) / viewport.width - 1
   const up = 1 - (2 * point.y) / viewport.height
-  const origin: Point3 = [0, 1, 2].map(
+  const origin = pointOf(
     (k) =>
       view.target[k] +
       SCREEN_RIGHT[k] * right * halfWidth +
       SCREEN_UP[k] * up * halfHeight
-  ) as unknown as Point3
+  )
   let best: { id: HotspotId; at: number } | null = null
   for (const volume of volumes) {
     const at = enter(origin, volume)

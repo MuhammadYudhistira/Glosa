@@ -41,10 +41,6 @@ export type HotspotModel = {
   label: string
   /** Books in a zone; null where there is no count. */
   count: number | null
-  /** The trolley's badge; null when it is empty. */
-  badge: number | null
-  /** A zone without books. */
-  dim: boolean
 }
 
 export function lobbyHotspots(
@@ -52,7 +48,7 @@ export function lobbyHotspots(
   finishedCount = 0
 ): Array<HotspotModel> {
   return HOTSPOT_SPOTS.map(({ id }): HotspotModel => {
-    const plain = { id, count: null, badge: null, dim: false }
+    const plain = { id, count: null }
     if (id === "meja-baca") return { ...plain, label: "Kursi baca" }
     if (id === "meja-admin") return { ...plain, label: "Meja tulis" }
     if (id === "katalog") return { ...plain, label: "Kosakata" }
@@ -66,21 +62,15 @@ export function lobbyHotspots(
         ...plain,
         label: "Sudah dibaca",
         count: finishedCount,
-        dim: finishedCount === 0,
       }
     }
     if (id === "troli") {
-      return {
-        ...plain,
-        label: TROLLEY_LABEL,
-        badge: counts.troli > 0 ? counts.troli : null,
-      }
+      return { ...plain, label: TROLLEY_LABEL }
     }
     return {
       ...plain,
       label: GENRE_LABELS[id],
       count: counts[id],
-      dim: counts[id] === 0,
     }
   })
 }
