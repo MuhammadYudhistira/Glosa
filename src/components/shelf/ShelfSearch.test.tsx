@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { ShelfToolbar } from "./ShelfToolbar"
+import { ShelfSearch } from "./ShelfSearch"
 
 const navigate = vi.fn()
 
@@ -8,7 +8,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
 }))
 
-describe("ShelfToolbar", () => {
+describe("ShelfSearch", () => {
   beforeEach(() => {
     vi.useFakeTimers()
     navigate.mockReset()
@@ -18,12 +18,10 @@ describe("ShelfToolbar", () => {
   })
 
   it("follows ?q= changes that did not come from typing", () => {
-    const { rerender } = render(
-      <ShelfToolbar q="alice" sort="opened" defaultSort="opened" />
-    )
+    const { rerender } = render(<ShelfSearch q="alice" />)
     const input = screen.getByLabelText("Cari judul atau penulis")
     expect(input).toHaveValue("alice")
-    rerender(<ShelfToolbar q="bob" sort="opened" defaultSort="opened" />)
+    rerender(<ShelfSearch q="bob" />)
     expect(input).toHaveValue("bob")
     act(() => {
       vi.advanceTimersByTime(300)
@@ -32,7 +30,7 @@ describe("ShelfToolbar", () => {
   })
 
   it("pushes typed text to the URL once after the debounce", () => {
-    render(<ShelfToolbar q="" sort="opened" defaultSort="opened" />)
+    render(<ShelfSearch q="" />)
     const input = screen.getByLabelText("Cari judul atau penulis")
     fireEvent.change(input, { target: { value: "emma" } })
     expect(navigate).not.toHaveBeenCalled()
@@ -42,18 +40,8 @@ describe("ShelfToolbar", () => {
     expect(navigate).toHaveBeenCalledTimes(1)
   })
 
-  it("keeps the collection's own order out of the URL", () => {
-    render(<ShelfToolbar q="" sort="finished" defaultSort="finished" />)
-    const select = screen.getByLabelText("Urutkan")
-    fireEvent.change(select, { target: { value: "opened" } })
-    const first = navigate.mock.calls[0][0] as {
-      search: (prev: object) => object
-    }
-    expect(first.search({})).toEqual({ sort: "opened" })
-    fireEvent.change(select, { target: { value: "finished" } })
-    const second = navigate.mock.calls[1][0] as {
-      search: (prev: object) => object
-    }
-    expect(second.search({ sort: "opened" })).toEqual({ sort: undefined })
+  it("takes the focus when opened from the search button", () => {
+    render(<ShelfSearch q="" autoFocus />)
+    expect(screen.getByLabelText("Cari judul atau penulis")).toHaveFocus()
   })
 })

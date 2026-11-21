@@ -10,10 +10,11 @@ import {
   type CollectionDone,
 } from "@/components/shelf/CollectionDialog"
 import { EmptyShelf } from "@/components/shelf/EmptyShelf"
-import { GenreSelect } from "@/components/shelf/GenreSelect"
+import { CurrentReadCard } from "@/components/shelf/CurrentReadCard"
 import { ReadLink } from "@/components/shelf/ReadLink"
 import { ShelfHeader } from "@/components/shelf/ShelfHeader"
-import { ShelfToolbar } from "@/components/shelf/ShelfToolbar"
+import { ShelfFilterSheet } from "@/components/shelf/ShelfFilterSheet"
+import { ShelfSearch } from "@/components/shelf/ShelfSearch"
 import { TrolleyGenrePicker } from "@/components/shelf/TrolleyGenrePicker"
 import { UploadPanel } from "@/components/shelf/UploadPanel"
 import {
@@ -27,6 +28,7 @@ import {
   activeCollection,
   countBooks,
   countCollections,
+  currentRead,
   defaultSort,
   parseShelfSearch,
   shelfBooks,
@@ -51,6 +53,8 @@ function ShelfPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [notice, setNotice] = useState("")
+  const [searching, setSearching] = useState(Boolean(search.q))
+  const [filtering, setFiltering] = useState(false)
   // The collection dialog: closed, a new collection, or one to edit.
   const [editing, setEditing] = useState<Collection | "new" | null>(null)
   const koleksi = activeCollection(search.koleksi, collections)
@@ -66,6 +70,9 @@ function ShelfPage() {
   )
   const selected = books.find((book) => book.id === selectedId) ?? null
   const inTrolley = search.genre === "troli"
+  const reading =
+    !koleksi && !search.genre && !search.q ? currentRead(books) : null
+  const filtersActive = Boolean(search.genre) || Boolean(search.sort)
   const refresh = () => void router.invalidate()
   const bringButton = (
     <Button onClick={() => setUploading(true)}>Bawa buku</Button>
@@ -86,11 +93,22 @@ function ShelfPage() {
   }
 
   return (
-    <LobbyPopup label="Rak Saya" className="max-w-5xl" bodyClassName="gap-5">
+    <LobbyPopup label="Rak Saya" className="max-w-5xl" bodyClassName="gap-6">
       <ShelfHeader
-        usage={usage}
-        actions={books.length > 0 ? bringButton : undefined}
+        searching={searching}
+        onSearch={() => {
+          if (searching && search.q)
+            void navigate({
+              search: (prev) => ({ ...prev, q: undefined }),
+              replace: true,
+            })
+          setSearching(!searching)
+        }}
+        onFilter={() => setFiltering(true)}
+        filtersActive={filtersActive}
+        onBring={books.length > 0 ? () => setUploading(true) : undefined}
       />
+      {searching && <ShelfSearch q={search.q ?? ""} autoFocus={!search.q} />}
       {offline && (
         <output className="block rounded-lg border bg-panel px-4 py-2 text-sm">
           Kamu sedang offline. Rak ditampilkan dari salinan terakhir di
@@ -102,6 +120,13 @@ function ShelfPage() {
         <EmptyShelf action={bringButton} />
       ) : (
         <>
+          {reading && (
+            <CurrentReadCard
+              book={reading}
+              percentage={shelfPercentage(reading, local)}
+              onOpen={(book) => setSelectedId(book.id)}
+            />
+          )}
           <CollectionBar
             active={koleksi}
             collections={collections}
@@ -110,13 +135,6 @@ function ShelfPage() {
             onCreate={() => setEditing("new")}
             onEdit={setEditing}
           />
-          <ShelfToolbar
-            q={search.q ?? ""}
-            sort={search.sort ?? ordering}
-            defaultSort={ordering}
-          >
-            <GenreSelect value={search.genre ?? "semua"} counts={counts} />
-          </ShelfToolbar>
           {visible.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {search.q
@@ -145,6 +163,15 @@ function ShelfPage() {
           )}
         </>
       )}
+      <ShelfFilterSheet
+        open={filtering}
+        onOpenChange={setFiltering}
+        genre={search.genre ?? "semua"}
+        counts={counts}
+        sort={search.sort ?? ordering}
+        defaultSort={ordering}
+        usage={usage}
+      />
       <BookDetail
         book={selected}
         percentage={selected ? shelfPercentage(selected, local) : 0}

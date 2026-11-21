@@ -63,17 +63,27 @@ test("a Standard Ebooks EPUB lands in its guessed genre and frees its space when
   await acceptAll(dialog)
   await dialog.getByRole("button", { name: "Tutup" }).click()
 
-  const genre = page.getByLabel("Tampilkan genre")
+  await page.getByRole("button", { name: "Saring" }).click()
+  const sheet = page.getByRole("dialog", { name: "Saring rak" })
+  const genre = sheet.getByLabel("Tampilkan genre")
   const book = page.getByRole("button", {
     name: /The Adventures of Sherlock Holmes/,
   })
+  const choose = async (value: string) => {
+    await page.getByRole("button", { name: "Saring" }).click()
+    await genre.selectOption(value)
+    await page.keyboard.press("Escape")
+  }
   await genre.selectOption("misteri_thriller")
+  await page.keyboard.press("Escape")
   await expect(book).toBeVisible()
-  await genre.selectOption("fiksi_sastra")
+  await choose("fiksi_sastra")
   await expect(book).toHaveCount(0)
-  await expect(page.getByText(/^0\.[78] MB \/ 100 MB$/)).toBeVisible()
+  await page.getByRole("button", { name: "Saring" }).click()
+  await expect(sheet.getByText(/^0\.[78] MB \/ 100 MB$/)).toBeVisible()
 
   await genre.selectOption("semua")
+  await page.keyboard.press("Escape")
   await book.click()
   const detail = page.getByRole("dialog", {
     name: "The Adventures of Sherlock Holmes",
@@ -83,7 +93,10 @@ test("a Standard Ebooks EPUB lands in its guessed genre and frees its space when
   await expect(
     page.getByText("“The Adventures of Sherlock Holmes” dihapus dari rak.")
   ).toBeVisible()
-  await expect(page.getByText("0 MB / 100 MB")).toBeVisible()
+  await page.getByRole("button", { name: "Saring" }).click()
+  await expect(
+    page.getByRole("dialog", { name: "Saring rak" }).getByText("0 MB / 100 MB")
+  ).toBeVisible()
 })
 
 test("a book without subjects waits in the trolley until it gets a genre", async ({
@@ -105,8 +118,11 @@ test("a book without subjects waits in the trolley until it gets a genre", async
   await acceptAll(dialog)
   await dialog.getByRole("button", { name: "Tutup" }).click()
 
-  const genre = page.getByLabel("Tampilkan genre")
+  await page.getByRole("button", { name: "Saring" }).click()
+  const sheet = page.getByRole("dialog", { name: "Saring rak" })
+  const genre = sheet.getByLabel("Tampilkan genre")
   await genre.selectOption("troli")
+  await page.keyboard.press("Escape")
   await page
     .getByLabel("Genre untuk Catatan Tanpa Subjek")
     .selectOption("sejarah_budaya")
@@ -114,7 +130,9 @@ test("a book without subjects waits in the trolley until it gets a genre", async
   await expect(
     page.getByRole("button", { name: /Catatan Tanpa Subjek/ })
   ).toHaveCount(0)
+  await page.getByRole("button", { name: "Saring" }).click()
   await genre.selectOption("sejarah_budaya")
+  await page.keyboard.press("Escape")
   await expect(
     page.getByRole("button", { name: /Catatan Tanpa Subjek/ })
   ).toBeVisible()

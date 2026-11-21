@@ -593,6 +593,38 @@
       grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
     }
   }
+  .shelf-icon-button {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--color-panel);
+  }
+  .shelf-icon-button svg {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+  .shelf-icon-button[data-primary] {
+    border-color: transparent;
+    background: var(--color-mint);
+    color: #04110e;
+  }
+  .shelf-icon-button[aria-expanded="true"] {
+    color: var(--color-mint);
+  }
+  .shelf-icon-button[data-active]::after {
+    content: "";
+    position: absolute;
+    top: 0.35rem;
+    right: 0.35rem;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 9999px;
+    background: var(--color-mint);
+  }
   .shelf-slot {
     display: flex;
     flex-direction: column;
