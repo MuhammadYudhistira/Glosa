@@ -95,6 +95,7 @@ test("a member deletes their account", async ({ page }) => {
   await page.goto("/settings")
   await hydrated(page)
 
+  await page.getByRole("button", { name: "Hapus akun" }).click()
   const confirmField = page.getByLabel(/Ketik nama penggunamu untuk konfirmasi/)
   await confirmField.fill("bukan-saya")
   await page.getByRole("button", { name: "Hapus akun saya permanen" }).click()

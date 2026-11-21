@@ -5,10 +5,12 @@ import {
   useRouter,
 } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
+import { ChevronRightIcon, LogOutIcon, Trash2Icon } from "lucide-react"
 import { type FormEvent, useState } from "react"
 import { LobbyPopup } from "@/components/lobby/LobbyPopup"
 import { MembershipCard } from "@/components/member/MembershipCard"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { DeleteAccountDialog } from "@/components/settings/DeleteAccountDialog"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Panel } from "@/components/ui/panel"
@@ -38,8 +40,7 @@ function SettingsPage() {
     { kind: "idle" } | { kind: "saved" } | { kind: "error"; code: string }
   >({ kind: "idle" })
   const [saving, setSaving] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [deletingOpen, setDeletingOpen] = useState(false)
 
   async function onSaveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -70,26 +71,9 @@ function SettingsPage() {
     }
   }
 
-  async function onDelete(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const form = new FormData(event.currentTarget)
-    setDeleting(true)
-    setDeleteError(null)
-    let result: Awaited<ReturnType<typeof deleteAccount>>
-    try {
-      result = await deleteAccount({
-        data: { confirmUsername: String(form.get("confirmUsername") ?? "") },
-      })
-    } catch {
-      setDeleting(false)
-      setDeleteError("unknown")
-      return
-    }
-    if (!result.ok) {
-      setDeleting(false)
-      setDeleteError(result.code)
-      return
-    }
+  async function deleteAccountAndLeave(confirmUsername: string) {
+    const result = await deleteAccount({ data: { confirmUsername } })
+    if (!result.ok) return result
     // Navigate once; root beforeLoad re-reads the session. Invalidating first
     // would make the _member guard redirect to /login before this navigation.
     // The account is gone: its copies on this device go too.
@@ -97,6 +81,7 @@ function SettingsPage() {
       console.error("clearing this device failed", error)
     )
     await router.navigate({ href: "/" })
+    return result
   }
 
   return (
@@ -166,47 +151,38 @@ function SettingsPage() {
         </form>
       </Panel>
 
-      <Panel className="p-6">
-        <Link
-          to="/logout"
-          className={buttonVariants({ variant: "outline", size: "lg" })}
-        >
-          Keluar
-        </Link>
-      </Panel>
-
-      <Panel className="border-destructive/50 p-6 text-sm">
-        <h2 className="font-bold text-destructive">Hapus akun</h2>
-        <p className="mt-1 text-muted-foreground">
-          Semua data milikmu akan dihapus permanen dan tidak bisa dikembalikan.
-        </p>
-        <form method="post" onSubmit={onDelete} className="mt-4 space-y-3">
-          <div className="space-y-1">
-            <Label htmlFor="confirmUsername">
-              Ketik nama penggunamu untuk konfirmasi ({user.username})
-            </Label>
-            <Input
-              id="confirmUsername"
-              name="confirmUsername"
-              autoComplete="off"
-              required
-            />
-          </div>
-          {deleteError && (
-            <p role="alert" className="text-xs text-destructive">
-              {authMessage(deleteError).field}
-            </p>
-          )}
-          <Button
-            type="submit"
-            variant="destructive"
-            size="lg"
-            disabled={deleting}
-          >
-            {deleting ? "Menghapus…" : "Hapus akun saya permanen"}
-          </Button>
-        </form>
-      </Panel>
+      <section aria-labelledby="akun-title" className="space-y-2">
+        <h2 id="akun-title" className="settings-section-title">
+          Akun
+        </h2>
+        <ul className="settings-rows">
+          <li>
+            <Link to="/logout" className="settings-row">
+              <LogOutIcon aria-hidden="true" />
+              Keluar
+              <ChevronRightIcon aria-hidden="true" className="ml-auto" />
+            </Link>
+          </li>
+          <li>
+            <button
+              type="button"
+              className="settings-row"
+              data-danger=""
+              onClick={() => setDeletingOpen(true)}
+            >
+              <Trash2Icon aria-hidden="true" />
+              Hapus akun
+              <ChevronRightIcon aria-hidden="true" className="ml-auto" />
+            </button>
+          </li>
+        </ul>
+      </section>
+      <DeleteAccountDialog
+        open={deletingOpen}
+        onOpenChange={setDeletingOpen}
+        username={user.username}
+        onDelete={deleteAccountAndLeave}
+      />
     </LobbyPopup>
   )
 }

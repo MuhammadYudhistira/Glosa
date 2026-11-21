@@ -626,6 +626,42 @@
     border-radius: 9999px;
     background: var(--color-mint);
   }
+  .settings-section-title {
+    padding-inline: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .settings-rows {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: var(--color-panel);
+  }
+  .settings-rows > li + li {
+    border-top: 1px solid var(--border);
+  }
+  .settings-row {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+    font-size: 0.95rem;
+    text-align: left;
+  }
+  .settings-row svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  .settings-row:hover {
+    background: var(--muted);
+  }
+  .settings-row[data-danger] {
+    color: var(--destructive);
+  }
   .shelf-slot {
     display: flex;
     flex-direction: column;

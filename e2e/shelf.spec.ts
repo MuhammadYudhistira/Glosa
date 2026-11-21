@@ -221,6 +221,7 @@ test("deleting the account removes the member's book files", async ({
 
   await page.goto("/settings")
   await hydrated(page)
+  await page.getByRole("button", { name: "Hapus akun" }).click()
   await page
     .getByLabel("Ketik nama penggunamu untuk konfirmasi")
     .fill(member.username)
