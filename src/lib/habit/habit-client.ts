@@ -70,6 +70,12 @@ let refreshSeq = 0
 let goalsEpoch = 0
 let savedGoals: HabitGoals | null = null
 let savesInFlight = 0
+/**
+ * The last goal save sent. Each save carries both goals, so they go one after
+ * another: sent at once, an older one could reach the server last and undo
+ * a newer one (the minutes, then the books a moment later).
+ */
+let lastGoalsSave: Promise<unknown> = Promise.resolve()
 
 // A sign-out, account deletion or another member's claim wipes the device:
 // the previous member's streak and goals must not outlive it.
@@ -160,8 +166,12 @@ export async function saveGoals(goals: HabitGoals): Promise<ActionResult> {
   savedGoals = goals
   savesInFlight++
   let result: ActionResult
+  const send = lastGoalsSave.then(() =>
+    updateGoalsFn({ data: { ...goals, today } })
+  )
+  lastGoalsSave = send.catch(() => undefined)
   try {
-    result = await updateGoalsFn({ data: { ...goals, today } })
+    result = await send
   } catch {
     result = { ok: false, code: "unknown" }
   } finally {

@@ -226,6 +226,45 @@ describe("habit client", () => {
     expect((await store.loadHabitCache())?.days[1]?.goalMinutes).toBe(30)
   })
 
+  it("sends goal saves one after another, so the newest lands last", async () => {
+    mocks.loadHabitFn.mockResolvedValueOnce({
+      ok: true,
+      days: [],
+      goals: { dailyGoalMinutes: null, yearlyGoalBooks: null },
+    })
+    await client.refreshHabit()
+    let answerFirst: (value: unknown) => void = () => undefined
+    mocks.updateGoalsFn.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answerFirst = resolve
+      })
+    )
+    mocks.updateGoalsFn.mockResolvedValueOnce({ ok: true })
+    // The minutes, then the books a moment later: each save sends both goals.
+    const first = client.saveGoals({
+      dailyGoalMinutes: 20,
+      yearlyGoalBooks: null,
+    })
+    const second = client.saveGoals({
+      dailyGoalMinutes: 20,
+      yearlyGoalBooks: 12,
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    // Sent at once, the first could reach the server after the second and
+    // put the books back to none.
+    expect(mocks.updateGoalsFn).toHaveBeenCalledTimes(1)
+    answerFirst({ ok: true })
+    await Promise.all([first, second])
+    expect(mocks.updateGoalsFn).toHaveBeenCalledTimes(2)
+    expect(mocks.updateGoalsFn).toHaveBeenLastCalledWith({
+      data: { dailyGoalMinutes: 20, yearlyGoalBooks: 12, today: TODAY },
+    })
+    expect(current().goals).toEqual({
+      dailyGoalMinutes: 20,
+      yearlyGoalBooks: 12,
+    })
+  })
+
   it("keeps the days a refresh landed while a save failed", async () => {
     mocks.loadHabitFn.mockResolvedValueOnce({
       ok: true,
