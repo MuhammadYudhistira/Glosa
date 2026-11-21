@@ -263,6 +263,11 @@ export function LobbyStage({
   // the tapped hotspot's page must not open over it.
   // The scene pauses for a popup or the corkboard's dialog alike.
   const paused = popup || corkboard
+  // WebGL starts once the lobby shows (a page opened first on a phone hides
+  // it) and then stays, only paused behind a page: coming back finds the
+  // room as it was left, with no reload and no poster in between.
+  const [started3d, setStarted3d] = useState(!popup || wide)
+  if (!started3d && (!popup || wide)) setStarted3d(true)
   // Whatever covers the scene closes the card and puts the light out, or
   // they would come back after it (a popup, or the corkboard however opened).
   const [wasPaused, setWasPaused] = useState(paused)
@@ -546,7 +551,7 @@ export function LobbyStage({
           onLiveChange={setSceneLive}
           // The corkboard's dialog covers the scene like a route popup.
           paused={paused}
-          allow3d={!popup || wide}
+          allow3d={started3d}
         />
       </div>
       <LobbyTopBar

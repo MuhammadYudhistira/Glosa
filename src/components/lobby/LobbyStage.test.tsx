@@ -351,6 +351,17 @@ describe("LobbyStage", () => {
     expect(scene.props).toMatchObject({ paused: true, allow3d: false })
   })
 
+  it("on phones keeps the room once shown: a page over it only pauses it", async () => {
+    stubWideScreen(false)
+    const { router } = renderWithRouter(<RoutedStage />, "/lobby")
+    await screen.findByRole("main")
+    expect(scene.props).toMatchObject({ paused: false, allow3d: true })
+    await act(() => router.navigate({ to: "/shelf" }))
+    expect(scene.props).toMatchObject({ paused: true, allow3d: true })
+    await act(() => router.navigate({ to: "/lobby" }))
+    expect(scene.props).toMatchObject({ paused: false, allow3d: true })
+  })
+
   it("opens the highlights dialog from the corkboard, the scene paused behind it", async () => {
     stubWideScreen(true)
     renderStage(false)

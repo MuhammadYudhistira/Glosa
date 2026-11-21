@@ -249,4 +249,37 @@ test.describe("on a phone held upright", () => {
     await center.click()
     await expect(center).toHaveCount(0)
   })
+
+  test("the room waits behind a page as it was left, with no reload", async ({
+    page,
+  }) => {
+    test.setTimeout(300_000)
+    await signInAndOnboard(page, await createConfirmedMember())
+    const scene = sceneOf(page)
+    const canvas = scene.locator("canvas")
+    await expect(canvas).toBeVisible({ timeout: 120_000 })
+    await canvas.evaluate((element) => {
+      element.dataset.e2eMark = "1"
+    })
+    // Away from the first view: "Pusatkan" shows while the camera stays there.
+    const box = (await scene.boundingBox())!
+    const x = box.x + box.width / 2
+    const y = box.y + box.height / 2
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(x - 120, y, { steps: 4 })
+    await page.mouse.up()
+    const center = scene.getByRole("button", { name: "Pusatkan" })
+    await expect(center).toBeVisible()
+
+    const tabs = page.getByRole("navigation", { name: "Navigasi utama" })
+    await tabs.getByRole("link", { name: "Rak Saya" }).click()
+    await expect(page.getByRole("main", { name: "Rak Saya" })).toBeVisible()
+    await tabs.getByRole("link", { name: "Ruang baca" }).click()
+    await expect(page).toHaveURL(/\/lobby$/)
+    // The same canvas, live at once, the camera where it was.
+    await expect(canvas).toHaveAttribute("data-e2e-mark", "1")
+    await expect(scene).toHaveAttribute("data-live", "true")
+    await expect(center).toBeVisible()
+  })
 })

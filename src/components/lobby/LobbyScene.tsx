@@ -157,7 +157,7 @@ export function LobbyScene({
   highlight?: HotspotId | null
   /** The place whose name card is open: its button is described by the card's line (spec 3G §3.3). */
   describing?: { id: HotspotId; domId: string } | null
-  /** False keeps WebGL off, e.g. while the lobby is hidden behind a page on phones (spec 1F §5). */
+  /** False keeps WebGL off, e.g. until the lobby first shows on a phone that opened a page first. */
   allow3d?: boolean
   ref?: Ref<LobbySceneHandle>
 }) {
@@ -383,6 +383,7 @@ export function LobbyScene({
       aria-label="Adegan ruang baca"
       tabIndex={0}
       data-quality={quality ?? undefined}
+      data-mode={mode}
       data-live={live ? "true" : undefined}
       data-hover={shownHover ? "" : undefined}
       className="lobby-scene"
@@ -446,7 +447,9 @@ export function LobbyScene({
           hotspots={hotspots}
           view={live ? camera.view : STILL_VIEW}
           viewport={live ? camera.viewport : STILL_SIZE}
-          dots={!live}
+          // Dots belong to the still mode only (spec 3G §3.8): over a room
+          // still loading they would vanish a moment later.
+          dots={mode === "still"}
           bubbles={bubbles}
           onKey={(id) => onActivate(id, { keyboard: true })}
           onTap={(id) => onTap?.(id)}

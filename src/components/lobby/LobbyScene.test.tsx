@@ -144,6 +144,10 @@ describe("LobbyScene", () => {
     expect(scene.querySelector("img")?.getAttribute("src")).toMatch(
       /lobby-still\.webp/
     )
+    expect(scene).toHaveAttribute("data-mode", "still")
+    expect(screen.getByRole("button", { name: "Meja tulis" })).toHaveAttribute(
+      "data-dot"
+    )
     fireEvent.click(screen.getByRole("button", { name: "Meja tulis" }), {
       detail: 1,
     })
@@ -701,13 +705,15 @@ describe("LobbyScene", () => {
         expect(stage.playMoments).not.toHaveBeenCalled()
       })
 
-      it("shows the still image and its hotspots until the scene is ready", async () => {
+      it("shows the still image and its hotspots until the scene is ready, without dots", async () => {
         const { scene } = renderScene(desktop)
         await vi.waitFor(() => expect(canvas.props).not.toBeNull())
         expect(scene.querySelector("img")).toBeInTheDocument()
-        expect(
-          screen.getByRole("button", { name: "Meja tulis" })
-        ).toBeInTheDocument()
+        // Only the still mode draws dots (spec 3G §3.8): a room still loading
+        // shows none, which would vanish a moment later.
+        expect(scene).toHaveAttribute("data-mode", "poster")
+        const button = screen.getByRole("button", { name: "Meja tulis" })
+        expect(button).not.toHaveAttribute("data-dot")
         expect(scene).not.toHaveAttribute("data-live")
       })
 
@@ -757,6 +763,10 @@ describe("LobbyScene", () => {
         act(() => canvas.props?.onFail())
         expect(scene).toHaveAttribute("data-quality", "diam")
         expect(scene).not.toHaveAttribute("data-live")
+        expect(scene).toHaveAttribute("data-mode", "still")
+        expect(
+          screen.getByRole("button", { name: "Meja tulis" })
+        ).toHaveAttribute("data-dot")
         expect(scene.querySelector("img")).toBeInTheDocument()
         expect(screen.queryByTestId("lobby-canvas")).toBeNull()
         expect(screen.queryByRole("alert")).toBeNull()

@@ -107,6 +107,13 @@ Bila tidak ada WebGL atau adegan 3D gagal, gambar diam tampil:
 
 Kualitas "diam" dengan WebGL (reduced motion, FPS rendah) **bukan** mode gambar diam. Adegan tetap 3D tanpa animasi, sehingga cincin cahaya dan sorotannya tetap ada.
 
+### 3.9 Kembali ke ruang baca di HP (tambahan 2026-11-21, setelah cek HP pemilik)
+
+Masalah yang ditemukan pemilik: setiap kali kembali ke Ruang di HP, gambar diam (bertitik) muncul dulu, lalu berganti ke 3D. Layout keduanya berbeda, jadi pergantiannya terasa melompat.
+- **Titik** hanya ada di mode gambar diam (§3.8), tidak saat 3D sedang dimuat.
+- **3D tetap hidup di HP.** WebGL menyala begitu lobi pertama kali tampil. Setelah itu adegan tidak dibongkar saat halaman lain (Rak, Kosakata, Pengaturan, …) menutupinya, cukup dijeda. Kembali ke Ruang langsung menampilkan ruangan dengan kamera persis seperti ditinggalkan. Aturan ini menggantikan spec 1F §5, yang mematikan WebGL di HP di balik halaman. Biayanya hanya memori GPU, karena render on-demand membuat adegan yang dijeda tidak menggambar frame. Kalau HP membuang konteks WebGL, adegan jatuh ke mode gambar diam seperti biasa.
+- **Buka pertama di HP tegak:** ruangan muncul pelan dari latar gelap, bukan dari gambar diam 16:9 yang bentuknya berbeda. Gambar diam hanya tampil kalau memang menjadi adegannya (mode gambar diam).
+
 ## 4. Arsitektur
 
 | Unit | Jenis | Tugas |

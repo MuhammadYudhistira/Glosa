@@ -1165,6 +1165,14 @@
     object-fit: cover;
     user-select: none;
   }
+  /* A phone held upright frames the room closer than the wide still image
+     (spec 3G §3.7): the live room fades in from the dark backdrop instead,
+     and the still shows only when it is the scene itself. */
+  @media (max-width: 1023px) and (orientation: portrait) {
+    .lobby-scene:not([data-mode="still"]) .lobby-still {
+      visibility: hidden;
+    }
+  }
   /* While the room fades in, the still stays under the canvas, the hotspots above. */
   .lobby-live-layer > picture > .lobby-still {
     position: absolute;
