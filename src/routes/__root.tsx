@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
-import { type ReactNode, useEffect } from "react"
+import { type ReactNode, useEffect, useState } from "react"
 
 import { currentUser } from "@/lib/current-user"
 import { registerServiceWorker } from "@/lib/pwa"
@@ -15,6 +15,7 @@ import { setReportedUser, startBrowserSentry } from "@/lib/sentry-client"
 import { sentryHeadScripts } from "@/lib/sentry-env"
 import { forgetUser, rememberUser } from "@/lib/session-cache"
 import { SceneBackdrop } from "@/components/scene/SceneBackdrop"
+import { UpdateNotice } from "@/components/UpdateNotice"
 import appCss from "@/styles.css?url"
 
 export const Route = createRootRoute({
@@ -50,10 +51,12 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   const { user } = Route.useRouteContext()
+  /** Takes the new version of the app once one is ready. */
+  const [update, setUpdate] = useState<(() => void) | null>(null)
 
   // First, so Sentry exists by the time the member effect below tags it.
   useEffect(() => {
-    registerServiceWorker()
+    registerServiceWorker((apply) => setUpdate(() => apply))
     startBrowserSentry(sentryConfig())
   }, [])
 
@@ -72,6 +75,7 @@ function RootComponent() {
       <div className="relative z-10">
         <Outlet />
       </div>
+      {update && <UpdateNotice apply={update} />}
     </>
   )
 }

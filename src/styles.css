@@ -1527,6 +1527,32 @@
     padding: 0.5rem 0.9rem;
     font-size: 0.85rem;
   }
+  /* A new version is ready (src/components/UpdateNotice.tsx): above the
+     phone's tab bar, over every page but the reader. */
+  .update-notice {
+    position: fixed;
+    inset-inline: 1rem;
+    bottom: calc(var(--tabbar-h) + 0.75rem);
+    z-index: 40;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    max-width: 24rem;
+    margin-inline: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--color-panel);
+    padding: 0.6rem 0.6rem 0.6rem 1rem;
+    font-size: 0.85rem;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  }
+  @media (min-width: 1024px) {
+    .update-notice {
+      bottom: 1.25rem;
+    }
+  }
   .lobby-add {
     position: absolute;
     top: 0.75rem;

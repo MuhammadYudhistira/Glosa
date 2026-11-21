@@ -25,6 +25,12 @@ self.addEventListener("install", (event) => {
   )
 })
 
+// A new worker waits until the page asks it to take over (src/lib/pwa.ts):
+// as the app opens, or when the member chooses "Muat ulang".
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting()
+})
+
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
