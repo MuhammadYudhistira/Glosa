@@ -5,6 +5,7 @@ import {
   HABIT_ZONE,
   seedReadingTime,
   setDailyGoal,
+  storedGoals,
   storedSeconds,
   todayInZone,
 } from "./helpers/habit"
@@ -19,12 +20,17 @@ import { startReading, turnPages } from "./helpers/reading"
 test.use({ timezoneId: HABIT_ZONE })
 
 test("reading a page reaches the server as today's time", async ({ page }) => {
+  // Opening a book takes up to 30 s on a busy server.
+  test.setTimeout(120_000)
   const { userId } = await startReading(page)
   // A page shown for more than five seconds counts.
   await page.waitForTimeout(7_000)
   await turnPages(page, "PageDown", 1)
-  // Leaving the reader sends the time at once.
-  await page.goto("/lobby")
+  // Leaving the reader through the app hands over and sends the time at once.
+  // (A full page load here could cut off the page's time on its way into this
+  // device's storage, and nothing would ever be sent.)
+  await page.getByRole("link", { name: "Kembali ke rak" }).click()
+  await expect(page).not.toHaveURL(/\/read\//)
   await expect
     .poll(() => storedSeconds(userId, todayInZone()), { timeout: 20_000 })
     .toBeGreaterThanOrEqual(5)
@@ -60,6 +66,9 @@ test("the plant opens Kebiasaan baca with today's streak", async ({ page }) => {
 })
 
 test("the reader says once that today's goal is reached", async ({ page }) => {
+  // Signing in, opening a book and eight seconds of reading: more than the
+  // default minute on a busy server.
+  test.setTimeout(120_000)
   const member = await createConfirmedMember()
   await signInAndOnboard(page, member)
   const userId = await userIdOf(member.email)
@@ -96,6 +105,12 @@ test("the goals set in the panel are kept", async ({ page }) => {
   await page.getByLabel("Target buku per tahun").fill("12")
   await page.getByLabel("Target buku per tahun").press("Enter")
   await expect(page.getByText("0 / 12 buku selesai")).toBeVisible()
+  // The panel shows the goals before the server has them: the reload waits
+  // for the save to land, or it could load the old ones.
+  const userId = await userIdOf(member.email)
+  await expect
+    .poll(() => storedGoals(userId), { timeout: 20_000 })
+    .toEqual({ daily: 20, yearly: 12 })
   await page.reload()
   await hydrated(page)
   await expect(page.getByLabel("Target menit per hari")).toHaveValue("20")

@@ -44,6 +44,19 @@ export async function setDailyGoal(
   if (error) throw error
 }
 
+/** The goals the server has for the member. */
+export async function storedGoals(
+  userId: string
+): Promise<{ daily: number | null; yearly: number | null }> {
+  const { data, error } = await admin()
+    .from("profiles")
+    .select("daily_goal_minutes, yearly_goal_books")
+    .eq("id", userId)
+    .single()
+  if (error) throw error
+  return { daily: data.daily_goal_minutes, yearly: data.yearly_goal_books }
+}
+
 /** Every second the server has for the member that day. */
 export async function storedSeconds(
   userId: string,
