@@ -42,13 +42,16 @@ test("reading a section for a minute and tapping a word are kept per book", asyn
   page,
   isMobile,
 }) => {
-  test.setTimeout(240_000)
+  test.setTimeout(120_000)
+  // The page's clock runs on its own until told to jump (the reading clock
+  // reads Date.now and ticks every 30 s).
+  await page.clock.install()
   const { userId, bookId } = await startReading(page)
   const word = await tapWord(page, isMobile)
   await page.keyboard.press("Escape")
   // Past the 60 s mark, then the reader closes: a section that reaches 60 s
   // as the view goes is kept due, not lost.
-  await page.waitForTimeout(70_000)
+  await page.clock.fastForward(70_000)
   // Leaving through the app unmounts the reader, which hands over the last time.
   await page.getByRole("link", { name: "Kembali ke rak" }).click()
   await expect(page).not.toHaveURL(/\/read\//)

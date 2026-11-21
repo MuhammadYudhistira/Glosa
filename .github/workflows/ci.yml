@@ -11,15 +11,12 @@ env:
   IMAGE: ghcr.io/muhammadyudhistira/glosa
 
 jobs:
+  # The checks that need no Supabase. The database tests and the E2E run in
+  # their own jobs beside this one, so the run lasts as long as its longest job.
   test:
     runs-on: ubuntu-latest
     environment: dev
-    timeout-minutes: 50
-    # Integration and E2E tests share the Supabase dev project; avoid overlapping
-    # runs. Job-level, so a running deploy never holds other runs.
-    concurrency:
-      group: supabase-dev
-      cancel-in-progress: false
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,6 +47,51 @@ jobs:
           # release.sh must refuse a wrong environment or tag before touching anything.
           if bash deploy/release.sh staging "$GITHUB_SHA"; then exit 1; fi
           if bash deploy/release.sh dev not-a-sha; then exit 1; fi
+
+  # Integration tests against the Supabase dev project. Their fixed members
+  # would clash with another run's, so two runs never overlap here.
+  # Job-level, so a running deploy never holds other runs.
+  test-db:
+    runs-on: ubuntu-latest
+    environment: dev
+    timeout-minutes: 20
+    concurrency:
+      group: supabase-dev
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Write .env.local from secrets
+        run: |
+          {
+            echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}"
+            echo "SUPABASE_PUBLISHABLE_KEY=${{ secrets.SUPABASE_PUBLISHABLE_KEY }}"
+            echo "SUPABASE_SECRET_KEY=${{ secrets.SUPABASE_SECRET_KEY }}"
+          } > .env.local
+      - run: npm run test:db
+
+  # The E2E without the 3D lobby, split three ways. Each shard is its own
+  # Playwright run with its own run id, so its members and their teardown are
+  # its own (e2e/global-teardown.ts): shards and other runs may overlap.
+  e2e:
+    runs-on: ubuntu-latest
+    environment: dev
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
       - name: Write .env.local from secrets
         run: |
           {
@@ -59,21 +101,19 @@ jobs:
             echo "SITE_URL=http://localhost:3000"
             echo "E2E_SMTP_EMAIL=${{ secrets.E2E_SMTP_EMAIL }}"
           } > .env.local
-      - run: npm run test:db
       - run: npx playwright install --with-deps chromium
-      # The 3D lobby runs beside this job, in e2e-3d.
-      - run: npm run test:e2e -- --project=desktop --project=mobile --project=offline
+      - run: npm run test:e2e -- --project=desktop --project=mobile --project=offline --shard=${{ matrix.shard }}/3
         env:
           CI: "true"
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: playwright-report
           retention-days: 7
 
-  # The 3D lobby is drawn on the CPU (SwiftShader) and takes about half the E2E
-  # time, so it runs beside `test` instead of after it. No concurrency group:
+  # The 3D lobby is drawn on the CPU (SwiftShader), so it runs in its own job
+  # beside the others, one test at a time. No concurrency group:
   # its members are its own, and its teardown removes only those
   # (e2e/global-teardown.ts).
   e2e-3d:
@@ -109,7 +149,7 @@ jobs:
 
   # Built and smoke-tested on every run; pushed to GHCR only from main.
   image:
-    needs: [test, e2e-3d]
+    needs: [test, test-db, e2e, e2e-3d]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
