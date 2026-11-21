@@ -26,8 +26,13 @@ export function BookGrid({
               onClick={() => onOpen(book)}
               className="block w-full rounded-sm text-left outline-offset-4 focus-visible:outline-2 focus-visible:outline-mint"
             >
-              <BookCover book={book} />
-              {percentage > 0 && (
+              <span className="shelf-cover">
+                <BookCover book={book} />
+                {book.finishedAt !== null && (
+                  <span className="cover-badge">Selesai</span>
+                )}
+              </span>
+              {percentage > 0 && percentage < 100 && (
                 <progress
                   max={100}
                   value={percentage}
@@ -35,11 +40,11 @@ export function BookGrid({
                   className="book-progress mt-1.5"
                 />
               )}
-              <span className="mt-2 line-clamp-2 block min-h-[2lh] text-xs font-bold">
+              <span className="mt-2 line-clamp-2 block text-sm font-bold">
                 {book.title}
               </span>
               {book.author && (
-                <span className="line-clamp-1 text-[0.7rem] text-muted-foreground">
+                <span className="line-clamp-1 text-xs text-muted-foreground">
                   {book.author}
                 </span>
               )}

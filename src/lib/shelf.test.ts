@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
+import { sherlock } from "@/components/shelf/fixtures"
 import type { Collection, ShelfBook } from "./book-types"
 import {
   activeCollection,
   countBooks,
   countCollections,
+  currentRead,
   SHELF_SORTS,
   defaultSort,
   isShelfSort,
@@ -277,5 +279,38 @@ describe("Rating tertinggi", () => {
     expect(SHELF_SORTS.find((s) => s.value === "rating")?.label).toBe(
       "Rating tertinggi"
     )
+  })
+})
+
+describe("currentRead", () => {
+  const make = (
+    id: string,
+    lastOpenedAt: string | null,
+    finishedAt: string | null = null
+  ) => ({
+    ...sherlock,
+    id,
+    lastOpenedAt,
+    finishedAt,
+  })
+
+  it("is the book opened last that is not finished", () => {
+    const list = [
+      make("a", "2026-11-01T10:00:00Z"),
+      make("b", "2026-11-20T10:00:00Z", "2026-11-20T11:00:00Z"),
+      make("c", "2026-11-10T10:00:00Z"),
+      make("d", null),
+    ]
+    expect(currentRead(list)?.id).toBe("c")
+  })
+
+  it("is null when nothing is being read", () => {
+    expect(
+      currentRead([
+        make("a", null),
+        make("b", "2026-11-01T10:00:00Z", "2026-11-02T10:00:00Z"),
+      ])
+    ).toBeNull()
+    expect(currentRead([])).toBeNull()
   })
 })

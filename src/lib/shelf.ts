@@ -186,3 +186,13 @@ export function countCollections(
   }
   return counts
 }
+
+/** The book Rak Saya puts in front (spec poles mobile §3.2): opened last, not finished. */
+export function currentRead(books: ReadonlyArray<ShelfBook>): ShelfBook | null {
+  let best: ShelfBook | null = null
+  for (const book of books) {
+    if (book.finishedAt !== null || book.lastOpenedAt === null) continue
+    if (!best || book.lastOpenedAt > (best.lastOpenedAt ?? "")) best = book
+  }
+  return best
+}

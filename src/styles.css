@@ -577,19 +577,82 @@
     background: var(--muted);
   }
 
+  /* Rak Saya (spec poles mobile §3.4): two big covers a row on phones. */
   .shelf-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
-    row-gap: 2rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.125rem 1rem;
+  }
+  @media (min-width: 640px) {
+    .shelf-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 1024px) {
+    .shelf-grid {
+      grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    }
   }
   .shelf-slot {
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
     gap: 0.4rem;
-    padding: 0 0.6rem 0.8rem;
-    border-bottom: 0.7rem solid #5b3a1f;
-    box-shadow: 0 10px 12px -8px rgb(0 0 0 / 0.7);
+  }
+  .shelf-cover {
+    position: relative;
+    display: block;
+  }
+  .cover-badge {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    border-radius: 0.4rem;
+    background: rgb(0 0 0 / 0.6);
+    padding: 0.1rem 0.45rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-mint);
+  }
+  .current-read {
+    border: 1px solid rgb(47 224 184 / 0.22);
+    border-radius: 1rem;
+    background: linear-gradient(
+      135deg,
+      rgb(19 58 51 / 0.9),
+      rgb(16 34 38 / 0.9)
+    );
+    padding: 0.9rem;
+  }
+  .current-read-kicker {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-mint);
+  }
+  .current-read-body {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+  }
+  .current-read-book {
+    display: flex;
+    gap: 0.9rem;
+    align-items: center;
+    text-align: left;
+  }
+  .current-read-cover {
+    width: 4.25rem;
+    flex: none;
+  }
+  .current-read-continue {
+    justify-self: start;
+    border-radius: 0.6rem;
+    background: var(--color-mint);
+    padding: 0.45rem 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #04110e;
   }
   .book-cover {
     display: block;
